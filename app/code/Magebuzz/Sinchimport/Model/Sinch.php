@@ -858,7 +858,7 @@ class Sinch  extends \Magento\Framework\Model\AbstractModel
 
                     $rootCat = $this->truncateAllCateriesAndRecreateDefaults($rootCat, $catalog_category_entity, $catalog_category_entity_varchar, $catalog_category_entity_int,
                         $_categoryEntityTypeId, $_categoryDefault_attribute_set_id,
-                        $name_attrid, $attr_url_key, $attr_display_mode, $attr_url_key, $attr_is_active, $attr_include_in_menu); // return $rootCat
+                        $name_attrid, $attr_url_key, $attr_display_mode, $attr_is_active, $attr_include_in_menu); // return $rootCat
                 } else // if ($imType == "MERGE")
                 {
                     $rootCat = $this->_getShopRootCategoryId();
@@ -1017,7 +1017,7 @@ class Sinch  extends \Magento\Framework\Model\AbstractModel
 
     private function truncateAllCateriesAndRecreateDefaults($rootCat, $catalog_category_entity, $catalog_category_entity_varchar, $catalog_category_entity_int,
                                                             $_categoryEntityTypeId, $_categoryDefault_attribute_set_id,
-                                                            $name_attrid, $attr_url_key, $attr_display_mode, $attr_url_key, $attr_is_active, $attr_include_in_menu)
+                                                            $name_attrid, $attr_url_key, $attr_display_mode, $attr_is_active, $attr_include_in_menu)
     {
         $this->_doQuery('SET foreign_key_checks=0');
 

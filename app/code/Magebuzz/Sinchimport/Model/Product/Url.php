@@ -61,7 +61,6 @@ class Url extends \Magento\Catalog\Model\Product\Url
         \Magebuzz\Sinchimport\Model\Product\CategoryProcessor $categoryProcessor,
         UrlPersistInterface $urlPersist,
         UrlRewriteFactory $urlRewriteFactory,
-        UrlFinderInterface $urlFinder,
         array $data = []
     ) {
         parent::__construct($urlFactory, $storeManager, $filter, $sidResolver, $urlFinder, $data);
