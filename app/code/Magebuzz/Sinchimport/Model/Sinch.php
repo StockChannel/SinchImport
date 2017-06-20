@@ -547,10 +547,12 @@ class Sinch  extends \Magento\Framework\Model\AbstractModel
     public function checkStoreProcedureExist()
     {
         $q = 'SHOW PROCEDURE STATUS LIKE "' . $this->_getTableName('sinch_filter_products') . '"';
-        $result = $this->_doQuery($q)->fetch();
+        $query = $this->_doQuery($q);
 
-        if (($result['Name'] == $this->_getTableName('sinch_filter_products')) && ($result['Db'] == $this->_deploymentData['db']['connection']['default']['dbname'])) {
-            return true;
+        while ($result = $query->fetch()){
+            if (($result['Name'] == $this->_getTableName('sinch_filter_products')) && ($result['Db'] == $this->_deploymentData['db']['connection']['default']['dbname'])) {
+                return true;
+            }
         }
 
         return false;
