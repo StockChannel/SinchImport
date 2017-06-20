@@ -1,0 +1,19 @@
+{
+    "name": "magebuzz/helpdesk",
+    "description": "Magebuzz Sinchimport",
+    "require": {
+        "php": "~5.5.0|~5.6.0",
+        "magento/magento-composer-installer": "*"
+    },
+    "type": "magento2-module",
+    "version": "1.0.1",
+    "license": [
+        "Commercial"
+    ],
+    "autoload": {
+        "files": [ "registration.php" ],
+        "psr-4": {
+            "Magebuzz\\Sinchimport\\": ""
+        }
+    }
+}

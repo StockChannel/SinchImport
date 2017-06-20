@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * @author Magebuzz Team
+ * @copyright Copyright (c) 2015 Magebuzz (https://www.magebuzz.com)
+ * @package Magebuzz_Core
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="magebuzz" class="magebuzz-config-tab" translate="label" sortOrder="9000">
+            <label>Extensions</label>
+        </tab>
+        <section id="magebuzz_info" translate="label" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>Magebuzz Store</label>
+            <tab>magebuzz</tab>
+            <resource>Magento_Core::config_magebuzz_core</resource>
+            <group id="information" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Information</label>
+                <frontend_model>Magebuzz\Core\Block\System\Config\Information</frontend_model>
+            </group>
+            <group id="installed_extensions" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Installed Magebuzz Extensions</label>
+                <frontend_model>Magebuzz\Core\Block\System\Config\Extensions</frontend_model>
+            </group>
+        </section>
+    </system>
+</config>

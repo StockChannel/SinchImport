@@ -1,0 +1,23 @@
+.config-nav-block.magebuzz-config-tab strong:before {
+    background: url(../images/magebuzz_logo.png) no-repeat;
+    width: 83px;
+    height: 20px;
+    content: '';
+    display: inline-block;
+    margin-right: 12px;
+    vertical-align: text-bottom;
+}
+
+	fieldset#magebuzz_info_information h3 {
+		color: #eb5202;
+		margin-bottom: 10px;
+	}
+
+	fieldset#magebuzz_info_installed_extensions td.label label {
+		padding-bottom: 7px;
+	}
+
+	.magebuzz-follow ul li {
+		float: left;
+		list-style: none;
+	}
