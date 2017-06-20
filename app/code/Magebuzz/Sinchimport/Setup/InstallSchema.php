@@ -35,22 +35,22 @@ class InstallSchema implements InstallSchemaInterface
 
         // v0.1.1 - 0.1.2
         $installer->run("
-            ALTER IGNORE TABLE {$installer->getTable('catalog_product_entity')}
+            ALTER TABLE {$installer->getTable('catalog_product_entity')}
                 ADD COLUMN `store_product_id` INT(11) UNSIGNED NULL
         ");
 
         $installer->run("
-            ALTER IGNORE TABLE {$installer->getTable('catalog_product_entity')}
+            ALTER TABLE {$installer->getTable('catalog_product_entity')}
                 ADD COLUMN `sinch_product_id` INT(11) UNSIGNED NULL
         ");
 
         $installer->run("
-            ALTER IGNORE TABLE {$installer->getTable('catalog_category_entity')}
+            ALTER TABLE {$installer->getTable('catalog_category_entity')}
                 ADD COLUMN `store_category_id` INT(11) UNSIGNED NULL
         ");
 
         $installer->run("
-            ALTER IGNORE TABLE {$installer->getTable('catalog_category_entity')}
+            ALTER TABLE {$installer->getTable('catalog_category_entity')}
                 ADD COLUMN `parent_store_category_id` INT(11) UNSIGNED NULL
         ");
 
