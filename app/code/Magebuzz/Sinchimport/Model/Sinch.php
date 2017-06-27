@@ -1005,8 +1005,15 @@ class Sinch  extends \Magento\Framework\Model\AbstractModel
 
     public function file_strings_count($parseFile)
     {
-        $files_str = count(file($parseFile));
-        return $files_str;
+        $f = fopen($parseFile, 'rb');
+        $lines = 0;
+
+        while (!feof($f)) {
+        $lines += substr_count(fread($f, 8192), "\r\n");
+        }
+
+        fclose($f);
+        return $lines;
     }
 
     public function table_rows_count($table)
