@@ -1,7 +1,0 @@
-<?xml version="1.0"?>
-<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
-    <menu>
-        <add id="Magebuzz_Sinchimport::sinchimport" title="Stock In The Channel" module="Magebuzz_Sinchimport" sortOrder="50" resource="Magebuzz_Sinchimport::sinchimport" />
-        <add id="Magebuzz_Sinchimport::importdata" title="Import Data" module="Magebuzz_Sinchimport" sortOrder="0" parent="Magebuzz_Sinchimport::sinchimport" action="adminhtml/system_config/edit/section/sinchimport" resource="Magebuzz_Sinchimport::importdata"/>
-    </menu>
-</config>

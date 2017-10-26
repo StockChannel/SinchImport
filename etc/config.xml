@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * @copyright Copyright (c) 2016 www.magebuzz.com
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <sinchimport>
+            <general>
+                <additional_suffix>2</additional_suffix>
+            </general>
+            <sinch_ftp>
+                <replace_category>REWRITE</replace_category>
+                <replace_product>REWRITE</replace_product>
+                <backup_data>0</backup_data>
+            </sinch_ftp>
+            <sinch_import_fullstatus>
+                <indexing_separately>0</indexing_separately>
+            </sinch_import_fullstatus>
+        </sinchimport>
+    </default>
+</config>

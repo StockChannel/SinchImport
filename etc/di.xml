@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <type name="Magento\Framework\Console\CommandList">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="import" xsi:type="object">Magebuzz\Sinchimport\Console\Command\ImportCommand</item>
+                <item name="generateUrl" xsi:type="object">Magebuzz\Sinchimport\Console\Command\GenerateCommand</item>
+                <item name="feature" xsi:type="object">Magebuzz\Sinchimport\Console\Command\FeatureCommand</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="Magebuzz\Sinchimport\Logger\Handler">
+        <arguments>
+            <argument name="filesystem" xsi:type="object">Magento\Framework\Filesystem\Driver\File</argument>
+        </arguments>
+    </type>
+    <type name="Magebuzz\Sinchimport\Logger\Logger">
+        <arguments>
+            <argument name="name" xsi:type="string">sinchImportLogger</argument>
+            <argument name="handlers" xsi:type="array">
+                <item name="system" xsi:type="object">Magebuzz\Sinchimport\Logger\Handler</item>
+            </argument>
+        </arguments>
+    </type>
+    <type name="Magento\Catalog\Block\Product\View\Gallery">
+        <plugin name="mb_change_product_gallery" type="Magebuzz\Sinchimport\Block\Product\View\Gallery" sortOrder="0"/>
+    </type>
+    <type name="Magento\Catalog\Model\Product\Attribute\Frontend\Image">
+        <plugin name="mb_change_product_attribute_frontend_image" type="Magebuzz\Sinchimport\Plugin\Catalog\Product\Attribute\Frontend\Image" sortOrder="0"/>
+    </type>
+    <type name="Magento\Catalog\Model\Layer\FilterList">
+        <plugin name="mb_change_layer_filter_fist" type="Magebuzz\Sinchimport\Plugin\Catalog\Layer\FilterList" sortOrder="0"/>
+    </type>
+    <type name="Magento\Catalog\Model\Category">
+        <plugin name="mb_change_category_image_url" type="Magebuzz\Sinchimport\Plugin\Catalog\Model\Category" sortOrder="0"/>
+    </type>
+    <type name="Magento\Catalog\Model\Product\Image">
+        <plugin name="mb_change_product_image_url" type="Magebuzz\Sinchimport\Plugin\Catalog\Model\Product\Image" sortOrder="0"/>
+    </type>
+    <type name="Magento\Catalog\Helper\Image">
+        <plugin name="mb_change_catalog_helper_image" type="Magebuzz\Sinchimport\Plugin\Catalog\Helper\Image" sortOrder="0"/>
+    </type>
+</config>

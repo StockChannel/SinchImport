@@ -1,0 +1,107 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * @copyright Copyright (c) 2016 www.magebuzz.com
+ */
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="magebuzz" translate="label" sortOrder="9000">
+            <label>Magebuzz Extensions</label>
+        </tab>
+        <section id="sinchimport" translate="label" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>Sinch Import</label>
+            <tab>magebuzz</tab>
+            <resource>Magebuzz_Sinchimport::config_sinchimport</resource>
+            <group id="general" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1"
+                   showInStore="1">
+                <label>General Settings</label>
+                <field id="additional_suffix" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1"
+                       showInStore="1">
+                    <label>Addition Suffix for Product Url Rewrite</label>
+                    <source_model>Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix</source_model>
+                </field>
+            </group>
+            <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1"
+                   showInStore="1">
+                <label>FTP Login Details</label>
+                <comment>Get these details from Stock in the Channel for the pricelist you want this store to use. This
+                    is not your Stock in the Channel username and password.
+                </comment>
+                <field id="ftp_server" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1"
+                       showInStore="1">
+                    <label>FTP Server</label>
+                    <source_model>Magebuzz\Sinchimport\Model\Config\Source\Serverlist</source_model>
+                </field>
+                <field id="username" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1"
+                       showInStore="1">
+                    <label>FTP User Name</label>
+                </field>
+                <field id="password" translate="label" type="password" sortOrder="20" showInDefault="1"
+                       showInWebsite="1" showInStore="1">
+                    <label>FTP Password</label>
+                </field>
+                <field id="replace_category" translate="label" type="select" sortOrder="30" showInDefault="1"
+                       showInWebsite="1" showInStore="1">
+                    <label>Merge or Overwrite Categories</label>
+                    <source_model>Magebuzz\Sinchimport\Model\Config\Source\Caterewrite</source_model>
+                </field>
+                <field id="replace_product" translate="label" type="select" sortOrder="40" showInDefault="1"
+                       showInWebsite="1" showInStore="1">
+                    <label>Merge or Overwrite Products</label>
+                    <source_model>Magebuzz\Sinchimport\Model\Config\Source\Prodrewrite</source_model>
+                </field>
+                <field id="backup_data" translate="label" type="select" sortOrder="50" showInDefault="1"
+                       showInWebsite="1" showInStore="1">
+                    <label>Backup Data</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Backup current Ids of products and categories to re-use when importing in overwrite mode.
+                    </comment>
+                </field>
+            </group>
+            <group id="sinch_import_fullstatus" translate="label" type="text" sortOrder="20" showInDefault="1"
+                   showInWebsite="1" showInStore="1">
+                <label>Import Full Catalogue</label>
+                <comment>An import of 100000 products will take approximately 1 hour.Larger catalogues will take
+                    substantially longer.
+                </comment>
+                <field id="indexing_separately" translate="label" type="select" sortOrder="20" showInDefault="1"
+                       showInWebsite="1" showInStore="1">
+                    <label>Run the Indexing Separately</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Run the re-indexing as a separate task.</comment>
+                </field>
+                <field id="indexing_data" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <frontend_model>Magebuzz\Sinchimport\Block\System\Config\Indexingbutton</frontend_model>
+                    <depends>
+                        <field id="indexing_separately">1</field>
+                    </depends>
+                </field>
+                <field id="start_sinch_import" translate="label" type="button" sortOrder="40" showInDefault="1"
+                       showInWebsite="1" showInStore="1">
+                    <frontend_model>Magebuzz\Sinchimport\Block\System\Config\Importbutton</frontend_model>
+                </field>
+            </group>
+            <group id="sinch_import_stockpricestatus" translate="label" type="text" sortOrder="30" showInDefault="1"
+                   showInWebsite="1" showInStore="1">
+                <label>Import Stock &amp; Prices</label>
+                <comment>This will import stock and prices ONLY. This process should not take longer 5 minutes.
+                </comment>
+                <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1"
+                       showInWebsite="1" showInStore="1">
+                    <frontend_model>Magebuzz\Sinchimport\Block\System\Config\Stockpriceimportbutton</frontend_model>
+                </field>
+            </group>
+            <group id="sinch_import_history" translate="label" type="text" sortOrder="40" showInDefault="1"
+                   showInWebsite="1" showInStore="1">
+                <label>Import History</label>
+                <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1"
+                       showInWebsite="1" showInStore="1">
+                    <frontend_model>Magebuzz\Sinchimport\Block\System\Config\Importhistory</frontend_model>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

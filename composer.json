@@ -1,0 +1,29 @@
+{
+  "name": "magebuzz/sinchimport",
+  "description": "Magebuzz Sinch Import",
+  "require": {
+    "php": "~5.5.0|~5.6.0|~7.0.0"
+  },
+  "type": "magento2-module",
+  "version": "1.2.0",
+  "license": [
+    "OSL-3.0",
+    "AFL-3.0"
+  ],
+  "authors": [
+    {
+      "name": "Magebuzz Team",
+      "email": "support@magebuzz.com",
+      "homepage": "http://www.magebuzz.com/",
+      "role": "Developer"
+    }
+  ],
+  "autoload": {
+    "files": [
+      "registration.php"
+    ],
+    "psr-4": {
+      "Magebuzz\\Sinchimport\\": ""
+    }
+  }
+}
