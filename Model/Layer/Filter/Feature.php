@@ -166,8 +166,8 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
         if ($limitDirection != self::LESS && $limitDirection != self::GREATER) {
             $optionsCount = $this->_getResource()->getCount($this);
             foreach ($options as $option) {
-                if ($pos = strpos($option, '::')) {
-                    $value              = substr($option, 0, $pos);
+                if (($pos = strpos($option, '::')) !== false) {
+                    $value = substr($option, 0, $pos);
                     $presentation_value = substr($option, $pos + 2);
                 } else {
                     $value = $presentation_value = $option;

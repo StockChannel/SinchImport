@@ -8,17 +8,21 @@ namespace Magebuzz\Sinchimport\Cron;
 class Importstockprice
 {
     /**
+     * Holds the Sinch model
+     * 
      * @var \Magebuzz\Sinchimport\Model\Sinch
      */
-    private $sinch;
+    private $_sinch;
     
     /**
-     * @param \Magebuzz\Sinchimport\Model\Sinch
+     * Constructor
+     * 
+     * @param \Magebuzz\Sinchimport\Model\Sinch $sinch Sinch Model
      */
     public function __construct(
         \Magebuzz\Sinchimport\Model\Sinch $sinch
     ) {
-        $this->sinch = $sinch;
+        $this->_sinch = $sinch;
     }
     
     /**
@@ -28,6 +32,6 @@ class Importstockprice
      */
     public function execute()
     {
-        $this->sinch->startCronStockPriceImport();
+        $this->_sinch->startCronStockPriceImport();
     }
 }

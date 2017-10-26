@@ -26,72 +26,72 @@ class Sinch
      *
      * @var \Magento\Framework\Event\ManagerInterface
      */
-    protected $_eventManager;
+    private $_eventManager;
     /**
      * Store manager
      *
      * @var \Magento\Store\Model\StoreManagerInterface
      */
-    protected $_storeManager;
+    private $_storeManager;
     
     protected $scopeConfig;
     
     /**
      * @var \Magento\Framework\UrlInterface
      */
-    protected $_urlBuilder;
+    private $_urlBuilder;
     
     /**
      * Logging instance
      *
      * @var \Magebuzz\Sinchimport\Logger\Logger
      */
-    protected $_sinchLogger;
-    protected $_resourceConnection;
-    protected $_connection;
+    private $_sinchLogger;
+    private $_resourceConnection;
+    private $_connection;
     
     /**
      * @var \Magento\Indexer\Model\Processor
      */
-    protected $_indexProcessor;
+    private $_indexProcessor;
     
     /**
      * @var \Magento\Framework\App\Cache\Frontend\Pool
      */
-    protected $_cacheFrontendPool;
+    private $_cacheFrontendPool;
     
     /**
      * @var \Magento\Framework\Model\ResourceModel\Iterator
      */
-    protected $_resourceIterator;
+    private $_resourceIterator;
     
     /**
      * Product collection factory
      *
      * @var \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory
      */
-    protected $_productCollectionFactory;
+    private $_productCollectionFactory;
     
     /**
      * Product factory
      *
      * @var \Magento\Catalog\Model\ProductFactory
      */
-    protected $_productFactory;
+    private $_productFactory;
     
     /**
      * Product url factory
      *
      * @var \Magebuzz\Sinchimport\Model\Product\UrlFactory
      */
-    protected $_productUrlFactory;
+    private $_productUrlFactory;
     
     /**
      * Prefix of model events names
      *
      * @var string
      */
-    protected $_eventPrefix = 'sinchimport_sinch';
+    private $_eventPrefix = 'sinchimport_sinch';
     /**
      * @var \Magento\Indexer\Model\Indexer\CollectionFactory
      */
@@ -305,16 +305,7 @@ class Sinch
             'description'
         );
         
-        $safe_mode_set = ini_get('safe_mode');
         $this->initImportStatuses('FULL');
-        
-        if ($safe_mode_set) {
-            $this->_logImportInfo('safe_mode is enable. import stoped.');
-            $this->_setErrorMessage(
-                'Safe_mode is enabled. Please check the documentation on how to fix this. Import stopped.'
-            );
-            exit;
-        }
         
         $store_proc = $this->checkStoreProcedureExist();
         if (! $store_proc) {
@@ -328,29 +319,29 @@ class Sinch
                     'sinch_filter_products'
                 ) . '" is absent in this database. Import stopped.'
             );
-            exit;
+            throw new \Exception("sinch_filter_products procedure missing from database");
         }
         
         $file_privileg = $this->checkDbPrivileges();
         if (! $file_privileg) {
             $this->_logImportInfo(
-                "Loaddata option not set - please check the documentation on how to fix this. You dan't have privileges for LOAD DATA."
+                "LOAD DATA option not set. You dan't have privileges for LOAD DATA."
             );
             $this->_setErrorMessage(
-                "Loaddata option not set - please check the documentation on how to fix this. Import stopped."
+                "LOAD DATA option not set. Import stopped."
             );
-            exit;
+            throw new \Exception("LOAD DATA option not enabled in database");
         }
         
         $local_infile = $this->checkLocalInFile();
         if (! $local_infile) {
             $this->_logImportInfo(
-                "Loaddata option not set - please check the documentation on how to fix this. Add this string to  'set-variable=local-infile=0' in '/etc/my.cnf'"
+                "LOCAL INFILE is not enabled in the database"
             );
             $this->_setErrorMessage(
-                "Loaddata option not set - please check the documentation on how to fix this. Import stopped."
+                "LOCAL INFILE is not enabled in the database. Import stopped."
             );
-            exit;
+            throw new \Exception("LOCAL INFILE is not enabled in the database");
         }
         
         if ($this->isImportNotRun()) {
@@ -706,7 +697,7 @@ class Sinch
             $this->_setErrorMessage(
                 'FTP login or password has not been defined. Import stopped.'
             );
-            exit;
+            throw new \Exception("FTP username or password not set");
         }
         $file_url_and_dir = $this->replPh(
             FILE_URL_AND_DIR,
@@ -732,13 +723,13 @@ class Sinch
                         $this->_setErrorMessage(
                             'Incorrect username or password for the Stock In The Channel server. Import stopped.'
                         );
-                        exit;
+                        throw new \Exception("Invalid username or password for FTP");
                     }
                 } else {
                     $this->_setErrorMessage(
                         'FTP connection failed. Unable to connect to the Stock In The Channel server'
                     );
-                    exit;
+                    throw new \Exception("FTP connection failed");
                 }
                 if (! $this->wget(
                     $file_url_and_dir . $file,
@@ -787,8 +778,7 @@ class Sinch
                         'Sinch import stoped. Import file(s) empty',
                         1
                     );
-                    
-                    exit;
+                    throw new \Exception("Import files empty, cannot continue");
                 } else {
                     if ($file == FILE_CATEGORIES_FEATURES) {
                         $this->_logImportInfo(
@@ -1051,7 +1041,7 @@ class Sinch
                     'The Stock In The Channel data files do not appear to be in the correct format. Check file'
                     . $parseFile . "(LOAD DATA ... " . $inf . ")"
                 );
-                exit;
+                throw new \Exception("Import files in invalid format");
             }
             
             if (count($coincidence) == 1) { // one store logic
@@ -9362,16 +9352,7 @@ class Sinch
     
     public function runStockPriceImport()
     {
-        $safe_mode_set = ini_get('safe_mode');
-        
         $this->initImportStatuses('PRICE STOCK');
-        if ($safe_mode_set) {
-            $this->_logImportInfo('safe_mode is enable. import stoped.');
-            $this->_setErrorMessage(
-                'Safe_mode is enabled. Please check the documentation on how to fix this. Import stopped.'
-            );
-            exit;
-        }
         $store_proc = $this->checkStoreProcedureExist();
         
         if (! $store_proc) {
@@ -9385,29 +9366,29 @@ class Sinch
                     'sinch_filter_products'
                 ) . '" is absent in this database. Import stopped.'
             );
-            exit;
+            throw new \Exception("sinch_filter_products missing from the database");
         }
         
         $file_privileg = $this->checkDbPrivileges();
         
         if (! $file_privileg) {
             $this->_logImportInfo(
-                "Loaddata option not set - please check the documentation on how to fix this. You dan't have privileges for LOAD DATA."
+                "LOAD DATA option not set"
             );
             $this->_setErrorMessage(
-                "Loaddata option not set - please check the documentation on how to fix this. Import stopped."
+                "LOAD DATA option not set. Import stopped."
             );
-            exit;
+            throw new \Exception("LOAD DATA option not set in the database");
         }
         $local_infile = $this->checkLocalInFile();
         if (! $local_infile) {
             $this->_logImportInfo(
-                "Loaddata option not set - please check the documentation on how to fix this. Add this string to  'set-variable=local-infile=0' in '/etc/my.cnf'"
+                "LOCAL INFILE is not enabled"
             );
             $this->_setErrorMessage(
-                "Loaddata option not set - please check the documentation on how to fix this. Import stopped."
+                "LOCAL INFILE is not enabled. Import stopped."
             );
-            exit;
+            throw new \Exception("LOCAL INFILE not enabled in the database");
         }
         
         if ($this->isImportNotRun() && $this->isFullImportHaveBeenRun()) {
@@ -10671,65 +10652,6 @@ class Sinch
         if ($value != $CheckValue) {
             $errmsg .= $ErrorMessage . " " . $value . " " . $CheckMeasure;
             $fixmsg .= $FixMessage;
-            $status = 'error';
-        } else {
-            $errmsg .= 'none';
-            $fixmsg .= 'none';
-            $status = 'OK';
-        }
-        
-        $ret = [];
-        array_push(
-            $ret,
-            $status,
-            $Caption,
-            $CheckValue,
-            $value,
-            $CheckMeasure,
-            $errmsg,
-            $fixmsg
-        );
-        
-        return $ret;
-    }
-    
-    public function checkPhpsafemode()
-    {
-        $tableName  = $this->_getTableName('sinch_sinchcheck');
-        $check_code = 'phpsafemode';
-        
-        $row = $this->_doQuery(
-            "SELECT * FROM $tableName WHERE check_code = '$check_code'",
-            true
-        )->fetch();
-        
-        $Caption      = $row['caption'];
-        $CheckValue   = $row['check_value'];
-        $CheckMeasure = $row['check_measure'];
-        $ErrorMessage = $row['error_msg'];
-        $FixMessage   = $row['fix_msg'];
-        
-        $retvalue                  = [];
-        $retvalue["'$check_code'"] = [];
-        
-        $a = ini_get('safe_mode');
-        if ($a) {
-            $value = 'ON';
-        } else {
-            $value = 'OFF';
-        }
-        
-        $errmsg = '';
-        $fixmsg = '';
-        if ($value != $CheckValue) {
-            $errmsg .= sprintf(
-                $ErrorMessage,
-                " " . $value . " " . $CheckMeasure
-            );
-            $fixmsg .= sprintf(
-                $FixMessage,
-                " " . $CheckValue . " " . $CheckMeasure
-            );
             $status = 'error';
         } else {
             $errmsg .= 'none';

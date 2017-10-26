@@ -80,8 +80,7 @@ class StockPrice extends \Magento\Backend\App\Action
             );
             sleep(1);
             if (($out[0] > 0) && ! $this->sinch->isImportNotRun()) {
-                die('dsadsad');
-                break;
+                throw new \Exception("Error starting import");
             }
         }
         
