@@ -64,7 +64,9 @@ class IndexingData extends \Magento\Backend\App\Action
     {
         $this->_logger->info('Start Full Import');
         
-        /** @var \Magento\Framework\Controller\Result\Json $resultJson */
+        /**
+ * @var \Magento\Framework\Controller\Result\Json $resultJson
+*/
         $resultJson = $this->resultJsonFactory->create();
         
         $rootDir = $this->_directory->getRoot() . '/';

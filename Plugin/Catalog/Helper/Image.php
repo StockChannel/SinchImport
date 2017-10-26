@@ -29,7 +29,8 @@ class Image
         
         if ($product->getSinchProductId()) {
             $attributes = array_merge(
-                $attributes, ['width' => 150, 'height' => 150]
+                $attributes,
+                ['width' => 150, 'height' => 150]
             );
         }
         

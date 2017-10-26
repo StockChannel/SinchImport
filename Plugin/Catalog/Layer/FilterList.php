@@ -27,8 +27,10 @@ class FilterList
         $this->connection    = $resourceConnection->getConnection();
     }
     
-    public function aroundGetFilters(\Magento\Catalog\Model\Layer\FilterList $subject,
-        \Closure $proceed, $layer
+    public function aroundGetFilters(
+        \Magento\Catalog\Model\Layer\FilterList $subject,
+        \Closure $proceed,
+        $layer
     ) {
         $filters = $proceed($layer);
         
@@ -60,13 +62,13 @@ class FilterList
         );
         
         $select = $connection->select()
-            ->from(array('cf' => $featureTable))
+            ->from(['cf' => $featureTable])
             ->joinInner(
-                array('rv' => $restrictedValueTable),
+                ['rv' => $restrictedValueTable],
                 'cf.category_feature_id = rv.category_feature_id'
             )
             ->joinInner(
-                array('cm' => $categoryMappingTable),
+                ['cm' => $categoryMappingTable],
                 'cf.store_category_id = cm.store_category_id'
             )
             ->where('cm.shop_entity_id = ' . $categoryId)

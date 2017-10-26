@@ -58,12 +58,14 @@ class UpdateStatus extends \Magento\Backend\App\Action
      */
     public function execute()
     {
-        /** @var \Magento\Framework\Controller\Result\Json $resultJson */
+        /**
+ * @var \Magento\Framework\Controller\Result\Json $resultJson
+*/
         $resultJson = $this->resultJsonFactory->create();
         
         $messageArr = $this->sinch->getImportStatuses();
         
-        if ( ! empty($messageArr['id'])) {
+        if (! empty($messageArr['id'])) {
             $result = [
                 'message'  => $messageArr['message'],
                 'finished' => $messageArr['finished']

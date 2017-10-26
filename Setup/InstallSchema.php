@@ -16,9 +16,11 @@ class InstallSchema implements InstallSchemaInterface
 {
     /**
      * {@inheritdoc}
+     *
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function install(SchemaSetupInterface $setup,
+    public function install(
+        SchemaSetupInterface $setup,
         ModuleContextInterface $context
     ) {
         $installer = $setup;
@@ -470,14 +472,16 @@ class InstallSchema implements InstallSchemaInterface
         
         $config = $installer->getConnection()->getConfig();
         $connection = mysqli_connect(
-            $config['host'], $config['username'], $config['password']
+            $config['host'],
+            $config['username'],
+            $config['password']
         );
         
-        if ( ! $connection) {
+        if (! $connection) {
             throw new \Exception('Failed to connect to database.');
         }
         
-        if ( ! mysqli_select_db($connection, $config['dbname'])) {
+        if (! mysqli_select_db($connection, $config['dbname'])) {
             throw new \Exception('Failed to select a database.');
         }
         
@@ -693,7 +697,7 @@ BEGIN
 END
         ";
         
-        if ( ! mysqli_query($connection, $createProcedureQuery)) {
+        if (! mysqli_query($connection, $createProcedureQuery)) {
             throw new \Exception("Failed to create stored procedure");
         }
         
@@ -714,7 +718,7 @@ BEGIN
 END
         ";
         
-        if ( ! mysqli_query($connection, $createCalPriceFunctionQuery)) {
+        if (! mysqli_query($connection, $createCalPriceFunctionQuery)) {
             throw new \Exception("Failed to create calculating price function");
         }
         

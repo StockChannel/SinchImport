@@ -15,7 +15,9 @@ use Magento\UrlRewrite\Service\V1\Data\UrlRewriteFactory;
 
 class Url extends \Magento\Catalog\Model\Product\Url
 {
-    /** @var array */
+    /**
+     * @var array
+     */
     protected $products = [];
     
     /**
@@ -23,19 +25,29 @@ class Url extends \Magento\Catalog\Model\Product\Url
      */
     protected $categoryProcessor;
     
-    /** @var UrlFinderInterface */
+    /**
+     * @var UrlFinderInterface
+     */
     protected $urlFinder;
     
-    /** @var UrlPersistInterface */
+    /**
+     * @var UrlPersistInterface
+     */
     protected $urlPersist;
     
-    /** @var UrlRewriteFactory */
+    /**
+     * @var UrlRewriteFactory
+     */
     protected $urlRewriteFactory;
     
-    /** @var \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator */
+    /**
+     * @var \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator
+     */
     protected $productUrlPathGenerator;
     
-    /** @var array */
+    /**
+     * @var array
+     */
     protected $storesCache = [];
     
     /**
@@ -59,7 +71,12 @@ class Url extends \Magento\Catalog\Model\Product\Url
         array $data = []
     ) {
         parent::__construct(
-            $urlFactory, $storeManager, $filter, $sidResolver, $urlFinder, $data
+            $urlFactory,
+            $storeManager,
+            $filter,
+            $sidResolver,
+            $urlFinder,
+            $data
         );
         $this->categoryProcessor       = $categoryProcessor;
         $this->urlPersist              = $urlPersist;
@@ -110,9 +127,10 @@ class Url extends \Magento\Catalog\Model\Product\Url
         
         while ($process == true) {
             $this->products = $this->_getResource()->getProductsByStore(
-                $storeId, $lastEntityId
+                $storeId,
+                $lastEntityId
             );
-            if ( ! $this->products) {
+            if (! $this->products) {
                 $process = false;
                 break;
             }
@@ -184,7 +202,8 @@ class Url extends \Magento\Catalog\Model\Product\Url
                     ->setEntityId($product->getId())
                     ->setRequestPath(
                         $this->productUrlPathGenerator->getUrlPathWithSuffix(
-                            $product, $storeId
+                            $product,
+                            $storeId
                         )
                     )
                     ->setTargetPath(
@@ -215,15 +234,18 @@ class Url extends \Magento\Catalog\Model\Product\Url
                 );
                 $requestPath
                           = $this->productUrlPathGenerator->getUrlPathWithSuffix(
-                    $product, $storeId, $category
-                );
+                              $product,
+                              $storeId,
+                              $category
+                          );
                 $urls[]   = $this->urlRewriteFactory->create()
                     ->setEntityType(ProductUrlRewriteGenerator::ENTITY_TYPE)
                     ->setEntityId($product->getId())
                     ->setRequestPath($requestPath)
                     ->setTargetPath(
                         $this->productUrlPathGenerator->getCanonicalUrlPath(
-                            $product, $category
+                            $product,
+                            $category
                         )
                     )
                     ->setStoreId($storeId)

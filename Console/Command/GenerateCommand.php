@@ -57,7 +57,5 @@ class GenerateCommand extends Command
             
             return \Magento\Framework\Console\Cli::RETURN_FAILURE;
         }
-        
     }
-    
 }

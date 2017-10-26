@@ -1,11 +1,16 @@
 {
-  "name": "magebuzz/sinchimport",
+  "name": "stockinthechannel/import",
   "description": "Magebuzz Sinch Import",
-  "require": {
-    "php": "~5.5.0|~5.6.0|~7.0.0"
-  },
   "type": "magento2-module",
   "version": "1.2.0",
+  "require": {
+    "php": "~7.0.0",
+    "magento/framework": "~101.0.0"
+  },
+  "require-dev": {
+    "squizlabs/php_codesniffer": "^2.6",
+    "phpmd/phpmd": "^2.6"
+  },
   "license": [
     "OSL-3.0",
     "AFL-3.0"
@@ -16,6 +21,12 @@
       "email": "support@magebuzz.com",
       "homepage": "http://www.magebuzz.com/",
       "role": "Developer"
+    },
+    {
+      "name": "Nick Anstee",
+      "email": "nick.anstee@stockinthechannel.com",
+      "homepage": "https://stockinthechannel.com/",
+      "role": "Developer"
     }
   ],
   "autoload": {
@@ -25,5 +36,11 @@
     "psr-4": {
       "Magebuzz\\Sinchimport\\": ""
     }
-  }
+  },
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://repo.magento.com/"
+    }
+  ]
 }

@@ -7,8 +7,7 @@ namespace Magebuzz\Sinchimport\Block\System\Config;
 
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
-class Stockpriceimportbutton
-    extends \Magento\Config\Block\System\Config\Form\Field
+class Stockpriceimportbutton extends \Magento\Config\Block\System\Config\Form\Field
 {
     protected $sinch;
     
@@ -50,7 +49,7 @@ class Stockpriceimportbutton
         
         if ($safe_mode_set) {
             $html .= "<p class='sinch-error'><b>You can't start import (safe_mode is 'On'. set safe_mode = Off in php.ini )<b></p>";
-        } elseif ( ! $this->sinch->isFullImportHaveBeenRun()) {
+        } elseif (! $this->sinch->isFullImportHaveBeenRun()) {
             $html .= "Full import have never finished with success";
         } else {
             $html .= $startImportButtonHtml;
@@ -139,5 +138,4 @@ class Stockpriceimportbutton
         
         return $html;
     }
-    
 }

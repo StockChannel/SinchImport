@@ -35,25 +35,28 @@ class InstallData implements InstallDataInterface
     
     /**
      * {@inheritdoc}
+     *
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function install(ModuleDataSetupInterface $setup,
+    public function install(
+        ModuleDataSetupInterface $setup,
         ModuleContextInterface $context
     ) {
-        /** @var EavSetup $eavSetup */
+        /**
+ * @var EavSetup $eavSetup
+*/
         $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
         
         // v 0.1.0 - 0.1.1
-        $attrVarchar = array(
+        $attrVarchar = [
             'ean' => 'EAN'
-        );
+        ];
         
         foreach ($attrVarchar as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                array(
+                [
                     'label'                      => $value,
                     'type'                       => 'varchar',
                     'input'                      => 'text',
@@ -70,20 +73,19 @@ class InstallData implements InstallDataInterface
                     'visible_on_front'           => true,
                     'visible_in_advanced_search' => false,
                     'unique'                     => false
-                )
+                ]
             );
         }
         
-        $attrText = array(
+        $attrText = [
             'specification' => 'Specification'
-        );
+        ];
         
         foreach ($attrText as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                array(
+                [
                     'label'                      => $value,
                     'type'                       => 'text',
                     'input'                      => 'textarea',
@@ -102,52 +104,55 @@ class InstallData implements InstallDataInterface
                     'is_html_allowed_on_front'   => true,
                     'visible_in_advanced_search' => false,
                     'unique'                     => false
-                )
+                ]
             );
         }
         
-        $attrText = array(
+        $attrText = [
             'specification' => 'Specification',
             'manufacturer'  => 'Manufacturer',
             'ean'           => 'EAN',
             'sku'           => 'SKU'
-        );
+        ];
         
         foreach ($attrText as $key => $value) {
-            $data = array(
+            $data = [
                 'is_visible_on_front'      => 1,
                 'is_html_allowed_on_front' => 1
-            );
+            ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
                 \Magento\Catalog\Model\Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
-            
         }
         
-        $attr_filt = array(
+        $attr_filt = [
             'manufacturer' => 'Manufacturer'
-        );
+        ];
         
         foreach ($attr_filt as $key => $value) {
-            $data = array(
+            $data = [
                 'is_filterable' => 1,
                 'is_global'     => 1
-            );
+            ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
                 \Magento\Catalog\Model\Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
@@ -155,28 +160,29 @@ class InstallData implements InstallDataInterface
             
             $sets = $setup->getConnection()->fetchAll(
                 'select * from ' . $setup->getTable('eav_attribute_set')
-                . ' where entity_type_id=?', $entityTypeId
+                . ' where entity_type_id=?',
+                $entityTypeId
             );
             
             foreach ($sets as $set) {
                 $eavSetup->addAttributeToSet(
-                    $entityTypeId, $set['attribute_set_id'], 'Default',
+                    $entityTypeId,
+                    $set['attribute_set_id'],
+                    'Default',
                     'manufacturer'
                 );
             }
-            
         }
         
-        $attrText = array(
+        $attrText = [
             'reviews' => 'Reviews'
-        );
+        ];
         
         foreach ($attrText as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                array(
+                [
                     'label'                      => $value,
                     'type'                       => 'text',
                     'input'                      => 'textarea',
@@ -195,37 +201,37 @@ class InstallData implements InstallDataInterface
                     'is_html_allowed_on_front'   => 1,
                     'visible_in_advanced_search' => false,
                     'unique'                     => false
-                )
+                ]
             );
             
-            $data = array(
+            $data = [
                 'is_visible_on_front'      => 1,
                 'is_html_allowed_on_front' => 1
-            );
+            ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
                 \Magento\Catalog\Model\Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
-            
         }
         
-        $attrText = array(
+        $attrText = [
             'sinch_search_cache' => 'Sinch Search Cache'
-        );
+        ];
         
         foreach ($attrText as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                array(
+                [
                     'label'                      => $value,
                     'type'                       => 'text',
                     'input'                      => 'textarea',
@@ -244,26 +250,26 @@ class InstallData implements InstallDataInterface
                     'is_html_allowed_on_front'   => 1,
                     'visible_in_advanced_search' => false,
                     'unique'                     => false
-                )
+                ]
             );
             
             $eavSetup->updateAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                'is_searchable', '1'
+                'is_searchable',
+                '1'
             );
         }
         
-        $attrVarchar = array(
+        $attrVarchar = [
             'pdf_url' => 'PDF Url'
-        );
+        ];
         
         foreach ($attrVarchar as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                array(
+                [
                     'label'                      => $value,
                     'type'                       => 'varchar',
                     'input'                      => 'text',
@@ -280,41 +286,41 @@ class InstallData implements InstallDataInterface
                     'visible_on_front'           => true,
                     'visible_in_advanced_search' => false,
                     'unique'                     => false
-                )
+                ]
             );
             
-            $data = array(
+            $data = [
                 'is_visible_on_front'      => 1,
                 'is_html_allowed_on_front' => 1
-            );
+            ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
                 \Magento\Catalog\Model\Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
-            
         }
         
-        $attrVarchar = array(
+        $attrVarchar = [
             'supplier_1' => 'Supplier 1',
             'supplier_2' => 'Supplier 2',
             'supplier_3' => 'Supplier 3',
             'supplier_4' => 'Supplier 4',
             'supplier_5' => 'Supplier 5'
-        );
+        ];
         
         foreach ($attrVarchar as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                array(
+                [
                     'label'                      => $value,
                     'type'                       => 'varchar',
                     'input'                      => 'text',
@@ -331,36 +337,37 @@ class InstallData implements InstallDataInterface
                     'visible_on_front'           => true,
                     'visible_in_advanced_search' => false,
                     'unique'                     => false
-                )
+                ]
             );
             
-            $data = array(
+            $data = [
                 'is_visible_on_front'      => 0,
                 'is_html_allowed_on_front' => 1
-            );
+            ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
                 \Magento\Catalog\Model\Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
         }
         
-        $attrVarchar = array(
+        $attrVarchar = [
             'contract_id' => 'Contract ID',
-        );
+        ];
         
         foreach ($attrVarchar as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                array(
+                [
                     'label'                      => $value,
                     'type'                       => 'varchar',
                     'input'                      => 'text',
@@ -377,25 +384,26 @@ class InstallData implements InstallDataInterface
                     'visible_on_front'           => true,
                     'visible_in_advanced_search' => false,
                     'unique'                     => false
-                )
+                ]
             );
             
-            $data = array(
+            $data = [
                 'is_visible_on_front'      => 0,
                 'is_html_allowed_on_front' => 1
-            );
+            ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
                 \Magento\Catalog\Model\Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
-            
         }
     }
 }

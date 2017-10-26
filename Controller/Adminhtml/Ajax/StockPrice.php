@@ -62,7 +62,9 @@ class StockPrice extends \Magento\Backend\App\Action
      */
     public function execute()
     {
-        /** @var \Magento\Framework\Controller\Result\Json $resultJson */
+        /**
+ * @var \Magento\Framework\Controller\Result\Json $resultJson
+*/
         $resultJson = $this->resultJsonFactory->create();
         
         $this->_logger->info('Start Stock & Price Import');

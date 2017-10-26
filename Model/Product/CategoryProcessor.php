@@ -19,13 +19,19 @@ class CategoryProcessor
      */
     const DELIMITER_CATEGORY = '/';
     
-    /** @var CategoryUrlPathGenerator */
+    /**
+     * @var CategoryUrlPathGenerator
+     */
     protected $categoryUrlPathGenerator;
     
-    /** @var \Magento\CatalogUrlRewrite\Model\Category\ChildrenCategoriesProvider */
+    /**
+     * @var \Magento\CatalogUrlRewrite\Model\Category\ChildrenCategoriesProvider
+     */
     protected $childrenCategoriesProvider;
     
-    /** @var StoreViewService */
+    /**
+     * @var StoreViewService
+     */
     protected $storeViewService;
     
     /**
@@ -47,10 +53,14 @@ class CategoryProcessor
      */
     protected $categoryFactory;
     
-    /** @var CategoryUrlRewriteGenerator */
+    /**
+     * @var CategoryUrlRewriteGenerator
+     */
     protected $categoryUrlRewriteGenerator;
     
-    /** @var UrlPersistInterface */
+    /**
+     * @var UrlPersistInterface
+     */
     protected $urlPersist;
     
     /**
@@ -101,7 +111,8 @@ class CategoryProcessor
                         $this->categoryUrlPathGenerator->getUrlKey($category)
                     );
                     $category->getResource()->saveAttribute(
-                        $category, 'url_key'
+                        $category,
+                        'url_key'
                     );
                 }
             }
@@ -122,7 +133,8 @@ class CategoryProcessor
                         $this->categoryUrlPathGenerator->getUrlPath($category)
                     );
                     $category->getResource()->saveAttribute(
-                        $category, 'url_path'
+                        $category,
+                        'url_path'
                     );
                     
                     $urlRewrites = array_merge(

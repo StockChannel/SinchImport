@@ -7,8 +7,10 @@ namespace Magebuzz\Sinchimport\Plugin\Catalog\Product\Attribute\Frontend;
 
 class Image
 {
-    public function aroundGetUrl(\Magento\Catalog\Model\Product\Attribute\Frontend\Image $subject,
-        \Closure $proceed, $product
+    public function aroundGetUrl(
+        \Magento\Catalog\Model\Product\Attribute\Frontend\Image $subject,
+        \Closure $proceed,
+        $product
     ) {
         $image = $product->getData(
             $subject->getAttribute()->getAttributeCode()

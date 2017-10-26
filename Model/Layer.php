@@ -26,13 +26,13 @@ class Layer extends \Magento\Catalog\Model\Layer
         $connection = $this->_resource->getConnection();
         
         $select = $connection->select()
-            ->from(array('cf' => $tCatFeature))
+            ->from(['cf' => $tCatFeature])
             ->joinInner(
-                array('rv' => $tRestrictedVal),
+                ['rv' => $tRestrictedVal],
                 'cf.category_feature_id = rv.category_feature_id'
             )
             ->joinInner(
-                array('cm' => $tCategMapp),
+                ['cm' => $tCategMapp],
                 'cf.store_category_id = cm.store_category_id'
             )
             ->where('cm.shop_entity_id = ' . $categoryId)

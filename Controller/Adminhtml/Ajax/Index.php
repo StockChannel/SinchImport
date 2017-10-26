@@ -64,7 +64,9 @@ class Index extends \Magento\Backend\App\Action
     {
         $this->_logger->info('Start Full Import');
         
-        /** @var \Magento\Framework\Controller\Result\Json $resultJson */
+        /**
+ * @var \Magento\Framework\Controller\Result\Json $resultJson
+*/
         $resultJson = $this->resultJsonFactory->create();
         
         $rootDir = $this->_directory->getRoot() . '/';
@@ -73,7 +75,8 @@ class Index extends \Magento\Backend\App\Action
         foreach ($php_run_string_array as $php_run_string) {
             exec(
                 "nohup " . $php_run_string . " " . $rootDir
-                . "bin/magento sinch:import full > /dev/null & echo $!", $out
+                . "bin/magento sinch:import full > /dev/null & echo $!",
+                $out
             );
             sleep(1);
             if (($out[0] > 0) && ! $this->sinch->isImportNotRun()) {
