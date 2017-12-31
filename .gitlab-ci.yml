@@ -16,7 +16,9 @@ marketplace-eqp:
 
 phpcpd:
   stage: test
-  script: vendor/bin/phpcpd $CI_PROJECT_DIR
+  script:
+  - cd /magento2/data
+  - vendor/bin/phpcpd $CI_PROJECT_DIR
 
 package:
   stage: package
