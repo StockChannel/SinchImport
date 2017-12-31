@@ -8,7 +8,7 @@ namespace Magebuzz\Sinchimport\Plugin\Catalog\Helper;
 class Image
 {
     protected $currentProduct;
-    
+
     /**
      * Initialize Helper to work with Image
      *
@@ -26,17 +26,17 @@ class Image
         $attributes = []
     ) {
         $this->currentProduct = $product;
-        
+
         if ($product->getSinchProductId()) {
             $attributes = array_merge(
                 $attributes,
                 ['width' => 150, 'height' => 150]
             );
         }
-        
+
         return $proceed($product, $imageId, $attributes);
     }
-    
+
     /**
      * Return resized product image information
      *
@@ -47,14 +47,14 @@ class Image
         \Closure $proceed
     ) {
         $imageSize = $proceed();
-        
+
         if ($this->_getCurrentProduct()->getSinchProductId()) {
             $imageSize = $this->_getCurrentProduct()->getResizedImageInfo();
         }
-        
+
         return $imageSize;
     }
-    
+
     protected function _getCurrentProduct()
     {
         return $this->currentProduct;

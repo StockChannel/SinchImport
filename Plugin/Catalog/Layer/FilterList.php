@@ -13,12 +13,12 @@ class FilterList
      * @var \Magento\Framework\DB\Adapter\AdapterInterface
      */
     protected $connection;
-    
+
     /**
      * @var \Magento\Framework\ObjectManagerInterface
      */
     protected $objectManager;
-    
+
     public function __construct(
         \Magento\Framework\ObjectManagerInterface $objectManager,
         \Magento\Framework\App\ResourceConnection $resourceConnection
@@ -26,28 +26,28 @@ class FilterList
         $this->objectManager = $objectManager;
         $this->connection    = $resourceConnection->getConnection();
     }
-    
+
     public function aroundGetFilters(
         \Magento\Catalog\Model\Layer\FilterList $subject,
         \Closure $proceed,
         $layer
     ) {
         $filters = $proceed($layer);
-        
+
         foreach ($this->getFilterableFeatures($layer) as $feature) {
             $filters[] = $this->objectManager->create(
                 'Magebuzz\Sinchimport\Model\Layer\Filter\Feature',
                 ['layer' => $layer]
             )->setFeatureModel($feature);
         }
-        
+
         return $filters;
     }
-    
+
     public function getFilterableFeatures($layer)
     {
         \Magento\Framework\Profiler::start(__METHOD__);
-        
+
         $connection           = $this->connection;
         $category             = $layer->getCurrentCategory();
         $categoryId           = $category->getEntityId();
@@ -60,7 +60,7 @@ class FilterList
         $categoryMappingTable = $connection->getTableName(
             'sinch_categories_mapping'
         );
-        
+
         $select = $connection->select()
             ->from(['cf' => $featureTable])
             ->joinInner(
@@ -81,11 +81,11 @@ class FilterList
             ->columns(
                 'GROUP_CONCAT(`rv`.`text` SEPARATOR "\n") as restricted_values'
             );
-        
+
         $result = $connection->fetchAll($select);
-        
+
         \Magento\Framework\Profiler::stop(__METHOD__);
-        
+
         return $result;
     }
 }

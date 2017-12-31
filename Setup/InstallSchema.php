@@ -25,12 +25,12 @@ class InstallSchema implements InstallSchemaInterface
     ) {
         $installer = $setup;
         $installer->startSetup();
-        
+
         // v0.1.0
         $installer->run(
             "DROP TABLE IF EXISTS {$installer->getTable('sinch_features_list')}"
         );
-        
+
         $installer->run(
             "CREATE TABLE {$installer->getTable('sinch_features_list')}(
             `id` int  PRIMARY KEY NOT NULL AUTO_INCREMENT,
@@ -39,7 +39,7 @@ class InstallSchema implements InstallSchemaInterface
             `feature_value` text
         )"
         );
-        
+
         // v0.1.1 - 0.1.2
         $installer->run(
             "
@@ -47,28 +47,28 @@ class InstallSchema implements InstallSchemaInterface
                 ADD COLUMN `store_product_id` INT(11) UNSIGNED NULL
         "
         );
-        
+
         $installer->run(
             "
             ALTER TABLE {$installer->getTable('catalog_product_entity')}
                 ADD COLUMN `sinch_product_id` INT(11) UNSIGNED NULL
         "
         );
-        
+
         $installer->run(
             "
             ALTER TABLE {$installer->getTable('catalog_category_entity')}
                 ADD COLUMN `store_category_id` INT(11) UNSIGNED NULL
         "
         );
-        
+
         $installer->run(
             "
             ALTER TABLE {$installer->getTable('catalog_category_entity')}
                 ADD COLUMN `parent_store_category_id` INT(11) UNSIGNED NULL
         "
         );
-        
+
         // v0.1.4 - 0.1.5
         $installer->run(
             "
@@ -94,14 +94,14 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
+
         // v0.1.7 - 0.1.8
         $installer->run(
             "
             DROP TABLE IF EXISTS " . $installer->getTable('sinch_sinchcheck') . ";
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE " . $installer->getTable('sinch_sinchcheck') . "(
@@ -118,8 +118,7 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -128,7 +127,7 @@ class InstallSchema implements InstallSchemaInterface
                     'You have %s MB of memory', 'You need to enlarge memory to %s');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -137,7 +136,7 @@ class InstallSchema implements InstallSchemaInterface
                     'You need to enable the MySQL Loaddata option', 'You need to add set-variable=local-infile=1 or modify this line in /etc/my.cnf and restart MySQL');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -146,7 +145,7 @@ class InstallSchema implements InstallSchemaInterface
                     'You need to set PHP safe mode to %s', 'You need to set safe_mode = %s in /etc/php.ini');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -155,7 +154,7 @@ class InstallSchema implements InstallSchemaInterface
                     'Wait_timeout is too short:', 'You need to set wait_timeout = %s in /etc/my.cnf and restart MySQL');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -164,7 +163,7 @@ class InstallSchema implements InstallSchemaInterface
                     'The innodb_buffer_pool_size in /etc/my.cnf is %s', 'It needs to be set to %s or higher');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -173,7 +172,7 @@ class InstallSchema implements InstallSchemaInterface
                     'PHP_RUN_STRING uses value:', 'Change it to define(PHP_RUN_STRING, php5) in Bintime/Sinchimport/Model/config.php');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -182,7 +181,7 @@ class InstallSchema implements InstallSchemaInterface
                     'You need to assign more rights to wget', 'Run chmod a+x wget');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -191,7 +190,7 @@ class InstallSchema implements InstallSchemaInterface
                     'You need to assign more rights to Magento Cron', 'Run chmod +x [shop dir]/cron.php');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -200,7 +199,7 @@ class InstallSchema implements InstallSchemaInterface
                     'You need to assign more rights to Magento Cron', 'Run chmod +x [shop dir]/cron.sh');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code,
@@ -213,7 +212,7 @@ class InstallSchema implements InstallSchemaInterface
             . $installer->getTable('sinch_filter_products') . ".sql', 'You can recreate it by running the script found in [shop dir]/app/code/local/Bintime/Sinchimport/sql/ in PhpMyAdmin');
         "
         );
-        
+
         $installer->run(
             "
             INSERT " . $installer->getTable('sinch_sinchcheck') . "(caption, descr, check_code, check_value, check_measure,
@@ -228,7 +227,7 @@ class InstallSchema implements InstallSchemaInterface
                     'You can uninstall them or make inactive in [shop dir]/app/etc/modules ');
         "
         );
-        
+
         // v0.1.9 - 0.2.0
         $installer->run(
             "
@@ -256,7 +255,7 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE IF NOT EXISTS " . $installer->getTable(
@@ -292,7 +291,7 @@ class InstallSchema implements InstallSchemaInterface
             )DEFAULT CHARSET=utf8;
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE IF NOT EXISTS " . $installer->getTable(
@@ -307,7 +306,7 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE IF NOT EXISTS " . $installer->getTable(
@@ -322,7 +321,7 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE IF NOT EXISTS " . $installer->getTable(
@@ -336,7 +335,7 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE IF NOT EXISTS " . $installer->getTable(
@@ -361,7 +360,7 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
+
         // v3.0.1 - 3.0.2
         $installer->run(
             "
@@ -369,7 +368,7 @@ class InstallSchema implements InstallSchemaInterface
             . ";
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE " . $installer->getTable('sinch_distributors') . "(
@@ -380,7 +379,7 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
+
         $installer->run(
             "
             DROP TABLE IF EXISTS " . $installer->getTable(
@@ -388,7 +387,7 @@ class InstallSchema implements InstallSchemaInterface
             ) . ";
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE " . $installer->getTable(
@@ -405,7 +404,7 @@ class InstallSchema implements InstallSchemaInterface
             );
         "
         );
-        
+
         // v3.0.5 - 3.0.6
         $installer->run(
             "
@@ -414,7 +413,7 @@ class InstallSchema implements InstallSchemaInterface
             ) . ";
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE IF NOT EXISTS {$installer->getTable('sinch_product_backup')} (
@@ -429,7 +428,7 @@ class InstallSchema implements InstallSchemaInterface
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
         "
         );
-        
+
         $installer->run(
             "
             DROP TABLE IF EXISTS " . $installer->getTable(
@@ -437,7 +436,7 @@ class InstallSchema implements InstallSchemaInterface
             ) . ";
         "
         );
-        
+
         $installer->run(
             "
             CREATE TABLE IF NOT EXISTS {$installer->getTable('sinch_category_backup')} (
@@ -457,7 +456,7 @@ class InstallSchema implements InstallSchemaInterface
 
         "
         );
-        
+
         // Create procedure to filter product features and calculating price function
         $installer->run(
             "DROP PROCEDURE IF EXISTS " . $installer->getTable(
@@ -469,22 +468,22 @@ class InstallSchema implements InstallSchemaInterface
                 'sinch_calc_price'
             )
         );
-        
+
         $config = $installer->getConnection()->getConfig();
         $connection = mysqli_connect(
             $config['host'],
             $config['username'],
             $config['password']
         );
-        
+
         if (! $connection) {
             throw new \Exception('Failed to connect to database.');
         }
-        
+
         if (! mysqli_select_db($connection, $config['dbname'])) {
             throw new \Exception('Failed to select a database.');
         }
-        
+
         $createProcedureQuery
             = "
 CREATE PROCEDURE " . $installer->getTable('sinch_filter_products') . "(
@@ -696,11 +695,11 @@ BEGIN
     DROP PREPARE myquery;
 END
         ";
-        
+
         if (! mysqli_query($connection, $createProcedureQuery)) {
             throw new \Exception("Failed to create stored procedure");
         }
-        
+
         $createCalPriceFunctionQuery
             = "
 CREATE FUNCTION " . $installer->getTable('sinch_calc_price') . " (price decimal(8,2) , marge decimal(10,2), fixed decimal(10,2), final_price decimal(10,2)) RETURNS decimal(8,2)
@@ -717,13 +716,13 @@ BEGIN
     RETURN price;
 END
         ";
-        
+
         if (! mysqli_query($connection, $createCalPriceFunctionQuery)) {
             throw new \Exception("Failed to create calculating price function");
         }
-        
+
         mysqli_close($connection);
-        
+
         $installer->endSetup();
     }
 }

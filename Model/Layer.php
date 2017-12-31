@@ -22,9 +22,9 @@ class Layer extends \Magento\Catalog\Model\Layer
         $tCategMapp     = $this->_resource->getTableName(
             'sinch_categories_mapping'
         );
-        
+
         $connection = $this->_resource->getConnection();
-        
+
         $select = $connection->select()
             ->from(['cf' => $tCatFeature])
             ->joinInner(
@@ -45,10 +45,10 @@ class Layer extends \Magento\Catalog\Model\Layer
             ->columns(
                 'GROUP_CONCAT(`rv`.`text` SEPARATOR "\n") as restricted_values'
             );
-        
+
         $result = $connection->fetchAll($select);
         \Magento\Framework\Profiler::stop(__METHOD__);
-        
+
         return $result;
     }
 }

@@ -14,7 +14,7 @@ class Prodrewrite implements \Magento\Framework\Option\ArrayInterface
             ['value' => 'MERGE', 'label' => 'Merge']
         ];
     }
-    
+
     public function toArray()
     {
         return [

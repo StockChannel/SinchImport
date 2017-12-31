@@ -8,13 +8,13 @@ namespace Magebuzz\Sinchimport\Block\Product\View;
 class Gallery
 {
     protected $sinch;
-    
+
     public function __construct(
         \Magebuzz\Sinchimport\Model\Sinch $sinch
     ) {
         $this->sinch = $sinch;
     }
-    
+
     /**
      * Retrieve product images in JSON format
      *
@@ -33,11 +33,11 @@ class Gallery
                     'position' => 0,
                     'isMain'   => true,
                 ];
-                
+
                 $galleryPhotos = $this->sinch->loadGalleryPhotos(
                     $currentProduct->getId()
                 )->getGalleryPhotos();
-                
+
                 foreach ($galleryPhotos as $key => $galleryPhoto) {
                     $imagesItems[] = [
                         'thumb'    => $galleryPhoto['thumb'],
@@ -48,11 +48,11 @@ class Gallery
                         'isMain'   => false
                     ];
                 }
-                
+
                 return json_encode($imagesItems);
             }
         }
-        
+
         return $result;
     }
 }

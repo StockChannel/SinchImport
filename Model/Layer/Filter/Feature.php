@@ -14,16 +14,16 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
 {
     const LESS = 1;
     const GREATER = 2;
-    
+
     protected $_featureResource;
-    
+
     /**
      * Filter factory
      *
      * @var \Magento\Framework\ObjectManagerInterface
      */
     protected $objectManager;
-    
+
     /**
      * Construct
      *
@@ -51,15 +51,15 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
         );
         $this->objectManager = $objectManager;
     }
-    
+
     public function setFeatureModel($feature)
     {
         $this->setRequestVar('feature_' . $feature['category_feature_id']);
         $this->setData('feature_model', $feature);
-        
+
         return $this;
     }
-    
+
     /**
      * Apply category filter to layer
      *
@@ -73,7 +73,7 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
         if (is_array($filter)) {
             return $this;
         }
-        
+
         $text = $this->_getOptionText($filter);
         if ($filter && $text) {
             $this->_getResource()->applyFilterToCollection($this, $filter);
@@ -82,10 +82,10 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
             );
             $this->_items = [];
         }
-        
+
         return $this;
     }
-    
+
     /**
      * Get option text from frontend model by option id
      *
@@ -97,7 +97,7 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
     {
         return $optionId;
     }
-    
+
     /**
      * Retrieve resource instance
      *
@@ -110,10 +110,10 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                 'Magebuzz\Sinchimport\Model\ResourceModel\Layer\Filter\Feature'
             );
         }
-        
+
         return $this->_featureResource;
     }
-    
+
     /**
      * Get filter name
      *
@@ -122,10 +122,10 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
     public function getName()
     {
         $attribute = $this->getFeatureModel();
-        
+
         return $attribute['name'];
     }
-    
+
     public function getFeatureModel()
     {
         $feature = $this->getData('feature_model');
@@ -134,10 +134,10 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                 __('The feature model is not defined.')
             );
         }
-        
+
         return $feature;
     }
-    
+
     /**
      * Get data array for building attribute filter items
      *
@@ -147,17 +147,17 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
     protected function _getItemsData()
     {
         \Magento\Framework\Profiler::start(__METHOD__);
-        
+
         $feature           = $this->getFeatureModel();
         $this->_requestVar = 'feature_' . $feature['category_feature_id'];
         $limitDirection    = isset($feature['limit_direction'])
             ? $feature['limit_direction'] : 0;
-        
+
         $data    = [];
         $options = explode("\n", $feature['restricted_values']);
         if (count($options) == 0) {
             \Magento\Framework\Profiler::stop(__METHOD__);
-            
+
             return $data;
         }
         if (isset($feature['order_val']) && $feature['order_val'] == '2') {
@@ -194,7 +194,7 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                     $intervals[$i]['high'] = $options[$i + 1];
                 }
             }
-            
+
             if ($feature['order_val'] == '2') {
                 array_push(
                     $intervals,
@@ -222,9 +222,9 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                     ]
                 );
             }
-            
+
             $this->setData('intervals', $intervals);
-            
+
             $defaultSign = $feature['default_sign'];
             for ($i = 0; $i < count($intervals); $i++) {
                 if ($feature['order_val'] == '2') {
@@ -278,7 +278,7 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                         : ' ';
                     $label .= isset($interval['high']) ? $interval['high']
                         . " $defaultSign" : '<';
-                    
+
                     $value = isset($interval['low']) ? $interval['low'] : '-';
                     $value .= ',';
                     $value .= isset($interval['high']) ? $interval['high']
@@ -300,9 +300,9 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                 }
             }
         }
-        
+
         \Magento\Framework\Profiler::stop(__METHOD__);
-        
+
         foreach ($data as $key => $itemData) {
             $this->itemDataBuilder->addItemData(
                 $itemData['label'],
@@ -310,7 +310,7 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                 $itemData['count']
             );
         }
-        
+
         return $this->itemDataBuilder->build();
     }
 }

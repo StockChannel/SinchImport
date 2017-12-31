@@ -11,23 +11,23 @@ class UpdateStatus extends \Magento\Backend\App\Action
      * @var \Magento\Framework\Controller\Result\JsonFactory
      */
     protected $resultJsonFactory;
-    
+
     /**
      * @var \Magento\Framework\View\LayoutFactory
      */
     protected $_layoutFactory;
-    
+
     /**
      * Logging instance
      *
      * @var \Magebuzz\Sinchimport\Logger\Logger
      */
     protected $_logger;
-    
+
     protected $_jsonEncoder;
-    
+
     protected $sinch;
-    
+
     /**
      * @param \Magento\Backend\App\Action\Context              $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
@@ -50,7 +50,7 @@ class UpdateStatus extends \Magento\Backend\App\Action
         $this->sinch             = $sinch;
         $this->_logger           = $logger;
     }
-    
+
     /**
      * Category list suggestion based on already entered symbols
      *
@@ -62,9 +62,9 @@ class UpdateStatus extends \Magento\Backend\App\Action
  * @var \Magento\Framework\Controller\Result\Json $resultJson
 */
         $resultJson = $this->resultJsonFactory->create();
-        
+
         $messageArr = $this->sinch->getImportStatuses();
-        
+
         if (! empty($messageArr['id'])) {
             $result = [
                 'message'  => $messageArr['message'],
@@ -76,10 +76,10 @@ class UpdateStatus extends \Magento\Backend\App\Action
                 'finished' => 0
             ];
         }
-        
+
         return $resultJson->setJsonData($this->_jsonEncoder->encode($result));
     }
-    
+
     /**
      * Check if admin has permissions to visit related pages
      *

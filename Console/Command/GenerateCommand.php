@@ -17,13 +17,12 @@ class GenerateCommand extends Command
      * @var AppState
      */
     protected $_appState;
-    
+
     /**
      * @var \Magebuzz\Sinchimport\Model\Sinch
      */
     protected $sinch;
-    
-    
+
     public function __construct(
         AppState $appState,
         \Magebuzz\Sinchimport\Model\Sinch $sinch
@@ -32,7 +31,7 @@ class GenerateCommand extends Command
         $this->sinch     = $sinch;
         parent::__construct();
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -41,20 +40,20 @@ class GenerateCommand extends Command
         $this->setName('sinch:url:generate');
         $this->setDescription('Product Urls');
     }
-    
+
     /**
      * {@inheritdoc}
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->_appState->setAreaCode('adminhtml');
-        
+
         try {
             $this->sinch->runIndexingData();
             $this->sinch->runReindexUrlRewrite();
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
-            
+
             return \Magento\Framework\Console\Cli::RETURN_FAILURE;
         }
     }

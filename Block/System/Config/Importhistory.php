@@ -10,7 +10,7 @@ use Magento\Framework\Data\Form\Element\AbstractElement;
 class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
 {
     protected $sinch;
-    
+
     /**
      * @param \Magento\Backend\Block\Template\Context $context
      * @param array                                   $data
@@ -23,7 +23,7 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
         parent::__construct($context, $data);
         $this->sinch = $sinch;
     }
-    
+
     /**
      * @param AbstractElement $element
      *
@@ -33,16 +33,16 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
     protected function _getElementHtml(AbstractElement $element)
     {
         $html = $this->_appendCss();
-        
+
         $lastSuccessImport = $this->sinch->getDateOfLatestSuccessImport();
         $importHistory     = $this->sinch->getImportStatusHistory();
-        
+
         $cssArr = [
             'Failed'     => 'sinch-error',
             'Run'        => 'sinch-run',
             'Successful' => 'sinch-success'
         ];
-        
+
         $html
             .= '
 <!--Table for import history-->
@@ -62,7 +62,7 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
     </thead>
     <tbody>
         ';
-        
+
         foreach ($importHistory as $item) {
             $html
                 .= '
@@ -82,10 +82,10 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
     </tbody>
 </table>
         ';
-        
+
         return $html;
     }
-    
+
     protected function _appendCss()
     {
         $html
@@ -142,7 +142,7 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
     }
 </style>
         ';
-        
+
         return $html;
     }
 }

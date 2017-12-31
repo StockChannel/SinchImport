@@ -36,7 +36,7 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
              'label' => 'Demo - ftpdemo.stockinthechannel.com']
         ];
     }
-    
+
     public function toArray()
     {
         return [

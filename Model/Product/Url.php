@@ -19,37 +19,37 @@ class Url extends \Magento\Catalog\Model\Product\Url
      * @var array
      */
     protected $products = [];
-    
+
     /**
      * @var Product\CategoryProcessor
      */
     protected $categoryProcessor;
-    
+
     /**
      * @var UrlFinderInterface
      */
     protected $urlFinder;
-    
+
     /**
      * @var UrlPersistInterface
      */
     protected $urlPersist;
-    
+
     /**
      * @var UrlRewriteFactory
      */
     protected $urlRewriteFactory;
-    
+
     /**
      * @var \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator
      */
     protected $productUrlPathGenerator;
-    
+
     /**
      * @var array
      */
     protected $storesCache = [];
-    
+
     /**
      * @param \Magento\Framework\UrlFactory                   $urlFactory
      * @param \Magento\Store\Model\StoreManagerInterface      $storeManager
@@ -84,7 +84,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
         $this->urlRewriteFactory       = $urlRewriteFactory;
         $this->urlFinder               = $urlFinder;
     }
-    
+
     /**
      * Refresh all rewrite urls for some store or for all stores
      * Used to make full reindexing of url rewrites
@@ -96,15 +96,15 @@ class Url extends \Magento\Catalog\Model\Product\Url
                 $this->storesCache[] = $store->getId();
                 $this->refreshRewrites($store->getId());
             }
-            
+
             return $this;
         }
-        
+
         $this->refreshProductRewrites($storeId);
-        
+
         return $this;
     }
-    
+
     /**
      * Retrieve stores array or store model
      */
@@ -113,10 +113,10 @@ class Url extends \Magento\Catalog\Model\Product\Url
         if ($storeId) {
             return $this->storeManager->getStore($storeId);
         }
-        
+
         return $this->storeManager->getStores($storeId);
     }
-    
+
     /**
      * Refresh all product rewrites for designated store
      */
@@ -124,7 +124,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
     {
         $lastEntityId = 0;
         $process      = true;
-        
+
         while ($process == true) {
             $this->products = $this->_getResource()->getProductsByStore(
                 $storeId,
@@ -134,9 +134,9 @@ class Url extends \Magento\Catalog\Model\Product\Url
                 $process = false;
                 break;
             }
-            
+
             $productUrls = $this->generateUrls($storeId);
-            
+
             if ($productUrls) {
                 try {
                     $this->urlPersist->replace($productUrls);
@@ -145,10 +145,10 @@ class Url extends \Magento\Catalog\Model\Product\Url
                 }
             }
         }
-        
+
         return $this;
     }
-    
+
     /**
      * Get url resource instance
      */
@@ -158,7 +158,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
             'Magebuzz\Sinchimport\Model\ResourceModel\Product\Url'
         );
     }
-    
+
     /**
      * Generate product url rewrites
      *
@@ -174,18 +174,18 @@ class Url extends \Magento\Catalog\Model\Product\Url
             $this->categoriesUrlRewriteGenerate($storeId),
             $this->currentUrlRewritesRegenerate($storeId)
         );
-        
+
         /* Reduce duplicates. Last wins */
         $result = [];
         foreach ($urls as $url) {
             $result[$url->getTargetPath() . '-' . $url->getStoreId()] = $url;
         }
-        
+
         $this->products = [];
-        
+
         return $result;
     }
-    
+
     /**
      * Generate list based on store view
      *
@@ -194,7 +194,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
     protected function canonicalUrlRewriteGenerate($storeId)
     {
         $urls = [];
-        
+
         foreach ($this->products as $product) {
             if ($this->productUrlPathGenerator->getUrlPath($product)) {
                 $urls[] = $this->urlRewriteFactory->create()
@@ -214,10 +214,10 @@ class Url extends \Magento\Catalog\Model\Product\Url
                     ->setStoreId($storeId);
             }
         }
-        
+
         return $urls;
     }
-    
+
     /**
      * Generate list based on categories
      *
@@ -226,7 +226,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
     protected function categoriesUrlRewriteGenerate($storeId)
     {
         $urls = [];
-        
+
         foreach ($this->products as $product) {
             foreach ($product->getCategoryIds() as $categoryId) {
                 $category = $this->categoryProcessor->getCategoryById(
@@ -252,10 +252,10 @@ class Url extends \Magento\Catalog\Model\Product\Url
                     ->setMetadata(['category_id' => $category->getId()]);
             }
         }
-        
+
         return $urls;
     }
-    
+
     /**
      * Generate list based on current rewrites
      *
@@ -270,7 +270,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
                 UrlRewrite::ENTITY_TYPE => ProductUrlRewriteGenerator::ENTITY_TYPE,
             ]
         );
-        
+
         $urlRewrites = [];
         foreach ($currentUrlRewrites as $currentUrlRewrite) {
             $category = $this->retrieveCategoryFromMetadata($currentUrlRewrite);
@@ -282,7 +282,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
                 : $this->generateForCustom($currentUrlRewrite, $category);
             $urlRewrites = array_merge($urlRewrites, $url);
         }
-        
+
         return $urlRewrites;
     }
 }

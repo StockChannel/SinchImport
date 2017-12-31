@@ -14,18 +14,17 @@ use Symfony\Component\Console\Output\OutputInterface;
 class FeatureCommand extends Command
 {
     const INPUT_KEY_FEATURE_ACTION = 'feature_action';
-    
+
     /**
      * @var AppState
      */
     protected $_appState;
-    
+
     /**
      * @var \Magebuzz\Sinchimport\Model\Sinch
      */
     protected $sinch;
-    
-    
+
     public function __construct(
         AppState $appState,
         \Magebuzz\Sinchimport\Model\Sinch $sinch
@@ -34,7 +33,7 @@ class FeatureCommand extends Command
         $this->sinch     = $sinch;
         parent::__construct();
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -42,14 +41,14 @@ class FeatureCommand extends Command
     {
         $this->setName('sinch:feature');
         $this->setDescription('Update Product Features');
-        
+
         $this->addArgument(
             self::INPUT_KEY_FEATURE_ACTION,
             InputArgument::REQUIRED,
             'Feature Action'
         );
     }
-    
+
     /**
      * {@inheritdoc}
      */
@@ -57,19 +56,19 @@ class FeatureCommand extends Command
     {
         $this->_appState->setAreaCode('adminhtml');
         $importType = $input->getArgument(self::INPUT_KEY_FEATURE_ACTION);
-        
+
         try {
             switch (strtolower($importType)) {
-                case 'clean':
-                    $this->sinch->dropFeatureResultTables();
-                    break;
-                default:
-                    $this->sinch->dropFeatureResultTables();
-                    break;
+            case 'clean':
+                $this->sinch->dropFeatureResultTables();
+                break;
+            default:
+                $this->sinch->dropFeatureResultTables();
+                break;
             }
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
-            
+
             return \Magento\Framework\Console\Cli::RETURN_FAILURE;
         }
     }

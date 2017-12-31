@@ -1,0 +1,29 @@
+image: nicka101/magento2
+
+variables:
+  VENDOR_NAME: vendor-name
+  PACKAGE_NAME: package-name
+
+stages:
+  - test
+  - package
+
+marketplace-eqp:
+  stage: test
+  script:
+  - cd /magento2/eqp
+  - vendor/bin/phpcs --standard=MEQP2 --severity=10 --colors -p $CI_PROJECT_DIR
+
+phpcpd:
+  stage: test
+  script: vendor/bin/phpcpd $CI_PROJECT_DIR
+
+package:
+  stage: package
+  script: zip -r ${VENDOR_NAME}_${VENDOR_NAME}-${CI_COMMIT_REF_NAME}.zip $CI_PROJECT_DIR -x '$CI_PROJECT_DIR/.git/*'
+  artifacts:
+    name: "$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
+    untracked: true
+  only:
+    - tags
+

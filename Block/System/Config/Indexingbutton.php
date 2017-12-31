@@ -10,7 +10,7 @@ use Magento\Framework\Data\Form\Element\AbstractElement;
 class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
 {
     protected $sinch;
-    
+
     /**
      * @param \Magento\Backend\Block\Template\Context $context
      * @param array                                   $data
@@ -23,7 +23,7 @@ class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
         parent::__construct($context, $data);
         $this->sinch = $sinch;
     }
-    
+
     /**
      * @param AbstractElement $element
      *
@@ -36,7 +36,7 @@ class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
         $html .= '<div id="sinchimport_indexing_status_template" name="sinchimport_indexing_status_template" style="display:none">';
         $html .= $this->_getStatusTemplateHtml();
         $html .= '</div>';
-        
+
         $html .= $this->getLayout()->createBlock(
             'Magento\Backend\Block\Widget\Button'
         )->setData(
@@ -44,16 +44,16 @@ class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
              'id'    => 'mb-sinch-indexing-data-button',
              'class' => 'mb-indexing-button', 'style' => 'margin-top:30px']
         )->toHtml();
-        
+
         return $html;
     }
-    
+
     protected function _getStatusTemplateHtml()
     {
         $runningIcon = $this->getViewFileUrl(
             'Magebuzz_Sinchimport::images/ajax_running.gif'
         );
-        
+
         $html
             = "
 <table class='data-table history'>
@@ -75,7 +75,7 @@ class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
     </tbody>
 </table>
         ";
-        
+
         return $html;
     }
 }

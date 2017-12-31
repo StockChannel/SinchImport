@@ -11,19 +11,19 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
      * @var \Magento\Framework\App\Config\ScopeConfigInterface
      */
     protected $scopeConfig;
-    
+
     /**
      * Catalog product
      *
      * @var \Magento\Catalog\Model\Product
      */
     protected $_catalogProduct;
-    
+
     /**
      * @var \Magento\Framework\Filter\FilterManager
      */
     protected $filter;
-    
+
     /**
      * @param \Magento\Framework\Model\ResourceModel\Db\Context $context
      * @param \Magento\Store\Model\StoreManagerInterface        $storeManager
@@ -58,7 +58,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         $this->filter          = $filter;
         $this->scopeConfig     = $scopeConfig;
     }
-    
+
     /**
      * Retrieve Product data objects
      *
@@ -104,7 +104,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         if ($productIds !== null) {
             $select->where('e.entity_id IN(?)', $productIds);
         }
-        
+
         $rowSet = $connection->fetchAll($select, $bind);
         foreach ($rowSet as $row) {
             $product = $this->_catalogProduct->create();
@@ -116,9 +116,9 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             $products[$product->getId()] = $product;
             $lastEntityId                = $product->getId();
         }
-        
+
         unset($rowSet);
-        
+
         if ($products) {
             $select     = $connection->select()->from(
                 $this->getTable('catalog_category_product'),
@@ -134,7 +134,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
                 $categoryIds[] = $category['category_id'];
                 $products[$productId]->setCategoryIds($categoryIds);
             }
-            
+
             foreach (['name', 'url_key', 'url_path'] as $attributeCode) {
                 $attributes = $this->_getProductAttribute(
                     $attributeCode,
@@ -160,10 +160,10 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
                 }
             }
         }
-        
+
         return $products;
     }
-    
+
     /**
      * Format Key for URL
      *
@@ -174,26 +174,26 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
     public function formatUrlKey(\Magento\Catalog\Model\Product $product)
     {
         $additionalSuffix = '';
-        
+
         $additionalSuffixConf = $this->scopeConfig->getValue(
             'sinchimport/general/additional_suffix',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
         );
-        
+
         switch ($additionalSuffixConf) {
-            case \Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_ID:
-                $additionalSuffix = '-' . $product->getId();
-                break;
-            case \Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_SKU:
-                $additionalSuffix = '-' . $product->getSku();
-                break;
+        case \Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_ID:
+            $additionalSuffix = '-' . $product->getId();
+            break;
+        case \Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_SKU:
+            $additionalSuffix = '-' . $product->getSku();
+            break;
         }
-        
+
         return $this->filter->translitUrl(
             $product->getName() . $additionalSuffix
         );
     }
-    
+
     /**
      * Save product attribute
      *
@@ -211,7 +211,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             $attribute = $this->getProductModel()->getResource()->getAttribute(
                 $attributeCode
             );
-            
+
             $this->_productAttributes[$attributeCode] = [
                 'attribute_id' => $attribute->getId(),
                 'table'        => $attribute->getBackend()->getTable(),
@@ -219,28 +219,28 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             ];
             unset($attribute);
         }
-        
+
         $attributeTable = $this->_productAttributes[$attributeCode]['table'];
-        
+
         $attributeData = [
             'attribute_id' => $this->_productAttributes[$attributeCode]['attribute_id'],
             'store_id'     => $product->getStoreId(),
             'entity_id'    => $product->getId(),
             'value'        => $product->getData($attributeCode)
         ];
-        
+
         if ($this->_productAttributes[$attributeCode]['is_global']
             || $product->getStoreId() == 0
         ) {
             $attributeData['store_id'] = 0;
         }
-        
+
         $select = $connection->select()
             ->from($attributeTable)
             ->where('attribute_id = ?', (int)$attributeData['attribute_id'])
             ->where('store_id = ?', (int)$attributeData['store_id'])
             ->where('entity_id = ?', (int)$attributeData['entity_id']);
-        
+
         $row = $connection->fetchRow($select);
         if ($row) {
             $whereCond = ['value_id = ?' => $row['value_id']];
@@ -248,7 +248,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         } else {
             $connection->insert($attributeTable, $attributeData);
         }
-        
+
         if ($attributeData['store_id'] != 0) {
             $attributeData['store_id'] = 0;
             $select                    = $connection->select()
@@ -256,7 +256,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
                 ->where('attribute_id = ?', (int)$attributeData['attribute_id'])
                 ->where('store_id = ?', (int)$attributeData['store_id'])
                 ->where('entity_id = ?', (int)$attributeData['entity_id']);
-            
+
             $row = $connection->fetchRow($select);
             if ($row) {
                 $whereCond = ['value_id = ?' => $row['value_id']];
@@ -270,7 +270,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             }
         }
         unset($attributeData);
-        
+
         return $this;
     }
 }

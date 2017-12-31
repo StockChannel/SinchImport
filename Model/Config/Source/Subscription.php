@@ -36,7 +36,7 @@ class Subscription implements \Magento\Framework\Option\ArrayInterface
             ['value' => '0', 'label' => '12 PM']
         ];
     }
-    
+
     public function toArray()
     {
         return [
