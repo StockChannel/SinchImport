@@ -27,6 +27,9 @@ class FilterList
         $this->connection    = $resourceConnection->getConnection();
     }
 
+    /**
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+     */
     public function aroundGetFilters(
         \Magento\Catalog\Model\Layer\FilterList $subject,
         \Closure $proceed,

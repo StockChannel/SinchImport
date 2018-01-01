@@ -16,6 +16,7 @@ class Image
      * @param string                         $imageId
      * @param array                          $attributes
      *
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @return $this
      */
     public function aroundInit(
@@ -40,6 +41,7 @@ class Image
     /**
      * Return resized product image information
      *
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @return array
      */
     public function aroundGetResizedImageInfo(

@@ -7,6 +7,9 @@ namespace Magebuzz\Sinchimport\Plugin\Catalog\Model\Product;
 
 use Magento\Framework\Image as MagentoImage;
 
+/**
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter) 
+ */
 class Image
 {
     /**

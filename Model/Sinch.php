@@ -2882,7 +2882,7 @@ class Sinch
         $categories = $this->_doQuery(
             "SELECT entity_id, parent_id FROM $catalog_category_entity ORDER BY parent_id"
         );
-        foreach ($categories as $key => $category) {
+        foreach ($categories as $category) {
             $parent_id = $category['parent_id'];
             $entity_id = $category['entity_id'];
 

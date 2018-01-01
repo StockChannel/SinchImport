@@ -303,7 +303,7 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
 
         \Magento\Framework\Profiler::stop(__METHOD__);
 
-        foreach ($data as $key => $itemData) {
+        foreach ($data as $itemData) {
             $this->itemDataBuilder->addItemData(
                 $itemData['label'],
                 $itemData['value'],

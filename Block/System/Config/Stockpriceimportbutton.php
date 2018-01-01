@@ -28,6 +28,7 @@ class Stockpriceimportbutton extends \Magento\Config\Block\System\Config\Form\Fi
      * @param AbstractElement $element
      *
      * @return string
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @codeCoverageIgnore
      */
     protected function _getElementHtml(AbstractElement $element)

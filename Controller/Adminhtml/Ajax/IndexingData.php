@@ -71,13 +71,10 @@ class IndexingData extends \Magento\Backend\App\Action
 
         $rootDir = $this->_directory->getRoot() . '/';
 
-        $php_run_string_array = explode(';', $this->sinch->php_run_strings);
-        foreach ($php_run_string_array as $php_run_string) {
-            exec(
-                "nohup php " . $rootDir
-                . "bin/magento sinch:url:generate > /dev/null & echo $!"
-            );
-        }
+        exec(
+            "nohup php " . $rootDir
+            . "bin/magento sinch:url:generate > /dev/null & echo $!"
+        );
 
         $result = ['success' => true];
 
