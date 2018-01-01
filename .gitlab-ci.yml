@@ -20,6 +20,12 @@ copy-paste-detector:
   - cd /magento2/data
   - vendor/bin/phpcpd $CI_PROJECT_DIR
 
+unused-code-detector:
+  stage: test
+  script:
+  - cd /magento2/data
+  - vendor/bin/phpmd $CI_PROJECT_DIR text unusedcode
+
 package:
   stage: package
   script: zip -r ${VENDOR_NAME}_${VENDOR_NAME}-${CI_COMMIT_REF_NAME}.zip $CI_PROJECT_DIR -x '$CI_PROJECT_DIR/.git/*'
