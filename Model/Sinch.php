@@ -95,12 +95,6 @@ class Sinch
     private $_productUrlFactory;
 
     /**
-     * Prefix of model events names
-     *
-     * @var string
-     */
-    private $_eventPrefix = 'sinchimport_sinch';
-    /**
      * @var \Magento\Indexer\Model\Indexer\CollectionFactory
      */
     protected $indexersFactory;
@@ -151,7 +145,6 @@ class Sinch
      * @param \Magento\Framework\App\Filesystem\DirectoryList                   $directoryList,
      * @param \Magento\Store\Model\StoreManagerInterface                        $storeManager,
      * @param \Magento\Framework\App\Config\ScopeConfigInterface                $scopeConfig,
-     * @param \Magento\Framework\Registry                                       $registry
      * @param \Magento\Framework\UrlInterface                                   $urlBuilder
      * @param \Magebuzz\Sinchimport\Logger\Logger                               $sinchLogger
      * @param \Magento\Framework\App\ResourceConnection                         $resourceConnection
@@ -170,7 +163,6 @@ class Sinch
         DirectoryList $directoryList,
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Magento\Framework\Registry $registry,
         \Magento\Framework\UrlInterface $urlBuilder,
         \Magebuzz\Sinchimport\Logger\Logger $sinchLogger,
         \Magento\Framework\App\ResourceConnection $resourceConnection,
@@ -354,8 +346,7 @@ class Sinch
             try {
                 $imType = $this->_dataConf['replace_category'];
 
-                $q    = "SELECT GET_LOCK('sinchimport', 30)";
-                $quer = $this->_doQuery($q);
+                $this->_doQuery("SELECT GET_LOCK('sinchimport', 30)");
                 $this->addImportStatus('Start Import');
 
                 $this->print("========IMPORTING DATA IN $imType MODE========");
@@ -460,8 +451,7 @@ class Sinch
                 $this->print("Finish cleanin Sinch cache...");
 
                 $this->addImportStatus('Finish import', 1);
-                $q = "SELECT RELEASE_LOCK('sinchimport')";
-                $this->_doQuery($q);
+                $this->_doQuery("SELECT RELEASE_LOCK('sinchimport')");
 
                 $this->_logImportInfo("Start drop feature result tables");
                 $this->print("Start dropping feature result tables...");
@@ -1004,9 +994,6 @@ class Sinch
             $sinch_categories                = $this->_getTableName(
                 'sinch_categories'
             );
-            $category_types                  = $this->_getTableName(
-                'sinch_category_types'
-            );
 
             $_categoryEntityTypeId = $this->_categoryEntityTypeId;
             $_categoryDefault_attribute_set_id = $this->_categoryDefault_attribute_set_id;
@@ -1032,9 +1019,7 @@ class Sinch
             $coincidence = $this->calculateCategoryCoincidence(
                 $categories_temp,
                 $catalog_category_entity,
-                $catalog_category_entity_varchar,
-                $imType,
-                $category_types
+                $catalog_category_entity_varchar
             );
 
             if (! $this->check_loaded_data($parseFile, $categories_temp)) {
@@ -1076,8 +1061,7 @@ class Sinch
                     $sinch_categories_mapping,
                     $catalog_category_entity,
                     $categories_temp,
-                    $imType,
-                    $rootCat
+                    $imType
                 );
                 $this->addCategoryData(
                     $categories_temp,
@@ -1086,15 +1070,13 @@ class Sinch
                     $catalog_category_entity,
                     $catalog_category_entity_varchar,
                     $catalog_category_entity_int,
-                    $_categoryEntityTypeId,
                     $_categoryDefault_attribute_set_id,
                     $name_attrid,
                     $attr_is_active,
                     $attr_include_in_menu,
                     $is_anchor_attrid,
                     $image_attrid,
-                    $imType,
-                    $rootCat
+                    $imType
                 );
             } elseif (count($coincidence) > 1) { // multistore logic
 
@@ -1239,9 +1221,7 @@ class Sinch
     private function calculateCategoryCoincidence(
         $categories_temp,
         $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $imType,
-        $category_types
+        $catalog_category_entity_varchar
     ) {
         $this->_doQuery(
             "
@@ -1424,7 +1404,7 @@ class Sinch
             "SELECT store_category_id FROM $categories_temp"
         )->fetchAll();
 
-        foreach ($storeCatIds as $key => $storeCategory) {
+        foreach ($storeCatIds as $storeCategory) {
             $store_category_id = $storeCategory['store_category_id'];
 
             $children_count = $this->count_children($store_category_id);
@@ -1498,7 +1478,6 @@ class Sinch
         $catalog_category_entity,
         $categories_temp,
         $imType,
-        $rootCat,
         $mapping_again = false
     ) {
         $sinch_categories_mapping_temp = $this->_getTableName(
@@ -1754,15 +1733,13 @@ class Sinch
         $catalog_category_entity,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
-        $_categoryEntityTypeId,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
         $attr_is_active,
         $attr_include_in_menu,
         $is_anchor_attrid,
         $image_attrid,
-        $imType,
-        $rootCat
+        $imType
     ) {
         if (UPDATE_CATEGORY_DATA) {
             $q
@@ -1841,7 +1818,6 @@ class Sinch
             $catalog_category_entity,
             $categories_temp,
             $imType,
-            $rootCat,
             true
         );
 
@@ -1849,7 +1825,7 @@ class Sinch
             "SELECT entity_id, parent_id FROM $catalog_category_entity ORDER BY parent_id"
         )->fetchAll();
 
-        foreach ($categories as $key => $category) {
+        foreach ($categories as $category) {
             $parent_id = $category['parent_id'];
             $entity_id = $category['entity_id'];
 
@@ -2364,17 +2340,14 @@ class Sinch
         $this->print("Rewrite Categories...");
 
         $this->print("    --Truncate all categories...");
-        $this->truncateAllCateriesAndCreateRoot(
+        $this->truncateCategoriesAndCreateRoot(
             $catalog_category_entity,
             $catalog_category_entity_varchar,
             $catalog_category_entity_int,
-            $_categoryEntityTypeId,
             $_categoryDefault_attribute_set_id,
             $name_attrid,
-            $attr_display_mode,
             $attr_url_key,
-            $attr_include_in_menu,
-            $attr_is_active
+            $attr_include_in_menu
         );
 
         $this->print("    --Create default categories...");
@@ -2424,17 +2397,14 @@ class Sinch
         );
     }
 
-    private function truncateAllCateriesAndCreateRoot(
+    private function truncateCategoriesAndCreateRoot(
         $catalog_category_entity,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
-        $_categoryEntityTypeId,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
-        $attr_display_mode,
         $attr_url_key,
-        $attr_include_in_menu,
-        $attr_is_active
+        $attr_include_in_menu
     ) {
         $this->_doQuery('SET foreign_key_checks=0');
 
