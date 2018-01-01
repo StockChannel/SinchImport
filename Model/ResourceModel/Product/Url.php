@@ -181,12 +181,12 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         );
 
         switch ($additionalSuffixConf) {
-        case \Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_ID:
-            $additionalSuffix = '-' . $product->getId();
-            break;
-        case \Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_SKU:
-            $additionalSuffix = '-' . $product->getSku();
-            break;
+            case \Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_ID:
+                $additionalSuffix = '-' . $product->getId();
+                break;
+            case \Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_SKU:
+                $additionalSuffix = '-' . $product->getSku();
+                break;
         }
 
         return $this->filter->translitUrl(

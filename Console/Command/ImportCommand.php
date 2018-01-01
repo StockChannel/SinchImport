@@ -61,15 +61,15 @@ class ImportCommand extends Command
 
         try {
             switch (strtolower($importType)) {
-            case 'full':
-                $this->sinch->runSinchImport();
-                break;
-            case 'stockprice':
-                $this->sinch->runStockPriceImport();
-                break;
-            default:
-                $this->sinch->runSinchImport();
-                break;
+                case 'full':
+                    $this->sinch->runSinchImport();
+                    break;
+                case 'stockprice':
+                    $this->sinch->runStockPriceImport();
+                    break;
+                default:
+                    $this->sinch->runSinchImport();
+                    break;
             }
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");

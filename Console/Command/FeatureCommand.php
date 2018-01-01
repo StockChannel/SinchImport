@@ -59,12 +59,12 @@ class FeatureCommand extends Command
 
         try {
             switch (strtolower($importType)) {
-            case 'clean':
-                $this->sinch->dropFeatureResultTables();
-                break;
-            default:
-                $this->sinch->dropFeatureResultTables();
-                break;
+                case 'clean':
+                    $this->sinch->dropFeatureResultTables();
+                    break;
+                default:
+                    $this->sinch->dropFeatureResultTables();
+                    break;
             }
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");

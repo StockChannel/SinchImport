@@ -13,7 +13,7 @@ class Sinch
 {
     /**
      * Holds the console output interface
-     * 
+     *
      * @var \Symfony\Component\Console\Output\OutputInterface
      */
     private $output;
@@ -237,7 +237,8 @@ class Sinch
      * Print a message to the console
      * @param string $message
      */
-    private function print($message){
+    private function print($message)
+    {
         $this->output->writeln($message);
     }
 
@@ -259,7 +260,7 @@ class Sinch
     {
         $dir = $directoryList->getPath(DirectoryList::VAR_DIR) . '/magebuzz/sinchimport/';
         if (!is_dir($dir)) {
-            if(!mkdir($dir, 0777, true)){
+            if (!mkdir($dir, 0777, true)) {
                 throw new \Exception("Failed to create import directory. Check filesystem permissions");
             }
         }
@@ -995,7 +996,6 @@ class Sinch
                 'sinch_categories'
             );
 
-            $_categoryEntityTypeId = $this->_categoryEntityTypeId;
             $_categoryDefault_attribute_set_id = $this->_categoryDefault_attribute_set_id;
 
             $name_attrid      = $this->_getCategoryAttributeId('name');
@@ -1083,52 +1083,50 @@ class Sinch
                 $this->print("==========MULTI STORE LOGIC==========");
 
                 switch ($imType) {
-                case "REWRITE":
-                    $this->rewriteMultistoreCategories(
-                        $coincidence,
-                        $catalog_category_entity,
-                        $catalog_category_entity_varchar,
-                        $catalog_category_entity_int,
-                        $_categoryEntityTypeId,
-                        $_categoryDefault_attribute_set_id,
-                        $imType,
-                        $name_attrid,
-                        $attr_display_mode,
-                        $attr_url_key,
-                        $attr_include_in_menu,
-                        $attr_is_active,
-                        $image_attrid,
-                        $is_anchor_attrid,
-                        $sinch_categories_mapping_temp,
-                        $sinch_categories_mapping,
-                        $sinch_categories,
-                        $categories_temp
-                    );
-                    break;
-                case "MERGE":
-                    $this->mergeMultistoreCategories(
-                        $coincidence,
-                        $catalog_category_entity,
-                        $catalog_category_entity_varchar,
-                        $catalog_category_entity_int,
-                        $_categoryEntityTypeId,
-                        $_categoryDefault_attribute_set_id,
-                        $imType,
-                        $name_attrid,
-                        $attr_display_mode,
-                        $attr_url_key,
-                        $attr_include_in_menu,
-                        $attr_is_active,
-                        $image_attrid,
-                        $is_anchor_attrid,
-                        $sinch_categories_mapping_temp,
-                        $sinch_categories_mapping,
-                        $sinch_categories,
-                        $categories_temp
-                    );
-                    break;
-                default:
-                    // do anything
+                    case "REWRITE":
+                        $this->rewriteMultistoreCategories(
+                            $coincidence,
+                            $catalog_category_entity,
+                            $catalog_category_entity_varchar,
+                            $catalog_category_entity_int,
+                            $_categoryDefault_attribute_set_id,
+                            $imType,
+                            $name_attrid,
+                            $attr_display_mode,
+                            $attr_url_key,
+                            $attr_include_in_menu,
+                            $attr_is_active,
+                            $image_attrid,
+                            $is_anchor_attrid,
+                            $sinch_categories_mapping_temp,
+                            $sinch_categories_mapping,
+                            $sinch_categories,
+                            $categories_temp
+                        );
+                        break;
+                    case "MERGE":
+                        $this->mergeMultistoreCategories(
+                            $coincidence,
+                            $catalog_category_entity,
+                            $catalog_category_entity_varchar,
+                            $catalog_category_entity_int,
+                            $_categoryDefault_attribute_set_id,
+                            $imType,
+                            $name_attrid,
+                            $attr_display_mode,
+                            $attr_url_key,
+                            $attr_include_in_menu,
+                            $attr_is_active,
+                            $image_attrid,
+                            $is_anchor_attrid,
+                            $sinch_categories_mapping_temp,
+                            $sinch_categories_mapping,
+                            $sinch_categories,
+                            $categories_temp
+                        );
+                        break;
+                    default:
+                        // do anything
                 }
             } else {
                 $this->print("====================>ERROR");
@@ -1243,8 +1241,8 @@ class Sinch
 
         $existsCoincidence = [];
 
-        foreach ($newRootCat as $rootCate) {
-            $existsCoincidence[$rootCate['RootName']] = true;
+        foreach ($newRootCat as $rootCat) {
+            $existsCoincidence[] = $rootCat['RootName'];
         }
 
         return $existsCoincidence;
@@ -2322,7 +2320,6 @@ class Sinch
         $catalog_category_entity,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
-        $_categoryEntityTypeId,
         $_categoryDefault_attribute_set_id,
         $imType,
         $name_attrid,
@@ -2356,7 +2353,6 @@ class Sinch
             $catalog_category_entity,
             $catalog_category_entity_varchar,
             $catalog_category_entity_int,
-            $_categoryEntityTypeId,
             $_categoryDefault_attribute_set_id,
             $name_attrid,
             $attr_display_mode,
@@ -2373,7 +2369,6 @@ class Sinch
             $catalog_category_entity_varchar,
             $categories_temp,
             $imType,
-            $_categoryEntityTypeId,
             $name_attrid
         );
 
@@ -2386,7 +2381,6 @@ class Sinch
             $catalog_category_entity,
             $catalog_category_entity_varchar,
             $catalog_category_entity_int,
-            $_categoryEntityTypeId,
             $_categoryDefault_attribute_set_id,
             $imType,
             $name_attrid,
@@ -2442,7 +2436,6 @@ class Sinch
         $catalog_category_entity,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
-        $_categoryEntityTypeId,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
         $attr_display_mode,
@@ -2452,7 +2445,7 @@ class Sinch
     ) {
         $i = 3; // 2 - is Default Category... not use.
 
-        foreach ($coincidence as $key => $item) {
+        foreach ($coincidence as $key) {
             $this->_doQuery(
                 "INSERT $catalog_category_entity
                         (entity_id, attribute_set_id, parent_id, created_at, updated_at,
@@ -2491,7 +2484,6 @@ class Sinch
         $catalog_category_entity_varchar,
         $categories_temp,
         $imType,
-        $_categoryEntityTypeId,
         $name_attrid,
         $mapping_again = false
     ) {
@@ -2809,7 +2801,6 @@ class Sinch
         $catalog_category_entity,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
-        $_categoryEntityTypeId,
         $_categoryDefault_attribute_set_id,
         $imType,
         $name_attrid,
@@ -2874,7 +2865,6 @@ class Sinch
             $catalog_category_entity_varchar,
             $categories_temp,
             $imType,
-            $_categoryEntityTypeId,
             $name_attrid,
             true
         );
@@ -3360,7 +3350,6 @@ class Sinch
         $catalog_category_entity,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
-        $_categoryEntityTypeId,
         $_categoryDefault_attribute_set_id,
         $imType,
         $name_attrid,
@@ -3382,7 +3371,6 @@ class Sinch
             $catalog_category_entity,
             $catalog_category_entity_varchar,
             $catalog_category_entity_int,
-            $_categoryEntityTypeId,
             $_categoryDefault_attribute_set_id,
             $name_attrid,
             $attr_display_mode,
@@ -3398,7 +3386,6 @@ class Sinch
             $catalog_category_entity_varchar,
             $categories_temp,
             $imType,
-            $_categoryEntityTypeId,
             $name_attrid
         );
 
@@ -3410,7 +3397,6 @@ class Sinch
             $catalog_category_entity,
             $catalog_category_entity_varchar,
             $catalog_category_entity_int,
-            $_categoryEntityTypeId,
             $_categoryDefault_attribute_set_id,
             $imType,
             $name_attrid,
@@ -3428,7 +3414,6 @@ class Sinch
         $catalog_category_entity,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
-        $_categoryEntityTypeId,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
         $attr_display_mode,
@@ -3462,14 +3447,14 @@ class Sinch
 
         $i = $max_entity_id[max_entity_id] + 1;
 
-        foreach ($coincidence as $key => $item) {
+        foreach ($coincidence as $key) {
             $this->print("Coincidence: key = [$key]");
 
             if (in_array($key, $old_cats)) {
-                $this->print("CONTINUE: key = [$key]   item = [$item]");
+                $this->print("CONTINUE: key = [$key]");
                 continue;
             } else {
-                $this->print("CREATE NEW CATEGORY: key = [$key]   item = [$item]");
+                $this->print("CREATE NEW CATEGORY: key = [$key]");
             }
 
             $this->_doQuery(
@@ -3512,7 +3497,6 @@ class Sinch
         $catalog_category_entity_varchar,
         $categories_temp,
         $imType,
-        $_categoryEntityTypeId,
         $name_attrid
     ) {
         $this->createMappingSinchTables(
@@ -3566,7 +3550,7 @@ class Sinch
 
         $rootCategories = $this->_doQuery($query)->fetchAll();
 
-        foreach ($rootCategories as $key => $rootCat) {
+        foreach ($rootCategories as $rootCat) {
             $root_id   = $rootCat['entity_id'];
             $root_name = $rootCat['RootName'];
 
@@ -3624,7 +3608,6 @@ class Sinch
         $catalog_category_entity,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
-        $_categoryEntityTypeId,
         $_categoryDefault_attribute_set_id,
         $imType,
         $name_attrid,
@@ -3689,14 +3672,13 @@ class Sinch
             $catalog_category_entity_varchar,
             $categories_temp,
             $imType,
-            $_categoryEntityTypeId,
             $name_attrid
         );
 
         $categories = $this->_doQuery(
             "SELECT entity_id, parent_id FROM $catalog_category_entity ORDER BY parent_id"
         )->fetchAll();
-        foreach ($categories as $key => $category) {
+        foreach ($categories as $category) {
             $parent_id = $category['parent_id'];
             $entity_id = $category['entity_id'];
 
@@ -4128,18 +4110,12 @@ class Sinch
         $this->_doQuery("RENAME TABLE $categories_temp TO $sinch_categories");
 
         $this->deleteOldSinchCategoriesFromShopMerge(
-            $sinch_categories_mapping,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $catalog_category_entity_int
+            $catalog_category_entity
         );
     }
 
     private function deleteOldSinchCategoriesFromShopMerge(
-        $sinch_categories_mapping,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int
+        $catalog_category_entity
     ) {
         $query = "DROP TABLE IF EXISTS delete_cats";
 
@@ -4524,7 +4500,7 @@ class Sinch
                 WHERE aov.value  IS NULL";
             $res = $this->_doQuery($q)->fetchAll();
 
-            foreach ($res as $key => $row) {
+            foreach ($res as $row) {
                 $q0 = "INSERT INTO " . $this->_getTableName(
                     'eav_attribute_option'
                 ) . "
@@ -4935,14 +4911,12 @@ class Sinch
                 $this->replaceMagentoProducts();
             } else {
                 switch ($this->imType) {
-                case "REWRITE":
-                    $this->replaceMagentoProductsMultistore($coincidence);
-                    break;
-                case "MERGE":
-                    $this->replaceMagentoProductsMultistoreMERGE(
-                        $coincidence
-                    );
-                    break;
+                    case "REWRITE":
+                        $this->replaceMagentoProductsMultistore();
+                        break;
+                    case "MERGE":
+                        $this->replaceMagentoProductsMultistoreMERGE();
+                        break;
                 }
             }
 
@@ -4996,7 +4970,7 @@ class Sinch
         )->fetchAll(
         ); //  where code!='admin' was adder for editing Featured products;
 
-        foreach ($result as $key => $store) {
+        foreach ($result as $store) {
             $sql = "INSERT INTO " . $this->_getTableName(
                 'products_website_temp'
             ) . " (
@@ -5748,7 +5722,6 @@ class Sinch
         );
 
         $this->dropHTMLentities(
-            $this->_getProductEntityTypeId(),
             $this->_getProductAttributeId('name')
         );
         $this->addDescriptions();
@@ -6122,7 +6095,7 @@ class Sinch
         return $this->defaultAttributeSetId;
     }
 
-    public function dropHTMLentities($entity_type_id, $attribute_id)
+    public function dropHTMLentities($attribute_id)
     {
         // product name for all web sites
         $results = $this->_doQuery(
@@ -6134,7 +6107,7 @@ class Sinch
                                 WHERE attribute_id=" . $attribute_id
         )->fetchAll();
 
-        foreach ($results as $key => $result) {
+        foreach ($results as $result) {
             $value = $this->valid_char($result['value']);
             if ($value != '' and $value != $result['value']) {
                 $this->_doQuery(
@@ -7177,7 +7150,7 @@ class Sinch
 
         $link_type = [];
 
-        foreach ($results as $key => $res) {
+        foreach ($results as $res) {
             $link_type[$res['code']] = $res['link_type_id'];
         }
 
@@ -7296,7 +7269,7 @@ class Sinch
         );
     }
 
-    public function replaceMagentoProductsMultistore($coincidence)
+    public function replaceMagentoProductsMultistore()
     {
         $this->print("--Replace Magento Products Multistore 1...");
 
@@ -7748,7 +7721,6 @@ class Sinch
         $this->print("--Replace Magento Multistore 22...");
 
         $this->dropHTMLentities(
-            $this->_getProductEntityTypeId(),
             $this->_getProductAttributeId('name')
         );
         $this->addDescriptions();
@@ -7998,7 +7970,7 @@ class Sinch
         $this->addRelatedProducts();
     }
 
-    public function replaceMagentoProductsMultistoreMERGE($coincidence)
+    public function replaceMagentoProductsMultistoreMERGE()
     {
         $this->print("--Replace Magento Multistore 1...");
 
@@ -8400,7 +8372,6 @@ class Sinch
         $this->print("--Replace Magento Multistore 17...");
 
         $this->dropHTMLentities(
-            $this->_getProductEntityTypeId(),
             $this->_getProductAttributeId('name')
         );
         $this->addDescriptions();
@@ -9154,7 +9125,7 @@ class Sinch
             FROM " . $this->_getTableName('customer_group')
         )->fetchAll();
 
-        foreach ($customergroups as $key => $customerGroup) {
+        foreach ($customergroups as $customerGroup) {
             $this->_doQuery(
                 "
                                     INSERT INTO " . $this->_getTableName(
@@ -9208,7 +9179,7 @@ class Sinch
         ) . '%"';
         $quer   = $this->_doQuery($q)->fetchAll();
         $result = false;
-        foreach ($quer as $key => $res) {
+        foreach ($quer as $res) {
             if (is_array($res)) {
                 $catalog_product_flat = array_pop($res);
                 $q                    = 'DELETE pf1 FROM '
@@ -9288,7 +9259,7 @@ class Sinch
         $dropSqls[] = "EXECUTE stmt;";
         $dropSqls[] = "DEALLOCATE PREPARE stmt;";
 
-        foreach ($dropSqls as $key => $dropSql) {
+        foreach ($dropSqls as $dropSql) {
             $this->_doQuery($dropSql);
         }
     }
@@ -9296,16 +9267,8 @@ class Sinch
     private function check_table_exist($table)
     {
         $q = "SHOW TABLES LIKE \"%" . $this->_getTableName($table) . "%\"";
-
         $res = $this->_doQuery($q)->fetchAll();
-
-        $i = 0;
-
-        foreach ($res as $key => $value) {
-            $i++;
-        }
-
-        return ($i);
+        return count($res);
     }
 
     public function startCronStockPriceImport()
@@ -9921,7 +9884,7 @@ class Sinch
         "
         )->fetchAll();
 
-        foreach ($result as $key => $res) {
+        foreach ($result as $res) {
             $rulesArray[$res['id']] = $res;
         }
 
@@ -9944,7 +9907,7 @@ class Sinch
            WHERE parent_id=" . $entity_id;
         $result       = $this->_doQuery($q)->fetchAll();
         $children_cat = '';
-        foreach ($result as $key => $res) {
+        foreach ($result as $res) {
             $children_cat .= ", '" . $res['entity_id'] . "'";
             $children_cat .= $this->get_all_children_cat_recursive(
                 $res['entity_id']
@@ -10007,10 +9970,10 @@ class Sinch
     public function getProductDescription($entity_id)
     {
         $this->loadProductParams($entity_id);
-        $this->loadProductStarfeatures($entity_id);
+        $this->loadProductStarfeatures();
         $this->loadGalleryPhotos($entity_id);
         \Magento\Framework\Profiler::start('MAGEBUZZ FILE RELATED');
-        $this->loadRelatedProducts($entity_id);
+        $this->loadRelatedProducts();
         \Magento\Framework\Profiler::stop('MAGEBUZZ FILE RELATED');
 
         return true;
@@ -10070,7 +10033,7 @@ class Sinch
             WHERE sp.store_product_id=" . $store_product_id;
         $eANRes = $this->_doQuery($q)->fetchAll();
 
-        foreach ($eANRes as $key => $value) {
+        foreach ($eANRes as $value) {
             $EANarr[] = $value['ean_code'];
         }
 
@@ -10091,7 +10054,7 @@ class Sinch
         return ($res['store_product_id']);
     }
 
-    private function loadProductStarfeatures($entity_id)
+    private function loadProductStarfeatures()
     {
         $descriptionArray      = [];
         $product_info_features = $this->_doQuery(
@@ -10106,7 +10069,7 @@ class Sinch
                 WHERE a.sinch_product_id = '" . $this->sinchProductId . "'"
         )->fetchAll();
 
-        foreach ($product_info_features as $key => $features) {
+        foreach ($product_info_features as $features) {
             $descriptionArray[$features['name']] = $features['value'];
         }
 
@@ -10143,7 +10106,7 @@ class Sinch
 
         $photos = $this->_doQuery($q, true)->fetchAll();
 
-        foreach ($photos as $key => $photo) {
+        foreach ($photos as $photo) {
             $picHeight = (int)500;
             $picWidth  = (int)500;
             $thumbUrl  = (string)$photo["ThumbPic"];
@@ -10163,7 +10126,7 @@ class Sinch
         return $this;
     }
 
-    private function loadRelatedProducts($entity_id)
+    private function loadRelatedProducts()
     {
         $this->sinchProductId;
         if (! $this->sinchProductId) {
@@ -10192,7 +10155,7 @@ class Sinch
             WHERE st_rel_prod.sinch_product_id=" . $this->sinchProductId;
 
         $relatedProducts = $this->_doQuery($q)->fetchAll();
-        foreach ($relatedProducts as $key => $relatedProduct) {
+        foreach ($relatedProducts as $relatedProduct) {
             $productArray = [];
             $productArray['name']
                           = (string)$relatedProduct['product_name'];
@@ -10200,8 +10163,6 @@ class Sinch
                           = (string)$relatedProduct['thumb_image_url'];
             $mpn
                           = (string)$relatedProduct['product_sku'];
-            $productSupplierId
-                          = (int)$relatedProduct['sinch_manufacturer_id'];
             $productArray['supplier_thumb']
                           = (string)($relatedProduct['manufacturers_image']);
             $productArray['supplier_name']
@@ -10392,7 +10353,7 @@ class Sinch
         );
     }
 
-    public function valid_utf($string, $new_line = true)
+    public function valid_utf($string)
     {
         $string = preg_replace('/™/', '&#8482;', $string);
         $string = preg_replace("/®/", '&reg;', $string);
@@ -10452,7 +10413,7 @@ class Sinch
                 FROM " . $this->import_status_statistic_table . "
                 ORDER BY start_import limit " . $a . ", " . $b;
             $result = $this->_doQuery($q, true)->fetchAll();
-            foreach ($result as $key => $res) {
+            foreach ($result as $res) {
                 $StatusHistory_arr[] = $res;
             }
         }
@@ -10556,7 +10517,6 @@ class Sinch
             if ($key == 'MemTotal') {
                 $val     = trim($val);
                 $value   = (int)substr($val, 0, strpos($val, ' kB'));
-                $measure = substr($val, strpos($val, ' kB'));
 
                 $retvalue['memory']['value']   = (integer)(((float)$value)
                     / 1024);
