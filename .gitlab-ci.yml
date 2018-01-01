@@ -1,8 +1,8 @@
 image: nicka101/magento2
 
 variables:
-  VENDOR_NAME: vendor-name
-  PACKAGE_NAME: package-name
+  VENDOR_NAME: Magebuzz
+  PACKAGE_NAME: Sinchimport
 
 stages:
   - test
@@ -14,7 +14,7 @@ marketplace-eqp:
   - cd /magento2/eqp
   - vendor/bin/phpcs --standard=MEQP2 --severity=10 --colors -p $CI_PROJECT_DIR
 
-phpcpd:
+copy-paste-detector:
   stage: test
   script:
   - cd /magento2/data
