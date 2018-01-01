@@ -5,10 +5,19 @@
 
 namespace Magebuzz\Sinchimport\Model;
 
+use \Magento\Framework\App\Filesystem\DirectoryList;
+
 require_once __DIR__ . '/Config.php';
 
 class Sinch
 {
+    /**
+     * Holds the console output interface
+     * 
+     * @var \Symfony\Component\Console\Output\OutputInterface
+     */
+    private $output;
+
     public $connection;
     public $varDir;
     public $shellDir;
@@ -16,7 +25,7 @@ class Sinch
     public $attributes;
     public $db;
     public $lang_id;
-    public $debug_mode = 1;
+    public $debug_mode = 0;
     public $php_run_string;
     public $php_run_strings;
     public $price_breaks_filter;
@@ -131,30 +140,34 @@ class Sinch
     private $_dataConf;
     private $_deploymentData;
     private $imType;
-    /**
-     * Filesystem Directory List
-     *
-     * @var DirectoryList
-     */
-    private $directoryList;
+
     /**
      * @var \Magento\Framework\App\DeploymentConfig
      */
     private $_deploymentConfig;
 
     /**
-     * @param \Magento\Framework\Model\Context                             $context
-     * @param \Magento\Framework\Registry                                  $registry
-     * @param \Magento\Framework\UrlInterface                              $urlBuilder
-     * @param \Magebuzz\Sinchimport\Logger\Logger                          $sinchLogger
-     * @param \Magento\Framework\App\ResourceConnection                    $resource
-     * @param \Magento\Framework\Model\ResourceModel\AbstractResource|null $resource
-     * @param \Magento\Framework\Data\Collection\AbstractDb|null           $resourceCollection
-     * @param array                                                        $data
+     * @param \Magento\Framework\Model\Context                                  $context
+     * @param \Magento\Framework\App\Filesystem\DirectoryList                   $directoryList,
+     * @param \Magento\Store\Model\StoreManagerInterface                        $storeManager,
+     * @param \Magento\Framework\App\Config\ScopeConfigInterface                $scopeConfig,
+     * @param \Magento\Framework\Registry                                       $registry
+     * @param \Magento\Framework\UrlInterface                                   $urlBuilder
+     * @param \Magebuzz\Sinchimport\Logger\Logger                               $sinchLogger
+     * @param \Magento\Framework\App\ResourceConnection                         $resourceConnection
+     * @param \Magento\Indexer\Model\Processor                                  $indexProcessor,
+     * @param \Magento\Framework\App\Cache\Frontend\Pool                        $cacheFrontendPool,
+     * @param \Magento\Framework\App\DeploymentConfig                           $deploymentConfig,
+     * @param \Magento\Framework\Model\ResourceModel\Iterator                   $resourceIterator,
+     * @param \Magento\Catalog\Model\ProductFactory                             $productFactory,
+     * @param \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory    $productCollectionFactory,
+     * @param \Magebuzz\Sinchimport\Model\Product\UrlFactory                    $productUrlFactory,
+     * @param \Magento\Indexer\Model\Indexer\CollectionFactory                  $indexersFactory
+     * @param \Symfony\Component\Console\Output\OutputInterface                 $output
      */
     public function __construct(
         \Magento\Framework\Model\Context $context,
-        \Magento\Framework\App\Filesystem\DirectoryList $directoryList,
+        DirectoryList $directoryList,
         \Magento\Store\Model\StoreManagerInterface $storeManager,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Magento\Framework\Registry $registry,
@@ -168,46 +181,36 @@ class Sinch
         \Magento\Catalog\Model\ProductFactory $productFactory,
         \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory,
         \Magebuzz\Sinchimport\Model\Product\UrlFactory $productUrlFactory,
-        \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory
+        \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory,
+        \Symfony\Component\Console\Output\OutputInterface $output
     ) {
-        $this->directoryList             = $directoryList;
-        $this->_storeManager             = $storeManager;
-        $this->scopeConfig               = $scopeConfig;
-        $this->_urlBuilder               = $urlBuilder;
-        $this->_sinchLogger              = $sinchLogger;
-        $this->_resourceConnection       = $resourceConnection;
-        $this->_indexProcessor           = $indexProcessor;
-        $this->_cacheFrontendPool        = $cacheFrontendPool;
-        $this->_deploymentConfig         = $deploymentConfig;
-        $this->_resourceIterator         = $resourceIterator;
-        $this->_productFactory           = $productFactory;
+        $this->output = $output;
+        $this->_storeManager = $storeManager;
+        $this->scopeConfig = $scopeConfig;
+        $this->_urlBuilder = $urlBuilder;
+        $this->_sinchLogger = $sinchLogger;
+        $this->_resourceConnection = $resourceConnection;
+        $this->_indexProcessor = $indexProcessor;
+        $this->_cacheFrontendPool = $cacheFrontendPool;
+        $this->_deploymentConfig = $deploymentConfig;
+        $this->_resourceIterator = $resourceIterator;
+        $this->_productFactory = $productFactory;
         $this->_productCollectionFactory = $productCollectionFactory;
-        $this->_productUrlFactory        = $productUrlFactory;
-        $this->indexersFactory           = $indexersFactory;
-        $this->_eventManager             = $context->getEventDispatcher();
-
+        $this->_productUrlFactory = $productUrlFactory;
+        $this->indexersFactory = $indexersFactory;
+        $this->_eventManager = $context->getEventDispatcher();
         $this->_connection = $this->_resourceConnection->getConnection();
 
-        $this->import_status_table           = $this->_getTableName(
-            'sinch_import_status'
-        );
-        $this->import_status_statistic_table = $this->_getTableName(
-            'sinch_import_status_statistic'
-        );
-        $this->import_log_table              = $this->_getTableName(
-            'sinch_import_log'
-        );
+        $this->import_status_table = $this->_getTableName('sinch_import_status');
+        $this->import_status_statistic_table = $this->_getTableName('sinch_import_status_statistic');
+        $this->import_log_table = $this->_getTableName('sinch_import_log');
 
         $this->php_run_string  = PHP_RUN_STRING;
         $this->php_run_strings = PHP_RUN_STRINGS;
 
         $this->price_breaks_filter = PRICE_BREAKS;
 
-        $this->varDir = $this->directoryList->getPath(
-            \Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR
-        ) . '/';
-
-        $this->createTemporaryImportDerictory();
+        $this->createTempDir($directoryList);
 
         $this->files = [
             FILE_CATEGORIES,
@@ -238,6 +241,14 @@ class Sinch
         $this->field_terminated_char = DEFAULT_FILE_TERMINATED_CHAR;
     }
 
+    /**
+     * Print a message to the console
+     * @param string $message
+     */
+    private function print($message){
+        $this->output->writeln($message);
+    }
+
     protected function _getTableName($tableName = '')
     {
         if ($tableName) {
@@ -250,21 +261,17 @@ class Sinch
     /**
      * Create the import directory Hierarchy
      *
-     * @return false if directory already exists
+     * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
      */
-    public function createTemporaryImportDerictory()
+    private function createTempDir(DirectoryList $directoryList)
     {
-        $dirArray = explode('/', $this->varDir);
-        end($dirArray);
-
-        if (prev($dirArray) == 'magebuzz') {
-            return false;
+        $dir = $directoryList->getPath(DirectoryList::VAR_DIR) . '/magebuzz/sinchimport/';
+        if (!is_dir($dir)) {
+            if(!mkdir($dir, 0777, true)){
+                throw new Exception("Failed to create import directory. Check filesystem permissions");
+            }
         }
-
-        $this->varDir = $this->varDir . 'magebuzz/sinchimport/';
-        if (! is_dir($this->varDir)) {
-            mkdir($this->varDir, 0777, true);
-        }
+        $this->varDir = $dir;
     }
 
     public function startCronFullImport()
@@ -351,24 +358,24 @@ class Sinch
                 $quer = $this->_doQuery($q);
                 $this->addImportStatus('Start Import');
 
-                echo("\n========IMPORTING DATA IN $imType MODE========\n");
+                $this->print("========IMPORTING DATA IN $imType MODE========");
 
-                echo "\nUpload Files...\n";
+                $this->print("Upload Files...");
                 $this->uploadFiles();
                 $this->addImportStatus('Upload Files');
 
-                echo "\nParse Category Types...";
+                $this->print("Parse Category Types...");
                 $this->parseCategoryTypes();
 
-                echo "\nParse Categories...";
+                $this->print("Parse Categories...");
                 $coincidence = $this->parseCategories();
                 $this->addImportStatus('Parse Categories');
 
-                echo "\nParse Category Features...";
+                $this->print("Parse Category Features...");
                 $this->parseCategoryFeatures();
                 $this->addImportStatus('Parse Category Features');
 
-                echo "\nParse Distributors...";
+                $this->print("Parse Distributors...");
                 $this->parseDistributors();
                 if ($this->product_file_format == "NEW") {
                     $this->parseDistributorsStockAndPrice();
@@ -376,42 +383,42 @@ class Sinch
                 }
                 $this->addImportStatus('Parse Distributors');
 
-                echo "\nParse EAN Codes...";
+                $this->print("Parse EAN Codes...");
                 $this->parseEANCodes();
                 $this->addImportStatus('Parse EAN Codes');
 
-                echo "\nParse Manufacturers...";
+                $this->print("Parse Manufacturers...");
                 $this->parseManufacturers();
                 $this->addImportStatus('Parse Manufacturers');
 
-                echo "\nParse Related Products...";
+                $this->print("Parse Related Products...");
                 $this->parseRelatedProducts();
                 $this->addImportStatus('Parse Related Products');
 
-                echo "\nParse Product Features...";
+                $this->print("Parse Product Features...");
                 $this->parseProductFeatures();
                 $this->addImportStatus('Parse Product Features');
 
-                echo "\nParse Product Categories...";
+                $this->print("Parse Product Categories...");
                 $this->parseProductCategories();
 
-                echo "\nParse Products...";
+                $this->print("Parse Products...");
                 $this->parseProducts($coincidence);
                 $this->addImportStatus('Parse Products');
 
-                echo "\nParse Pictures Gallery...";
+                $this->print("Parse Pictures Gallery...");
                 $this->parseProductsPicturesGallery();
                 $this->addImportStatus('Parse Pictures Gallery');
 
-                echo "\nParse Restricted Values...";
+                $this->print("Parse Restricted Values...");
                 $this->parseRestrictedValues();
                 $this->addImportStatus('Parse Restricted Values');
 
-                echo "\nParse Stock And Prices...";
+                $this->print("Parse Stock And Prices...");
                 $this->parseStockAndPrices();
                 $this->addImportStatus('Parse Stock And Prices');
 
-                echo "\nApply Customer Group Price...";
+                $this->print("Apply Customer Group Price...");
 
                 if (file_exists($this->varDir . FILE_PRICE_RULES)) {
                     $this->_eventManager->dispatch(
@@ -424,51 +431,51 @@ class Sinch
                     );
                 }
 
-                echo "\nStart generating category filters...";
+                $this->print("Start generating category filters...");
                 $this->addImportStatus('Generate category filters');
-                echo "\nFinish generating category filters...";
+                $this->print("Finish generating category filters...");
 
                 if (! $indexingSeparately) {
                     $this->_logImportInfo("Start indexing data");
-                    echo "\nStart indexing data...";
+                    $this->print("Start indexing data...");
                     $this->_cleanCateoryProductFlatTable();
                     $this->runIndexer();
-                    echo "\nFinish indexing catalog url rewrites...";
+                    $this->print("Finish indexing catalog url rewrites...");
                     $this->_logImportInfo("Finish indexing data...");
                     $this->addImportStatus('Indexing data', 1);
-                    echo "\nFinish indexing data...";
+                    $this->print("Finish indexing data...");
                 } else {
-                    echo "\nBypass indexing data...";
+                    $this->print("Bypass indexing data...");
                     $this->_logImportInfo("Bypass indexing data...");
                     $this->addImportStatus('Indexing data', 1);
                 }
 
-                echo "\nStart indexing catalog url rewrites...";
+                $this->print("Start indexing catalog url rewrites...");
                 $this->_reindexProductUrlKey();
 
                 $this->_logImportInfo("Start cleanin Sinch cache...");
-                echo "\nStart cleanin Sinch cache...";
+                $this->print("Start cleanin Sinch cache...");
                 $this->runCleanCache();
                 $this->_logImportInfo("Finish cleanin Sinch cache...");
-                echo "\nFinish cleanin Sinch cache...";
+                $this->print("Finish cleanin Sinch cache...");
 
                 $this->addImportStatus('Finish import', 1);
                 $q = "SELECT RELEASE_LOCK('sinchimport')";
                 $this->_doQuery($q);
 
                 $this->_logImportInfo("Start drop feature result tables");
-                echo "\nStart dropping feature result tables...";
+                $this->print("Start dropping feature result tables...");
                 $this->dropFeatureResultTables();
                 $this->_logImportInfo("Finish drop feature result tables...");
 
                 $this->_logImportInfo("Finish Sinch Import");
-                echo "\n\n========>FINISH SINCH IMPORT...\n";
+                $this->print("========>FINISH SINCH IMPORT...");
             } catch (\Exception $e) {
                 $this->_setErrorMessage($e);
             }
         } else {
             $this->_logImportInfo("Sinchimport already run");
-            echo "\n--------SINCHIMPORT ALREADY RUN--------\n";
+            $this->print("--------SINCHIMPORT ALREADY RUN--------");
         }
     }
 
@@ -737,20 +744,16 @@ class Sinch
                 )
                 ) {
                     $this->_logImportInfo(
-                        "wget Can't copy " . $file . ", will use old one"
+                        "Can't wget " . $file . ", will use old one"
                     );
-                    echo "copy Can't copy " . $file_url_and_dir . $file
-                        . " to  " . $this->varDir . $file
-                        . ", will use old one<br>";
+                    $this->print("Can't wget " . $file . ", will use old one<br>");
                 }
             } else {
                 if (! copy($file_url_and_dir . $file, $this->varDir . $file)) {
                     $this->_logImportInfo(
-                        "copy Can't copy " . $file . ", will use old one"
+                        "Can't copy " . $file . ", will use old one"
                     );
-                    echo "copy Can't copy " . $file_url_and_dir . $file
-                        . " to  " . $this->varDir . $file
-                        . " will use old one<br>";
+                    $this->print("Can't copy " . $file . ", will use old one<br>");
                 }
             }
             exec("chmod a+rw " . $this->varDir . $file);
@@ -1045,7 +1048,7 @@ class Sinch
 
             if (count($coincidence) == 1) { // one store logic
 
-                echo("\n\n==========SINGLE STORE LOGIC==========\n\n");
+                $this->print("==========SINGLE STORE LOGIC==========");
 
                 if ($imType == "REWRITE") {
                     $rootCat = 2;
@@ -1095,7 +1098,7 @@ class Sinch
                 );
             } elseif (count($coincidence) > 1) { // multistore logic
 
-                echo("\n\n==========MULTI STORE LOGIC==========\n\n");
+                $this->print("==========MULTI STORE LOGIC==========");
 
                 switch ($imType) {
                 case "REWRITE":
@@ -1146,7 +1149,7 @@ class Sinch
                     // do anything
                 }
             } else {
-                echo("\n\n====================>ERROR\n\n");
+                $this->print("====================>ERROR");
             }
 
             $this->_logImportInfo("Finish parse " . FILE_CATEGORIES);
@@ -2358,9 +2361,9 @@ class Sinch
         $sinch_categories,
         $categories_temp
     ) {
-        echo("\nRewrite Categories...\n");
+        $this->print("Rewrite Categories...");
 
-        echo("\n    --Truncate all categories...\n");
+        $this->print("    --Truncate all categories...");
         $this->truncateAllCateriesAndCreateRoot(
             $catalog_category_entity,
             $catalog_category_entity_varchar,
@@ -2374,7 +2377,7 @@ class Sinch
             $attr_is_active
         );
 
-        echo("\n    --Create default categories...\n");
+        $this->print("    --Create default categories...");
         $this->createDefaultCategories(
             $coincidence,
             $catalog_category_entity,
@@ -2389,7 +2392,7 @@ class Sinch
             $attr_include_in_menu
         );
 
-        echo("\n    --Map SINCH categories...\n");
+        $this->print("    --Map SINCH categories...");
         $this->mapSinchCategoriesMultistore(
             $sinch_categories_mapping_temp,
             $sinch_categories_mapping,
@@ -2401,7 +2404,7 @@ class Sinch
             $name_attrid
         );
 
-        echo("\n    --Add category data...\n");
+        $this->print("    --Add category data...");
         $this->addCategoryDataMultistore(
             $categories_temp,
             $sinch_categories_mapping_temp,
@@ -3402,7 +3405,7 @@ class Sinch
         $sinch_categories,
         $categories_temp
     ) {
-        echo("mergeMultistoreCategories RUN\n");
+        $this->print("mergeMultistoreCategories RUN");
 
         $this->createNewDefaultCategories(
             $coincidence,
@@ -3447,7 +3450,7 @@ class Sinch
             $image_attrid
         );
 
-        echo("\n\n\nmergeMultistoreCategories DONE\n");
+        $this->print("mergeMultistoreCategories DONE");
     }
 
     private function createNewDefaultCategories(
@@ -3463,7 +3466,7 @@ class Sinch
         $attr_is_active,
         $attr_include_in_menu
     ) {
-        echo("\n\n    ==========================================================================\n    createNewDefaultCategories start... \n");
+        $this->print("=== createNewDefaultCategories start...");
 
         $old_cats = [];
         $res      = $this->_doQuery(
@@ -3490,13 +3493,13 @@ class Sinch
         $i = $max_entity_id[max_entity_id] + 1;
 
         foreach ($coincidence as $key => $item) {
-            echo("\nCoincidence: key = [$key]\n");
+            $this->print("Coincidence: key = [$key]");
 
             if (in_array($key, $old_cats)) {
-                echo("\nCONTINUE: key = [$key]   item = [$item]\n");
+                $this->print("CONTINUE: key = [$key]   item = [$item]");
                 continue;
             } else {
-                echo("    CREATE NEW CATEGORY: key = [$key]   item = [$item]\n");
+                $this->print("CREATE NEW CATEGORY: key = [$key]   item = [$item]");
             }
 
             $this->_doQuery(
@@ -3529,7 +3532,7 @@ class Sinch
             $i++;
         }
 
-        echo("\nCreate New Default Categories -> DONE...\n==========================================================================\n");
+        $this->print("Create New Default Categories -> DONE...");
     }
 
     private function mapSinchCategoriesMultistoreMerge(
@@ -4776,7 +4779,7 @@ class Sinch
 
     public function parseProducts($coincidence)
     {
-        echo("\n    --Parse Products 1\n");
+        $this->print("--Parse Products 1");
 
         $replace_merge_product = $this->_dataConf['replace_product'];
 
@@ -4868,7 +4871,7 @@ class Sinch
                          "
                 );
             }
-            echo("\n    --Parse Products 2\n");
+            $this->print("--Parse Products 2");
 
             $this->_doQuery(
                 "LOAD DATA LOCAL INFILE '" . $parseFile . "'
@@ -4905,14 +4908,14 @@ class Sinch
                 );
             }
 
-            echo("\n    --Parse Products 3\n");
+            $this->print("--Parse Products 3");
 
             $this->_doQuery(
                 "UPDATE " . $this->_getTableName('products_temp') . "
                           SET products_date_added=now(), products_last_modified=now()"
             );
 
-            echo("\n    --Parse Products 4\n");
+            $this->print("--Parse Products 4");
 
             $this->_doQuery(
                 "UPDATE " . $this->_getTableName('products_temp') . " p
@@ -4921,7 +4924,7 @@ class Sinch
                           SET p.manufacturer_name=m.manufacturer_name"
             );
 
-            echo("\n    --Parse Products 5\n");
+            $this->print("--Parse Products 5");
 
             if ($this->current_import_status_statistic_id) {
                 $res = $this->_doQuery(
@@ -4951,12 +4954,12 @@ class Sinch
                 $this->_doQuery("SET FOREIGN_KEY_CHECKS=1");
             }
 
-            echo("\n    --Parse Products 6\n");
+            $this->print("--Parse Products 6");
 
             $this->addProductsWebsite();
             $this->mapSinchProducts($replace_merge_product);
 
-            echo("\n    --Parse Products 7\n");
+            $this->print("--Parse Products 7");
 
             if (count($coincidence) == 1) {
                 $this->replaceMagentoProducts();
@@ -4973,7 +4976,7 @@ class Sinch
                 }
             }
 
-            echo("\n    --Parse Products 8\n");
+            $this->print("--Parse Products 8");
 
             $this->mapSinchProducts($replace_merge_product, true);
             $this->addManufacturer_attribute();
@@ -7325,7 +7328,7 @@ class Sinch
 
     public function replaceMagentoProductsMultistore($coincidence)
     {
-        echo("\n        --Replace Magento Products Multistore 1...\n");
+        $this->print("--Replace Magento Products Multistore 1...");
 
         $products_temp                  = $this->_getTableName('products_temp');
         $products_website_temp          = $this->_getTableName(
@@ -7382,7 +7385,7 @@ class Sinch
             'thumbnail'
         );
 
-        echo("\n        --Replace Magento Multistore 2...\n");
+        $this->print("--Replace Magento Multistore 2...");
 
         //clear products, inserting new products and updating old others.
         $query
@@ -7395,7 +7398,7 @@ class Sinch
                 AND pm.store_product_id IS NULL";
         $this->_doQuery($query);
 
-        echo("\n        --Replace Magento Multistore 3...\n");
+        $this->print("--Replace Magento Multistore 3...");
 
         $this->_doQuery(
             "
@@ -7447,7 +7450,7 @@ class Sinch
                 sinch_product_id = a.sinch_product_id"
         );
 
-        echo("\n        --Replace Magento Multistore 4...\n");
+        $this->print("--Replace Magento Multistore 4...");
 
         //Set enabled
         $this->_doQuery(
@@ -7476,7 +7479,7 @@ class Sinch
                 value = 1"
         );
 
-        echo("\n        --Replace Magento Multistore 5...\n");
+        $this->print("--Replace Magento Multistore 5...");
 
         // set status = 1 for all stores
         $this->_doQuery(
@@ -7494,7 +7497,7 @@ class Sinch
                 value = 1"
         );
 
-        echo("\n        --Replace Magento Multistore 6...\n");
+        $this->print("--Replace Magento Multistore 6...");
 
         //Unifying products with categories.
         $this->_doQuery(
@@ -7506,7 +7509,7 @@ class Sinch
             WHERE cpe.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 7...\n");
+        $this->print("--Replace Magento Multistore 7...");
 
         $rootCats = $this->_getTableName('rootCats');
         $this->_doQuery("DROP TABLE IF EXISTS $rootCats");
@@ -7525,7 +7528,7 @@ class Sinch
             "UPDATE $rootCats SET rootCat = entity_id WHERE CHAR_LENGTH(rootCat) = 0"
         );
 
-        echo("\n        --Replace Magento Multistore 8...\n");
+        $this->print("--Replace Magento Multistore 8...");
 
         $this->_doQuery(
             "
@@ -7538,7 +7541,7 @@ class Sinch
             WHERE cce.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 9...\n");
+        $this->print("--Replace Magento Multistore 9...");
 
         $this->_doQuery(
             "
@@ -7549,7 +7552,7 @@ class Sinch
             WHERE cce.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 10...\n");
+        $this->print("--Replace Magento Multistore 10...");
 
         $catalog_category_product_for_delete_temp = $catalog_category_product
             . "_for_delete_temp";
@@ -7575,7 +7578,7 @@ class Sinch
             )"
         );
 
-        echo("\n        --Replace Magento Multistore 11...\n");
+        $this->print("--Replace Magento Multistore 11...");
 
         $this->_doQuery(
             "
@@ -7591,7 +7594,7 @@ class Sinch
             WHERE store_product_id IS NOT NULL)"
         );
 
-        echo("\n        --Replace Magento Multistore 12...\n");
+        $this->print("--Replace Magento Multistore 12...");
 
         $this->_doQuery(
             "
@@ -7602,7 +7605,7 @@ class Sinch
             WHERE ccpfd.store_product_id != 0"
         );
 
-        echo("\n        --Replace Magento Multistore 13...\n");
+        $this->print("--Replace Magento Multistore 13...");
 
         $this->_doQuery(
             "
@@ -7613,7 +7616,7 @@ class Sinch
             WHERE ccpfd.store_category_id != 0"
         );
 
-        echo("\n        --Replace Magento Multistore 14...\n");
+        $this->print("--Replace Magento Multistore 14...");
 
         $this->_doQuery(
             "DELETE FROM $catalog_category_product_for_delete_temp WHERE category_id = new_category_id"
@@ -7627,7 +7630,7 @@ class Sinch
                 AND ccp.category_id = ccpfd.category_id"
         );
 
-        echo("\n        --Replace Magento Multistore 15...\n");
+        $this->print("--Replace Magento Multistore 15...");
 
         $this->_doQuery(
             "
@@ -7646,7 +7649,7 @@ class Sinch
                 product_id = cpe.entity_id"
         );
 
-        echo("\n        --Replace Magento Multistore 16 (add multi categories)...\n");
+        $this->print("--Replace Magento Multistore 16 (add multi categories)...");
 
         $this->_doQuery(
             "
@@ -7668,7 +7671,7 @@ class Sinch
         "
         );
 
-        echo("\n        --Replace Magento Multistore 17...\n");
+        $this->print("--Replace Magento Multistore 17...");
 
         //Indexing products and categories in the shop
         $this->_doQuery(
@@ -7680,7 +7683,7 @@ class Sinch
             WHERE cpe.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 18....\n");
+        $this->print("--Replace Magento Multistore 18....");
 
         $this->_doQuery(
             "
@@ -7699,7 +7702,7 @@ class Sinch
             ON DUPLICATE KEY UPDATE
                 visibility = 4"
         );
-        echo("\n        --Replace Magento Multistore 19...\n");
+        $this->print("--Replace Magento Multistore 19...");
 
         $this->_doQuery(
             "
@@ -7721,7 +7724,7 @@ class Sinch
                 visibility = 4"
         );
 
-        echo("\n        --Replace Magento Multistore 20...\n");
+        $this->print("--Replace Magento Multistore 20...");
 
         //Set product name for specific web sites
         $this->_doQuery(
@@ -7752,7 +7755,7 @@ class Sinch
                 value = b.product_name"
         );
 
-        echo("\n        --Replace Magento Multistore 21...\n");
+        $this->print("--Replace Magento Multistore 21...");
 
         // product name for all web sites
         $this->_doQuery(
@@ -7772,7 +7775,7 @@ class Sinch
                 value = b.product_name"
         );
 
-        echo("\n        --Replace Magento Multistore 22...\n");
+        $this->print("--Replace Magento Multistore 22...");
 
         $this->dropHTMLentities(
             $this->_getProductEntityTypeId(),
@@ -7793,7 +7796,7 @@ class Sinch
         $this->addSpecification();
         $this->addManufacturers();
 
-        echo("\n        --Replace Magento Multistore 23...\n");
+        $this->print("--Replace Magento Multistore 23...");
 
         $this->_doQuery(
             "
@@ -7812,7 +7815,7 @@ class Sinch
                 value = 4"
         );
 
-        echo("\n        --Replace Magento Multistore 24...\n");
+        $this->print("--Replace Magento Multistore 24...");
 
         $this->_doQuery(
             "
@@ -7829,7 +7832,7 @@ class Sinch
                 value = 4"
         );
 
-        echo("\n        --Replace Magento Multistore 25...\n");
+        $this->print("--Replace Magento Multistore 25...");
 
         $this->_doQuery(
             "
@@ -7840,7 +7843,7 @@ class Sinch
             WHERE cpe.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 26...\n");
+        $this->print("--Replace Magento Multistore 26...");
 
         $this->_doQuery(
             "
@@ -7858,7 +7861,7 @@ class Sinch
                 website_id = w.website_id"
         );
 
-        echo("\n        --Replace Magento Multistore 27...\n");
+        $this->print("--Replace Magento Multistore 27...");
 
         //Adding tax class "Taxable Goods"
         $this->_doQuery(
@@ -7878,7 +7881,7 @@ class Sinch
                 value = 2"
         );
 
-        echo("\n        --Replace Magento Multistore 28...\n");
+        $this->print("--Replace Magento Multistore 28...");
 
         $this->_doQuery(
             "
@@ -7895,7 +7898,7 @@ class Sinch
                 value = 2"
         );
 
-        echo("\n        --Replace Magento Multistore 29...\n");
+        $this->print("--Replace Magento Multistore 29...");
 
         // Load url Image
         $this->_doQuery(
@@ -7916,7 +7919,7 @@ class Sinch
                 value = b.main_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 30...\n");
+        $this->print("--Replace Magento Multistore 30...");
 
         // image for specific web sites
         $this->_doQuery(
@@ -7936,7 +7939,7 @@ class Sinch
                 value = b.main_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 31...\n");
+        $this->print("--Replace Magento Multistore 31...");
 
         // small_image for specific web sites
         $this->_doQuery(
@@ -7957,7 +7960,7 @@ class Sinch
                 value = b.medium_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 32...\n");
+        $this->print("--Replace Magento Multistore 32...");
 
         // small_image for all web sites
         $this->_doQuery(
@@ -7978,7 +7981,7 @@ class Sinch
                 value = b.medium_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 33...\n");
+        $this->print("--Replace Magento Multistore 33...");
 
         // thumbnail for specific web site
         $this->_doQuery(
@@ -7999,7 +8002,7 @@ class Sinch
                 value = b.thumb_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 34...\n");
+        $this->print("--Replace Magento Multistore 34...");
 
         // thumbnail for all web sites
         $this->_doQuery(
@@ -8020,14 +8023,14 @@ class Sinch
                 value = b.thumb_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 35...\n");
+        $this->print("--Replace Magento Multistore 35...");
 
         $this->addRelatedProducts();
     }
 
     public function replaceMagentoProductsMultistoreMERGE($coincidence)
     {
-        echo("\n        --Replace Magento Multistore 1...\n");
+        $this->print("--Replace Magento Multistore 1...");
 
         $products_temp                  = $this->_getTableName('products_temp');
         $products_website_temp          = $this->_getTableName(
@@ -8087,7 +8090,7 @@ class Sinch
             'thumbnail'
         );
 
-        echo("\n        --Replace Magento Multistore 2...\n");
+        $this->print("--Replace Magento Multistore 2...");
 
         //clear products, inserting new products and updating old others.
         $query
@@ -8100,7 +8103,7 @@ class Sinch
                 AND pm.store_product_id IS NULL";
         $this->_doQuery($query);
 
-        echo("\n        --Replace Magento Multistore 3...\n");
+        $this->print("--Replace Magento Multistore 3...");
 
         $this->_doQuery(
             "
@@ -8152,7 +8155,7 @@ class Sinch
                 sinch_product_id = a.sinch_product_id"
         );
 
-        echo("\n        --Replace Magento Multistore 4...\n");
+        $this->print("--Replace Magento Multistore 4...");
 
         //Set enabled
         $this->_doQuery(
@@ -8181,7 +8184,7 @@ class Sinch
                 value = 1"
         );
 
-        echo("\n        --Replace Magento Multistore 5...\n");
+        $this->print("--Replace Magento Multistore 5...");
 
         // set status = 1 for all stores
         $this->_doQuery(
@@ -8199,7 +8202,7 @@ class Sinch
                 value = 1"
         );
 
-        echo("\n        --Replace Magento Multistore 6...\n");
+        $this->print("--Replace Magento Multistore 6...");
 
         //Unifying products with categories.
         $this->_doQuery(
@@ -8211,7 +8214,7 @@ class Sinch
             WHERE cpe.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 7...\n");
+        $this->print("--Replace Magento Multistore 7...");
 
         $rootCats = $this->_getTableName('rootCats');
 
@@ -8231,7 +8234,7 @@ class Sinch
             "UPDATE $rootCats SET rootCat = entity_id WHERE CHAR_LENGTH(rootCat) = 0"
         );
 
-        echo("\n        --Replace Magento Multistore 8...\n");
+        $this->print("--Replace Magento Multistore 8...");
 
         $this->_doQuery(
             "
@@ -8244,7 +8247,7 @@ class Sinch
             WHERE cce.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 9...\n");
+        $this->print("--Replace Magento Multistore 9...");
 
         $this->_doQuery(
             "
@@ -8278,7 +8281,7 @@ class Sinch
 
         $this->_doQuery("DROP TABLE IF EXISTS $stinch_products_delete");
 
-        echo("\n        --Replace Magento Multistore 10...\n");
+        $this->print("--Replace Magento Multistore 10...");
 
         $this->_doQuery(
             "
@@ -8297,7 +8300,7 @@ class Sinch
                 product_id = cpe.entity_id"
         );
 
-        echo("\n        --Replace Magento Multistore 11 (add multi categories)...\n");
+        $this->print("--Replace Magento Multistore 11 (add multi categories)...");
 
         $this->_doQuery(
             "
@@ -8318,7 +8321,7 @@ class Sinch
             product_id = cpe.entity_id"
         );
 
-        echo("\n        --Replace Magento Multistore 12...\n");
+        $this->print("--Replace Magento Multistore 12...");
 
         //Indexing products and categories in the shop
         $this->_doQuery(
@@ -8330,7 +8333,7 @@ class Sinch
             WHERE cpe.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 13...\n");
+        $this->print("--Replace Magento Multistore 13...");
 
         $this->_doQuery(
             "
@@ -8350,7 +8353,7 @@ class Sinch
                 visibility = 4"
         );
 
-        echo("\n        --Replace Magento Multistore 14...\n");
+        $this->print("--Replace Magento Multistore 14...");
 
         $rootCats = $this->_getTableName('rootCats');
         $this->_doQuery(
@@ -8373,7 +8376,7 @@ class Sinch
                 visibility = 4"
         );
 
-        echo("\n        --Replace Magento Multistore 15...\n");
+        $this->print("--Replace Magento Multistore 15...");
 
         //Set product name for specific web sites
         $this->_doQuery(
@@ -8404,7 +8407,7 @@ class Sinch
                 value = b.product_name"
         );
 
-        echo("\n        --Replace Magento Multistore 16...\n");
+        $this->print("--Replace Magento Multistore 16...");
 
         // product name for all web sites
         $this->_doQuery(
@@ -8424,7 +8427,7 @@ class Sinch
                 value = b.product_name"
         );
 
-        echo("\n        --Replace Magento Multistore 17...\n");
+        $this->print("--Replace Magento Multistore 17...");
 
         $this->dropHTMLentities(
             $this->_getProductEntityTypeId(),
@@ -8451,7 +8454,7 @@ class Sinch
         $this->addSpecification();
         $this->addManufacturers();
 
-        echo("\n        --Replace Magento Multistore 18...\n");
+        $this->print("--Replace Magento Multistore 18...");
 
         $this->_doQuery(
             "
@@ -8470,7 +8473,7 @@ class Sinch
                 value = 4"
         );
 
-        echo("\n        --Replace Magento Multistore 19...\n");
+        $this->print("--Replace Magento Multistore 19...");
 
         $this->_doQuery(
             "
@@ -8487,7 +8490,7 @@ class Sinch
                 value = 4"
         );
 
-        echo("\n        --Replace Magento Multistore 20...\n");
+        $this->print("--Replace Magento Multistore 20...");
 
         $this->_doQuery(
             "
@@ -8498,7 +8501,7 @@ class Sinch
             WHERE cpe.entity_id IS NULL"
         );
 
-        echo("\n        --Replace Magento Multistore 21...\n");
+        $this->print("--Replace Magento Multistore 21...");
 
         $this->_doQuery(
             "
@@ -8516,7 +8519,7 @@ class Sinch
                 website_id = w.website_id"
         );
 
-        echo("\n        --Replace Magento Multistore 22...\n");
+        $this->print("--Replace Magento Multistore 22...");
 
         //Adding tax class "Taxable Goods"
         $this->_doQuery(
@@ -8536,7 +8539,7 @@ class Sinch
                 value = 2"
         );
 
-        echo("\n        --Replace Magento Multistore 23...\n");
+        $this->print("--Replace Magento Multistore 23...");
 
         $this->_doQuery(
             "
@@ -8553,7 +8556,7 @@ class Sinch
                 value = 2"
         );
 
-        echo("\n        --Replace Magento Multistore 24...\n");
+        $this->print("--Replace Magento Multistore 24...");
 
         // Load url Image
         $this->_doQuery(
@@ -8574,7 +8577,7 @@ class Sinch
                 value = b.main_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 25...\n");
+        $this->print("--Replace Magento Multistore 25...");
 
         // image for specific web sites
         $this->_doQuery(
@@ -8594,7 +8597,7 @@ class Sinch
                 value = b.main_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 26...\n");
+        $this->print("--Replace Magento Multistore 26...");
 
         // small_image for specific web sites
         $this->_doQuery(
@@ -8615,7 +8618,7 @@ class Sinch
                 value = b.medium_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 27...\n");
+        $this->print("--Replace Magento Multistore 27...");
 
         // small_image for all web sites
         $this->_doQuery(
@@ -8636,7 +8639,7 @@ class Sinch
                 value = b.medium_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 28...\n");
+        $this->print("--Replace Magento Multistore 28...");
 
         // thumbnail for specific web site
         $this->_doQuery(
@@ -8657,7 +8660,7 @@ class Sinch
                 value = b.thumb_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 29...\n");
+        $this->print("--Replace Magento Multistore 29...");
 
         // thumbnail for all web sites
         $this->_doQuery(
@@ -8678,7 +8681,7 @@ class Sinch
                 value = b.thumb_image_url"
         );
 
-        echo("\n        --Replace Magento Multistore 30...\n");
+        $this->print("--Replace Magento Multistore 30...");
 
         $this->addRelatedProducts();
     }
@@ -9393,9 +9396,8 @@ class Sinch
                 $import = $this;
                 $import->addImportStatus('Stock Price Start Import');
 
-                echo("\n========IMPORTING STOCK AND PRICE========\n");
-
-                echo "\nUpload Files...\n";
+                $this->print("========IMPORTING STOCK AND PRICE========");
+                $this->print("Upload Files...");
 
                 $this->files = [
                     FILE_STOCK_AND_PRICES,
@@ -9405,12 +9407,12 @@ class Sinch
                 $import->uploadFiles();
                 $import->addImportStatus('Stock Price Upload Files');
 
-                echo "\nParse Stock And Prices...";
+                $this->print("Parse Stock And Prices...");
 
                 $import->parseStockAndPrices();
                 $import->addImportStatus('Stock Price Parse Products');
 
-                echo "\nApply Customer Group Price...";
+                $this->print("Apply Customer Group Price...");
                 //$import->parsePriceRules();
                 //$import->addPriceRules();
                 //$import->applyCustomerGroupPrice();
@@ -9425,22 +9427,22 @@ class Sinch
                 );
 
                 $this->_logImportInfo("Start indexing  Stock & Price");
-                echo "\nStart indexing  Stock & Price...";
+                $this->print("Start indexing  Stock & Price...");
                 $import->runStockPriceIndexer();
                 $import->addImportStatus('Stock Price Indexing data');
                 $this->_logImportInfo("Finish indexing  Stock & Price...");
-                echo "\nFinish indexing  Stock & Price...";
+                $this->print("Finish indexing  Stock & Price...");
 
                 $this->_logImportInfo("Start cleanin Sinch cache...");
-                echo "\nStart cleanin Sinch cache...";
+                $this->print("Start cleanin Sinch cache...");
                 $this->runCleanCache();
                 $this->_logImportInfo("Finish cleanin Sinch cache...");
-                echo "\nFinish cleanin Sinch cache...";
+                $this->print("Finish cleanin Sinch cache...");
 
                 $import->addImportStatus('Stock Price Finish import', 1);
 
                 $this->_logImportInfo("Finish Stock & Price Sinch Import");
-                echo "\n\n========>FINISH STOCK & PRICE SINCH IMPORT......\n";
+                $this->print("========>FINISH STOCK & PRICE SINCH IMPORT");
 
                 $q = "SELECT RELEASE_LOCK('sinchimport')";
                 $this->_doQuery($q);
@@ -9450,12 +9452,12 @@ class Sinch
         } else {
             if (! $this->isImportNotRun()) {
                 $this->_logImportInfo("Sinchimport already run");
-                echo "\n--------SINCHIMPORT ALREADY RUN--------\n";
+                $this->print("--------SINCHIMPORT ALREADY RUN--------");
             } else {
                 $this->_logImportInfo(
                     "Full import have never finished with success"
                 );
-                echo "\nFull import have never finished with success...";
+                $this->print("Full import have never finished with success...");
             }
         }
     }
@@ -9985,13 +9987,13 @@ class Sinch
     public function runReindexUrlRewrite()
     {
         try {
-            echo("\n========REINDEX CATALOG URL REWRITE========\n");
+            $this->print("========REINDEX CATALOG URL REWRITE========");
 
-            echo "\nStart indexing catalog url rewrites...";
+            $this->print("Start indexing catalog url rewrites...");
             $this->_reindexProductUrlKey();
-            echo "\nFinish indexing catalog url rewrites...\n";
+            $this->print("Finish indexing catalog url rewrites...");
 
-            echo "\n========>FINISH REINDEX CATALOG URL REWRITE...\n";
+            $this->print("========>FINISH REINDEX CATALOG URL REWRITE...");
             $this->addIndexingStatus('Indexing data separately', 1);
         } catch (\Exception $e) {
             $this->_setErrorMessage($e);
@@ -10011,10 +10013,10 @@ class Sinch
         $this->initIndexingStatuses();
         $this->_logImportInfo("Start indexing data separately");
         try {
-            echo("\n========REINDEX DATA========\n");
+            $this->print("========REINDEX DATA========");
 
             $this->runIndexer();
-            echo "\n========>FINISH REINDEX DATA...\n";
+            $this->print("========>FINISH REINDEX DATA...");
         } catch (\Exception $e) {
             $this->_setErrorMessage($e);
         }
