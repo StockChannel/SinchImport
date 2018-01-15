@@ -46,7 +46,7 @@ class Image
     ) {
         $result = $proceed($file);
 
-        if (substr($file, 0, 4) == 'http' && @getimagesize($file)) {
+        if (substr($file, 0, 4) == 'http') {
             $this->_isBaseFilePlaceholderTmp = false;
             $this->_baseFileTmp              = $file;
         }
@@ -104,12 +104,10 @@ class Image
         \Closure $proceed
     ) {
         if ($this->_baseFileTmp) {
-            $imageSize = @getimagesize($this->_baseFileTmp);
-        } else {
-            $imageSize = $proceed();
+            return ['x' => 100, 'y' => 100];
         }
 
-        return $imageSize;
+        return $proceed();
     }
 
     /**
