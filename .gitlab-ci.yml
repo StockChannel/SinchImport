@@ -1,7 +1,7 @@
 image: nicka101/magento2
 
 variables:
-  VENDOR_NAME: Magebuzz
+  VENDOR_NAME: SITC
   PACKAGE_NAME: Sinchimport
 
 stages:
