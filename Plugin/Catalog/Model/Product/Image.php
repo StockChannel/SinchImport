@@ -4,50 +4,53 @@ namespace SITC\Sinchimport\Plugin\Catalog\Model\Product;
 
 use Magento\Framework\Image as MagentoImage;
 
+/**
+ * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+ */
 class Image
 {
     /**
      * @var string
      */
     protected $_baseFileTmp;
-    
+
     /**
      * @var bool
      */
     protected $_isBaseFilePlaceholderTmp;
-    
+
     /**
      * @var MagentoImage
      */
     protected $_processorTmp;
-    
+
     /**
      * @var \Magento\Framework\Image\Factory
      */
     protected $_imageFactory;
-    
+
     public function __construct(
         \Magento\Framework\Image\Factory $imageFactory
     ) {
         $this->_imageFactory = $imageFactory;
         $this->_baseFileTmp = false;
     }
-    
+
     public function aroundSetBaseFile(
         \Magento\Catalog\Model\Product\Image $subject,
         \Closure $proceed,
         $file
     ) {
         $result = $proceed($file);
-        
-        if (substr($file, 0, 4) == 'http' && @getimagesize($file)) {
+
+        if (substr($file, 0, 4) == 'http') {
             $this->_isBaseFilePlaceholderTmp = false;
             $this->_baseFileTmp              = $file;
         }
-        
+
         return $result;
     }
-    
+
     /**
      * @return string
      */
@@ -57,7 +60,7 @@ class Image
     ) {
         return false;
     }
-    
+
     /**
      * @return string
      */
@@ -68,10 +71,10 @@ class Image
         if ($this->_baseFileTmp) {
             return $this->_baseFileTmp;
         }
-        
+
         return $proceed();
     }
-    
+
     /**
      * Retrieve 'true' if image is a base file placeholder
      *
@@ -87,7 +90,7 @@ class Image
             return $proceed();
         }
     }
-    
+
     /**
      * Return resized product image information
      *
@@ -98,14 +101,12 @@ class Image
         \Closure $proceed
     ) {
         if ($this->_baseFileTmp) {
-            $imageSize = @getimagesize($this->_baseFileTmp);
-        } else {
-            $imageSize = $proceed();
+            return ['x' => 100, 'y' => 100];
         }
-        
-        return $imageSize;
+
+        return $proceed();
     }
-    
+
     /**
      * @return string
      */
@@ -116,10 +117,10 @@ class Image
         if ($this->_baseFileTmp) {
             return $this->_baseFileTmp;
         }
-        
+
         return $proceed();
     }
-    
+
     /**
      * @return MagentoImage
      */
@@ -131,10 +132,10 @@ class Image
             $this->_processorTmp = $this->_imageFactory->create();
             $subject->setImageProcessor($this->_processorTmp);
         }
-        
+
         return $proceed();
     }
-    
+
     /**
      * @return bool
      */
@@ -147,7 +148,7 @@ class Image
         } else {
             $result = $proceed();
         }
-    
+
         return $result;
     }
 }
