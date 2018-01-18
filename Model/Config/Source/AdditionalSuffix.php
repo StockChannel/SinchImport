@@ -1,16 +1,13 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Model\Config\Source;
+namespace SITC\Sinchimport\Model\Config\Source;
 
 class AdditionalSuffix implements \Magento\Framework\Option\ArrayInterface
 {
     const ADDITIONAL_SUFFIX_CONFIG_NONE = 0;
     const ADDITIONAL_SUFFIX_CONFIG_PRODUCT_ID = 1;
     const ADDITIONAL_SUFFIX_CONFIG_PRODUCT_SKU = 2;
-
+    
     public function toOptionArray()
     {
         return [
@@ -21,7 +18,7 @@ class AdditionalSuffix implements \Magento\Framework\Option\ArrayInterface
              'label' => 'Product SKU']
         ];
     }
-
+    
     public function toArray()
     {
         return [

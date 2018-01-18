@@ -1,49 +1,45 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Block\System\Config;
+namespace SITC\Sinchimport\Block\System\Config;
 
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
 class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
 {
     protected $sinch;
-
+    
     /**
      * @param \Magento\Backend\Block\Template\Context $context
      * @param array                                   $data
      */
     public function __construct(
         \Magento\Backend\Block\Template\Context $context,
-        \Magebuzz\Sinchimport\Model\Sinch $sinch,
+        \SITC\Sinchimport\Model\Sinch $sinch,
         array $data = []
     ) {
         parent::__construct($context, $data);
         $this->sinch = $sinch;
     }
-
+    
     /**
      * @param AbstractElement $element
      *
      * @return string
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @codeCoverageIgnore
      */
     protected function _getElementHtml(AbstractElement $element)
     {
         $html = $this->_appendCss();
-
+        
         $lastSuccessImport = $this->sinch->getDateOfLatestSuccessImport();
         $importHistory     = $this->sinch->getImportStatusHistory();
-
-        $cssArr = [
+        
+        $cssArr = array(
             'Failed'     => 'sinch-error',
             'Run'        => 'sinch-run',
             'Successful' => 'sinch-success'
-        ];
-
+        );
+        
         $html
             .= '
 <!--Table for import history-->
@@ -63,7 +59,7 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
     </thead>
     <tbody>
         ';
-
+        
         foreach ($importHistory as $item) {
             $html
                 .= '
@@ -83,10 +79,10 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
     </tbody>
 </table>
         ';
-
+        
         return $html;
     }
-
+    
     protected function _appendCss()
     {
         $html
@@ -112,6 +108,12 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
 
     .sinch-success {
         color: green;
+        font-weight: bold;
+        margin: 5px 0;
+    }
+
+    .sinch-processing {
+        color: blue;
         font-weight: bold;
         margin: 5px 0;
     }
@@ -143,7 +145,7 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
     }
 </style>
         ';
-
+        
         return $html;
     }
 }

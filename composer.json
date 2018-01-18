@@ -1,8 +1,8 @@
 {
   "name": "stockinthechannel/import",
-  "description": "Magebuzz Sinch Import",
+  "description": "Stock in the chanel Sinch Import",
   "type": "magento2-module",
-  "version": "1.2.0",
+  "version": "2.0.0",
   "require": {
     "php": "~7.0.0",
     "magento/framework": "~101.0.0"
@@ -17,9 +17,9 @@
   ],
   "authors": [
     {
-      "name": "Magebuzz Team",
-      "email": "support@magebuzz.com",
-      "homepage": "http://www.magebuzz.com/",
+      "name": "Tigren Team",
+      "email": "info@tigren.com",
+      "homepage": "http://www.tigren.com/",
       "role": "Developer"
     },
     {
@@ -34,7 +34,7 @@
       "registration.php"
     ],
     "psr-4": {
-      "Magebuzz\\Sinchimport\\": ""
+      "SITC\\Sinchimport\\": ""
     }
   },
   "repositories": [

@@ -1,9 +1,6 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Console\Command;
+namespace SITC\Sinchimport\Console\Command;
 
 use Magento\Framework\App\State as AppState;
 use Symfony\Component\Console\Command\Command;
@@ -14,26 +11,27 @@ use Symfony\Component\Console\Output\OutputInterface;
 class FeatureCommand extends Command
 {
     const INPUT_KEY_FEATURE_ACTION = 'feature_action';
-
+    
     /**
      * @var AppState
      */
     protected $_appState;
-
+    
     /**
-     * @var \Magebuzz\Sinchimport\Model\Sinch
+     * @var \SITC\Sinchimport\Model\Sinch
      */
     protected $sinch;
-
+    
+    
     public function __construct(
         AppState $appState,
-        \Magebuzz\Sinchimport\Model\Sinch $sinch
+        \SITC\Sinchimport\Model\Sinch $sinch
     ) {
         $this->_appState = $appState;
         $this->sinch     = $sinch;
         parent::__construct();
     }
-
+    
     /**
      * {@inheritdoc}
      */
@@ -41,14 +39,14 @@ class FeatureCommand extends Command
     {
         $this->setName('sinch:feature');
         $this->setDescription('Update Product Features');
-
+        
         $this->addArgument(
             self::INPUT_KEY_FEATURE_ACTION,
             InputArgument::REQUIRED,
             'Feature Action'
         );
     }
-
+    
     /**
      * {@inheritdoc}
      */
@@ -56,7 +54,7 @@ class FeatureCommand extends Command
     {
         $this->_appState->setAreaCode('adminhtml');
         $importType = $input->getArgument(self::INPUT_KEY_FEATURE_ACTION);
-
+        
         try {
             switch (strtolower($importType)) {
                 case 'clean':
@@ -68,8 +66,9 @@ class FeatureCommand extends Command
             }
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
-
+            
             return \Magento\Framework\Console\Cli::RETURN_FAILURE;
         }
     }
+    
 }

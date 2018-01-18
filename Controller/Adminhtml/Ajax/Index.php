@@ -1,9 +1,5 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
-
-namespace Magebuzz\Sinchimport\Controller\Adminhtml\Ajax;
+namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
 class Index extends \Magento\Backend\App\Action
 {
@@ -20,7 +16,7 @@ class Index extends \Magento\Backend\App\Action
     /**
      * Logging instance
      *
-     * @var \Magebuzz\Sinchimport\Logger\Logger
+     * @var \SITC\Sinchimport\Logger\Logger
      */
     protected $_logger;
 
@@ -31,28 +27,29 @@ class Index extends \Magento\Backend\App\Action
     protected $_directory;
 
     /**
-     * @param \Magento\Backend\App\Action\Context              $context
+     * @param \Magento\Backend\App\Action\Context $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\View\LayoutFactory            $layoutFactory
-     * @param \Magento\Framework\Json\EncoderInterface         $jsonEncoder
-     * @param \Magebuzz\Sinchimport\Logger\Logger              $logger
+     * @param \Magento\Framework\View\LayoutFactory $layoutFactory
+     * @param \Magento\Framework\Json\EncoderInterface $jsonEncoder
+     * @param \SITC\Sinchimport\Logger\Logger $logger
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
         \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
         \Magento\Framework\View\LayoutFactory $layoutFactory,
         \Magento\Framework\Json\EncoderInterface $jsonEncoder,
-        \Magebuzz\Sinchimport\Model\Sinch $sinch,
-        \Magebuzz\Sinchimport\Logger\Logger $logger,
+        \SITC\Sinchimport\Model\Sinch $sinch,
+        \SITC\Sinchimport\Logger\Logger $logger,
         \Magento\Framework\Filesystem\DirectoryList $directoryList
-    ) {
+    )
+    {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
-        $this->layoutFactory     = $layoutFactory;
-        $this->_jsonEncoder      = $jsonEncoder;
-        $this->sinch             = $sinch;
-        $this->_logger           = $logger;
-        $this->_directory        = $directoryList;
+        $this->layoutFactory = $layoutFactory;
+        $this->_jsonEncoder = $jsonEncoder;
+        $this->sinch = $sinch;
+        $this->_logger = $logger;
+        $this->_directory = $directoryList;
     }
 
     /**
@@ -64,27 +61,31 @@ class Index extends \Magento\Backend\App\Action
     {
         $this->_logger->info('Start Full Import');
 
-        /**
- * @var \Magento\Framework\Controller\Result\Json $resultJson
-*/
+        /** @var \Magento\Framework\Controller\Result\Json $resultJson */
         $resultJson = $this->resultJsonFactory->create();
 
         $rootDir = $this->_directory->getRoot() . '/';
+        $lastImportData = $this->sinch->getDataOfLatestImport();
 
-        $php_run_string_array = explode(';', $this->sinch->php_run_strings);
-        foreach ($php_run_string_array as $php_run_string) {
-            exec(
-                "nohup " . $php_run_string . " " . $rootDir
-                . "bin/magento sinch:import full > /dev/null & echo $!",
-                $out
-            );
-            sleep(1);
-            if (($out[0] > 0) && ! $this->sinch->isImportNotRun()) {
-                break;
-            }
+        if (!$this->sinch->isImportNotRun()) {
+            $result = [
+                'success' => false,
+                'message' => 'Import is running now! Please wait...',
+                'reload' => !$this->sinch->isImportNotRun() && !empty($lastImportData) && $lastImportData['import_type'] == 'PRICE STOCK'
+            ];
+        } else {
+            
+                exec(
+                    "nohup php " . $rootDir
+                    . "bin/magento sinch:import full > /dev/null & echo $!", $out
+                );
+                
+            $result = [
+                'success' => true,
+                'message' => '',
+                'reload' => false
+            ];
         }
-
-        $result = ['success' => true];
 
         return $resultJson->setJsonData($this->_jsonEncoder->encode($result));
     }

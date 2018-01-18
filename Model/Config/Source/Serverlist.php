@@ -1,9 +1,6 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Model\Config\Source;
+namespace SITC\Sinchimport\Model\Config\Source;
 
 class Serverlist implements \Magento\Framework\Option\ArrayInterface
 {
@@ -36,7 +33,7 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
              'label' => 'Demo - ftpdemo.stockinthechannel.com']
         ];
     }
-
+    
     public function toArray()
     {
         return [

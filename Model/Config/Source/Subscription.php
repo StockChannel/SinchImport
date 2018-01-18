@@ -1,9 +1,6 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Model\Config\Source;
+namespace SITC\Sinchimport\Model\Config\Source;
 
 class Subscription implements \Magento\Framework\Option\ArrayInterface
 {
@@ -36,7 +33,7 @@ class Subscription implements \Magento\Framework\Option\ArrayInterface
             ['value' => '0', 'label' => '12 PM']
         ];
     }
-
+    
     public function toArray()
     {
         return [

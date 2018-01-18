@@ -1,29 +1,26 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Model\Layer\Filter;
+namespace SITC\Sinchimport\Model\Layer\Filter;
 
 /**
  * Layer category filter
  *
- * @author Magento Core Team <core@magentocommerce.com>
+ * @author      Magento Core Team <core@magentocommerce.com>
  */
 class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
 {
     const LESS = 1;
     const GREATER = 2;
-
+    
     protected $_featureResource;
-
+    
     /**
      * Filter factory
      *
      * @var \Magento\Framework\ObjectManagerInterface
      */
     protected $objectManager;
-
+    
     /**
      * Construct
      *
@@ -43,29 +40,25 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
         array $data = []
     ) {
         parent::__construct(
-            $filterItemFactory,
-            $storeManager,
-            $layer,
-            $itemDataBuilder,
-            $data
+            $filterItemFactory, $storeManager, $layer, $itemDataBuilder, $data
         );
         $this->objectManager = $objectManager;
     }
-
+    
     public function setFeatureModel($feature)
     {
         $this->setRequestVar('feature_' . $feature['category_feature_id']);
         $this->setData('feature_model', $feature);
-
+        
         return $this;
     }
-
+    
     /**
      * Apply category filter to layer
      *
-     * @param \Magento\Framework\App\RequestInterface $request
+     * @param   \Magento\Framework\App\RequestInterface $request
      *
-     * @return $this
+     * @return  $this
      */
     public function apply(\Magento\Framework\App\RequestInterface $request)
     {
@@ -73,7 +66,7 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
         if (is_array($filter)) {
             return $this;
         }
-
+        
         $text = $this->_getOptionText($filter);
         if ($filter && $text) {
             $this->_getResource()->applyFilterToCollection($this, $filter);
@@ -82,38 +75,38 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
             );
             $this->_items = [];
         }
-
+        
         return $this;
     }
-
+    
     /**
      * Get option text from frontend model by option id
      *
-     * @param int $optionId
+     * @param   int $optionId
      *
-     * @return integer
+     * @return  integer
      */
     protected function _getOptionText($optionId)
     {
         return $optionId;
     }
-
+    
     /**
      * Retrieve resource instance
      *
-     * @return \Magebuzz\Sinchimport\Model\ResourceModel\Layer\Filter\Feature
+     * @return \SITC\Sinchimport\Model\ResourceModel\Layer\Filter\Feature
      */
     protected function _getResource()
     {
         if (is_null($this->_featureResource)) {
             $this->_featureResource = $this->objectManager->create(
-                'Magebuzz\Sinchimport\Model\ResourceModel\Layer\Filter\Feature'
+                'SITC\Sinchimport\Model\ResourceModel\Layer\Filter\Feature'
             );
         }
-
+        
         return $this->_featureResource;
     }
-
+    
     /**
      * Get filter name
      *
@@ -122,10 +115,10 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
     public function getName()
     {
         $attribute = $this->getFeatureModel();
-
+        
         return $attribute['name'];
     }
-
+    
     public function getFeatureModel()
     {
         $feature = $this->getData('feature_model');
@@ -134,10 +127,10 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                 __('The feature model is not defined.')
             );
         }
-
+        
         return $feature;
     }
-
+    
     /**
      * Get data array for building attribute filter items
      *
@@ -147,37 +140,38 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
     protected function _getItemsData()
     {
         \Magento\Framework\Profiler::start(__METHOD__);
-
+        
         $feature           = $this->getFeatureModel();
         $this->_requestVar = 'feature_' . $feature['category_feature_id'];
         $limitDirection    = isset($feature['limit_direction'])
             ? $feature['limit_direction'] : 0;
-
+        
         $data    = [];
         $options = explode("\n", $feature['restricted_values']);
         if (count($options) == 0) {
             \Magento\Framework\Profiler::stop(__METHOD__);
-
+            
             return $data;
         }
         if (isset($feature['order_val']) && $feature['order_val'] == '2') {
             $options = array_reverse($options);
         }
         if ($limitDirection != self::LESS && $limitDirection != self::GREATER) {
+            
             $optionsCount = $this->_getResource()->getCount($this);
             foreach ($options as $option) {
-                if (($pos = strpos($option, '::')) !== false) {
-                    $value = substr($option, 0, $pos);
+                if ($pos = strpos($option, '::')) {
+                    $value              = substr($option, 0, $pos);
                     $presentation_value = substr($option, $pos + 2);
                 } else {
                     $value = $presentation_value = $option;
                 }
                 if (isset($optionsCount[$value]) && $optionsCount[$value] > 0) {
-                    $data[] = [
+                    $data[] = array(
                         'label' => $presentation_value,
                         'value' => $value,
                         'count' => $optionsCount[$value],
-                    ];
+                    );
                 }
             }
         } else {
@@ -194,37 +188,33 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                     $intervals[$i]['high'] = $options[$i + 1];
                 }
             }
-
+            
             if ($feature['order_val'] == '2') {
                 array_push(
-                    $intervals,
-                    [
+                    $intervals, array(
                     'high' => $options[$oCount - 1],
-                    ]
+                )
                 );
                 array_unshift(
-                    $intervals,
-                    [
+                    $intervals, array(
                     'low' => $options[0],
-                    ]
+                )
                 );
             } else {
                 array_push(
-                    $intervals,
-                    [
+                    $intervals, array(
                     'low' => $options[$oCount - 1],
-                    ]
+                )
                 );
                 array_unshift(
-                    $intervals,
-                    [
+                    $intervals, array(
                     'high' => $options[0],
-                    ]
+                )
                 );
             }
-
+            
             $this->setData('intervals', $intervals);
-
+            
             $defaultSign = $feature['default_sign'];
             for ($i = 0; $i < count($intervals); $i++) {
                 if ($feature['order_val'] == '2') {
@@ -233,8 +223,8 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                         . " $defaultSign" : '>';
                     if ($label == '>' && isset($intervals[$i + 1])) {
                         $pad   = strlen(
-                            $intervals[$i + 1]['high'] . $defaultSign
-                        ) + 2;
+                                $intervals[$i + 1]['high'] . $defaultSign
+                            ) + 2;
                         $label = str_pad($label, $pad * 2, ' ', STR_PAD_LEFT);
                         $label = str_replace(' ', '&nbsp', $label);
                     }
@@ -247,21 +237,20 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                     $value .= isset($interval['high']) ? $interval['high']
                         : '-';
                     if (isset($interval['high'])
-                        and ! isset($interval['low'])
+                        AND ! isset($interval['low'])
                     ) {
                         $value = '-,' . $interval['high'];
                     }
                     if ($this->_getResource()->getIntervalsCountDescending(
-                        $this,
-                        $interval
-                    ) > 0
+                            $this, $interval
+                        ) > 0
                     ) {
-                        $data[] = [
+                        $data[] = array(
                             'label' => $label,
                             'value' => $value,
                             'count' => $this->_getResource()
                                 ->getIntervalsCountDescending($this, $interval),
-                        ];
+                        );
                     }
                 } else {
                     $interval = $intervals[$i];
@@ -269,8 +258,8 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                         . " $defaultSign" : '<';
                     if ($label == '<' && isset($intervals[$i + 1])) {
                         $pad   = strlen(
-                            $intervals[$i + 1]['low'] . $defaultSign
-                        ) + 2;
+                                $intervals[$i + 1]['low'] . $defaultSign
+                            ) + 2;
                         $label = str_pad($label, $pad * 2, ' ', STR_PAD_LEFT);
                         $label = str_replace(' ', '&nbsp', $label);
                     }
@@ -278,39 +267,37 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                         : ' ';
                     $label .= isset($interval['high']) ? $interval['high']
                         . " $defaultSign" : '<';
-
+                    
                     $value = isset($interval['low']) ? $interval['low'] : '-';
                     $value .= ',';
                     $value .= isset($interval['high']) ? $interval['high']
                         : '-';
                     if ($this->_getResource()->getIntervalsCount(
-                        $this,
-                        $interval
-                    ) > 0
+                            $this, $interval
+                        ) > 0
                     ) {
-                        $data[] = [
+                        $data[] = array(
                             'label' => $label,
                             'value' => $value,
                             'count' => $this->_getResource()->getIntervalsCount(
-                                $this,
-                                $interval
+                                $this, $interval
                             ),
-                        ];
+                        );
                     }
                 }
             }
         }
-
+        
         \Magento\Framework\Profiler::stop(__METHOD__);
-
-        foreach ($data as $itemData) {
+        
+        foreach ($data as $key => $itemData) {
             $this->itemDataBuilder->addItemData(
                 $itemData['label'],
                 $itemData['value'],
                 $itemData['count']
             );
         }
-
+        
         return $this->itemDataBuilder->build();
     }
 }

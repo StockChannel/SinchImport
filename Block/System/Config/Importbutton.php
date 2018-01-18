@@ -1,9 +1,6 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Block\System\Config;
+namespace SITC\Sinchimport\Block\System\Config;
 
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
@@ -13,13 +10,14 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
 
     /**
      * @param \Magento\Backend\Block\Template\Context $context
-     * @param array                                   $data
+     * @param array $data
      */
     public function __construct(
         \Magento\Backend\Block\Template\Context $context,
-        \Magebuzz\Sinchimport\Model\Sinch $sinch,
+        \SITC\Sinchimport\Model\Sinch $sinch,
         array $data = []
-    ) {
+    )
+    {
         parent::__construct($context, $data);
         $this->sinch = $sinch;
     }
@@ -28,42 +26,55 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
      * @param AbstractElement $element
      *
      * @return string
-     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @codeCoverageIgnore
      */
     protected function _getElementHtml(AbstractElement $element)
     {
+        $url = $this->getUrl('sinchimport/index');
+
         $html = $this->_appendJs();
+
         $html .= $this->_appendCss();
 
         $html .= '<div id="sinchimport_status_template" name="sinchimport_status_template" style="display:none">';
         $html .= $this->_getStatusTemplateHtml();
         $html .= '</div>';
 
-        $html .= $this->getLayout()->createBlock(
+        $startImportButtonHtml = $this->getLayout()->createBlock(
             'Magento\Backend\Block\Widget\Button'
         )->setData(
             ['label' => 'Force Import Now', 'id' => 'mb-sinch-import-button',
-             'class' => 'mb-start-button', 'style' => 'margin-top:30px']
+                'class' => 'mb-start-button', 'style' => 'margin-top:30px']
         )->toHtml();
 
-        $lastImportData   = $this->sinch->getDataOfLatestImport();
-        $lastImportStatus = $lastImportData['global_status_import'];
+        $safe_mode_set = ini_get('safe_mode');
 
-        $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true">';
-        if ($lastImportStatus == 'Failed') {
-            $html .= '<p class="sinch-error">The import has failed. Last step was "'
-                . $lastImportData['detail_status_import']
-                . '"<br> Error reporting : "'
-                . $lastImportData['error_report_message'] . '"</p>';
-        } elseif ($lastImportStatus == 'Successful') {
-            $html .= '<p class="sinch-success">'
-                . $lastImportData['number_of_products']
-                . ' products imported succesfully!</p>';
-        } elseif ($lastImportStatus == 'Run') {
-            $html .= '<p>Import is running now</p>';
+        if ($safe_mode_set) {
+            $html .= "<p class='sinch-error'><b>You can't start import (safe_mode is 'On'. set safe_mode = Off in php.ini )<b></p>";
+        } else {
+            $html .= $startImportButtonHtml;
         }
-        $html .= '</div>';
+
+        $lastImportData = $this->sinch->getDataOfLatestImport();
+        if (!empty($lastImportData) && $lastImportData['import_type'] == 'FULL') {
+            $lastImportStatus = $lastImportData['global_status_import'];
+            if ($lastImportStatus == 'Failed') {
+                $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"><br><br><hr/><p class="sinch-error">The import has failed. Please ensure that you are using the correct settings. Last step was "'
+                    . $lastImportData['detail_status_import']
+                    . '"<br> Error reporting : "'
+                    . $lastImportData['error_report_message'] . '"</p></div>';
+            } elseif ($lastImportStatus == 'Successful') {
+                $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"><br><br><hr/><p class="sinch-success">'
+                    . $lastImportData['number_of_products']
+                    . ' products imported succesfully!</p></div>';
+            } elseif ($lastImportStatus == 'Run') {
+                $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"><br><br><hr/><p class="sinch-processing">Import is running now</p></div>';
+            } else {
+                $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"></div>';
+            }
+        } else {
+            $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"></div>';
+        }
 
         return $html;
     }
@@ -71,16 +82,16 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
     protected function _appendJs()
     {
         $completeIcon = $this->getViewFileUrl(
-            'Magebuzz_Sinchimport::images/import_complete.gif'
+            'SITC_Sinchimport::images/import_complete.gif'
         );
-        $runningIcon  = $this->getViewFileUrl(
-            'Magebuzz_Sinchimport::images/ajax_running.gif'
+        $runningIcon = $this->getViewFileUrl(
+            'SITC_Sinchimport::images/ajax_running.gif'
         );
 
-        $postUrl           = $this->getUrl('sinchimport/ajax');
+        $postUrl = $this->getUrl('sinchimport/ajax');
         $postStockPriceUrl = $this->getUrl('sinchimport/ajax/stockPrice');
-        $postUrlUpd        = $this->getUrl('sinchimport/ajax/updateStatus');
-        $indexingUrl       = $this->getUrl('sinchimport/ajax/indexingData');
+        $postUrlUpd = $this->getUrl('sinchimport/ajax/updateStatus');
+        $indexingUrl = $this->getUrl('sinchimport/ajax/indexingData');
 
         $html
             = "
@@ -96,11 +107,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 this.indexingUrl = '" . $indexingUrl . "';
                 this.postUrlUpd = '" . $postUrlUpd . "';
                 this.failureUrl = document.URL;
-                // unique user session ID
-                this.SID = null;
-                // object with event message data
-                this.objectMsg = null;
-                this.prevMsg = '';
+                this.objectMsgs = null;
                 // interval object
                 this.updateTimer = null;
                 // default shipping code. Display on errors
@@ -151,8 +158,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 document.getElementById('sinchimport_parse_stock_and_prices').innerHTML = runningIcon;
                 document.getElementById('sinchimport_generate_category_filters').innerHTML = runningIcon;
                 document.getElementById('sinchimport_indexing_data').innerHTML = runningIcon;
-                document.getElementById('sinchimport_import_finished').innerHTML = runningIcon;
-
+                document.getElementById('sinchimport_finish_import').innerHTML = runningIcon;
             },
 
             beforeStockPriceImport: function () {
@@ -192,17 +198,27 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                     parameters: '',
                     requestTimeout: 10,
                     onSuccess: function(transport) {
-                        var response = transport.responseText || null;
-                        _this.SID = response;
-                        if (_this.SID) {
-                            _this.updateTimer = setInterval(function(){_this.updateEvent();},10000);
-                            $('session_id').value = _this.SID;
-                        } else {
-                            alert('Can not get your session ID. Please reload the page!');
+                        var response = transport.responseText.evalJSON();
+                        if (!response.success) {
+                            alert(response.message);
+                            if(response.reload) {
+                                setTimeout(function() {
+                                        location.reload();
+                                }, 2000);
+                            }
                         }
+                        _this.updateTimer = setInterval(function(){_this.updateEvent();}, 5000);
                     },
-                    onTimeout: function() { alert('Can not get your session ID. Timeout!'); },
-                    onFailure: function() { alert('Something went wrong...') }
+                    onTimeout: function() {
+                        setTimeout(function() {
+                                location.reload();
+                        }, 2000);
+                    },
+                    onFailure: function() {
+                        setTimeout(function() {
+                                location.reload();
+                        }, 2000);
+                    }
                 });
 
             },
@@ -211,37 +227,31 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 _this = this;
                 new Ajax.Request(this.postUrlUpd, {
                     method: 'post',
-                    parameters: {session_id: this.SID},
+                    parameters: {},
                     onSuccess: function(transport) {
-                        _this.objectMsg = transport.responseText.evalJSON();
-                        console.log(_this.objectMsg);
-                        _this.prevMsg = _this.objectMsg.message;
-                        if(_this.prevMsg!=''){
-                           _this.updateStatusHtml();
-                        }
-
-                        if (_this.objectMsg.error == 1) {
-                            // Do something on error
-                            _this.clearUpdateInterval();
-                        }
-
-                        if (_this.objectMsg.finished == 1) {
-                            _this.objectMsg.message='Import finished';
-                            _this.updateStatusHtml();
-                            _this.clearUpdateInterval();
+                        _this.objectMsgs = transport.responseText.evalJSON();
+                        if(_this.objectMsgs.length){
+                            _this.objectMsgs.forEach(function (objectMsg) {
+                                if (objectMsg.finished == 1) {
+                                    _this.updateStatusHtml(objectMsg);
+                                    _this.clearUpdateInterval();
+                                } else {
+                                    _this.updateStatusHtml(objectMsg);
+                                }
+                            });
                         }
                     },
                     onFailure: this.ajaxFailure.bind(),
                 });
             },
 
-            updateStatusHtml: function(){
-                message=this.objectMsg.message.toLowerCase();
-                mess_id='sinchimport_'+message.replace(/\s+/g, '_');
+            updateStatusHtml: function(objectMsg){
+                message = objectMsg.message.toLowerCase();
+                mess_id = 'sinchimport_'+message.replace(/\s+/g, '_');
                 if(document.getElementById(mess_id)){
-                    $(mess_id).innerHTML='<img src=\"" . $completeIcon . "\"/>'
+                    $(mess_id).innerHTML = '<img src=\"" . $completeIcon . "\"/>';
                 }
-                htm=$('sinchimport_status_template').innerHTML;
+                html = $('sinchimport_status_template').innerHTML;
             },
 
             ajaxFailure: function(){
@@ -273,7 +283,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
     protected function _getStatusTemplateHtml()
     {
         $runningIcon = $this->getViewFileUrl(
-            'Magebuzz_Sinchimport::images/ajax_running.gif'
+            'SITC_Sinchimport::images/ajax_running.gif'
         );
 
         $html
@@ -409,7 +419,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
         <tr>
             <td style='padding:10px 5px;' nowrap=''>Import Finished</td>
             <td style='padding:10px 5px;'>
-                <span id='sinchimport_import_finished'>
+                <span id='sinchimport_finish_import'>
                     <img src='" . $runningIcon . "' alt='Import Finished' />
                </span>
             </td>
@@ -420,4 +430,5 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
 
         return $html;
     }
+
 }

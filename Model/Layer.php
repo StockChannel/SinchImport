@@ -1,9 +1,6 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Model;
+namespace SITC\Sinchimport\Model;
 
 class Layer extends \Magento\Catalog\Model\Layer
 {
@@ -12,6 +9,7 @@ class Layer extends \Magento\Catalog\Model\Layer
         \Magento\Framework\Profiler::start(__METHOD__);
         $category       = $this->getCurrentCategory();
         $categoryId     = $category->getEntityId();
+        $tCategor       = $this->_resource->getTableName('sinch_categories');
         $tCatFeature    = $this->_resource->getTableName(
             'sinch_categories_features'
         );
@@ -21,17 +19,17 @@ class Layer extends \Magento\Catalog\Model\Layer
         $tCategMapp     = $this->_resource->getTableName(
             'sinch_categories_mapping'
         );
-
+        
         $connection = $this->_resource->getConnection();
-
+        
         $select = $connection->select()
-            ->from(['cf' => $tCatFeature])
+            ->from(array('cf' => $tCatFeature))
             ->joinInner(
-                ['rv' => $tRestrictedVal],
+                array('rv' => $tRestrictedVal),
                 'cf.category_feature_id = rv.category_feature_id'
             )
             ->joinInner(
-                ['cm' => $tCategMapp],
+                array('cm' => $tCategMapp),
                 'cf.store_category_id = cm.store_category_id'
             )
             ->where('cm.shop_entity_id = ' . $categoryId)
@@ -44,10 +42,10 @@ class Layer extends \Magento\Catalog\Model\Layer
             ->columns(
                 'GROUP_CONCAT(`rv`.`text` SEPARATOR "\n") as restricted_values'
             );
-
+        
         $result = $connection->fetchAll($select);
         \Magento\Framework\Profiler::stop(__METHOD__);
-
+        
         return $result;
     }
 }

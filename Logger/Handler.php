@@ -1,9 +1,6 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Logger;
+namespace SITC\Sinchimport\Logger;
 
 class Handler extends \Magento\Framework\Logger\Handler\Base
 {
@@ -13,7 +10,7 @@ class Handler extends \Magento\Framework\Logger\Handler\Base
      * @var int
      */
     protected $loggerType = Logger::INFO;
-
+    
     /**
      * File name
      *

@@ -1,30 +1,23 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Cron;
+namespace SITC\Sinchimport\Cron;
 
 class Importstockprice
 {
     /**
-     * Holds the Sinch model
-     *
-     * @var \Magebuzz\Sinchimport\Model\Sinch
+     * @var \SITC\Sinchimport\Model\Sinch
      */
-    private $_sinch;
-
+    private $sinch;
+    
     /**
-     * Constructor
-     *
-     * @param \Magebuzz\Sinchimport\Model\Sinch $sinch Sinch Model
+     * @param \SITC\Sinchimport\Model\Sinch
      */
     public function __construct(
-        \Magebuzz\Sinchimport\Model\Sinch $sinch
+        \SITC\Sinchimport\Model\Sinch $sinch
     ) {
-        $this->_sinch = $sinch;
+        $this->sinch = $sinch;
     }
-
+    
     /**
      * Cron job method to fetch new tickets
      *
@@ -32,6 +25,6 @@ class Importstockprice
      */
     public function execute()
     {
-        $this->_sinch->startCronStockPriceImport();
+        $this->sinch->startCronStockPriceImport();
     }
 }

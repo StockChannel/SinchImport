@@ -1,9 +1,6 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Console\Command;
+namespace SITC\Sinchimport\Console\Command;
 
 use Magento\Framework\App\State as AppState;
 use Symfony\Component\Console\Command\Command;
@@ -13,27 +10,29 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class ImportCommand extends Command
 {
+    
     const INPUT_KEY_IMPORT_TYPE = 'import_type';
-
+    
     /**
      * @var AppState
      */
     protected $_appState;
-
+    
     /**
-     * @var \Magebuzz\Sinchimport\Model\Sinch
+     * @var \SITC\Sinchimport\Model\Sinch
      */
     protected $sinch;
-
+    
+    
     public function __construct(
         AppState $appState,
-        \Magebuzz\Sinchimport\Model\Sinch $sinch
+        \SITC\Sinchimport\Model\Sinch $sinch
     ) {
         $this->_appState = $appState;
         $this->sinch     = $sinch;
         parent::__construct();
     }
-
+    
     /**
      * {@inheritdoc}
      */
@@ -43,14 +42,14 @@ class ImportCommand extends Command
         $this->setDescription(
             'Import Products from Stock In The Channel Server'
         );
-
+        
         $this->addArgument(
             self::INPUT_KEY_IMPORT_TYPE,
             InputArgument::REQUIRED,
             'Import Type'
         );
     }
-
+    
     /**
      * {@inheritdoc}
      */
@@ -58,7 +57,7 @@ class ImportCommand extends Command
     {
         $this->_appState->setAreaCode('adminhtml');
         $importType = $input->getArgument(self::INPUT_KEY_IMPORT_TYPE);
-
+        
         try {
             switch (strtolower($importType)) {
                 case 'full':
@@ -73,8 +72,9 @@ class ImportCommand extends Command
             }
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
-
+            
             return \Magento\Framework\Console\Cli::RETURN_FAILURE;
         }
     }
+    
 }

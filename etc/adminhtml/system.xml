@@ -1,27 +1,22 @@
 <?xml version="1.0"?>
-<!--
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
--->
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
-        <tab id="magebuzz" translate="label" sortOrder="9000">
-            <label>Magebuzz Extensions</label>
+        <tab id="sitc" translate="label" sortOrder="9000">
+            <label>SITC Extensions</label>
         </tab>
         <section id="sinchimport" translate="label" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
             <class>separator-top</class>
             <label>Sinch Import</label>
-            <tab>magebuzz</tab>
-            <resource>Magebuzz_Sinchimport::config_sinchimport</resource>
+            <tab>sitc</tab>
+            <resource>SITC_Sinchimport::system_config</resource>
             <group id="general" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1"
                    showInStore="1">
                 <label>General Settings</label>
                 <field id="additional_suffix" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1"
                        showInStore="1">
                     <label>Addition Suffix for Product Url Rewrite</label>
-                    <source_model>Magebuzz\Sinchimport\Model\Config\Source\AdditionalSuffix</source_model>
+                    <source_model>SITC\Sinchimport\Model\Config\Source\AdditionalSuffix</source_model>
                 </field>
             </group>
             <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1"
@@ -33,7 +28,7 @@
                 <field id="ftp_server" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1"
                        showInStore="1">
                     <label>FTP Server</label>
-                    <source_model>Magebuzz\Sinchimport\Model\Config\Source\Serverlist</source_model>
+                    <source_model>SITC\Sinchimport\Model\Config\Source\Serverlist</source_model>
                 </field>
                 <field id="username" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1"
                        showInStore="1">
@@ -46,12 +41,12 @@
                 <field id="replace_category" translate="label" type="select" sortOrder="30" showInDefault="1"
                        showInWebsite="1" showInStore="1">
                     <label>Merge or Overwrite Categories</label>
-                    <source_model>Magebuzz\Sinchimport\Model\Config\Source\Caterewrite</source_model>
+                    <source_model>SITC\Sinchimport\Model\Config\Source\Caterewrite</source_model>
                 </field>
                 <field id="replace_product" translate="label" type="select" sortOrder="40" showInDefault="1"
                        showInWebsite="1" showInStore="1">
                     <label>Merge or Overwrite Products</label>
-                    <source_model>Magebuzz\Sinchimport\Model\Config\Source\Prodrewrite</source_model>
+                    <source_model>SITC\Sinchimport\Model\Config\Source\Prodrewrite</source_model>
                 </field>
                 <field id="backup_data" translate="label" type="select" sortOrder="50" showInDefault="1"
                        showInWebsite="1" showInStore="1">
@@ -74,14 +69,14 @@
                     <comment>Run the re-indexing as a separate task.</comment>
                 </field>
                 <field id="indexing_data" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <frontend_model>Magebuzz\Sinchimport\Block\System\Config\Indexingbutton</frontend_model>
+                    <frontend_model>SITC\Sinchimport\Block\System\Config\Indexingbutton</frontend_model>
                     <depends>
                         <field id="indexing_separately">1</field>
                     </depends>
                 </field>
                 <field id="start_sinch_import" translate="label" type="button" sortOrder="40" showInDefault="1"
                        showInWebsite="1" showInStore="1">
-                    <frontend_model>Magebuzz\Sinchimport\Block\System\Config\Importbutton</frontend_model>
+                    <frontend_model>SITC\Sinchimport\Block\System\Config\Importbutton</frontend_model>
                 </field>
             </group>
             <group id="sinch_import_stockpricestatus" translate="label" type="text" sortOrder="30" showInDefault="1"
@@ -91,7 +86,7 @@
                 </comment>
                 <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1"
                        showInWebsite="1" showInStore="1">
-                    <frontend_model>Magebuzz\Sinchimport\Block\System\Config\Stockpriceimportbutton</frontend_model>
+                    <frontend_model>SITC\Sinchimport\Block\System\Config\Stockpriceimportbutton</frontend_model>
                 </field>
             </group>
             <group id="sinch_import_history" translate="label" type="text" sortOrder="40" showInDefault="1"
@@ -99,7 +94,7 @@
                 <label>Import History</label>
                 <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1"
                        showInWebsite="1" showInStore="1">
-                    <frontend_model>Magebuzz\Sinchimport\Block\System\Config\Importhistory</frontend_model>
+                    <frontend_model>SITC\Sinchimport\Block\System\Config\Importhistory</frontend_model>
                 </field>
             </group>
         </section>

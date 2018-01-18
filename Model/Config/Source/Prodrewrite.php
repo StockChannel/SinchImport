@@ -1,9 +1,6 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
-namespace Magebuzz\Sinchimport\Model\Config\Source;
+namespace SITC\Sinchimport\Model\Config\Source;
 
 class Prodrewrite implements \Magento\Framework\Option\ArrayInterface
 {
@@ -14,7 +11,7 @@ class Prodrewrite implements \Magento\Framework\Option\ArrayInterface
             ['value' => 'MERGE', 'label' => 'Merge']
         ];
     }
-
+    
     public function toArray()
     {
         return [

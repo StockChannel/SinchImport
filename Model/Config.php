@@ -1,7 +1,4 @@
 <?php
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
 
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
@@ -34,8 +31,7 @@ define('DEFAULT_FILE_TERMINATED_CHAR', "|");
 define('LANG_CODE', 'en');
 define('REWRITE_CATEGORIES_ORDER_ID', 'FALSE');
 define(
-    'PRICE_BREAKS',
-    "
+    'PRICE_BREAKS', "
 0-25;
 25-50;
 50-100;

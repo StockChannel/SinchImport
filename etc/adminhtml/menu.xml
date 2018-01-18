@@ -2,10 +2,10 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
     <menu>
-        <add id="Magebuzz_Sinchimport::sinchimport" title="Stock In The Channel" module="Magebuzz_Sinchimport"
-             sortOrder="50" resource="Magebuzz_Sinchimport::sinchimport"/>
-        <add id="Magebuzz_Sinchimport::importdata" title="Import Data" module="Magebuzz_Sinchimport" sortOrder="0"
-             parent="Magebuzz_Sinchimport::sinchimport" action="adminhtml/system_config/edit/section/sinchimport"
-             resource="Magebuzz_Sinchimport::importdata"/>
+        <add id="SITC_Sinchimport::sinchimport" title="Stock In The Channel" module="SITC_Sinchimport"
+             sortOrder="50" resource="SITC_Sinchimport::sinchimport"/>
+        <add id="SITC_Sinchimport::importdata" title="Import Data" module="SITC_Sinchimport" sortOrder="0"
+             parent="SITC_Sinchimport::sinchimport" action="adminhtml/system_config/edit/section/sinchimport"
+             resource="SITC_Sinchimport::importdata"/>
     </menu>
 </config>

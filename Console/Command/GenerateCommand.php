@@ -1,10 +1,6 @@
 <?php
 
-/**
- * @copyright Copyright (c) 2016 www.magebuzz.com
- */
-
-namespace Magebuzz\Sinchimport\Console\Command;
+namespace SITC\Sinchimport\Console\Command;
 
 use Magento\Framework\App\State as AppState;
 use Symfony\Component\Console\Command\Command;
@@ -17,21 +13,22 @@ class GenerateCommand extends Command
      * @var AppState
      */
     protected $_appState;
-
+    
     /**
-     * @var \Magebuzz\Sinchimport\Model\Sinch
+     * @var \SITC\Sinchimport\Model\Sinch
      */
     protected $sinch;
-
+    
+    
     public function __construct(
         AppState $appState,
-        \Magebuzz\Sinchimport\Model\Sinch $sinch
+        \SITC\Sinchimport\Model\Sinch $sinch
     ) {
         $this->_appState = $appState;
         $this->sinch     = $sinch;
         parent::__construct();
     }
-
+    
     /**
      * {@inheritdoc}
      */
@@ -40,21 +37,23 @@ class GenerateCommand extends Command
         $this->setName('sinch:url:generate');
         $this->setDescription('Product Urls');
     }
-
+    
     /**
      * {@inheritdoc}
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $this->_appState->setAreaCode('adminhtml');
-
+        
         try {
             $this->sinch->runIndexingData();
             $this->sinch->runReindexUrlRewrite();
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
-
+            
             return \Magento\Framework\Console\Cli::RETURN_FAILURE;
         }
+        
     }
+    
 }
