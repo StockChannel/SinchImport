@@ -9,7 +9,6 @@ class Layer extends \Magento\Catalog\Model\Layer
         \Magento\Framework\Profiler::start(__METHOD__);
         $category       = $this->getCurrentCategory();
         $categoryId     = $category->getEntityId();
-        $tCategor       = $this->_resource->getTableName('sinch_categories');
         $tCatFeature    = $this->_resource->getTableName(
             'sinch_categories_features'
         );

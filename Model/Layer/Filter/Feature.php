@@ -160,7 +160,7 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
             
             $optionsCount = $this->_getResource()->getCount($this);
             foreach ($options as $option) {
-                if ($pos = strpos($option, '::')) {
+                if (($pos = strpos($option, '::')) !== false) {
                     $value              = substr($option, 0, $pos);
                     $presentation_value = substr($option, $pos + 2);
                 } else {

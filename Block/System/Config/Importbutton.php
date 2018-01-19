@@ -30,8 +30,6 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
      */
     protected function _getElementHtml(AbstractElement $element)
     {
-        $url = $this->getUrl('sinchimport/index');
-
         $html = $this->_appendJs();
 
         $html .= $this->_appendCss();

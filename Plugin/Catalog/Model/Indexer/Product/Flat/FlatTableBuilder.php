@@ -41,7 +41,7 @@ class FlatTableBuilder
         \Closure $proceed,
         $storeId, $changedIds, $valueFieldSuffix, $tableDropSuffix, $fillTmpTables
     ){
-        $result = $proceed($storeId, $changedIds, $valueFieldSuffix, $tableDropSuffix, $fillTmpTables);
+        $proceed($storeId, $changedIds, $valueFieldSuffix, $tableDropSuffix, $fillTmpTables);
         $connection = $this->_resource->getConnection();
         $flatTable = $this->_productIndexerHelper->getFlatTableName($storeId);
         $sql = "UPDATE {$flatTable} as t2 INNER JOIN catalog_product_entity AS e SET t2.store_product_id = e.store_product_id, t2.sinch_product_id = e.sinch_product_id where t2.entity_id = e.entity_id";

@@ -9,11 +9,6 @@ class Index extends \Magento\Backend\App\Action
     protected $resultJsonFactory;
 
     /**
-     * @var \Magento\Framework\View\LayoutFactory
-     */
-    protected $_layoutFactory;
-
-    /**
      * Logging instance
      *
      * @var \SITC\Sinchimport\Logger\Logger
@@ -29,14 +24,12 @@ class Index extends \Magento\Backend\App\Action
     /**
      * @param \Magento\Backend\App\Action\Context $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\View\LayoutFactory $layoutFactory
      * @param \Magento\Framework\Json\EncoderInterface $jsonEncoder
      * @param \SITC\Sinchimport\Logger\Logger $logger
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
         \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
-        \Magento\Framework\View\LayoutFactory $layoutFactory,
         \Magento\Framework\Json\EncoderInterface $jsonEncoder,
         \SITC\Sinchimport\Model\Sinch $sinch,
         \SITC\Sinchimport\Logger\Logger $logger,
@@ -45,7 +38,6 @@ class Index extends \Magento\Backend\App\Action
     {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
-        $this->layoutFactory = $layoutFactory;
         $this->_jsonEncoder = $jsonEncoder;
         $this->sinch = $sinch;
         $this->_logger = $logger;
@@ -53,9 +45,7 @@ class Index extends \Magento\Backend\App\Action
     }
 
     /**
-     * Category list suggestion based on already entered symbols
-     *
-     * @return \Magento\Framework\Controller\Result\Json
+     * Index
      */
     public function execute()
     {
@@ -77,7 +67,7 @@ class Index extends \Magento\Backend\App\Action
             
                 exec(
                     "nohup php " . $rootDir
-                    . "bin/magento sinch:import full > /dev/null & echo $!", $out
+                    . "bin/magento sinch:import full > /dev/null & echo $!"
                 );
                 
             $result = [
