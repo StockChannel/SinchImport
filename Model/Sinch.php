@@ -253,9 +253,9 @@ class Sinch
      *
      * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
      */
-    private function createTempDir(DirectoryList $directoryList)
+    private function createTempDir(\Magento\Framework\App\Filesystem\DirectoryList $directoryList)
     {
-        $dir = $directoryList->getPath(DirectoryList::VAR_DIR) . '/magebuzz/sinchimport/';
+        $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/magebuzz/sinchimport/';
         if (!is_dir($dir)) {
             if (!mkdir($dir, 0777, true)) {
                 throw new \Exception("Failed to create import directory. Check filesystem permissions");

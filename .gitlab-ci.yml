@@ -28,7 +28,7 @@ unused-code-detector:
 
 package:
   stage: package
-  script: zip -r ${VENDOR_NAME}_${VENDOR_NAME}-${CI_COMMIT_REF_NAME}.zip $CI_PROJECT_DIR -x '$CI_PROJECT_DIR/.git/*'
+  script: zip -r ${VENDOR_NAME}_${PACKAGE_NAME}-${CI_COMMIT_REF_NAME}.zip $CI_PROJECT_DIR -x '$CI_PROJECT_DIR/.git/*'
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
     untracked: true
