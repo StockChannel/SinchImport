@@ -23,9 +23,14 @@ class FilterList
         $this->objectManager = $objectManager;
         $this->connection    = $resourceConnection->getConnection();
     }
-    
-    public function aroundGetFilters(\Magento\Catalog\Model\Layer\FilterList $subject,
-        \Closure $proceed, $layer
+
+    /**
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+     */
+    public function aroundGetFilters(
+        \Magento\Catalog\Model\Layer\FilterList $subject,
+        \Closure $proceed,
+        $layer
     ) {
         $filters = $proceed($layer);
         

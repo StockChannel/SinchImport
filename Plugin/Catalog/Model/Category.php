@@ -9,7 +9,8 @@ class Category
      *
      * @return string
      */
-    public function afterGetImageUrl(\Magento\Catalog\Model\Category $subject,
+    public function afterGetImageUrl(
+        \Magento\Catalog\Model\Category $subject,
         $result
     ) {
         $image = $subject->getImage();

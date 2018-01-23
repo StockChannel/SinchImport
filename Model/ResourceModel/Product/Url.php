@@ -71,7 +71,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         $websiteId  = $this->_storeManager->getStore($storeId)->getWebsiteId();
         $connection = $this->getConnection();
         if ($productIds !== null) {
-            if ( ! is_array($productIds)) {
+            if (! is_array($productIds)) {
                 $productIds = [$productIds];
             }
         }

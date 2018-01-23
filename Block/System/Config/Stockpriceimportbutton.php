@@ -26,6 +26,7 @@ class Stockpriceimportbutton
      * @param AbstractElement $element
      *
      * @return string
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @codeCoverageIgnore
      */
     protected function _getElementHtml(AbstractElement $element)
@@ -47,7 +48,7 @@ class Stockpriceimportbutton
         
         if ($safe_mode_set) {
             $html .= "<p class='sinch-error'><b>You can't start import (safe_mode is 'On'. set safe_mode = Off in php.ini )<b></p>";
-        } elseif ( ! $this->sinch->isFullImportHaveBeenRun()) {
+        } elseif (! $this->sinch->isFullImportHaveBeenRun()) {
             $html .= "Full import have never finished with success";
         } else {
             $html .= $startImportButtonHtml;

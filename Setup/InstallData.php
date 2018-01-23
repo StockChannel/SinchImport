@@ -34,7 +34,8 @@ class InstallData implements InstallDataInterface
      * {@inheritdoc}
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function install(ModuleDataSetupInterface $setup,
+    public function install(
+        ModuleDataSetupInterface $setup,
         ModuleContextInterface $context
     ) {
         /** @var EavSetup $eavSetup */
@@ -46,7 +47,6 @@ class InstallData implements InstallDataInterface
         );
         
         foreach ($attrVarchar as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
@@ -121,12 +121,13 @@ class InstallData implements InstallDataInterface
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
-            
         }
         
         $attr_filt = array(
@@ -144,7 +145,9 @@ class InstallData implements InstallDataInterface
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
@@ -157,11 +160,12 @@ class InstallData implements InstallDataInterface
             
             foreach ($sets as $set) {
                 $eavSetup->addAttributeToSet(
-                    $entityTypeId, $set['attribute_set_id'], 'Default',
+                    $entityTypeId,
+                    $set['attribute_set_id'],
+                    'Default',
                     'manufacturer'
                 );
             }
-            
         }
         
         $attrText = array(
@@ -169,7 +173,6 @@ class InstallData implements InstallDataInterface
         );
         
         foreach ($attrText as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
@@ -205,12 +208,13 @@ class InstallData implements InstallDataInterface
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
-            
         }
         
         $attrText = array(
@@ -218,7 +222,6 @@ class InstallData implements InstallDataInterface
         );
         
         foreach ($attrText as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
@@ -247,7 +250,8 @@ class InstallData implements InstallDataInterface
             $eavSetup->updateAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
-                'is_searchable', '1'
+                'is_searchable',
+                '1'
             );
         }
         
@@ -256,7 +260,6 @@ class InstallData implements InstallDataInterface
         );
         
         foreach ($attrVarchar as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
@@ -290,12 +293,13 @@ class InstallData implements InstallDataInterface
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
-            
         }
         
         $attrVarchar = array(
@@ -307,7 +311,6 @@ class InstallData implements InstallDataInterface
         );
         
         foreach ($attrVarchar as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
@@ -341,7 +344,9 @@ class InstallData implements InstallDataInterface
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
@@ -353,7 +358,6 @@ class InstallData implements InstallDataInterface
         );
         
         foreach ($attrVarchar as $key => $value) {
-            
             $eavSetup->addAttribute(
                 \Magento\Catalog\Model\Product::ENTITY,
                 $key,
@@ -387,12 +391,13 @@ class InstallData implements InstallDataInterface
             );
             
             if ($id = $eavSetup->getAttribute(
-                $entityTypeId, $key, 'attribute_id'
+                $entityTypeId,
+                $key,
+                'attribute_id'
             )
             ) {
                 $eavSetup->updateAttribute($entityTypeId, $id, $data);
             }
-            
         }
     }
 }

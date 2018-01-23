@@ -16,7 +16,8 @@ class InstallSchema implements InstallSchemaInterface
      * {@inheritdoc}
      * @SuppressWarnings(PHPMD.ExcessiveMethodLength)
      */
-    public function install(SchemaSetupInterface $setup,
+    public function install(
+        SchemaSetupInterface $setup,
         ModuleContextInterface $context
     ) {
         $installer = $setup;
@@ -465,20 +466,22 @@ class InstallSchema implements InstallSchemaInterface
                 'sinch_calc_price'
             )
         );
-        
+
         $config = $installer->getConnection()->getConfig();
         $connection = mysqli_connect(
-            $config['host'], $config['username'], $config['password']
+            $config['host'],
+            $config['username'],
+            $config['password']
         );
-        
-        if ( ! $connection) {
+
+        if (! $connection) {
             throw new \Exception('Failed to connect to database.');
         }
-        
-        if ( ! mysqli_select_db($connection, $config['dbname'])) {
+
+        if (! mysqli_select_db($connection, $config['dbname'])) {
             throw new \Exception('Failed to select a database.');
         }
-        
+
         $createProcedureQuery
             = "
 CREATE PROCEDURE " . $installer->getTable('sinch_filter_products') . "(
@@ -690,11 +693,11 @@ BEGIN
     DROP PREPARE myquery;
 END
         ";
-        
-        if ( ! mysqli_query($connection, $createProcedureQuery)) {
+
+        if (! mysqli_query($connection, $createProcedureQuery)) {
             throw new \Exception("Failed to create stored procedure");
         }
-        
+
         $createCalPriceFunctionQuery
             = "
 CREATE FUNCTION " . $installer->getTable('sinch_calc_price') . " (price decimal(8,2) , marge decimal(10,2), fixed decimal(10,2), final_price decimal(10,2)) RETURNS decimal(8,2)
@@ -711,13 +714,13 @@ BEGIN
     RETURN price;
 END
         ";
-        
-        if ( ! mysqli_query($connection, $createCalPriceFunctionQuery)) {
+
+        if (! mysqli_query($connection, $createCalPriceFunctionQuery)) {
             throw new \Exception("Failed to create calculating price function");
         }
-        
+
         mysqli_close($connection);
-        
+
         $installer->endSetup();
     }
 }

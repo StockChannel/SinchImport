@@ -26,53 +26,42 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
      * @param AbstractElement $element
      *
      * @return string
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @codeCoverageIgnore
      */
     protected function _getElementHtml(AbstractElement $element)
     {
         $html = $this->_appendJs();
-
         $html .= $this->_appendCss();
 
         $html .= '<div id="sinchimport_status_template" name="sinchimport_status_template" style="display:none">';
         $html .= $this->_getStatusTemplateHtml();
         $html .= '</div>';
 
-        $startImportButtonHtml = $this->getLayout()->createBlock(
+        $html .= $this->getLayout()->createBlock(
             'Magento\Backend\Block\Widget\Button'
         )->setData(
             ['label' => 'Force Import Now', 'id' => 'mb-sinch-import-button',
-                'class' => 'mb-start-button', 'style' => 'margin-top:30px']
+             'class' => 'mb-start-button', 'style' => 'margin-top:30px']
         )->toHtml();
 
-        $safe_mode_set = ini_get('safe_mode');
+        $lastImportData   = $this->sinch->getDataOfLatestImport();
+        $lastImportStatus = $lastImportData['global_status_import'];
 
-        if ($safe_mode_set) {
-            $html .= "<p class='sinch-error'><b>You can't start import (safe_mode is 'On'. set safe_mode = Off in php.ini )<b></p>";
-        } else {
-            $html .= $startImportButtonHtml;
+        $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true">';
+        if ($lastImportStatus == 'Failed') {
+            $html .= '<p class="sinch-error">The import has failed. Last step was "'
+                . $lastImportData['detail_status_import']
+                . '"<br> Error reporting : "'
+                . $lastImportData['error_report_message'] . '"</p>';
+        } elseif ($lastImportStatus == 'Successful') {
+            $html .= '<p class="sinch-success">'
+                . $lastImportData['number_of_products']
+                . ' products imported succesfully!</p>';
+        } elseif ($lastImportStatus == 'Run') {
+            $html .= '<p>Import is running now</p>';
         }
-
-        $lastImportData = $this->sinch->getDataOfLatestImport();
-        if (!empty($lastImportData) && $lastImportData['import_type'] == 'FULL') {
-            $lastImportStatus = $lastImportData['global_status_import'];
-            if ($lastImportStatus == 'Failed') {
-                $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"><br><br><hr/><p class="sinch-error">The import has failed. Please ensure that you are using the correct settings. Last step was "'
-                    . $lastImportData['detail_status_import']
-                    . '"<br> Error reporting : "'
-                    . $lastImportData['error_report_message'] . '"</p></div>';
-            } elseif ($lastImportStatus == 'Successful') {
-                $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"><br><br><hr/><p class="sinch-success">'
-                    . $lastImportData['number_of_products']
-                    . ' products imported succesfully!</p></div>';
-            } elseif ($lastImportStatus == 'Run') {
-                $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"><br><br><hr/><p class="sinch-processing">Import is running now</p></div>';
-            } else {
-                $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"></div>';
-            }
-        } else {
-            $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true"></div>';
-        }
+        $html .= '</div>';
 
         return $html;
     }

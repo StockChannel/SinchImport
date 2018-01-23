@@ -110,7 +110,7 @@ class Feature extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
         $connection = $this->getConnection();
         
         $cfid = 0;
-        if ( ! is_null($value)) {
+        if (! is_null($value)) {
             $feature = $filter->getFeatureModel();
             $cfid    = $feature['category_feature_id'];
         }
