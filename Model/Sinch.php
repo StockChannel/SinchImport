@@ -132,12 +132,6 @@ class Sinch
     private $_deploymentData;
     private $imType;
     /**
-     * Filesystem Directory List
-     *
-     * @var DirectoryList
-     */
-    private $directoryList;
-    /**
      * @var \Magento\Framework\App\DeploymentConfig
      */
     private $_deploymentConfig;
@@ -1014,11 +1008,7 @@ class Sinch
             $sinch_categories                = $this->_getTableName(
                 'sinch_categories'
             );
-            $category_types                  = $this->_getTableName(
-                'sinch_category_types'
-            );
 
-            $_categoryEntityTypeId = $this->_categoryEntityTypeId;
             $_categoryDefault_attribute_set_id
                 = $this->_categoryDefault_attribute_set_id;
 

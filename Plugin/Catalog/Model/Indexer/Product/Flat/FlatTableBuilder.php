@@ -34,6 +34,7 @@ class FlatTableBuilder
     /**
      * Retrieve image URL
      *
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @return string
      */
     public function aroundBuild(

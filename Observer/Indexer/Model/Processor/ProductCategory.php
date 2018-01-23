@@ -32,6 +32,9 @@ class ProductCategory implements ObserverInterface
         return '';
     }
 
+    /**
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+     */
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
         $this->_doQuery(

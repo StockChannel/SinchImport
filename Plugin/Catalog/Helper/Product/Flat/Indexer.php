@@ -6,28 +6,31 @@ class Indexer
 {
     protected $_columns;
 
-   public function aroundGetFlatColumns(\Magento\Catalog\Helper\Product\Flat\Indexer $subject, \Closure $proceed){
-       $this->_columns = $proceed();
-       $this->_columns['store_product_id'] = [
-           'unsigned' => true,
-           'default' => null,
-           'extra' => null,
-           'type' => 'integer',
-           'length' => 11,
-           'nullable' => false,
-           'comment' => 'Store Product Id'
-       ];
+    /**
+     * @SuppressWarnings(PHPMD.UnusedFormalParameter)
+     */
+    public function aroundGetFlatColumns(\Magento\Catalog\Helper\Product\Flat\Indexer $subject, \Closure $proceed){
+        $this->_columns = $proceed();
+        $this->_columns['store_product_id'] = [
+            'unsigned' => true,
+            'default' => null,
+            'extra' => null,
+            'type' => 'integer',
+            'length' => 11,
+            'nullable' => false,
+            'comment' => 'Store Product Id'
+        ];
 
-       $this->_columns['sinch_product_id'] = [
-           'unsigned' => true,
-           'default' => null,
-           'extra' => null,
-           'type' => 'integer',
-           'length' => 11,
-           'nullable' => false,
-           'comment' => 'Sinch Product Id'
-       ];
+        $this->_columns['sinch_product_id'] = [
+            'unsigned' => true,
+            'default' => null,
+            'extra' => null,
+            'type' => 'integer',
+            'length' => 11,
+            'nullable' => false,
+            'comment' => 'Sinch Product Id'
+        ];
 
-       return $this->_columns;
-   }
+        return $this->_columns;
+    }
 }
