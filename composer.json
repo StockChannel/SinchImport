@@ -1,6 +1,6 @@
 {
   "name": "stockinthechannel/import",
-  "description": "Stock in the chanel Sinch Import",
+  "description": "Stockinthechannel Import",
   "type": "magento2-module",
   "version": "2.0.0",
   "require": {
