@@ -62,13 +62,13 @@ class FilterList
         );
         
         $select = $connection->select()
-            ->from(array('cf' => $featureTable))
+            ->from(['cf' => $featureTable])
             ->joinInner(
-                array('rv' => $restrictedValueTable),
+                ['rv' => $restrictedValueTable],
                 'cf.category_feature_id = rv.category_feature_id'
             )
             ->joinInner(
-                array('cm' => $categoryMappingTable),
+                ['cm' => $categoryMappingTable],
                 'cf.store_category_id = cm.store_category_id'
             )
             ->where('cm.shop_entity_id = ' . $categoryId)

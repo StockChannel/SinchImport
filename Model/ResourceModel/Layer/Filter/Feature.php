@@ -65,7 +65,7 @@ class Feature extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
      * Apply attribute filter to product collection
      *
      * @param \SITC\Sinchimport\Model\Layer\Filter\Feature $filter
-     * @param string                                           $value
+     * @param string                                       $value
      *
      * @return \SITC\Sinchimport\Model\ResourceModel\Layer\Filter\Feature
      */
@@ -96,7 +96,7 @@ class Feature extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
      * Подготавливает фильтр к поиску
      *
      * @param \SITC\Sinchimport\Model\Layer\Filter\Feature $filter
-     * @param string                                           $value
+     * @param string                                       $value
      *
      * @return string
      */
@@ -158,14 +158,14 @@ class Feature extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
         $connection->query($sql);
         
         $feature = $filter->getFeatureModel();
-        if ( ! isset($feature['limit_direction'])
+        if (! isset($feature['limit_direction'])
             || ($feature['limit_direction'] != 1
-                && $feature['limit_direction'] != 2)
+            && $feature['limit_direction'] != 2)
         ) {
-            if ( ! is_null($value)) {
+            if (! is_null($value)) {
                 $sql
                      = "INSERT INTO `$featuresTable` (category_feature_id, feature_value) VALUES (?)";
-                $sql = $connection->quoteInto($sql, array($cfid, $value));
+                $sql = $connection->quoteInto($sql, [$cfid, $value]);
                 $connection->query($sql);
             }
             $params = 'null, null';
@@ -214,20 +214,20 @@ class Feature extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
         $featureId  = $feature['category_feature_id'];
         
         $select->joinInner(
-            array('sp' => $connection->getTableName('sinch_products')),
+            ['sp' => $connection->getTableName('sinch_products')],
             "sp.store_product_id = e.store_product_id",
-            array()
+            []
         )->joinInner(
-            array('spf' => $connection->getTableName('sinch_product_features')),
+            ['spf' => $connection->getTableName('sinch_product_features')],
             "spf.sinch_product_id = e.sinch_product_id",
-            array()
+            []
         )->joinInner(
-            array('srv' => $connection->getTableName(
+            ['srv' => $connection->getTableName(
                 'sinch_restricted_values'
-            )),
+            )],
             "spf.restricted_value_id = srv.restricted_value_id AND srv.category_feature_id = $featureId",
-            array('value' => 'srv.text',
-                  'count' => 'COUNT(DISTINCT e.entity_id)')
+            ['value' => 'srv.text',
+                  'count' => 'COUNT(DISTINCT e.entity_id)']
         )
             ->group("srv.text");
         
@@ -253,38 +253,39 @@ class Feature extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
         $connection = $this->getConnection();
         $feature    = $filter->getFeatureModel();
         $select->joinInner(
-            array('spf' => $connection->getTableName('sinch_product_features')),
+            ['spf' => $connection->getTableName('sinch_product_features')],
             "spf.sinch_product_id = e.sinch_product_id",
-            array()
+            []
         )->joinLeft(
-            array('srv' => $connection->getTableName(
+            ['srv' => $connection->getTableName(
                 'sinch_restricted_values'
-            )),
+            )],
             "srv.restricted_value_id = spf.restricted_value_id",
-            array('value' => 'srv.text')
+            ['value' => 'srv.text']
         )->joinLeft(
-            array('scf' => $connection->getTableName(
+            ['scf' => $connection->getTableName(
                 'sinch_categories_features'
-            )),
+            )],
             "scf.category_feature_id = srv.category_feature_id",
-            array()
+            []
         )->joinLeft(
-            array('scm' => $connection->getTableName(
+            ['scm' => $connection->getTableName(
                 'sinch_categories_mapping'
-            )),
+            )],
             "scm.shop_store_category_id = scf.store_category_id",
-            array('count' => "COUNT(DISTINCT e.entity_id)")
+            ['count' => "COUNT(DISTINCT e.entity_id)"]
         )
             ->where(
-                'srv.category_feature_id = ?', $feature['category_feature_id']
+                'srv.category_feature_id = ?',
+                $feature['category_feature_id']
             );
         
         if (isset($interval['low'], $interval['high'])) {
             $select->where('CAST(srv.text AS SIGNED) >= ?', $interval['low'])
                 ->where('CAST(srv.text AS SIGNED) < ?', $interval['high']);
-        } else if (isset($interval['low'])) {
+        } elseif (isset($interval['low'])) {
             $select->where('CAST(srv.text AS SIGNED) >= ?', $interval['low']);
-        } else if (isset($interval['high'])) {
+        } elseif (isset($interval['high'])) {
             $select->where('CAST(srv.text AS SIGNED) < ?', $interval['high']);
         }
         $count = $connection->fetchOne($select);
@@ -312,38 +313,39 @@ class Feature extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
         $feature    = $filter->getFeatureModel();
         
         $select->joinInner(
-            array('spf' => $connection->getTableName('sinch_product_features')),
+            ['spf' => $connection->getTableName('sinch_product_features')],
             "spf.sinch_product_id = e.sinch_product_id",
-            array()
+            []
         )->joinLeft(
-            array('srv' => $connection->getTableName(
+            ['srv' => $connection->getTableName(
                 'sinch_restricted_values'
-            )),
+            )],
             "srv.restricted_value_id = spf.restricted_value_id",
-            array('value' => 'srv.text')
+            ['value' => 'srv.text']
         )->joinLeft(
-            array('scf' => $connection->getTableName(
+            ['scf' => $connection->getTableName(
                 'sinch_categories_features'
-            )),
+            )],
             "scf.category_feature_id = srv.category_feature_id",
-            array()
+            []
         )->joinLeft(
-            array('scm' => $connection->getTableName(
+            ['scm' => $connection->getTableName(
                 'sinch_categories_mapping'
-            )),
+            )],
             "scm.shop_store_category_id = scf.store_category_id",
-            array('count' => "COUNT(DISTINCT e.entity_id)")
+            ['count' => "COUNT(DISTINCT e.entity_id)"]
         )
             ->where(
-                'srv.category_feature_id = ?', $feature['category_feature_id']
+                'srv.category_feature_id = ?',
+                $feature['category_feature_id']
             );
         
         if (isset($interval['low'], $interval['high'])) {
             $select->where('CAST(srv.text AS SIGNED) >= ?', $interval['low'])
                 ->where('CAST(srv.text AS SIGNED) < ?', $interval['high']);
-        } else if (isset($interval['low'])) {
+        } elseif (isset($interval['low'])) {
             $select->where('CAST(srv.text AS SIGNED) >= ?', $interval['low']);
-        } else if (isset($interval['high'])) {
+        } elseif (isset($interval['high'])) {
             $select->where('CAST(srv.text AS SIGNED) < ?', $interval['high']);
         }
         

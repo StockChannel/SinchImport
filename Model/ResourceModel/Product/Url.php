@@ -64,7 +64,10 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
      *
      * @return array
      */
-    protected function _getProducts($productIds, $storeId, $entityId,
+    protected function _getProducts(
+        $productIds,
+        $storeId,
+        $entityId,
         &$lastEntityId
     ) {
         $products   = [];
@@ -129,7 +132,9 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             
             foreach (['name', 'url_key', 'url_path'] as $attributeCode) {
                 $attributes = $this->_getProductAttribute(
-                    $attributeCode, array_keys($products), $storeId
+                    $attributeCode,
+                    array_keys($products),
+                    $storeId
                 );
                 foreach ($attributes as $productId => $attributeValue) {
                     if ($attributeCode == 'url_key' && empty($attributeValue)) {
@@ -138,11 +143,13 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
                             $this->formatUrlKey($products[$productId])
                         );
                         $this->saveProductAttribute(
-                            $products[$productId], $attributeCode
+                            $products[$productId],
+                            $attributeCode
                         );
                     } else {
                         $products[$productId]->setData(
-                            $attributeCode, $attributeValue
+                            $attributeCode,
+                            $attributeValue
                         );
                     }
                 }
@@ -169,12 +176,12 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         );
         
         switch ($additionalSuffixConf) {
-            case \SITC\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_ID:
-                $additionalSuffix = '-' . $product->getId();
-                break;
-            case \SITC\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_SKU:
-                $additionalSuffix = '-' . $product->getSku();
-                break;
+        case \SITC\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_ID:
+            $additionalSuffix = '-' . $product->getId();
+            break;
+        case \SITC\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_SKU:
+            $additionalSuffix = '-' . $product->getSku();
+            break;
         }
         
         return $this->filter->translitUrl(
@@ -190,31 +197,32 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
      *
      * @return \SITC\Sinchimport\Model\ResourceModel\Product\Url
      */
-    public function saveProductAttribute(\Magento\Catalog\Model\Product $product,
+    public function saveProductAttribute(
+        \Magento\Catalog\Model\Product $product,
         $attributeCode
     ) {
         $connection = $this->getConnection();
-        if ( ! isset($this->_productAttributes[$attributeCode])) {
+        if (! isset($this->_productAttributes[$attributeCode])) {
             $attribute = $this->getProductModel()->getResource()->getAttribute(
                 $attributeCode
             );
             
-            $this->_productAttributes[$attributeCode] = array(
+            $this->_productAttributes[$attributeCode] = [
                 'attribute_id' => $attribute->getId(),
                 'table'        => $attribute->getBackend()->getTable(),
                 'is_global'    => $attribute->getIsGlobal()
-            );
+            ];
             unset($attribute);
         }
         
         $attributeTable = $this->_productAttributes[$attributeCode]['table'];
         
-        $attributeData = array(
+        $attributeData = [
             'attribute_id' => $this->_productAttributes[$attributeCode]['attribute_id'],
             'store_id'     => $product->getStoreId(),
             'entity_id'    => $product->getId(),
             'value'        => $product->getData($attributeCode)
-        );
+        ];
         
         if ($this->_productAttributes[$attributeCode]['is_global']
             || $product->getStoreId() == 0
@@ -230,7 +238,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         
         $row = $connection->fetchRow($select);
         if ($row) {
-            $whereCond = array('value_id = ?' => $row['value_id']);
+            $whereCond = ['value_id = ?' => $row['value_id']];
             $connection->update($attributeTable, $attributeData, $whereCond);
         } else {
             $connection->insert($attributeTable, $attributeData);
@@ -246,9 +254,11 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             
             $row = $connection->fetchRow($select);
             if ($row) {
-                $whereCond = array('value_id = ?' => $row['value_id']);
+                $whereCond = ['value_id = ?' => $row['value_id']];
                 $connection->update(
-                    $attributeTable, $attributeData, $whereCond
+                    $attributeTable,
+                    $attributeData,
+                    $whereCond
                 );
             } else {
                 $connection->insert($attributeTable, $attributeData);

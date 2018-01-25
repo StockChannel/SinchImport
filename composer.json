@@ -5,7 +5,10 @@
   "version": "2.0.3",
   "require": {
     "php": "~7.0.0",
-    "magento/framework": "~101.0.0"
+    "magento/framework": "~101.0.0",
+    "magento/module-store": "*",
+    "magento/module-indexer": "*",
+    "magento/module-catalog": "*"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "^2.6",

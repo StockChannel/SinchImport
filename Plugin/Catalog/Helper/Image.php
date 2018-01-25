@@ -14,7 +14,7 @@ class Image
      * @param array                          $attributes
      *
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-     * @return $this
+     * @return                                        $this
      */
     public function aroundInit(
         \Magento\Catalog\Helper\Image $subject,
@@ -39,7 +39,7 @@ class Image
      * Return resized product image information
      *
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-     * @return array
+     * @return                                        array
      */
     public function aroundGetResizedImageInfo(
         \Magento\Catalog\Helper\Image $subject,

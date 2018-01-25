@@ -99,7 +99,8 @@ class CategoryProcessor
                         $this->categoryUrlPathGenerator->getUrlKey($category)
                     );
                     $category->getResource()->saveAttribute(
-                        $category, 'url_key'
+                        $category,
+                        'url_key'
                     );
                 }
             }
@@ -120,7 +121,8 @@ class CategoryProcessor
                         $this->categoryUrlPathGenerator->getUrlPath($category)
                     );
                     $category->getResource()->saveAttribute(
-                        $category, 'url_path'
+                        $category,
+                        'url_path'
                     );
                     
                     $urlRewrites = array_merge(

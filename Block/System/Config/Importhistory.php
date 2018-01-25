@@ -35,11 +35,11 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
         $lastSuccessImport = $this->sinch->getDateOfLatestSuccessImport();
         $importHistory     = $this->sinch->getImportStatusHistory();
         
-        $cssArr = array(
+        $cssArr = [
             'Failed'     => 'sinch-error',
             'Run'        => 'sinch-run',
             'Successful' => 'sinch-success'
-        );
+        ];
         
         $html
             .= '

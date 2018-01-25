@@ -26,7 +26,7 @@ class FlatTableBuilder
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resource,
         \Magento\Catalog\Helper\Product\Flat\Indexer $productIndexerHelper
-    ){
+    ) {
         $this->_resource = $resource;
         $this->_productIndexerHelper = $productIndexerHelper;
     }
@@ -35,13 +35,17 @@ class FlatTableBuilder
      * Retrieve image URL
      *
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-     * @return string
+     * @return                                        string
      */
     public function aroundBuild(
         \Magento\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder $subject,
         \Closure $proceed,
-        $storeId, $changedIds, $valueFieldSuffix, $tableDropSuffix, $fillTmpTables
-    ){
+        $storeId,
+        $changedIds,
+        $valueFieldSuffix,
+        $tableDropSuffix,
+        $fillTmpTables
+    ) {
         $proceed($storeId, $changedIds, $valueFieldSuffix, $tableDropSuffix, $fillTmpTables);
         $connection = $this->_resource->getConnection();
         $flatTable = $this->_productIndexerHelper->getFlatTableName($storeId);

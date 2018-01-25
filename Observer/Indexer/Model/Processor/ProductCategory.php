@@ -12,7 +12,7 @@ class ProductCategory implements ObserverInterface
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConnection
-    ){
+    ) {
         $this->_resourceConnection       = $resourceConnection;
         $this->_connection = $this->_resourceConnection->getConnection();
     }

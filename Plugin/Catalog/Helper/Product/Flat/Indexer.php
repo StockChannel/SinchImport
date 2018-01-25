@@ -9,7 +9,8 @@ class Indexer
     /**
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
-    public function aroundGetFlatColumns(\Magento\Catalog\Helper\Product\Flat\Indexer $subject, \Closure $proceed){
+    public function aroundGetFlatColumns(\Magento\Catalog\Helper\Product\Flat\Indexer $subject, \Closure $proceed)
+    {
         $this->_columns = $proceed();
         $this->_columns['store_product_id'] = [
             'unsigned' => true,

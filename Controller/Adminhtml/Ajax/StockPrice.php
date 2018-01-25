@@ -26,7 +26,7 @@ class StockPrice extends \Magento\Backend\App\Action
      * @param \Magento\Backend\App\Action\Context              $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
      * @param \Magento\Framework\Json\EncoderInterface         $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger              $logger
+     * @param \SITC\Sinchimport\Logger\Logger                  $logger
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
@@ -63,7 +63,6 @@ class StockPrice extends \Magento\Backend\App\Action
                 'reload' => !$this->sinch->isImportNotRun() && !empty($lastImportData) && $lastImportData['import_type'] == 'FULL'
             ];
         } else {
-            
                 exec(
                     "nohup php " . $rootDir
                     . "bin/magento sinch:import stockprice > /dev/null & echo $!"

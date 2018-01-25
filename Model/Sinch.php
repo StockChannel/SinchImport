@@ -5,10 +5,9 @@ namespace SITC\Sinchimport\Model;
 require_once __DIR__ . '/Config.php';
 
 use Symfony\Component\Console\Output\ConsoleOutput;
+
 class Sinch
 {
-    private $output;
-
     public $connection;
     public $varDir;
     public $shellDir;
@@ -16,7 +15,7 @@ class Sinch
     public $attributes;
     public $db;
     public $lang_id;
-    public $debug_mode = 0;
+    public $debug_mode = false;
     public $php_run_string;
     public $php_run_strings;
     public $price_breaks_filter;
@@ -32,14 +31,11 @@ class Sinch
      * @var \Magento\Store\Model\StoreManagerInterface
      */
     protected $_storeManager;
-
     protected $scopeConfig;
-
     /**
      * @var \Magento\Framework\UrlInterface
      */
     protected $_urlBuilder;
-
     /**
      * Logging instance
      *
@@ -48,43 +44,36 @@ class Sinch
     protected $_sinchLogger;
     protected $_resourceConnection;
     protected $_connection;
-
     /**
      * @var \Magento\Indexer\Model\Processor
      */
     protected $_indexProcessor;
-
     /**
      * @var \Magento\Framework\App\Cache\Frontend\Pool
      */
     protected $_cacheFrontendPool;
-
     /**
      * @var \Magento\Framework\Model\ResourceModel\Iterator
      */
     protected $_resourceIterator;
-
     /**
      * Product collection factory
      *
      * @var \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory
      */
     protected $_productCollectionFactory;
-
     /**
      * Product factory
      *
      * @var \Magento\Catalog\Model\ProductFactory
      */
     protected $_productFactory;
-
     /**
      * Product url factory
      *
      * @var \SITC\Sinchimport\Model\Product\UrlFactory
      */
     protected $_productUrlFactory;
-
     /**
      * Prefix of model events names
      *
@@ -95,6 +84,7 @@ class Sinch
      * @var \Magento\Indexer\Model\Indexer\CollectionFactory
      */
     protected $indexersFactory;
+    private $output;
     private $productDescriptionList = [];
     private $specifications;
     private $productDescription;
@@ -137,22 +127,23 @@ class Sinch
     private $_deploymentConfig;
 
     /**
-     * @param \Magento\Framework\Model\Context                                  $context
-     * @param \Magento\Framework\App\Filesystem\DirectoryList                   $directoryList,
-     * @param \Magento\Store\Model\StoreManagerInterface                        $storeManager,
-     * @param \Magento\Framework\App\Config\ScopeConfigInterface                $scopeConfig,
-     * @param \Magento\Framework\UrlInterface                                   $urlBuilder
-     * @param \SITC\Sinchimport\Logger\Logger                                   $sinchLogger
-     * @param \Magento\Framework\App\ResourceConnection                         $resourceConnection
-     * @param \Magento\Indexer\Model\Processor                                  $indexProcessor,
-     * @param \Magento\Framework\App\Cache\Frontend\Pool                        $cacheFrontendPool,
-     * @param \Magento\Framework\App\DeploymentConfig                           $deploymentConfig,
-     * @param \Magento\Framework\Model\ResourceModel\Iterator                   $resourceIterator,
-     * @param \Magento\Catalog\Model\ProductFactory                             $productFactory,
-     * @param \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory    $productCollectionFactory,
-     * @param \SITC\Sinchimport\Model\Product\UrlFactory                        $productUrlFactory,
-     * @param \Magento\Indexer\Model\Indexer\CollectionFactory                  $indexersFactory
-     * @param \Symfony\Component\Console\Output\OutputInterface                 $output
+     * @param \Magento\Framework\Model\Context $context
+     * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList ,
+     * @param \Magento\Store\Model\StoreManagerInterface $storeManager ,
+     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig ,
+     * @param \Magento\Framework\UrlInterface $urlBuilder
+     * @param \SITC\Sinchimport\Logger\Logger $sinchLogger
+     * @param \Magento\Framework\App\ResourceConnection $resourceConnection
+     * @param \Magento\Indexer\Model\Processor $indexProcessor ,
+     * @param \Magento\Framework\App\Cache\Frontend\Pool $cacheFrontendPool ,
+     * @param \Magento\Framework\App\DeploymentConfig $deploymentConfig ,
+     * @param \Magento\Framework\Model\ResourceModel\Iterator $resourceIterator ,
+     * @param \Magento\Catalog\Model\ProductFactory $productFactory ,
+     * @param \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory ,
+     * @param \SITC\Sinchimport\Model\Product\UrlFactory $productUrlFactory ,
+     * @param \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory
+     * @param \Symfony\Component\Console\Output\OutputInterface $output
+     * @throws \Exception
      */
 
     public function __construct(
@@ -194,14 +185,14 @@ class Sinch
         $this->import_status_statistic_table = $this->_getTableName('sinch_import_status_statistic');
         $this->import_log_table = $this->_getTableName('sinch_import_log');
 
-        $this->php_run_string  = PHP_RUN_STRING;
+        $this->php_run_string = PHP_RUN_STRING;
         $this->php_run_strings = PHP_RUN_STRINGS;
 
         $this->price_breaks_filter = PRICE_BREAKS;
 
         $this->createTempDir($directoryList);
 
-        $this->files = array(
+        $this->files = [
             FILE_CATEGORIES,
             FILE_CATEGORY_TYPES,
             FILE_CATEGORIES_FEATURES,
@@ -218,7 +209,7 @@ class Sinch
             FILE_PRODUCTS_PICTURES_GALLERY,
             FILE_PRICE_RULES,
             FILE_PRODUCT_CONTRACTS
-        );
+        ];
 
         $this->_dataConf = $this->scopeConfig->getValue(
             'sinchimport/sinch_ftp',
@@ -230,28 +221,16 @@ class Sinch
         $this->field_terminated_char = DEFAULT_FILE_TERMINATED_CHAR;
     }
 
-    /**
-     * Print a message to the console
-     * @param string $message
-     */
-    private function print($message)
+    protected function _getTableName(string $tableName)
     {
-        $this->output->writeln($message);
-    }
-
-    protected function _getTableName($tableName = '')
-    {
-        if ($tableName) {
-            return $this->_connection->getTableName($tableName);
-        }
-
-        return '';
+        return $this->_connection->getTableName($tableName);
     }
 
     /**
      * Create the import directory Hierarchy
      *
      * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
+     * @throws \Exception
      */
     private function createTempDir(\Magento\Framework\App\Filesystem\DirectoryList $directoryList)
     {
@@ -264,26 +243,27 @@ class Sinch
         $this->varDir = $dir;
     }
 
+    /**
+     * @throws \Exception
+     */
     public function startCronFullImport()
     {
-        $this->_logImportInfo("Start full import from cron");
+        $this->_log("Start full import from cron");
 
         $this->import_run_type = 'CRON';
         $this->runSinchImport();
 
-        $this->_logImportInfo("Finish full import from cron");
+        $this->_log("Finish full import from cron");
     }
 
-    protected function _logImportInfo($logString = '', $isError = false)
+    private function _log(string $logString)
     {
-        if ($logString) {
-            if ($isError) {
-                $logString = "[ERROR] " . $logString;
-            }
-            $this->_sinchLogger->info($logString);
-        }
+        $this->_sinchLogger->info($logString);
     }
 
+    /**
+     * @throws \Exception
+     */
     public function runSinchImport()
     {
         $indexingSeparately = $this->scopeConfig->getValue(
@@ -291,51 +271,40 @@ class Sinch
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
         );
 
-        $this->_categoryMetaTitleAttrId       = $this->_getCategoryAttributeId(
+        $this->_categoryMetaTitleAttrId = $this->_getCategoryAttributeId(
             'meta_title'
         );
         $this->_categoryMetadescriptionAttrId = $this->_getCategoryAttributeId(
             'meta_description'
         );
-        $this->_categoryDescriptionAttrId     = $this->_getCategoryAttributeId(
+        $this->_categoryDescriptionAttrId = $this->_getCategoryAttributeId(
             'description'
         );
 
         $this->initImportStatuses('FULL');
 
         $store_proc = $this->checkStoreProcedureExist();
-        if (! $store_proc) {
-            $this->_logImportInfo(
-                'store prcedure "' . $this->_getTableName(
-                    'sinch_filter_products'
-                ) . '" is absent in this database. import stoped.'
-            );
+        if (!$store_proc) {
             $this->_setErrorMessage(
                 'Stored procedure "' . $this->_getTableName(
                     'sinch_filter_products'
-                ) . '" is absent in this database. Import stopped.'
+                ) . '" is absent in this database'
             );
             throw new \Exception("sinch_filter_products procedure missing from database");
         }
 
         $file_privileg = $this->checkDbPrivileges();
-        if (! $file_privileg) {
-            $this->_logImportInfo(
-                "LOAD DATA option not set. You dan't have privileges for LOAD DATA."
-            );
+        if (!$file_privileg) {
             $this->_setErrorMessage(
-                "LOAD DATA option not set. Import stopped."
+                "LOAD DATA option not set"
             );
             throw new \Exception("LOAD DATA option not enabled in database");
         }
 
         $local_infile = $this->checkLocalInFile();
-        if (! $local_infile) {
-            $this->_logImportInfo(
-                "LOCAL INFILE is not enabled in the database"
-            );
+        if (!$local_infile) {
             $this->_setErrorMessage(
-                "LOCAL INFILE is not enabled in the database. Import stopped."
+                "LOCAL INFILE is not enabled in the database"
             );
             throw new \Exception("LOCAL INFILE is not enabled in the database");
         }
@@ -413,7 +382,7 @@ class Sinch
                     $this->_eventManager->dispatch(
                         'sinch_pricerules_import_ftp',
                         [
-                            'ftp_host'     => $this->_dataConf["ftp_server"],
+                            'ftp_host' => $this->_dataConf["ftp_server"],
                             'ftp_username' => $this->_dataConf["username"],
                             'ftp_password' => $this->_dataConf["password"]
                         ]
@@ -424,8 +393,8 @@ class Sinch
                 $this->addImportStatus('Generate category filters');
                 $this->print("Finish generating category filters...");
 
-                if ( ! $indexingSeparately) {
-                    $this->_logImportInfo("Start indexing data...");
+                if (!$indexingSeparately) {
+                    $this->_log("Start indexing data...");
                     $this->print("Start indexing data...");
                     $this->_cleanCateoryProductFlatTable();
                     $this->runIndexer();
@@ -434,36 +403,36 @@ class Sinch
                     $this->_reindexProductUrlKey();
                     $this->print("Finish indexing catalog url rewrites...");
 
-                    $this->_logImportInfo("Finish indexing data...");
+                    $this->_log("Finish indexing data...");
                     $this->addImportStatus('Indexing data');
                     $this->print("Finish indexing data...");
                 } else {
                     $this->print("Bypass indexing data...");
-                    $this->_logImportInfo("Bypass indexing data...");
+                    $this->_log("Bypass indexing data...");
                     $this->addImportStatus('Indexing data');
                 }
 
-                $this->_logImportInfo("Start cleanin Sinch cache...");
+                $this->_log("Start cleanin Sinch cache...");
                 $this->print("Start cleanin Sinch cache...");
                 $this->runCleanCache();
-                $this->_logImportInfo("Finish cleanin Sinch cache...");
+                $this->_log("Finish cleanin Sinch cache...");
                 $this->print("Finish cleanin Sinch cache...");
 
                 $this->addImportStatus('Finish import', 1);
                 $this->_doQuery("SELECT RELEASE_LOCK('sinchimport')");
 
-                $this->_logImportInfo("Start drop feature result tables");
+                $this->_log("Start drop feature result tables");
                 $this->print("Start dropping feature result tables...");
                 $this->dropFeatureResultTables();
-                $this->_logImportInfo("Finish drop feature result tables...");
+                $this->_log("Finish drop feature result tables...");
 
-                $this->_logImportInfo("Finish Sinch Import");
+                $this->_log("Finish Sinch Import");
                 $this->print("========>FINISH SINCH IMPORT...");
             } catch (\Exception $e) {
                 $this->_setErrorMessage($e);
             }
         } else {
-            $this->_logImportInfo("Sinchimport already run");
+            $this->_log("Sinchimport already run");
             $this->print("--------SINCHIMPORT ALREADY RUN--------");
         }
     }
@@ -481,7 +450,7 @@ class Sinch
             $typeId = $this->_getEntityTypeId($typeCode);
         }
 
-        if ( ! isset($this->_attributeId[$typeCode]) OR ! is_array(
+        if (!isset($this->_attributeId[$typeCode]) or !is_array(
                 $this->_attributeId[$typeCode]
             )
         ) {
@@ -507,7 +476,7 @@ class Sinch
 
     private function _getProductEntityTypeId()
     {
-        if (! $this->_productEntityTypeId) {
+        if (!$this->_productEntityTypeId) {
             $this->_productEntityTypeId = $this->_getEntityTypeId(
                 'catalog_product'
             );
@@ -536,8 +505,8 @@ class Sinch
 
     private function _doQuery($query, $forceStopLogging = false)
     {
-        if ($this->debug_mode && ! $forceStopLogging) {
-            $this->_logImportInfo("Query: " . $query);
+        if ($this->debug_mode && !$forceStopLogging) {
+            $this->_log("Query: " . $query);
         }
 
         return $this->_connection->query($query);
@@ -574,9 +543,8 @@ class Sinch
         $q = "SELECT MAX(id) AS id FROM "
             . $this->import_status_statistic_table;
 
-        $result                                   = $this->_doQuery($q)->fetch(
-        );
-        $this->current_import_status_statistic_id = ! empty($result['id'])
+        $result = $this->_doQuery($q)->fetch();
+        $this->current_import_status_statistic_id = !empty($result['id'])
             ? $result['id'] : 0;
         $this->_doQuery(
             "UPDATE " . $this->import_status_statistic_table . "
@@ -586,21 +554,11 @@ class Sinch
         );
     }
 
-    protected function _setErrorMessage($message)
-    {
-        $this->_doQuery(
-            "
-            UPDATE " . $this->import_status_statistic_table . "
-            SET error_report_message=" . $this->_connection->quote($message) . "
-            WHERE id=" . $this->current_import_status_statistic_id
-        );
-    }
-
     public function checkStoreProcedureExist()
     {
         $q = 'SHOW PROCEDURE STATUS LIKE "' . $this->_getTableName(
-            'sinch_filter_products'
-        ) . '"';
+                'sinch_filter_products'
+            ) . '"';
         $result = $this->_doQuery($q)->fetchAll();
 
         foreach ($result as $item) {
@@ -612,6 +570,22 @@ class Sinch
         }
 
         return false;
+    }
+
+    /**
+     * Set the error message for the import
+     * including logging it
+     * @param string $message
+     */
+    protected function _setErrorMessage(string $message)
+    {
+        $this->_log($message);
+        $this->_doQuery(
+            "
+            UPDATE " . $this->import_status_statistic_table . "
+            SET error_report_message=" . $this->_connection->quote($message) . "
+            WHERE id=" . $this->current_import_status_statistic_id
+        );
     }
 
     public function checkDbPrivileges()
@@ -648,19 +622,19 @@ class Sinch
 
     public function isImportNotRun()
     {
-        $q      = "SELECT IS_FREE_LOCK('sinchimport') as getlock";
+        $q = "SELECT IS_FREE_LOCK('sinchimport') as getlock";
         $result = $this->_doQuery($q)->fetch();
 
-        $this->_logImportInfo('GET SINCH IMPORT LOG: ' . $result['getlock']);
+        $this->_log('GET SINCH IMPORT LOG: ' . $result['getlock']);
 
-        if(!$result['getlock']) {
+        if (!$result['getlock']) {
             $lastImportData = $this->getDataOfLatestImport();
-            if(!empty($lastImportData)) {
+            if (!empty($lastImportData)) {
                 $startTime = strtotime($lastImportData['start_import']);
                 $now = (new \DateTime())->getTimestamp();
-                $interval  = abs($now - $startTime);
-                $this->_logImportInfo('DIFF TIME: ' . $interval);
-                if($interval > 10800) {
+                $interval = abs($now - $startTime);
+                $this->_log('DIFF TIME: ' . $interval);
+                if ($interval > 10800) {
                     return true;
                 } else {
                     return false;
@@ -669,6 +643,26 @@ class Sinch
         }
 
         return true;
+    }
+
+    public function getDataOfLatestImport()
+    {
+        $q
+            = "SELECT
+                start_import,
+                finish_import,
+                import_type,
+                number_of_products,
+                global_status_import,
+                detail_status_import,
+                number_of_products,
+                error_report_message
+            FROM " . $this->import_status_statistic_table . "
+            ORDER BY id DESC LIMIT 1";
+
+        $imp_status = $this->_doQuery($q, true)->fetch();
+
+        return $imp_status;
     }
 
     public function addImportStatus($message, $finished = 0)
@@ -696,30 +690,40 @@ class Sinch
         }
     }
 
+    /**
+     * Print a message to the console
+     *
+     * @param string $message
+     */
+    private function print($message)
+    {
+        $this->output->writeln($message);
+    }
+
     public function uploadFiles()
     {
-        $this->_logImportInfo("Start upload files");
+        $this->_log("Start upload files");
 
         $username = $this->_dataConf['username'];
-        $passw    = $this->_dataConf['password'];
-        $server   = $this->_dataConf['ftp_server'];
+        $passw = $this->_dataConf['password'];
+        $server = $this->_dataConf['ftp_server'];
 
-        if (! $username || ! $passw) {
-            $this->_logImportInfo('Ftp login or password were not defined');
+        if (!$username || !$passw) {
             $this->_setErrorMessage(
-                'FTP login or password has not been defined. Import stopped.'
+                'FTP login or password has not been defined'
             );
             throw new \Exception("FTP username or password not set");
         }
         $file_url_and_dir = $this->replPh(
-            FILE_URL_AND_DIR, array(
-                'server'   => $server,
-                'login'    => $username,
+            FILE_URL_AND_DIR,
+            [
+                'server' => $server,
+                'login' => $username,
                 'password' => $passw
-            )
+            ]
         );
         foreach ($this->files as $file) {
-            $this->_logImportInfo(
+            $this->_log(
                 "Copy " . $file_url_and_dir . $file . " to  " . $this->varDir
                 . $file
             );
@@ -730,9 +734,9 @@ class Sinch
                     $match
                 );
                 if ($conn = ftp_connect($match[3])) {
-                    if (! ftp_login($conn, $username, $passw)) {
+                    if (!ftp_login($conn, $username, $passw)) {
                         $this->_setErrorMessage(
-                            'Incorrect username or password for the Stock In The Channel server. Import stopped.'
+                            'Incorrect username or password for the Stock In The Channel server'
                         );
                         throw new \Exception("Invalid username or password for FTP");
                     }
@@ -742,27 +746,26 @@ class Sinch
                     );
                     throw new \Exception("FTP connection failed");
                 }
-                if (! $this->wget(
+                if (!$this->wget(
                     $file_url_and_dir . $file,
-                    $this->varDir . $file,
-                    'system'
+                    $this->varDir . $file
                 )
                 ) {
-                    $this->_logImportInfo(
+                    $this->_log(
                         "Can't wget " . $file . ", will use old one"
                     );
                     $this->print("Can't wget " . $file . ", will use old one<br>");
                 }
             } else {
-                if (! copy($file_url_and_dir . $file, $this->varDir . $file)) {
-                    $this->_logImportInfo(
+                if (!copy($file_url_and_dir . $file, $this->varDir . $file)) {
+                    $this->_log(
                         "Can't copy " . $file . ", will use old one"
                     );
                     $this->print("Can't copy " . $file . ", will use old one<br>");
                 }
             }
             exec("chmod a+rw " . $this->varDir . $file);
-            if (! filesize($this->varDir . $file)) {
+            if (!filesize($this->varDir . $file)) {
                 if ($file != FILE_CATEGORIES_FEATURES
                     && $file != FILE_PRODUCT_FEATURES
                     && $file != FILE_RELATED_PRODUCTS
@@ -773,70 +776,60 @@ class Sinch
                     && $file != FILE_PRODUCT_CONTRACTS
                     && $file != FILE_PRICE_RULES
                 ) {
-                    $this->_logImportInfo(
-                        "Can't copy " . $file_url_and_dir . $file
-                        . ". file $this->varDir.$file is emty"
-                    );
-                    $this->_setErrorMessage(
-                        "Can't copy " . $file_url_and_dir . $file . ". file "
-                        . $this->varDir . $file . " is emty"
-                    );
-                    $this->addImportStatus(
-                        'Sinch import stoped. Import file(s) empty', 1
-                    );
+                    $this->_setErrorMessage($file . " is empty");
                     throw new \Exception("Import files empty, cannot continue");
                 } else {
                     if ($file == FILE_CATEGORIES_FEATURES) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_CATEGORIES_FEATURES
                             . " file ignored"
                         );
                         $this->_ignore_category_features = true;
                     } elseif ($file == FILE_PRODUCT_FEATURES) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_PRODUCT_FEATURES
                             . " file ignored"
                         );
                         $this->_ignore_product_features = true;
                     } elseif ($file == FILE_RELATED_PRODUCTS) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_RELATED_PRODUCTS
                             . " file ignored"
                         );
                         $this->_ignore_product_related = true;
                     } elseif ($file == FILE_RESTRICTED_VALUES) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_RESTRICTED_VALUES
                             . " file ignored"
                         );
                         $this->_ignore_restricted_values = true;
                     } elseif ($file == FILE_PRODUCT_CATEGORIES) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_PRODUCT_CATEGORIES
                             . " file ignored"
                         );
                         $this->_ignore_product_categories = true;
-                        $this->product_file_format        = "OLD";
+                        $this->product_file_format = "OLD";
                     } elseif ($file == FILE_CATEGORY_TYPES) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_CATEGORY_TYPES
                             . " file ignored"
                         );
                         $this->_ignore_category_types = true;
                     } elseif ($file == FILE_DISTRIBUTORS_STOCK_AND_PRICES) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_DISTRIBUTORS_STOCK_AND_PRICES
                             . " file ignored"
                         );
                         $this->_ignore_category_types = true;
                     } elseif ($file == FILE_PRODUCT_CONTRACTS) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_PRODUCT_CONTRACTS
                             . " file ignored"
                         );
                         $this->_ignore_product_contracts = true;
                     } elseif ($file == FILE_PRICE_RULES) {
-                        $this->_logImportInfo(
+                        $this->_log(
                             "Can't copy " . FILE_PRICE_RULES . " file ignored"
                         );
                         $this->_ignore_price_rules = true;
@@ -846,18 +839,18 @@ class Sinch
         }
         if (file_exists($file_url_and_dir . FILE_PRODUCT_CATEGORIES)) {
             $this->product_file_format = "NEW";
-            $this->_logImportInfo(
+            $this->_log(
                 "File " . $file_url_and_dir . FILE_PRODUCT_CATEGORIES
                 . " exist. Will used parser for NEW format product.csv"
             );
         } else {
             $this->product_file_format = "OLD";
-            $this->_logImportInfo(
+            $this->_log(
                 "File " . $file_url_and_dir . FILE_PRODUCT_CATEGORIES
                 . " dosen't exist. Will used parser for OLD format product.csv"
             );
         }
-        $this->_logImportInfo("Finish upload files");
+        $this->_log("Finish upload files");
     }
 
     private function replPh($content, $hash)
@@ -876,60 +869,17 @@ class Sinch
         return $content;
     }
 
-    public function wget()
+    public function wget(string $url, string $file)
     {
-        $got = func_num_args();
-        $url = $file = $flag = false;
-
-        if ($got < 1) {
-            return false;
-        } elseif ($got == 1) {
-            $url = func_get_arg(0);
-        } elseif ($got == 2) {
-            $url  = func_get_arg(0);
-            $file = func_get_arg(1);
-        } elseif ($got == 3) {
-            $url  = func_get_arg(0);
-            $file = func_get_arg(1);
-            $flag = func_get_arg(2);
-        }
-
-        if ($flag == 'copy') {
-            if (copy($url, $file)) {
-                return true;
-            } else {
-                return false;
-            }
-        } elseif ($flag == 'system') {
-            exec("wget -O$file $url");
-
-            return true;
-        } else {
-            $c = curl_init($url);
-            curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
-            curl_setopt($c, CURLOPT_FOLLOWLOCATION, 1);
-            curl_setopt($c, CURLOPT_HEADER, ["Accept-Encoding: gzip"]);
-            if (! $file) {
-                $page = curl_exec($c);
-                curl_close($c);
-
-                return $page;
-            } else {
-                $FH = fopen($file, "wb");
-                fwrite($FH, curl_exec($c));
-                fclose($FH);
-                curl_close($c);
-
-                return true;
-            }
-        }
+        exec("wget -O$file $url");
+        return true;
     }
 
     public function parseCategoryTypes()
     {
         $parseFile = $this->varDir . FILE_CATEGORY_TYPES;
         if (filesize($parseFile)) {
-            $this->_logImportInfo("Start parse " . FILE_CATEGORY_TYPES);
+            $this->_log("Start parse " . FILE_CATEGORY_TYPES);
 
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
@@ -966,16 +916,16 @@ class Sinch
                           TO " . $this->_getTableName('sinch_category_types')
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_CATEGORY_TYPES);
+            $this->_log("Finish parse " . FILE_CATEGORY_TYPES);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
     }
 
     public function parseCategories()
     {
-        $imType    = $this->_dataConf['replace_category'];
+        $imType = $this->_dataConf['replace_category'];
         $parseFile = $this->varDir . FILE_CATEGORIES;
         //$parseFile = $this->varDir . FILE_CATEGORIES_TEST;
         $field_terminated_char = $this->field_terminated_char;
@@ -983,44 +933,44 @@ class Sinch
         $this->imType = $imType;
 
         if (filesize($parseFile)) {
-            $this->_logImportInfo("Start parse " . FILE_CATEGORIES);
+            $this->_log("Start parse " . FILE_CATEGORIES);
 
             $this->_getCategoryEntityTypeIdAndDefault_attribute_set_id();
 
-            $categories_temp                 = $this->_getTableName(
+            $categories_temp = $this->_getTableName(
                 'categories_temp'
             );
-            $catalog_category_entity         = $this->_getTableName(
+            $catalog_category_entity = $this->_getTableName(
                 'catalog_category_entity'
             );
             $catalog_category_entity_varchar = $this->_getTableName(
                 'catalog_category_entity_varchar'
             );
-            $catalog_category_entity_int     = $this->_getTableName(
+            $catalog_category_entity_int = $this->_getTableName(
                 'catalog_category_entity_int'
             );
-            $sinch_categories_mapping_temp   = $this->_getTableName(
+            $sinch_categories_mapping_temp = $this->_getTableName(
                 'sinch_categories_mapping_temp'
             );
-            $sinch_categories_mapping        = $this->_getTableName(
+            $sinch_categories_mapping = $this->_getTableName(
                 'sinch_categories_mapping'
             );
-            $sinch_categories                = $this->_getTableName(
+            $sinch_categories = $this->_getTableName(
                 'sinch_categories'
             );
 
             $_categoryDefault_attribute_set_id
                 = $this->_categoryDefault_attribute_set_id;
 
-            $name_attrid      = $this->_getCategoryAttributeId('name');
+            $name_attrid = $this->_getCategoryAttributeId('name');
             $is_anchor_attrid = $this->_getCategoryAttributeId('is_anchor');
-            $image_attrid     = $this->_getCategoryAttributeId('image');
+            $image_attrid = $this->_getCategoryAttributeId('image');
 
-            $attr_url_key         = $this->_getCategoryAttributeId('url_key');
-            $attr_display_mode    = $this->_getCategoryAttributeId(
+            $attr_url_key = $this->_getCategoryAttributeId('url_key');
+            $attr_display_mode = $this->_getCategoryAttributeId(
                 'display_mode'
             );
-            $attr_is_active       = $this->_getCategoryAttributeId('is_active');
+            $attr_is_active = $this->_getCategoryAttributeId('is_active');
             $attr_include_in_menu = $this->_getCategoryAttributeId(
                 'include_in_menu'
             );
@@ -1036,11 +986,10 @@ class Sinch
                 $catalog_category_entity_varchar
             );
 
-            if (! $this->check_loaded_data($parseFile, $categories_temp)) {
-                $inf = mysqli_info();
+            if (!$this->check_loaded_data($parseFile, $categories_temp)) {
                 $this->_setErrorMessage(
                     'The Stock In The Channel data files do not appear to be in the correct format. Check file'
-                    . $parseFile . "(LOAD DATA ... " . $inf . ")"
+                    . $parseFile
                 );
                 throw new \Exception("Import files in invalid format");
             }
@@ -1146,11 +1095,11 @@ class Sinch
                 $this->print("====================>ERROR");
             }
 
-            $this->_logImportInfo("Finish parse " . FILE_CATEGORIES);
+            $this->_log("Finish parse " . FILE_CATEGORIES);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
         $this->_set_default_rootCategory();
 
         return $coincidence;
@@ -1158,11 +1107,11 @@ class Sinch
 
     private function _getCategoryEntityTypeIdAndDefault_attribute_set_id()
     {
-        if (! $this->_categoryEntityTypeId
-            || ! $this->_categoryDefault_attribute_set_id
+        if (!$this->_categoryEntityTypeId
+            || !$this->_categoryDefault_attribute_set_id
         ) {
             $sql
-                    = "
+                = "
                     SELECT entity_type_id, default_attribute_set_id
                     FROM " . $this->_getTableName('eav_entity_type') . "
                     WHERE entity_type_code = 'catalog_category'
@@ -1172,7 +1121,7 @@ class Sinch
             if ($result) {
                 $this->_categoryEntityTypeId = $result['entity_type_id'];
                 $this->_categoryDefault_attribute_set_id
-                                             = $result['default_attribute_set_id'];
+                    = $result['default_attribute_set_id'];
             }
         }
     }
@@ -1264,8 +1213,8 @@ class Sinch
 
     public function check_loaded_data($file, $table)
     {
-        $cnt_strings_in_file         = $this->file_strings_count($file);
-        $cnt_rows_int_table          = $this->table_rows_count($table);
+        $cnt_strings_in_file = $this->file_strings_count($file);
+        $cnt_rows_int_table = $this->table_rows_count($table);
         $persent_cnt_strings_in_file = $cnt_strings_in_file / 10;
         if ($cnt_rows_int_table > $persent_cnt_strings_in_file) {
             return true;
@@ -1386,7 +1335,7 @@ class Sinch
                     = "SELECT entity_id
                 FROM " . $this->_getTableName('catalog_category_entity') . "
                 WHERE parent_id=" . $cat_id;
-                $res   = $this->_doQuery($q)->fetchAll();
+                $res = $this->_doQuery($q)->fetchAll();
                 $count = 0;
 
                 foreach ($res as $value) {
@@ -1420,7 +1369,7 @@ class Sinch
             $store_category_id = $storeCategory['store_category_id'];
 
             $children_count = $this->count_children($store_category_id);
-            $level          = $this->get_category_level($store_category_id);
+            $level = $this->get_category_level($store_category_id);
 
             $this->_doQuery(
                 "
@@ -1591,7 +1540,7 @@ class Sinch
                 $catalog_category_entity_backup = $this->_getTableName(
                     'sinch_category_backup'
                 );
-                if (! $this->_checkDataExist(
+                if (!$this->_checkDataExist(
                     $catalog_category_entity_backup
                 )
                 ) {
@@ -1715,7 +1664,7 @@ class Sinch
                 WHERE cce.parent_id = 0 AND cce.store_category_id IS NOT NULL"
             );
         }
-        $this->_logImportInfo("Execute function mapSinchCategories");
+        $this->_log("Execute function mapSinchCategories");
         $this->_doQuery("DROP TABLE IF EXISTS $sinch_categories_mapping");
         $this->_doQuery(
             "RENAME TABLE $sinch_categories_mapping_temp TO $sinch_categories_mapping"
@@ -2266,7 +2215,7 @@ class Sinch
 
     public function culc_path($parent_id, $ent_id)
     {
-        $path   = '';
+        $path = '';
         $cat_id = $parent_id;
         $q
             = "SELECT
@@ -2294,7 +2243,6 @@ class Sinch
         } else {
             return ($ent_id);
         }
-
     }
 
     private function delete_old_sinch_categories_from_shop()
@@ -2510,7 +2458,7 @@ class Sinch
         // backup Category ID in REWRITE mode
         if ($imType == "REWRITE"
             || (UPDATE_CATEGORY_DATA
-            && $imType == "MERGE")
+                && $imType == "MERGE")
         ) {
             if ($mapping_again) {
                 $query
@@ -2571,7 +2519,7 @@ class Sinch
                 $rootCategories = $this->_doQuery($query)->fetchAll();
 
                 foreach ($rootCategories as $key => $rootCat) {
-                    $root_id   = $rootCat['entity_id'];
+                    $root_id = $rootCat['entity_id'];
                     $root_name = $rootCat['RootName'];
 
                     $query
@@ -2593,7 +2541,7 @@ class Sinch
                 $catalog_category_entity_backup = $this->_getTableName(
                     'sinch_category_backup'
                 );
-                if (! $this->_checkDataExist(
+                if (!$this->_checkDataExist(
                     $catalog_category_entity_backup
                 )
                 ) {
@@ -2658,7 +2606,7 @@ class Sinch
                 $rootCategories = $this->_doQuery($query)->fetchAll();
 
                 foreach ($rootCategories as $key => $rootCat) {
-                    $root_id   = $rootCat['entity_id'];
+                    $root_id = $rootCat['entity_id'];
                     $root_name = $rootCat['RootName'];
 
                     $query
@@ -2725,7 +2673,7 @@ class Sinch
             $rootCategories = $this->_doQuery($query)->fetchAll();
 
             foreach ($rootCategories as $key => $rootCat) {
-                $root_id   = $rootCat['entity_id'];
+                $root_id = $rootCat['entity_id'];
                 $root_name = $rootCat['RootName'];
 
                 $query
@@ -2764,7 +2712,7 @@ class Sinch
             $where";
 
         $this->_doQuery($query);
-        $this->_logImportInfo("Execute function mapSinchCategoriesMultistore");
+        $this->_log("Execute function mapSinchCategoriesMultistore");
         $query = "DROP TABLE IF EXISTS $sinch_categories_mapping";
 
         $this->_doQuery($query);
@@ -2827,7 +2775,7 @@ class Sinch
         if (UPDATE_CATEGORY_DATA) {
             $ignore = '';
             $on_diplicate_key_update
-                    = "
+                = "
                 ON DUPLICATE KEY UPDATE
                     updated_at = now(),
                     store_category_id = c.store_category_id,
@@ -2836,7 +2784,7 @@ class Sinch
                     position = c.order_number,
                     parent_store_category_id = c.parent_store_category_id";
         } else {
-            $ignore                  = 'IGNORE';
+            $ignore = 'IGNORE';
             $on_diplicate_key_update = '';
         }
 
@@ -3335,7 +3283,7 @@ class Sinch
 
         $res = $this->_doQuery($q)->fetch();
         while ($res['parent_id']) {
-            $path      = $res['parent_id'] . '/' . $path;
+            $path = $res['parent_id'] . '/' . $path;
             $parent_id = $res['parent_id'];
 
             $q
@@ -3439,7 +3387,7 @@ class Sinch
         $this->print("=== createNewDefaultCategories start...");
 
         $old_cats = [];
-        $res      = $this->_doQuery(
+        $res = $this->_doQuery(
             "
             SELECT
                 cce.entity_id,
@@ -3566,7 +3514,7 @@ class Sinch
         $rootCategories = $this->_doQuery($query)->fetchAll();
 
         foreach ($rootCategories as $rootCat) {
-            $root_id   = $rootCat['entity_id'];
+            $root_id = $rootCat['entity_id'];
             $root_name = $rootCat['RootName'];
 
             $query
@@ -3634,7 +3582,7 @@ class Sinch
         if (UPDATE_CATEGORY_DATA) {
             $ignore = '';
             $on_diplicate_key_update
-                    = "
+                = "
                 ON DUPLICATE KEY UPDATE
                     updated_at = now(),
                     store_category_id = c.store_category_id,
@@ -3643,7 +3591,7 @@ class Sinch
                     position = c.order_number,
                     parent_store_category_id = c.parent_store_category_id";
         } else {
-            $ignore                  = 'IGNORE';
+            $ignore = 'IGNORE';
             $on_diplicate_key_update = '';
         }
 
@@ -4136,7 +4084,7 @@ class Sinch
 
         $this->_doQuery($query);
 
-        $delete_cats      = $this->_getTableName('delete_cats');
+        $delete_cats = $this->_getTableName('delete_cats');
         $sinch_categories = $this->_getTableName('sinch_categories');
 
         $query
@@ -4181,7 +4129,7 @@ class Sinch
     {
         $parseFile = $this->varDir . FILE_CATEGORIES_FEATURES;
         if (filesize($parseFile) || $this->_ignore_category_features) {
-            $this->_logImportInfo("Start parse " . FILE_CATEGORIES_FEATURES);
+            $this->_log("Start parse " . FILE_CATEGORIES_FEATURES);
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
                     'categories_features_temp'
@@ -4201,7 +4149,7 @@ class Sinch
                         "
             );
 
-            if (! $this->_ignore_category_features) {
+            if (!$this->_ignore_category_features) {
                 $this->_doQuery(
                     "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                               INTO TABLE " . $this->_getTableName(
@@ -4228,18 +4176,18 @@ class Sinch
                 )
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_CATEGORIES_FEATURES);
+            $this->_log("Finish parse " . FILE_CATEGORIES_FEATURES);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
     }
 
     public function parseDistributors()
     {
         $parseFile = $this->varDir . FILE_DISTRIBUTORS;
         if (filesize($parseFile)) {
-            $this->_logImportInfo("Start parse " . FILE_DISTRIBUTORS);
+            $this->_log("Start parse " . FILE_DISTRIBUTORS);
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
                     'distributors_temp'
@@ -4277,18 +4225,18 @@ class Sinch
                           TO " . $this->_getTableName('sinch_distributors')
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_DISTRIBUTORS);
+            $this->_log("Finish parse " . FILE_DISTRIBUTORS);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
     }
 
     public function parseDistributorsStockAndPrice()
     {
         $parseFile = $this->varDir . FILE_DISTRIBUTORS_STOCK_AND_PRICES;
         if (filesize($parseFile)) {
-            $this->_logImportInfo(
+            $this->_log(
                 "Start parse " . FILE_DISTRIBUTORS_STOCK_AND_PRICES
             );
 
@@ -4338,20 +4286,20 @@ class Sinch
                 )
             );
 
-            $this->_logImportInfo(
+            $this->_log(
                 "Finish parse " . FILE_DISTRIBUTORS_STOCK_AND_PRICES
             );
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
     }
 
     public function parseProductContracts()
     {
         $parseFile = $this->varDir . FILE_PRODUCT_CONTRACTS;
         if (filesize($parseFile)) {
-            $this->_logImportInfo("Start parse " . FILE_PRODUCT_CONTRACTS);
+            $this->_log("Start parse " . FILE_PRODUCT_CONTRACTS);
 
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
@@ -4390,18 +4338,18 @@ class Sinch
                           TO " . $this->_getTableName('sinch_product_contracts')
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_PRODUCT_CONTRACTS);
+            $this->_log("Finish parse " . FILE_PRODUCT_CONTRACTS);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
     }
 
     public function parseEANCodes()
     {
         $parseFile = $this->varDir . FILE_EANCODES;
         if (filesize($parseFile)) {
-            $this->_logImportInfo("Start parse " . FILE_EANCODES);
+            $this->_log("Start parse " . FILE_EANCODES);
 
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName('ean_codes_temp')
@@ -4435,18 +4383,18 @@ class Sinch
                           TO " . $this->_getTableName('sinch_ean_codes')
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_EANCODES);
+            $this->_log("Finish parse " . FILE_EANCODES);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
     }
 
     public function parseManufacturers()
     {
         $parseFile = $this->varDir . FILE_MANUFACTURERS;
         if (filesize($parseFile)) {
-            $this->_logImportInfo("Start parse " . FILE_MANUFACTURERS);
+            $this->_log("Start parse " . FILE_MANUFACTURERS);
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
                     'manufacturers_temp'
@@ -4541,7 +4489,6 @@ class Sinch
                      )
                     ";
                 $this->_doQuery($q2);
-
             }
 
             $q = "UPDATE " . $this->_getTableName('manufacturers_temp') . " mt
@@ -4564,11 +4511,11 @@ class Sinch
                 "RENAME TABLE " . $this->_getTableName('manufacturers_temp') . "
                           TO " . $this->_getTableName('sinch_manufacturers')
             );
-            $this->_logImportInfo("Finish parse " . FILE_MANUFACTURERS);
+            $this->_log("Finish parse " . FILE_MANUFACTURERS);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
     }
 
     private function _getProductAttributeId($attributeCode)
@@ -4580,7 +4527,7 @@ class Sinch
     {
         $parseFile = $this->varDir . FILE_RELATED_PRODUCTS;
         if (filesize($parseFile) || $this->_ignore_product_related) {
-            $this->_logImportInfo("Start parse " . FILE_RELATED_PRODUCTS);
+            $this->_log("Start parse " . FILE_RELATED_PRODUCTS);
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
                     'related_products_temp'
@@ -4600,7 +4547,7 @@ class Sinch
                                  KEY(store_product_id)
                                      )DEFAULT CHARSET=utf8"
             );
-            if (! $this->_ignore_product_related) {
+            if (!$this->_ignore_product_related) {
                 $this->_doQuery(
                     "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                               INTO TABLE " . $this->_getTableName(
@@ -4624,18 +4571,18 @@ class Sinch
                           TO " . $this->_getTableName('sinch_related_products')
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_RELATED_PRODUCTS);
+            $this->_log("Finish parse " . FILE_RELATED_PRODUCTS);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(" ");
+        $this->_log(" ");
     }
 
     public function parseProductFeatures()
     {
         $parseFile = $this->varDir . FILE_PRODUCT_FEATURES;
         if (filesize($parseFile) || $this->_ignore_product_features) {
-            $this->_logImportInfo("Start parse " . FILE_PRODUCT_FEATURES);
+            $this->_log("Start parse " . FILE_PRODUCT_FEATURES);
 
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
@@ -4653,7 +4600,7 @@ class Sinch
                           )
                         "
             );
-            if (! $this->_ignore_product_features) {
+            if (!$this->_ignore_product_features) {
                 $this->_doQuery(
                     "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                               INTO TABLE " . $this->_getTableName(
@@ -4677,18 +4624,18 @@ class Sinch
                           TO " . $this->_getTableName('sinch_product_features')
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_PRODUCT_FEATURES);
+            $this->_log("Finish parse " . FILE_PRODUCT_FEATURES);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(" ");
+        $this->_log(" ");
     }
 
     public function parseProductCategories()
     {
         $parseFile = $this->varDir . FILE_PRODUCT_CATEGORIES;
         if (filesize($parseFile)) {
-            $this->_logImportInfo("Start parse " . FILE_PRODUCT_CATEGORIES);
+            $this->_log("Start parse " . FILE_PRODUCT_CATEGORIES);
 
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
@@ -4732,11 +4679,11 @@ class Sinch
                 )
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_PRODUCT_CATEGORIES);
+            $this->_log("Finish parse " . FILE_PRODUCT_CATEGORIES);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(' ');
+        $this->_log(' ');
     }
 
     public function parseProducts($coincidence)
@@ -4748,7 +4695,7 @@ class Sinch
         $parseFile = $this->varDir . FILE_PRODUCTS;
         //$parseFile = $this->varDir . FILE_PRODUCTS_TEST;
         if (filesize($parseFile)) {
-            $this->_logImportInfo("Start parse " . FILE_PRODUCTS);
+            $this->_log("Start parse " . FILE_PRODUCTS);
 
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName('products_temp')
@@ -4947,11 +4894,11 @@ class Sinch
                 "RENAME TABLE " . $this->_getTableName('products_temp') . "
                           TO " . $this->_getTableName('sinch_products')
             );
-            $this->_logImportInfo("Finish parse " . FILE_PRODUCTS);
+            $this->_log("Finish parse " . FILE_PRODUCTS);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(" ");
+        $this->_log(" ");
     }
 
     public function addProductsWebsite()
@@ -4983,13 +4930,12 @@ class Sinch
                                 FROM " . $this->_getTableName('store') . "
                                 WHERE code!='admin'
                               "
-        )->fetchAll(
-        ); //  where code!='admin' was adder for editing Featured products;
+        )->fetchAll(); //  where code!='admin' was adder for editing Featured products;
 
         foreach ($result as $store) {
             $sql = "INSERT INTO " . $this->_getTableName(
-                'products_website_temp'
-            ) . " (
+                    'products_website_temp'
+                ) . " (
                         store_product_id,
                         sinch_product_id,
                         website,
@@ -5047,7 +4993,7 @@ class Sinch
 
         // backup Product ID in REWRITE mode
         $productsBackupTable = $this->_getTableName('sinch_product_backup');
-        if ($mode == 'REWRITE' && ! $mapping_again
+        if ($mode == 'REWRITE' && !$mapping_again
             && $this->_checkDataExist(
                 $productsBackupTable
             )
@@ -5130,7 +5076,7 @@ class Sinch
     public function addManufacturers($delete_eav = null)
     {
         // this cleanup is not needed due to foreign keys
-        if (! $delete_eav) {
+        if (!$delete_eav) {
             $this->_doQuery(
                 "
                                     DELETE FROM " . $this->_getTableName(
@@ -5742,7 +5688,7 @@ class Sinch
         );
         $this->addDescriptions();
         $this->cleanProductDistributors();
-        if (! $this->_ignore_product_contracts) {
+        if (!$this->_ignore_product_contracts) {
             $this->cleanProductContracts();
         }
         if ($this->product_file_format == "NEW") {
@@ -5752,7 +5698,7 @@ class Sinch
             $this->addPdfUrl();
             $this->addShortDescriptions();
             $this->addProductDistributors();
-            if (! $this->_ignore_product_contracts) {
+            if (!$this->_ignore_product_contracts) {
                 $this->addProductContracts();
             }
         }
@@ -6096,7 +6042,7 @@ class Sinch
 
     private function _getProductDefaulAttributeSetId()
     {
-        if (! $this->defaultAttributeSetId) {
+        if (!$this->defaultAttributeSetId) {
             $sql
                 = "
                 SELECT entity_type_id, default_attribute_set_id
@@ -6104,7 +6050,7 @@ class Sinch
                 WHERE entity_type_code = 'catalog_product'
                 LIMIT 1
                 ";
-            $result                      = $this->_doQuery($sql)->fetch();
+            $result = $this->_doQuery($sql)->fetch();
             $this->defaultAttributeSetId = $result['default_attribute_set_id'];
         }
 
@@ -7289,58 +7235,57 @@ class Sinch
     {
         $this->print("--Replace Magento Products Multistore 1...");
 
-        $products_temp                  = $this->_getTableName('products_temp');
-        $products_website_temp          = $this->_getTableName(
+        $products_temp = $this->_getTableName('products_temp');
+        $products_website_temp = $this->_getTableName(
             'products_website_temp'
         );
-        $catalog_product_entity         = $this->_getTableName(
+        $catalog_product_entity = $this->_getTableName(
             'catalog_product_entity'
         );
-        $catalog_product_entity_int     = $this->_getTableName(
+        $catalog_product_entity_int = $this->_getTableName(
             'catalog_product_entity_int'
         );
         $catalog_product_entity_varchar = $this->_getTableName(
             'catalog_product_entity_varchar'
         );
-        $catalog_category_product       = $this->_getTableName(
+        $catalog_category_product = $this->_getTableName(
             'catalog_category_product'
         );
-        $sinch_products_mapping         = $this->_getTableName(
+        $sinch_products_mapping = $this->_getTableName(
             'sinch_products_mapping'
         );
-        $catalog_category_entity        = $this->_getTableName(
+        $catalog_category_entity = $this->_getTableName(
             'catalog_category_entity'
         );
-        $sinch_categories_mapping       = $this->_getTableName(
+        $sinch_categories_mapping = $this->_getTableName(
             'sinch_categories_mapping'
         );
         $catalog_category_product_index = $this->_getTableName(
             'catalog_category_product_index'
         );
-        $core_store                     = $this->_getTableName('store');
-        $catalog_product_website        = $this->_getTableName(
+        $core_store = $this->_getTableName('store');
+        $catalog_product_website = $this->_getTableName(
             'catalog_product_website'
         );
         $_defaultAttributeSetId
-            = $this->_getProductDefaulAttributeSetId(
-        );
-        $attr_atatus                    = $this->_getProductAttributeId(
+            = $this->_getProductDefaulAttributeSetId();
+        $attr_atatus = $this->_getProductAttributeId(
             'status'
         );
-        $attr_name                      = $this->_getProductAttributeId('name');
-        $attr_visibility                = $this->_getProductAttributeId(
+        $attr_name = $this->_getProductAttributeId('name');
+        $attr_visibility = $this->_getProductAttributeId(
             'visibility'
         );
-        $attr_tax_class_id              = $this->_getProductAttributeId(
+        $attr_tax_class_id = $this->_getProductAttributeId(
             'tax_class_id'
         );
-        $attr_image                     = $this->_getProductAttributeId(
+        $attr_image = $this->_getProductAttributeId(
             'image'
         );
-        $attr_small_image               = $this->_getProductAttributeId(
+        $attr_small_image = $this->_getProductAttributeId(
             'small_image'
         );
-        $attr_thumbnail                 = $this->_getProductAttributeId(
+        $attr_thumbnail = $this->_getProductAttributeId(
             'thumbnail'
         );
 
@@ -7990,61 +7935,60 @@ class Sinch
     {
         $this->print("--Replace Magento Multistore 1...");
 
-        $products_temp                  = $this->_getTableName('products_temp');
-        $products_website_temp          = $this->_getTableName(
+        $products_temp = $this->_getTableName('products_temp');
+        $products_website_temp = $this->_getTableName(
             'products_website_temp'
         );
-        $catalog_product_entity         = $this->_getTableName(
+        $catalog_product_entity = $this->_getTableName(
             'catalog_product_entity'
         );
-        $catalog_product_entity_int     = $this->_getTableName(
+        $catalog_product_entity_int = $this->_getTableName(
             'catalog_product_entity_int'
         );
         $catalog_product_entity_varchar = $this->_getTableName(
             'catalog_product_entity_varchar'
         );
-        $catalog_category_product       = $this->_getTableName(
+        $catalog_category_product = $this->_getTableName(
             'catalog_category_product'
         );
-        $sinch_products_mapping         = $this->_getTableName(
+        $sinch_products_mapping = $this->_getTableName(
             'sinch_products_mapping'
         );
-        $sinch_products                 = $this->_getTableName(
+        $sinch_products = $this->_getTableName(
             'sinch_products'
         );
-        $catalog_category_entity        = $this->_getTableName(
+        $catalog_category_entity = $this->_getTableName(
             'catalog_category_entity'
         );
-        $sinch_categories_mapping       = $this->_getTableName(
+        $sinch_categories_mapping = $this->_getTableName(
             'sinch_categories_mapping'
         );
         $catalog_category_product_index = $this->_getTableName(
             'catalog_category_product_index'
         );
-        $core_store                     = $this->_getTableName('store');
-        $catalog_product_website        = $this->_getTableName(
+        $core_store = $this->_getTableName('store');
+        $catalog_product_website = $this->_getTableName(
             'catalog_product_website'
         );
         $_defaultAttributeSetId
-            = $this->_getProductDefaulAttributeSetId(
-        );
-        $attr_atatus                    = $this->_getProductAttributeId(
+            = $this->_getProductDefaulAttributeSetId();
+        $attr_atatus = $this->_getProductAttributeId(
             'status'
         );
-        $attr_name                      = $this->_getProductAttributeId('name');
-        $attr_visibility                = $this->_getProductAttributeId(
+        $attr_name = $this->_getProductAttributeId('name');
+        $attr_visibility = $this->_getProductAttributeId(
             'visibility'
         );
-        $attr_tax_class_id              = $this->_getProductAttributeId(
+        $attr_tax_class_id = $this->_getProductAttributeId(
             'tax_class_id'
         );
-        $attr_image                     = $this->_getProductAttributeId(
+        $attr_image = $this->_getProductAttributeId(
             'image'
         );
-        $attr_small_image               = $this->_getProductAttributeId(
+        $attr_small_image = $this->_getProductAttributeId(
             'small_image'
         );
-        $attr_thumbnail                 = $this->_getProductAttributeId(
+        $attr_thumbnail = $this->_getProductAttributeId(
             'thumbnail'
         );
 
@@ -8391,7 +8335,7 @@ class Sinch
         );
         $this->addDescriptions();
         $this->cleanProductDistributors();
-        if (! $this->_ignore_product_contracts) {
+        if (!$this->_ignore_product_contracts) {
             $this->cleanProductContracts();
         }
         if ($this->product_file_format == "NEW") {
@@ -8401,7 +8345,7 @@ class Sinch
             $this->addPdfUrl();
             $this->addShortDescriptions();
             $this->addProductDistributors();
-            if (! $this->_ignore_product_contracts) {
+            if (!$this->_ignore_product_contracts) {
                 $this->addProductContracts();
             }
         }
@@ -8646,7 +8590,7 @@ class Sinch
     {
         $parseFile = $this->varDir . FILE_PRODUCTS_PICTURES_GALLERY;
         if (filesize($parseFile)) {
-            $this->_logImportInfo(
+            $this->_log(
                 "Start parse " . FILE_PRODUCTS_PICTURES_GALLERY
             );
             $this->_doQuery(
@@ -8705,21 +8649,21 @@ class Sinch
                 )
             );
 
-            $this->_logImportInfo(
+            $this->_log(
                 "Finish parse" . FILE_PRODUCTS_PICTURES_GALLERY
             );
         } else {
-            $this->_logImportInfo("Wrong file" . $parseFile);
+            $this->_log("Wrong file" . $parseFile);
         }
 
-        $this->_logImportInfo(" ");
+        $this->_log(" ");
     }
 
     public function parseRestrictedValues()
     {
         $parseFile = $this->varDir . FILE_RESTRICTED_VALUES;
         if (filesize($parseFile) || $this->_ignore_restricted_values) {
-            $this->_logImportInfo("Start parse " . FILE_RESTRICTED_VALUES);
+            $this->_log("Start parse " . FILE_RESTRICTED_VALUES);
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
                     'restricted_values_temp'
@@ -8736,7 +8680,7 @@ class Sinch
                             KEY(category_feature_id)
                           )"
             );
-            if (! $this->_ignore_restricted_values) {
+            if (!$this->_ignore_restricted_values) {
                 $this->_doQuery(
                     "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                               INTO TABLE " . $this->_getTableName(
@@ -8760,11 +8704,11 @@ class Sinch
                           TO " . $this->_getTableName('sinch_restricted_values')
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_RESTRICTED_VALUES);
+            $this->_log("Finish parse " . FILE_RESTRICTED_VALUES);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(" ");
+        $this->_log(" ");
     }
 
     public function parseStockAndPrices()
@@ -8879,11 +8823,11 @@ class Sinch
                           TO " . $this->_getTableName('sinch_stock_and_prices')
             );
 
-            $this->_logImportInfo("Finish parse" . FILE_RELATED_PRODUCTS);
+            $this->_log("Finish parse" . FILE_RELATED_PRODUCTS);
         } else {
-            $this->_logImportInfo("Wrong file" . $parseFile);
+            $this->_log("Wrong file" . $parseFile);
         }
-        $this->_logImportInfo(" ");
+        $this->_log(" ");
     }
 
     public function replaceMagentoProductsStockPrice()
@@ -9189,22 +9133,22 @@ class Sinch
 
     private function _cleanCateoryProductFlatTable()
     {
-        $q      = 'SHOW TABLES LIKE "' . $this->_getTableName(
-            'catalog_product_flat_'
-        ) . '%"';
-        $quer   = $this->_doQuery($q)->fetchAll();
+        $q = 'SHOW TABLES LIKE "' . $this->_getTableName(
+                'catalog_product_flat_'
+            ) . '%"';
+        $quer = $this->_doQuery($q)->fetchAll();
         $result = false;
         foreach ($quer as $res) {
             if (is_array($res)) {
                 $catalog_product_flat = array_pop($res);
-                $q                    = 'DELETE pf1 FROM '
+                $q = 'DELETE pf1 FROM '
                     . $catalog_product_flat . ' pf1
                     LEFT JOIN ' . $this->_getTableName('catalog_product_entity')
                     . ' p
                         ON pf1.entity_id = p.entity_id
                     WHERE p.entity_id IS NULL;';
                 $this->_doQuery($q);
-                $this->_logImportInfo(
+                $this->_log(
                     'cleaned wrong rows from ' . $catalog_product_flat
                 );
             }
@@ -9259,11 +9203,11 @@ class Sinch
 
         $filterResultTablePrefix = $this->_getTableName('sinch_filter_result_');
 
-        if (! $this->check_table_exist($filterResultTablePrefix)) {
+        if (!$this->check_table_exist($filterResultTablePrefix)) {
             return;
         }
 
-        $dropSqls   = [];
+        $dropSqls = [];
         $dropSqls[] = "SET GROUP_CONCAT_MAX_LEN=10000;";
         $dropSqls[]
             = "SET @tbls = (SELECT GROUP_CONCAT(TABLE_NAME)
@@ -9288,12 +9232,12 @@ class Sinch
 
     public function startCronStockPriceImport()
     {
-        $this->_logImportInfo("Start stock price import from cron");
+        $this->_log("Start stock price import from cron");
 
         $this->import_run_type = 'CRON';
         $this->runStockPriceImport();
 
-        $this->_logImportInfo("Finish stock price import from cron");
+        $this->_log("Finish stock price import from cron");
     }
 
     public function runStockPriceImport()
@@ -9301,12 +9245,7 @@ class Sinch
         $this->initImportStatuses('PRICE STOCK');
         $store_proc = $this->checkStoreProcedureExist();
 
-        if (! $store_proc) {
-            $this->_logImportInfo(
-                'store prcedure "' . $this->_getTableName(
-                    'sinch_filter_products'
-                ) . '" is absent in this database. import stoped.'
-            );
+        if (!$store_proc) {
             $this->_setErrorMessage(
                 'Stored procedure "' . $this->_getTableName(
                     'sinch_filter_products'
@@ -9317,22 +9256,16 @@ class Sinch
 
         $file_privileg = $this->checkDbPrivileges();
 
-        if (! $file_privileg) {
-            $this->_logImportInfo(
-                "LOAD DATA option not set"
-            );
+        if (!$file_privileg) {
             $this->_setErrorMessage(
-                "LOAD DATA option not set. Import stopped."
+                "LOAD DATA option not set"
             );
             throw new \Exception("LOAD DATA option not set in the database");
         }
         $local_infile = $this->checkLocalInFile();
-        if (! $local_infile) {
-            $this->_logImportInfo(
-                "LOCAL INFILE is not enabled"
-            );
+        if (!$local_infile) {
             $this->_setErrorMessage(
-                "LOCAL INFILE is not enabled. Import stopped."
+                "LOCAL INFILE is not enabled"
             );
             throw new \Exception("LOCAL INFILE not enabled in the database");
         }
@@ -9348,10 +9281,10 @@ class Sinch
 
                 $this->print("Upload Files...");
 
-                $this->files = array(
+                $this->files = [
                     FILE_STOCK_AND_PRICES,
                     FILE_PRICE_RULES
-                );
+                ];
 
                 $import->uploadFiles();
                 $import->addImportStatus('Stock Price Upload Files');
@@ -9369,28 +9302,28 @@ class Sinch
                 $this->_eventManager->dispatch(
                     'sinch_pricerules_import_ftp',
                     [
-                        'ftp_host'     => $this->_dataConf["ftp_server"],
+                        'ftp_host' => $this->_dataConf["ftp_server"],
                         'ftp_username' => $this->_dataConf["username"],
                         'ftp_password' => $this->_dataConf["password"]
                     ]
                 );
 
-                $this->_logImportInfo("Start indexing  Stock & Price");
+                $this->_log("Start indexing  Stock & Price");
                 $this->print("Start indexing  Stock & Price...");
                 $import->runStockPriceIndexer();
                 $import->addImportStatus('Stock Price Indexing data');
-                $this->_logImportInfo("Finish indexing  Stock & Price...");
+                $this->_log("Finish indexing  Stock & Price...");
                 $this->print("Finish indexing  Stock & Price...");
 
-                $this->_logImportInfo("Start cleanin Sinch cache...");
+                $this->_log("Start cleanin Sinch cache...");
                 $this->print("Start cleanin Sinch cache...");
                 $this->runCleanCache();
-                $this->_logImportInfo("Finish cleanin Sinch cache...");
+                $this->_log("Finish cleanin Sinch cache...");
                 $this->print("Finish cleanin Sinch cache...");
 
                 $import->addImportStatus('Stock Price Finish import', 1);
 
-                $this->_logImportInfo("Finish Stock & Price Sinch Import");
+                $this->_log("Finish Stock & Price Sinch Import");
                 $this->print("========>FINISH STOCK & PRICE SINCH IMPORT");
 
                 $q = "SELECT RELEASE_LOCK('sinchimport')";
@@ -9399,11 +9332,11 @@ class Sinch
                 $this->_setErrorMessage($e);
             }
         } else {
-            if (! $this->isImportNotRun()) {
-                $this->_logImportInfo("Sinchimport already run");
+            if (!$this->isImportNotRun()) {
+                $this->_log("Sinchimport already run");
                 $this->print("--------SINCHIMPORT ALREADY RUN--------");
             } else {
-                $this->_logImportInfo(
+                $this->_log(
                     "Full import have never finished with success"
                 );
                 $this->print("Full import have never finished with success...");
@@ -9425,8 +9358,6 @@ class Sinch
         }
     }
 
-    // Reindex catalog url rewrite
-
     public function runStockPriceIndexer()
     {
         $priceIndexers = [
@@ -9434,7 +9365,9 @@ class Sinch
             'cataloginventory_stock'
         ];
 
-        /** @var IndexerInterface[] $indexers */
+        /**
+         * @var IndexerInterface[] $indexers
+         */
         $indexers = $this->indexersFactory->create()->getItems();
         foreach ($indexers as $indexer) {
             if (in_array($indexer->getIndexerId(), $priceIndexers)) {
@@ -9449,7 +9382,7 @@ class Sinch
     {
         $parseFile = $this->varDir . FILE_PRICE_RULES;
         if (filesize($parseFile) || $this->_ignore_price_rules) {
-            $this->_logImportInfo("Start parse " . FILE_PRICE_RULES);
+            $this->_log("Start parse " . FILE_PRICE_RULES);
 
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName(
@@ -9475,7 +9408,7 @@ class Sinch
                           )
                         "
             );
-            if (! $this->_ignore_price_rules) {
+            if (!$this->_ignore_price_rules) {
                 $this->_doQuery(
                     "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                               INTO TABLE " . $this->_getTableName(
@@ -9560,16 +9493,16 @@ class Sinch
                           TO " . $this->_getTableName('sinch_price_rules')
             );
 
-            $this->_logImportInfo("Finish parse " . FILE_PRICE_RULES);
+            $this->_log("Finish parse " . FILE_PRICE_RULES);
         } else {
-            $this->_logImportInfo("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $parseFile);
         }
-        $this->_logImportInfo(" ");
+        $this->_log(" ");
     }
 
     public function addPriceRules()
     {
-        if (! $this->check_table_exist('import_pricerules_standards')) {
+        if (!$this->check_table_exist('import_pricerules_standards')) {
             return;
         }
 
@@ -9620,7 +9553,7 @@ class Sinch
 
     public function applyCustomerGroupPrice()
     {
-        if (! $this->check_table_exist('import_pricerules_standards')) {
+        if (!$this->check_table_exist('import_pricerules_standards')) {
             return;
         }
         $this->_getProductsForCustomerGroupPrice();
@@ -9639,7 +9572,7 @@ class Sinch
         }
 
         foreach ($pricerulesArray as $pricerule) {
-            $this->_logImportInfo(
+            $this->_log(
                 "Calculation group price for rule " . $pricerule['id'] . "
                         (\nname          =   " . $pricerule['name'] . "
                          \nfinal_price   =   " . $pricerule['final_price'] . "
@@ -9665,11 +9598,11 @@ class Sinch
             );
 
             $vendor_product_id_str = "'" . str_replace(
-                ';',
-                "','",
-                $pricerule['vendor_product_id']
-            ) . "'";
-            $where                 = "";
+                    ';',
+                    "','",
+                    $pricerule['vendor_product_id']
+                ) . "'";
+            $where = "";
             if (empty($pricerule['marge'])) {
                 $marge = "NULL";
             } else {
@@ -9688,37 +9621,37 @@ class Sinch
                 $final_price = $pricerule['final_price'];
             }
 
-            if (! empty($pricerule['price_from'])) {
+            if (!empty($pricerule['price_from'])) {
                 $where .= " AND a.price > " . $pricerule['price_from'];
             }
 
-            if (! empty($pricerule['price_to'])) {
+            if (!empty($pricerule['price_to'])) {
                 $where .= " AND a.price < " . $pricerule['price_to'];
             }
 
-            if (! empty($pricerule['vendor_id'])) {
+            if (!empty($pricerule['vendor_id'])) {
                 $where .= " AND a.manufacturer_id = " . $pricerule['vendor_id'];
             }
 
-            if (! empty($pricerule['product_entity_id'])) {
+            if (!empty($pricerule['product_entity_id'])) {
                 $where .= " AND a.product_id = '"
                     . $pricerule['product_entity_id'] . "'";
             }
 
-            if (! empty($pricerule['vendor_product_id'])) {
+            if (!empty($pricerule['vendor_product_id'])) {
                 $where .= " AND a.sku IN (" . $vendor_product_id_str . ")";
             }
 
-            if (! empty($pricerule['allow_subcat'])) {
-                if (! empty($pricerule['category_id'])) {
+            if (!empty($pricerule['allow_subcat'])) {
+                if (!empty($pricerule['category_id'])) {
                     $children_cat = $this->get_all_children_cat(
                         $pricerule['category_id']
                     );
-                    $where        .= " AND a.category_id IN  (" . $children_cat
+                    $where .= " AND a.category_id IN  (" . $children_cat
                         . ")";
                 }
             } else {
-                if (! empty($pricerule['category_id'])) {
+                if (!empty($pricerule['category_id'])) {
                     $where .= " AND a.category_id = "
                         . $pricerule['category_id'];
                 }
@@ -9771,7 +9704,7 @@ class Sinch
                     ";
 
                     $this->_doQuery($query);
-                    if (! empty($pricerule['store_id'])
+                    if (!empty($pricerule['store_id'])
                         && $pricerule['store_id'] > 0
                     ) {
                         $query
@@ -9919,7 +9852,7 @@ class Sinch
             = "SELECT entity_id
            FROM " . $this->_getTableName('catalog_category_entity') . "
            WHERE parent_id=" . $entity_id;
-        $result       = $this->_doQuery($q)->fetchAll();
+        $result = $this->_doQuery($q)->fetchAll();
         $children_cat = '';
         foreach ($result as $res) {
             $children_cat .= ", '" . $res['entity_id'] . "'";
@@ -9958,7 +9891,7 @@ class Sinch
     public function runIndexingData()
     {
         $this->initIndexingStatuses();
-        $this->_logImportInfo("Start indexing data separately");
+        $this->_log("Start indexing data separately");
         try {
             $this->print("========REINDEX DATA========");
 
@@ -9996,7 +9929,7 @@ class Sinch
     private function loadProductParams($entity_id)
     {
         $store_product_id = $this->getStoreProductIdByEntity($entity_id);
-        if (! $store_product_id) {
+        if (!$store_product_id) {
             return;
         }
         $q
@@ -10016,17 +9949,19 @@ class Sinch
             WHERE store_product_id =" . $store_product_id;
         $product = $this->_doQuery($q)->fetch();
 
-        $this->productDescription     = (string)substr(
-            $product['description'], 50, 0
+        $this->productDescription = (string)substr(
+            $product['description'],
+            50,
+            0
         );
         $this->fullProductDescription = (string)$product['description'];
         $this->lowPicUrl
             = (string)$product["medium_image_url"];//thumb_image_url"];
-        $this->highPicUrl             = (string)$product["main_image_url"];
-        $this->productName            = (string)$product["product_name"];
-        $this->productId              = (string)$product['product_sku'];
-        $this->specifications         = (string)$product['specifications'];
-        $this->sinchProductId         = (string)$product['sinch_product_id'];
+        $this->highPicUrl = (string)$product["main_image_url"];
+        $this->productName = (string)$product["product_name"];
+        $this->productId = (string)$product['product_sku'];
+        $this->specifications = (string)$product['specifications'];
+        $this->sinchProductId = (string)$product['sinch_product_id'];
         if ($product['sinch_manufacturer_id']) {
             $q
                 = "SELECT manufacturer_name
@@ -10049,7 +9984,7 @@ class Sinch
             $EANarr[] = $value['ean_code'];
         }
 
-        $EANstr    = implode(", ", $EANarr);
+        $EANstr = implode(", ", $EANarr);
         $this->EAN = (string)$EANstr;
     }
 
@@ -10059,7 +9994,8 @@ class Sinch
             "SELECT store_product_id
                          FROM " . $this->_getTableName('sinch_products_mapping')
             . "
-                         WHERE entity_id=" . $entity_id, true
+                         WHERE entity_id=" . $entity_id,
+            true
         )->fetch();
 
         return ($res['store_product_id']);
@@ -10067,7 +10003,7 @@ class Sinch
 
     private function loadProductStarfeatures()
     {
-        $descriptionArray      = [];
+        $descriptionArray = [];
         $product_info_features = $this->_doQuery(
             "
                 SELECT c.feature_name AS name, b.text AS value
@@ -10093,7 +10029,7 @@ class Sinch
     public function loadGalleryPhotos($entity_id)
     {
         $store_product_id = $this->getStoreProductIdByEntity($entity_id);
-        if (! $store_product_id) {
+        if (!$store_product_id) {
             return $this;
         }
         $res = $this->_doQuery(
@@ -10105,7 +10041,7 @@ class Sinch
             true
         )->fetch();
 
-        if (! $res || ! $res['cnt']) {
+        if (!$res || !$res['cnt']) {
             return $this;
         }
         $q
@@ -10119,17 +10055,17 @@ class Sinch
 
         foreach ($photos as $photo) {
             $picHeight = (int)500;
-            $picWidth  = (int)500;
-            $thumbUrl  = (string)$photo["ThumbPic"];
-            $picUrl    = (string)$photo["Pic"];
+            $picWidth = (int)500;
+            $thumbUrl = (string)$photo["ThumbPic"];
+            $picUrl = (string)$photo["Pic"];
 
             array_push(
                 $this->galleryPhotos,
                 [
-                'height' => $picHeight,
-                'width'  => $picWidth,
-                'thumb'  => $thumbUrl,
-                'pic'    => $picUrl
+                    'height' => $picHeight,
+                    'width' => $picWidth,
+                    'thumb' => $thumbUrl,
+                    'pic' => $picUrl
                 ]
             );
         }
@@ -10140,7 +10076,7 @@ class Sinch
     private function loadRelatedProducts()
     {
         $this->sinchProductId;
-        if (! $this->sinchProductId) {
+        if (!$this->sinchProductId) {
             return;
         }
         $q
@@ -10169,15 +10105,15 @@ class Sinch
         foreach ($relatedProducts as $relatedProduct) {
             $productArray = [];
             $productArray['name']
-                          = (string)$relatedProduct['product_name'];
+                = (string)$relatedProduct['product_name'];
             $productArray['thumb']
-                          = (string)$relatedProduct['thumb_image_url'];
+                = (string)$relatedProduct['thumb_image_url'];
             $mpn
-                          = (string)$relatedProduct['product_sku'];
+                = (string)$relatedProduct['product_sku'];
             $productArray['supplier_thumb']
-                          = (string)($relatedProduct['manufacturers_image']);
+                = (string)($relatedProduct['manufacturers_image']);
             $productArray['supplier_name']
-                          = (string)$relatedProduct['manufacturer_name'];
+                = (string)$relatedProduct['manufacturer_name'];
 
             $this->relatedProducts[$mpn] = $productArray;
         }
@@ -10370,10 +10306,14 @@ class Sinch
         $string = preg_replace("/®/", '&reg;', $string);
         $string = preg_replace("/≈/", '&asymp;', $string);
         $string = preg_replace(
-            "/" . chr(226) . chr(128) . chr(157) . "/", '&quot;', $string
+            "/" . chr(226) . chr(128) . chr(157) . "/",
+            '&quot;',
+            $string
         );
         $string = preg_replace(
-            "/" . chr(226) . chr(128) . chr(153) . "/", '&prime;', $string
+            "/" . chr(226) . chr(128) . chr(153) . "/",
+            '&prime;',
+            $string
         );
         $string = preg_replace("/°/", '&deg;', $string);
         $string = preg_replace("/±/", '&plusmn;', $string);
@@ -10399,15 +10339,15 @@ class Sinch
 
     public function getImportStatusHistory()
     {
-        $res               = $this->_doQuery(
+        $res = $this->_doQuery(
             "SELECT COUNT(*) as cnt FROM "
             . $this->import_status_statistic_table
         )->fetch();
-        $cnt               = $res['cnt'];
+        $cnt = $res['cnt'];
         $StatusHistory_arr = [];
         if ($cnt > 0) {
-            $a      = (($cnt > 7) ? ($cnt - 7) : 0);
-            $b      = $cnt;
+            $a = (($cnt > 7) ? ($cnt - 7) : 0);
+            $b = $cnt;
             $q
                 = "SELECT
                     id,
@@ -10440,26 +10380,6 @@ class Sinch
         return $imp_date['start_import'];
     }
 
-    public function getDataOfLatestImport()
-    {
-        $q
-            = "SELECT
-                start_import,
-                finish_import,
-                import_type,
-                number_of_products,
-                global_status_import,
-                detail_status_import,
-                number_of_products,
-                error_report_message
-            FROM " . $this->import_status_statistic_table . "
-            ORDER BY id DESC LIMIT 1";
-
-        $imp_status = $this->_doQuery($q, true)->fetch();
-
-        return $imp_status;
-    }
-
     public function getImportStatuses()
     {
         $messages = [];
@@ -10468,14 +10388,14 @@ class Sinch
             FROM " . $this->import_status_table . "
             ORDER BY id ASC";
 
-        $res      = $this->_doQuery($q)->fetchAll();
+        $res = $this->_doQuery($q)->fetchAll();
         if (!empty($res)) {
             foreach ($res as $message) {
-                $messages[] = array(
+                $messages[] = [
                     'id' => $message['id'],
-                    'message'  => $message['message'],
+                    'message' => $message['message'],
                     'finished' => $message['finished']
-                );
+                ];
             }
         }
 
@@ -10484,25 +10404,25 @@ class Sinch
 
     public function checkMemory()
     {
-        $tableName  = $this->_getTableName('sinch_sinchcheck');
+        $tableName = $this->_getTableName('sinch_sinchcheck');
         $check_code = 'memory';
 
         $row = $this->_doQuery(
             "SELECT * FROM $tableName WHERE check_code = '$check_code'"
         )->fetch();
 
-        $Caption      = $row['caption'];
-        $CheckValue   = $row['check_value'];
+        $Caption = $row['caption'];
+        $CheckValue = $row['check_value'];
         $CheckMeasure = $row['check_measure'];
         $ErrorMessage = $row['error_msg'];
-        $FixMessage   = $row['fix_msg'];
+        $FixMessage = $row['fix_msg'];
 
-        $retvalue                  = [];
+        $retvalue = [];
         $retvalue["'$check_code'"] = [];
 
         $memInfoContent = file_get_contents("/proc/meminfo");
         if ($memInfoContent === false) {
-            return array(
+            return [
                 'error',
                 $Caption,
                 $CheckValue,
@@ -10510,7 +10430,7 @@ class Sinch
                 $CheckMeasure,
                 'Cannot read /proc/meminfo for RAM information',
                 'Make sure open_basedir permits access to /proc/meminfo (or is off) and that this is a *nix system'
-            );
+            ];
         }
         $data = explode("\n", $memInfoContent);
 
@@ -10522,10 +10442,10 @@ class Sinch
             list($key, $val) = $lineParts;
 
             if ($key == 'MemTotal') {
-                $val     = trim($val);
-                $value   = (int)substr($val, 0, strpos($val, ' kB'));
+                $val = trim($val);
+                $value = (int)substr($val, 0, strpos($val, ' kB'));
 
-                $retvalue['memory']['value']   = (integer)(((float)$value)
+                $retvalue['memory']['value'] = (integer)(((float)$value)
                     / 1024);
                 $retvalue['memory']['measure'] = 'MB';
             }
@@ -10534,11 +10454,11 @@ class Sinch
         $errmsg = '';
         $fixmsg = '';
         if ($retvalue['memory']['value'] <= $CheckValue) {
-            $errmsg                       = sprintf(
+            $errmsg = sprintf(
                 $ErrorMessage,
                 $retvalue['memory']['value']
             );
-            $fixmsg                       = sprintf(
+            $fixmsg = sprintf(
                 $FixMessage,
                 " " . $CheckValue . " " . $CheckMeasure
             );
@@ -10547,7 +10467,7 @@ class Sinch
             $retvalue['memory']['status'] = 'OK';
         }
 
-        return array(
+        return [
             $retvalue['memory']['status'],
             $Caption,
             $CheckValue,
@@ -10555,31 +10475,32 @@ class Sinch
             $CheckMeasure,
             $errmsg,
             $fixmsg
-        );
+        ];
     }
 
     public function checkLoaddata()
     {
-        $tableName  = $this->_getTableName('sinch_sinchcheck');
+        $tableName = $this->_getTableName('sinch_sinchcheck');
         $check_code = 'loaddata';
 
         $row = $this->_doQuery(
-            "SELECT * FROM $tableName WHERE check_code = '$check_code'", true
+            "SELECT * FROM $tableName WHERE check_code = '$check_code'",
+            true
         )->fetch();
 
-        $Caption      = $row['caption'];
-        $CheckValue   = $row['check_value'];
+        $Caption = $row['caption'];
+        $CheckValue = $row['check_value'];
         $CheckMeasure = $row['check_measure'];
         $ErrorMessage = $row['error_msg'];
-        $FixMessage   = $row['fix_msg'];
+        $FixMessage = $row['fix_msg'];
 
-        $retvalue                  = [];
+        $retvalue = [];
         $retvalue["'$check_code'"] = [];
 
-        $conn   = $this->_resourceConnection->getConnection('core_read');
+        $conn = $this->_resourceConnection->getConnection('core_read');
         $result = $conn->query("SHOW VARIABLES LIKE 'local_infile'");
-        $row    = $result->fetch(PDO::FETCH_ASSOC);
-        $value  = $row['Value'];
+        $row = $result->fetch(PDO::FETCH_ASSOC);
+        $value = $row['Value'];
         $errmsg = '';
         $fixmsg = '';
         if ($value != $CheckValue) {
@@ -10609,26 +10530,27 @@ class Sinch
 
     public function checkWaittimeout()
     {
-        $tableName  = $this->_getTableName('sinch_sinchcheck');
+        $tableName = $this->_getTableName('sinch_sinchcheck');
         $check_code = 'waittimeout';
 
         $row = $this->_doQuery(
-            "SELECT * FROM $tableName WHERE check_code = '$check_code'", true
+            "SELECT * FROM $tableName WHERE check_code = '$check_code'",
+            true
         )->fetch();
 
-        $Caption      = $row['caption'];
-        $CheckValue   = $row['check_value'];
+        $Caption = $row['caption'];
+        $CheckValue = $row['check_value'];
         $CheckMeasure = $row['check_measure'];
         $ErrorMessage = $row['error_msg'];
-        $FixMessage   = $row['fix_msg'];
+        $FixMessage = $row['fix_msg'];
 
-        $retvalue                  = [];
+        $retvalue = [];
         $retvalue["'$check_code'"] = [];
 
-        $conn   = $this->_resourceConnection->getConnection('core_read');
+        $conn = $this->_resourceConnection->getConnection('core_read');
         $result = $conn->query("SHOW VARIABLES LIKE 'wait_timeout'");
-        $row    = $result->fetch(PDO::FETCH_ASSOC);
-        $value  = $row['Value'];
+        $row = $result->fetch(PDO::FETCH_ASSOC);
+        $value = $row['Value'];
 
         $errmsg = '';
         $fixmsg = '';
@@ -10659,26 +10581,27 @@ class Sinch
 
     public function checkInnodbbufferpoolsize()
     {
-        $tableName  = $this->_getTableName('sinch_sinchcheck');
+        $tableName = $this->_getTableName('sinch_sinchcheck');
         $check_code = 'innodbbufpool';
 
         $row = $this->_doQuery(
-            "SELECT * FROM $tableName WHERE check_code = '$check_code'", true
+            "SELECT * FROM $tableName WHERE check_code = '$check_code'",
+            true
         )->fetch();
 
-        $Caption      = $row['caption'];
-        $CheckValue   = $row['check_value'];
+        $Caption = $row['caption'];
+        $CheckValue = $row['check_value'];
         $CheckMeasure = $row['check_measure'];
         $ErrorMessage = $row['error_msg'];
-        $FixMessage   = $row['fix_msg'];
+        $FixMessage = $row['fix_msg'];
 
-        $retvalue                  = [];
+        $retvalue = [];
         $retvalue["'$check_code'"] = [];
 
-        $conn   = $this->_resourceConnection->getConnection('core_read');
+        $conn = $this->_resourceConnection->getConnection('core_read');
         $result = $conn->query("SHOW VARIABLES LIKE 'innodb_buffer_pool_size'");
-        $row    = $result->fetch(PDO::FETCH_ASSOC);
-        $value  = (int)($row['Value'] / (1024 * 1024));
+        $row = $result->fetch(PDO::FETCH_ASSOC);
+        $value = (int)($row['Value'] / (1024 * 1024));
 
         $errmsg = '';
         $fixmsg = '';
@@ -10715,32 +10638,33 @@ class Sinch
 
     public function checkPhprunstring()
     {
-        $tableName  = $this->_getTableName('sinch_sinchcheck');
+        $tableName = $this->_getTableName('sinch_sinchcheck');
         $check_code = 'php5run';
 
         $row = $this->_doQuery(
-            "SELECT * FROM $tableName WHERE check_code = '$check_code'", true
+            "SELECT * FROM $tableName WHERE check_code = '$check_code'",
+            true
         )->fetch();
 
-        $Caption      = $row['caption'];
-        $CheckValue   = $row['check_value'];
+        $Caption = $row['caption'];
+        $CheckValue = $row['check_value'];
         $CheckMeasure = $row['check_measure'];
 
-        $retvalue                  = [];
+        $retvalue = [];
         $retvalue["'$check_code'"] = [];
 
-        $value  = trim(PHP_RUN_STRING);
+        $value = trim(PHP_RUN_STRING);
         $errmsg = '';
         $fixmsg = '';
         $status = 'OK';
 
-        if (! defined('PHP_RUN_STRING')) {
+        if (!defined('PHP_RUN_STRING')) {
             $errmsg .= "You haven't installed PHP CLI";
             $fixmsg .= "Install PHP CLI.";
             $status = 'error';
         }
 
-        return array(
+        return [
             $status,
             $Caption,
             $CheckValue,
@@ -10748,36 +10672,37 @@ class Sinch
             $CheckMeasure,
             $errmsg,
             $fixmsg
-        );
+        ];
     }
 
     public function checkChmodwgetdatafile()
     {
-        $tableName  = $this->_getTableName('sinch_sinchcheck');
+        $tableName = $this->_getTableName('sinch_sinchcheck');
         $check_code = 'chmodwget';
 
         $row = $this->_doQuery(
-            "SELECT * FROM $tableName WHERE check_code = '$check_code'", true
+            "SELECT * FROM $tableName WHERE check_code = '$check_code'",
+            true
         )->fetch();
 
-        $Caption      = $row['caption'];
-        $CheckValue   = $row['check_value'];
+        $Caption = $row['caption'];
+        $CheckValue = $row['check_value'];
         $CheckMeasure = $row['check_measure'];
         $ErrorMessage = $row['error_msg'];
-        $FixMessage   = $row['fix_msg'];
+        $FixMessage = $row['fix_msg'];
 
-        $retvalue                  = [];
+        $retvalue = [];
         $retvalue["'$check_code'"] = [];
 
         $datafile_csv = '/usr/bin/wget';
 
         $value = substr(sprintf('%o', fileperms($datafile_csv)), -4);
 
-        $CheckValue_own   = $CheckValue{1};
+        $CheckValue_own = $CheckValue{1};
         $CheckValue_group = $CheckValue{2};
         $CheckValue_other = $CheckValue{3};
 
-        $value_own   = $value{1};
+        $value_own = $value{1};
         $value_group = $value{2};
         $value_other = $value{3};
 
@@ -10813,31 +10738,32 @@ class Sinch
 
     public function checkProcedure()
     {
-        $tableName  = $this->_getTableName('sinch_sinchcheck');
+        $tableName = $this->_getTableName('sinch_sinchcheck');
         $check_code = 'routine';
 
         $row = $this->_doQuery(
-            "SELECT * FROM $tableName WHERE check_code = '$check_code'", true
+            "SELECT * FROM $tableName WHERE check_code = '$check_code'",
+            true
         )->fetch();
 
-        $Caption      = $row['caption'];
-        $CheckValue   = $row['check_value'];
+        $Caption = $row['caption'];
+        $CheckValue = $row['check_value'];
         $CheckMeasure = $row['check_measure'];
         $ErrorMessage = $row['error_msg'];
-        $FixMessage   = $row['fix_msg'];
+        $FixMessage = $row['fix_msg'];
 
-        $retvalue                  = [];
+        $retvalue = [];
         $retvalue["'$check_code'"] = [];
 
-        $conn               = $this->_resourceConnection->getConnection(
+        $conn = $this->_resourceConnection->getConnection(
             'core_read'
         );
         $storedFunctionName = $this->_getTableName('sinch_filter_products');
-        $result             = $conn->query(
+        $result = $conn->query(
             "SHOW PROCEDURE STATUS LIKE '$storedFunctionName'"
         );
-        $row                = $result->fetch(PDO::FETCH_ASSOC);
-        $value              = $row['Name'];
+        $row = $result->fetch(PDO::FETCH_ASSOC);
+        $value = $row['Name'];
 
         $errmsg = '';
         $fixmsg = '';

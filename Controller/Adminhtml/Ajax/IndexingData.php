@@ -26,7 +26,7 @@ class IndexingData extends \Magento\Backend\App\Action
      * @param \Magento\Backend\App\Action\Context              $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
      * @param \Magento\Framework\Json\EncoderInterface         $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger              $logger
+     * @param \SITC\Sinchimport\Logger\Logger                  $logger
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,

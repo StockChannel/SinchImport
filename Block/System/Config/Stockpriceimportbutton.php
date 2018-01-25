@@ -4,8 +4,7 @@ namespace SITC\Sinchimport\Block\System\Config;
 
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
-class Stockpriceimportbutton
-    extends \Magento\Config\Block\System\Config\Form\Field
+class Stockpriceimportbutton extends \Magento\Config\Block\System\Config\Form\Field
 {
     protected $sinch;
     
@@ -141,5 +140,4 @@ class Stockpriceimportbutton
         
         return $html;
     }
-    
 }

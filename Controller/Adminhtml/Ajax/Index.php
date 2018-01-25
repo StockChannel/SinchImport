@@ -22,10 +22,10 @@ class Index extends \Magento\Backend\App\Action
     protected $_directory;
 
     /**
-     * @param \Magento\Backend\App\Action\Context $context
+     * @param \Magento\Backend\App\Action\Context              $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\Json\EncoderInterface $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger $logger
+     * @param \Magento\Framework\Json\EncoderInterface         $jsonEncoder
+     * @param \SITC\Sinchimport\Logger\Logger                  $logger
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
@@ -34,8 +34,8 @@ class Index extends \Magento\Backend\App\Action
         \SITC\Sinchimport\Model\Sinch $sinch,
         \SITC\Sinchimport\Logger\Logger $logger,
         \Magento\Framework\Filesystem\DirectoryList $directoryList
-    )
-    {
+    ) {
+    
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
         $this->_jsonEncoder = $jsonEncoder;
@@ -64,7 +64,6 @@ class Index extends \Magento\Backend\App\Action
                 'reload' => !$this->sinch->isImportNotRun() && !empty($lastImportData) && $lastImportData['import_type'] == 'PRICE STOCK'
             ];
         } else {
-            
                 exec(
                     "nohup php " . $rootDir
                     . "bin/magento sinch:import full > /dev/null & echo $!"

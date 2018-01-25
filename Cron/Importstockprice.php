@@ -2,18 +2,20 @@
 
 namespace SITC\Sinchimport\Cron;
 
+use SITC\Sinchimport\Model\Sinch;
+
 class Importstockprice
 {
     /**
-     * @var \SITC\Sinchimport\Model\Sinch
+     * @var Sinch
      */
     private $sinch;
     
     /**
-     * @param \SITC\Sinchimport\Model\Sinch
+     * @param Sinch
      */
     public function __construct(
-        \SITC\Sinchimport\Model\Sinch $sinch
+        Sinch $sinch
     ) {
         $this->sinch = $sinch;
     }

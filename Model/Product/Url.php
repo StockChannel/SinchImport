@@ -56,7 +56,12 @@ class Url extends \Magento\Catalog\Model\Product\Url
         array $data = []
     ) {
         parent::__construct(
-            $urlFactory, $storeManager, $filter, $sidResolver, $urlFinder, $data
+            $urlFactory,
+            $storeManager,
+            $filter,
+            $sidResolver,
+            $urlFinder,
+            $data
         );
         $this->categoryProcessor       = $categoryProcessor;
         $this->urlPersist              = $urlPersist;
@@ -107,9 +112,10 @@ class Url extends \Magento\Catalog\Model\Product\Url
         
         while ($process == true) {
             $this->products = $this->_getResource()->getProductsByStore(
-                $storeId, $lastEntityId
+                $storeId,
+                $lastEntityId
             );
-            if ( ! $this->products) {
+            if (! $this->products) {
                 $process = false;
                 break;
             }
@@ -181,7 +187,8 @@ class Url extends \Magento\Catalog\Model\Product\Url
                     ->setEntityId($product->getId())
                     ->setRequestPath(
                         $this->productUrlPathGenerator->getUrlPathWithSuffix(
-                            $product, $storeId
+                            $product,
+                            $storeId
                         )
                     )
                     ->setTargetPath(
@@ -212,15 +219,18 @@ class Url extends \Magento\Catalog\Model\Product\Url
                 );
                 $requestPath
                           = $this->productUrlPathGenerator->getUrlPathWithSuffix(
-                    $product, $storeId, $category
-                );
+                              $product,
+                              $storeId,
+                              $category
+                          );
                 $urls[]   = $this->urlRewriteFactory->create()
                     ->setEntityType(ProductUrlRewriteGenerator::ENTITY_TYPE)
                     ->setEntityId($product->getId())
                     ->setRequestPath($requestPath)
                     ->setTargetPath(
                         $this->productUrlPathGenerator->getCanonicalUrlPath(
-                            $product, $category
+                            $product,
+                            $category
                         )
                     )
                     ->setStoreId($storeId)

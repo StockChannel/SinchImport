@@ -20,12 +20,13 @@ class Full extends \Magento\Catalog\Model\Indexer\Category\Flat\Action\Full
                 );
 
                 $selectRootCats = $this->connection->select()->from(
-                    $this->connection->getTableName($this->getTableName('catalog_category_entity')), 'entity_id'
+                    $this->connection->getTableName($this->getTableName('catalog_category_entity')),
+                    'entity_id'
                 )->where(
                     'level = 1'
                 );
                 $rootCats = $this->connection->fetchAll($selectRootCats);
-                foreach ($rootCats as $rootCat){
+                foreach ($rootCats as $rootCat) {
                     $select->orWhere(
                         'path = ?',
                         "{$rootId}/{$rootCat['entity_id']}"
