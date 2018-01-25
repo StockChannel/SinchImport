@@ -30,7 +30,7 @@ package:
   stage: package
   script:
   - cd $CI_PROJECT_DIR
-  - zip -r ${VENDOR_NAME}_${PACKAGE_NAME}-${CI_COMMIT_REF_NAME}.zip . -x './.git/*'
+  - zip -r ${VENDOR_NAME}_${PACKAGE_NAME}-${CI_COMMIT_REF_NAME}.zip . -x './.git/*' -x '.git*'
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_COMMIT_REF_NAME"
     untracked: true
