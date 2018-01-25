@@ -41,7 +41,9 @@ class Full extends \Magento\Catalog\Model\Indexer\Category\Flat\Action\Full
                     $categoriesIds[$store->getRootCategoryId()][] = $category['entity_id'];
                 }
             }
-            /** @TODO Do something with chunks */
+            /**
+             * @TODO Do something with chunks
+             */
             $categoriesIdsChunks = array_chunk($categoriesIds[$store->getRootCategoryId()], 500);
             foreach ($categoriesIdsChunks as $categoriesIdsChunk) {
                 $attributesData = $this->getAttributeValues($categoriesIdsChunk, $store->getId());

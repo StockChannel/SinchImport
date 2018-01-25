@@ -17,13 +17,19 @@ class CategoryProcessor
      */
     const DELIMITER_CATEGORY = '/';
     
-    /** @var CategoryUrlPathGenerator */
+    /**
+     * @var CategoryUrlPathGenerator
+     */
     protected $categoryUrlPathGenerator;
     
-    /** @var \Magento\CatalogUrlRewrite\Model\Category\ChildrenCategoriesProvider */
+    /**
+     * @var \Magento\CatalogUrlRewrite\Model\Category\ChildrenCategoriesProvider
+     */
     protected $childrenCategoriesProvider;
     
-    /** @var StoreViewService */
+    /**
+     * @var StoreViewService
+     */
     protected $storeViewService;
     
     /**
@@ -45,10 +51,14 @@ class CategoryProcessor
      */
     protected $categoryFactory;
     
-    /** @var CategoryUrlRewriteGenerator */
+    /**
+     * @var CategoryUrlRewriteGenerator
+     */
     protected $categoryUrlRewriteGenerator;
     
-    /** @var UrlPersistInterface */
+    /**
+     * @var UrlPersistInterface
+     */
     protected $urlPersist;
     
     /**
@@ -73,9 +83,11 @@ class CategoryProcessor
         $this->urlPersist                  = $urlPersist;
         $this->initCategories();
     }
-    
+
     /**
      * @return $this
+     * @throws \Exception
+     * @throws \Magento\UrlRewrite\Model\Exception\UrlAlreadyExistsException
      */
     protected function initCategories()
     {

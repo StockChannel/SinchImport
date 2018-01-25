@@ -12,7 +12,9 @@ use Magento\UrlRewrite\Service\V1\Data\UrlRewriteFactory;
 
 class Url extends \Magento\Catalog\Model\Product\Url
 {
-    /** @var array */
+    /**
+     * @var array
+     */
     protected $products = [];
     
     /**
@@ -20,19 +22,29 @@ class Url extends \Magento\Catalog\Model\Product\Url
      */
     protected $categoryProcessor;
     
-    /** @var UrlFinderInterface */
+    /**
+     * @var UrlFinderInterface
+     */
     protected $urlFinder;
     
-    /** @var UrlPersistInterface */
+    /**
+     * @var UrlPersistInterface
+     */
     protected $urlPersist;
     
-    /** @var UrlRewriteFactory */
+    /**
+     * @var UrlRewriteFactory
+     */
     protected $urlRewriteFactory;
     
-    /** @var \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator */
+    /**
+     * @var \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator
+     */
     protected $productUrlPathGenerator;
     
-    /** @var array */
+    /**
+     * @var array
+     */
     protected $storesCache = [];
     
     /**

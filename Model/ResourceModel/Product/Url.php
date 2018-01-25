@@ -4,7 +4,9 @@ namespace SITC\Sinchimport\Model\ResourceModel\Product;
 
 class Url extends \Magento\Catalog\Model\ResourceModel\Url
 {
-    /** @var \Magento\Framework\App\Config\ScopeConfigInterface */
+    /**
+     * @var \Magento\Framework\App\Config\ScopeConfigInterface
+     */
     protected $scopeConfig;
     
     /**
