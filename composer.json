@@ -6,9 +6,9 @@
   "require": {
     "php": "^5.5|~7.0",
     "magento/framework": "~101.0.0",
-    "magento/module-store": "*",
-    "magento/module-indexer": "*",
-    "magento/module-catalog": "*"
+    "magento/module-store": "~100.2.2",
+    "magento/module-indexer": "~100.2.0",
+    "magento/module-catalog": "~102.0.0"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "^2.6",
