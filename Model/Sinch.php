@@ -3405,10 +3405,10 @@ class Sinch
         }
 
         $max_entity_id = $this->_doQuery(
-            "SELECT MAX(entity_id) AS max_entity_id FROM $catalog_category_entity"
-        )->fetch();
+            "SELECT MAX(entity_id) FROM $catalog_category_entity"
+        )->fetchColumn();
 
-        $i = $max_entity_id[max_entity_id] + 1;
+        $i = $max_entity_id + 1;
 
         foreach ($coincidence as $key) {
             $this->print("Coincidence: key = [$key]");
