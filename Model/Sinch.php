@@ -125,6 +125,7 @@ class Sinch
      * @var \Magento\Framework\App\DeploymentConfig
      */
     private $_deploymentConfig;
+    protected $_eavAttribute;
 
     /**
      * @param \Magento\Framework\Model\Context $context
@@ -162,6 +163,7 @@ class Sinch
         \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory,
         \SITC\Sinchimport\Model\Product\UrlFactory $productUrlFactory,
         \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory,
+        \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute,
         ConsoleOutput $output
     ) {
         $this->output = $output;
@@ -180,6 +182,7 @@ class Sinch
         $this->indexersFactory = $indexersFactory;
         $this->_eventManager = $context->getEventDispatcher();
         $this->_connection = $this->_resourceConnection->getConnection();
+        $this->_eavAttribute = $eavAttribute;
 
         $this->import_status_table = $this->_getTableName('sinch_import_status');
         $this->import_status_statistic_table = $this->_getTableName('sinch_import_status_statistic');
@@ -3387,6 +3390,7 @@ class Sinch
         $this->print("=== createNewDefaultCategories start...");
 
         $old_cats = [];
+        $attributeId = $this->_eavAttribute->getIdByCode('catalog_category', 'name');
         $res = $this->_doQuery(
             "
             SELECT
@@ -3396,7 +3400,7 @@ class Sinch
             JOIN $catalog_category_entity_varchar ccev
                 ON cce.entity_id = ccev.entity_id
                 AND ccev.store_id = 0
-                AND ccev.attribute_id = 41
+                AND ccev.attribute_id = $attributeId
             WHERE parent_id = 1"
         )->fetchAll(); // 41 - category name
 
