@@ -233,14 +233,14 @@ class Sinch
      * Create the import directory Hierarchy
      *
      * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
-     * @throws \Exception
+     * @throws \Magento\Framework\Exception\LocalizedException
      */
     private function createTempDir(\Magento\Framework\App\Filesystem\DirectoryList $directoryList)
     {
         $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/magebuzz/sinchimport/';
         if (!is_dir($dir)) {
             if (!mkdir($dir, 0777, true)) {
-                throw new \Exception("Failed to create import directory. Check filesystem permissions");
+                throw new \Magento\Framework\Exception\LocalizedException("Failed to create import directory. Check filesystem permissions");
             }
         }
         $this->varDir = $dir;
@@ -293,7 +293,7 @@ class Sinch
                     'sinch_filter_products'
                 ) . '" is absent in this database'
             );
-            throw new \Exception("sinch_filter_products procedure missing from database");
+            throw new \Magento\Framework\Exception\LocalizedException("sinch_filter_products procedure missing from database");
         }
 
         $file_privileg = $this->checkDbPrivileges();
@@ -301,7 +301,7 @@ class Sinch
             $this->_setErrorMessage(
                 "LOAD DATA option not set"
             );
-            throw new \Exception("LOAD DATA option not enabled in database");
+            throw new \Magento\Framework\Exception\LocalizedException("LOAD DATA option not enabled in database");
         }
 
         $local_infile = $this->checkLocalInFile();
@@ -309,7 +309,7 @@ class Sinch
             $this->_setErrorMessage(
                 "LOCAL INFILE is not enabled in the database"
             );
-            throw new \Exception("LOCAL INFILE is not enabled in the database");
+            throw new \Magento\Framework\Exception\LocalizedException("LOCAL INFILE is not enabled in the database");
         }
 
         if ($this->isImportNotRun()) {
@@ -715,7 +715,7 @@ class Sinch
             $this->_setErrorMessage(
                 'FTP login or password has not been defined'
             );
-            throw new \Exception("FTP username or password not set");
+            throw new \Magento\Framework\Exception\LocalizedException("FTP username or password not set");
         }
         $file_url_and_dir = $this->replPh(
             FILE_URL_AND_DIR,
@@ -741,13 +741,13 @@ class Sinch
                         $this->_setErrorMessage(
                             'Incorrect username or password for the Stock In The Channel server'
                         );
-                        throw new \Exception("Invalid username or password for FTP");
+                        throw new \Magento\Framework\Exception\LocalizedException("Invalid username or password for FTP");
                     }
                 } else {
                     $this->_setErrorMessage(
                         'FTP connection failed. Unable to connect to the Stock In The Channel server'
                     );
-                    throw new \Exception("FTP connection failed");
+                    throw new \Magento\Framework\Exception\LocalizedException("FTP connection failed");
                 }
                 if (!$this->wget(
                     $file_url_and_dir . $file,
@@ -780,7 +780,7 @@ class Sinch
                     && $file != FILE_PRICE_RULES
                 ) {
                     $this->_setErrorMessage($file . " is empty");
-                    throw new \Exception("Import files empty, cannot continue");
+                    throw new \Magento\Framework\Exception\LocalizedException("Import files empty, cannot continue");
                 } else {
                     if ($file == FILE_CATEGORIES_FEATURES) {
                         $this->_log(
@@ -994,7 +994,7 @@ class Sinch
                     'The Stock In The Channel data files do not appear to be in the correct format. Check file'
                     . $parseFile
                 );
-                throw new \Exception("Import files in invalid format");
+                throw new \Magento\Framework\Exception\LocalizedException("Import files in invalid format");
             }
 
             if (count($coincidence) == 1) { // one store logic
@@ -9255,7 +9255,7 @@ class Sinch
                     'sinch_filter_products'
                 ) . '" is absent in this database. Import stopped.'
             );
-            throw new \Exception("sinch_filter_products missing from the database");
+            throw new \Magento\Framework\Exception\LocalizedException("sinch_filter_products missing from the database");
         }
 
         $file_privileg = $this->checkDbPrivileges();
@@ -9264,14 +9264,14 @@ class Sinch
             $this->_setErrorMessage(
                 "LOAD DATA option not set"
             );
-            throw new \Exception("LOAD DATA option not set in the database");
+            throw new \Magento\Framework\Exception\LocalizedException("LOAD DATA option not set in the database");
         }
         $local_infile = $this->checkLocalInFile();
         if (!$local_infile) {
             $this->_setErrorMessage(
                 "LOCAL INFILE is not enabled"
             );
-            throw new \Exception("LOCAL INFILE not enabled in the database");
+            throw new \Magento\Framework\Exception\LocalizedException("LOCAL INFILE not enabled in the database");
         }
 
         if ($this->isImportNotRun() && $this->isFullImportHaveBeenRun()) {
