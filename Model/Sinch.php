@@ -8660,7 +8660,6 @@ class Sinch
             $this->_log("Wrong file" . $parseFile);
         }
 
-        $this->_log(" ");
     }
 
     public function parseRestrictedValues()
@@ -8669,50 +8668,43 @@ class Sinch
         if (filesize($parseFile) || $this->_ignore_restricted_values) {
             $this->_log("Start parse " . FILE_RESTRICTED_VALUES);
             $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'restricted_values_temp'
-                )
+                "DROP TABLE IF EXISTS " . $this->_getTableName('restricted_values_temp')
             );
             $this->_doQuery(
-                "CREATE TABLE " . $this->_getTableName('restricted_values_temp')
-                . " (
-                            restricted_value_id int(11),
-                            category_feature_id int(11),
-                            text text,
-                            display_order_number int(11),
-                            KEY(restricted_value_id),
-                            KEY(category_feature_id)
-                          )"
+                "CREATE TABLE " . $this->_getTableName('restricted_values_temp'). "
+                (
+                    restricted_value_id int(11),
+                    category_feature_id int(11),
+                    text text,
+                    display_order_number int(11),
+                    KEY(restricted_value_id),
+                    KEY(category_feature_id)
+                )"
             );
             if (!$this->_ignore_restricted_values) {
                 $this->_doQuery(
                     "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                              INTO TABLE " . $this->_getTableName(
-                        'restricted_values_temp'
-                    ) . "
-                              FIELDS TERMINATED BY '"
-                    . $this->field_terminated_char . "'
-                              OPTIONALLY ENCLOSED BY '\"'
-                              LINES TERMINATED BY \"\r\n\"
-                              IGNORE 1 LINES "
+                        INTO TABLE " . $this->_getTableName('restricted_values_temp') . "
+                        FIELDS TERMINATED BY '". $this->field_terminated_char . "'
+                        OPTIONALLY ENCLOSED BY '\"'
+                        LINES TERMINATED BY \"\r\n\"
+                        IGNORE 1 LINES "
                 );
             }
             $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'sinch_restricted_values'
-                )
+                "DROP TABLE IF EXISTS " . $this->_getTableName('sinch_restricted_values')
             );
+
             $this->_doQuery(
-                "RENAME TABLE " . $this->_getTableName('restricted_values_temp')
-                . "
-                          TO " . $this->_getTableName('sinch_restricted_values')
+                "RENAME TABLE " . $this->_getTableName('restricted_values_temp') . "
+                    TO " . $this->_getTableName('sinch_restricted_values')
             );
 
             $this->_log("Finish parse " . FILE_RESTRICTED_VALUES);
         } else {
             $this->_log("Wrong file " . $parseFile);
         }
-        $this->_log(" ");
+
     }
 
     public function parseStockAndPrices()
@@ -8776,32 +8768,42 @@ class Sinch
                 TO " . $stockPriceFinal
         );
 
-        $this->_log("Finish parse" . FILE_RELATED_PRODUCTS);
+        $this->_log("Finish parse " . FILE_RELATED_PRODUCTS);
     }
 
     public function replaceMagentoProductsStockPrice()
     {
+        $catalogInvStockItem = $this->_getTableName('cataloginventory_stock_item');
+        $catalogInvStockStatus = $this->_getTableName('cataloginventory_stock_status');
+        $catalogProductEntity = $this->_getTableName('catalog_product_entity');
+        $catalogProductEntityDecimal = $this->_getTableName('catalog_product_entity_decimal');
+        $stockPriceTemp = $this->_getTableName('stock_and_prices_temp');
+        $prodWebTemp = $this->_getTableName('products_website_temp');
+
         //Add stock
         $this->_doQuery(
             "DELETE csi
-                FROM " . $this->_getTableName('cataloginventory_stock_item') . " csi
-                LEFT JOIN " . $this->_getTableName('catalog_product_entity') . " cpe
+                FROM " . $catalogInvStockItem . " csi
+                LEFT JOIN " . $catalogProductEntity . " cpe
                 ON csi.product_id = cpe.entity_id
                 WHERE cpe.entity_id IS NULL OR csi.website_id = 0"
         );
 
-        //set all sinch products stock=0 before upgrade (needed for daily stock & price import)
+        //Set stock to 0 for sinch products not present in the new data
         $this->_doQuery(
-            "UPDATE " . $this->_getTableName('catalog_product_entity') . " cpe
-                JOIN " . $this->_getTableName('cataloginventory_stock_item') . " csi
-                ON cpe.entity_id = csi.product_id
+            "UPDATE " . $catalogInvStockItem . " csi
+                JOIN " . $catalogProductEntity . " cpe
+                    ON cpe.entity_id = csi.product_id
+                LEFT JOIN " . $stockPriceTemp . " spt
+                    ON spt.store_product_id = cpe.store_product_id
                 SET csi.qty = 0,
                     csi.is_in_stock = 0
-                WHERE cpe.store_product_id IS NOT NULL"
+                WHERE cpe.store_product_id IS NOT NULL
+                AND spt.stock IS NULL"
         );
 
         $this->_doQuery(
-            "INSERT INTO " . $this->_getTableName('cataloginventory_stock_item') . "
+            "INSERT INTO " . $catalogInvStockItem . "
             (
                 product_id,
                 stock_id,
@@ -8818,8 +8820,8 @@ class Sinch
                 IF(b.stock > 0, 1, 0),
                 1,
                 1
-                FROM " . $this->_getTableName('catalog_product_entity') . " a
-                INNER JOIN " . $this->_getTableName('stock_and_prices_temp') . " b
+                FROM " . $catalogProductEntity . " a
+                INNER JOIN " . $stockPriceTemp . " b
                     ON a.store_product_id = b.store_product_id
             )
                 ON DUPLICATE KEY UPDATE
@@ -8829,11 +8831,11 @@ class Sinch
         );
 
         $this->_doQuery(
-            "DELETE FROM " . $this->_getTableName('cataloginventory_stock_status')
+            "DELETE FROM " . $catalogInvStockStatus
         );
 
         $this->_doQuery(
-            "INSERT INTO " . $this->_getTableName('cataloginventory_stock_status') . "
+            "INSERT INTO " . $catalogInvStockStatus . "
             (
                 product_id,
                 website_id,
@@ -8848,10 +8850,10 @@ class Sinch
                 1,
                 a.qty,
                 IF(qty > 0, 1, 0)
-                FROM " . $this->_getTableName('cataloginventory_stock_item') . " a
-                INNER JOIN " . $this->_getTableName('catalog_product_entity') . " b
+                FROM " . $catalogInvStockItem . " a
+                INNER JOIN " . $catalogProductEntity . " b
                     ON a.product_id = b.entity_id
-                INNER JOIN " . $this->_getTableName('products_website_temp') . " w
+                INNER JOIN " . $prodWebTemp . " w
                     ON b.store_product_id = w.store_product_id
             )
                 ON DUPLICATE KEY UPDATE
@@ -8862,203 +8864,162 @@ class Sinch
         //Add prices
         $this->_doQuery(
             "DELETE cped
-                FROM " . $this->_getTableName('catalog_product_entity_decimal') . " cped
-                LEFT JOIN " . $this->_getTableName('catalog_product_entity') . " cpe
+                FROM " . $catalogProductEntityDecimal . " cped
+                LEFT JOIN " . $catalogProductEntity . " cpe
                     ON cped.entity_id = cpe.entity_id
                 WHERE cpe.entity_id IS NULL"
         );
 
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_decimal'
-            ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(
-                                  SELECT
-                                    " . $this->_getProductAttributeId('price') . ",
-                                    w.website,
-                                    a.entity_id,
-                                    b.price
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . "   a
-                                  INNER JOIN " . $this->_getTableName(
-                'stock_and_prices_temp'
-            ) . " b
-                                    ON a.store_product_id=b.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'products_website_temp'
-            ) . " w
-                                    ON a.store_product_id=w.store_product_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = b.price
-                              "
+            "INSERT INTO " . $catalogProductEntityDecimal . "
+            (
+                attribute_id,
+                store_id,
+                entity_id,
+                value
+            )
+            (
+                SELECT
+                " . $this->_getProductAttributeId('price') . ",
+                w.website,
+                a.entity_id,
+                b.price
+                FROM " . $catalogProductEntity . "   a
+                INNER JOIN " . $stockPriceTemp . " b
+                    ON a.store_product_id = b.store_product_id
+                INNER JOIN " . $prodWebTemp . " w
+                    ON a.store_product_id = w.store_product_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = b.price"
         );
 
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_decimal'
-            ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(
-                                  SELECT
-                                    " . $this->_getProductAttributeId('price') . ",
-                                    0,
-                                    a.entity_id,
-                                    b.price
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . "  a
-                                  INNER JOIN " . $this->_getTableName(
-                'stock_and_prices_temp'
-            ) . " b
-                                    ON a.store_product_id=b.store_product_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = b.price
-                "
+            "INSERT INTO " . $this->_getTableName('catalog_product_entity_decimal') . "
+            (
+                attribute_id,
+                store_id,
+                entity_id,
+                value
+            )
+            (
+                SELECT
+                " . $this->_getProductAttributeId('price') . ",
+                0,
+                a.entity_id,
+                b.price
+                FROM " . $catalogProductEntity . "  a
+                INNER JOIN " . $stockPriceTemp . " b
+                    ON a.store_product_id = b.store_product_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = b.price"
         );
+
         //Add cost
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_decimal'
-            ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(
-                                  SELECT
-                                    " . $this->_getProductAttributeId('cost') . ",
-                                    w.website,
-                                    a.entity_id,
-                                    b.cost
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . "   a
-                                  INNER JOIN " . $this->_getTableName(
-                'stock_and_prices_temp'
-            ) . " b
-                                    ON a.store_product_id=b.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'products_website_temp'
-            ) . " w
-                                    ON a.store_product_id=w.store_product_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = b.cost
-                              "
+            "INSERT INTO " . $catalogProductEntityDecimal . "
+            (
+                attribute_id,
+                store_id,
+                entity_id,
+                value
+            )
+            (
+                SELECT
+                " . $this->_getProductAttributeId('cost') . ",
+                w.website,
+                a.entity_id,
+                b.cost
+                FROM " . $catalogProductEntity . "   a
+                INNER JOIN " . $stockPriceTemp . " b
+                    ON a.store_product_id = b.store_product_id
+                INNER JOIN " . $prodWebTemp . " w
+                    ON a.store_product_id = w.store_product_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = b.cost"
         );
 
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_decimal'
-            ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(
-                                  SELECT
-                                    " . $this->_getProductAttributeId('cost') . ",
-                                    0,
-                                    a.entity_id,
-                                    b.cost
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                'stock_and_prices_temp'
-            ) . " b
-                                    ON a.store_product_id=b.store_product_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = b.cost
-                              "
+            "INSERT INTO " . $catalogProductEntityDecimal . "
+            (
+                attribute_id,
+                store_id,
+                entity_id,
+                value
+            )
+            (
+                SELECT
+                " . $this->_getProductAttributeId('cost') . ",
+                0,
+                a.entity_id,
+                b.cost
+                FROM " . $catalogProductEntity . " a
+                INNER JOIN " . $stockPriceTemp . " b
+                    ON a.store_product_id = b.store_product_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = b.cost"
         );
 
         //make products enable in FO
+        //^dunno what thats supposed to mean, but this delete orphaned entries
         $this->_doQuery(
             "DELETE cpip
-                                FROM " . $this->_getTableName(
-                'catalog_product_index_price'
-            ) . " cpip
-                                LEFT JOIN " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " cpe
-                                    ON cpip.entity_id=cpe.entity_id
-                                WHERE cpe.entity_id IS NULL"
+                FROM " . $this->_getTableName('catalog_product_index_price') . " cpip
+                LEFT JOIN " . $catalogProductEntity . " cpe
+                    ON cpip.entity_id = cpe.entity_id
+                WHERE cpe.entity_id IS NULL"
         );
 
         $customergroups = $this->_doQuery(
-            "
-            SELECT customer_group_id
+            "SELECT customer_group_id
             FROM " . $this->_getTableName('customer_group')
         )->fetchAll();
 
         foreach ($customergroups as $customerGroup) {
             $this->_doQuery(
-                "
-                                    INSERT INTO " . $this->_getTableName(
-                    'catalog_product_index_price'
-                ) . " (
-                                        entity_id,
-                                        customer_group_id,
-                                        website_id,
-                                        tax_class_id,
-                                        price,
-                                        final_price,
-                                        min_price,
-                                        max_price
-                                    )(SELECT
-                                        a.entity_id,
-                                        " . $customerGroup['customer_group_id']
-                . ",
-                                        w.website_id,
-                                        2,
-                                        b.price ,
-                                        b.price ,
-                                        b.price ,
-                                        b.price
-                                      FROM " . $this->_getTableName(
-                    'catalog_product_entity'
-                ) . "  a
-                                      INNER JOIN " . $this->_getTableName(
-                    'stock_and_prices_temp'
-                ) . " b
-                                        ON a.store_product_id=b.store_product_id
-                                      INNER JOIN " . $this->_getTableName(
-                    'products_website_temp'
-                ) . " w
-                                        ON a.store_product_id=w.store_product_id
-                                    )
-                                    ON DUPLICATE KEY UPDATE
-                                        tax_class_id = 2,
-                                        price = b.price,
-                                        final_price = b.price,
-                                        min_price = b.price,
-                                        max_price = b.price
-                                  "
+                "INSERT INTO " . $this->_getTableName('catalog_product_index_price') . "
+                (
+                    entity_id,
+                    customer_group_id,
+                    website_id,
+                    tax_class_id,
+                    price,
+                    final_price,
+                    min_price,
+                    max_price
+                )
+                (
+                    SELECT
+                    a.entity_id,
+                    " . $customerGroup['customer_group_id'] . ",
+                    w.website_id,
+                    2,
+                    b.price,
+                    b.price,
+                    b.price,
+                    b.price
+                    FROM " . $catalogProductEntity . "  a
+                    INNER JOIN " . $stockPriceTemp . " b
+                        ON a.store_product_id = b.store_product_id
+                    INNER JOIN " . $prodWebTemp . " w
+                        ON a.store_product_id = w.store_product_id
+                )
+                ON DUPLICATE KEY UPDATE
+                    tax_class_id = 2,
+                    price = b.price,
+                    final_price = b.price,
+                    min_price = b.price,
+                    max_price = b.price"
             );
         }
     }
 
     private function _cleanCateoryProductFlatTable()
     {
-        $q = 'SHOW TABLES LIKE "' . $this->_getTableName(
-                'catalog_product_flat_'
-            ) . '%"';
+        $q = 'SHOW TABLES LIKE "' . $this->_getTableName('catalog_product_flat_') . '%"';
         $quer = $this->_doQuery($q)->fetchAll();
         $result = false;
         foreach ($quer as $res) {
