@@ -13,7 +13,7 @@ class ProductCategory implements ObserverInterface
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConnection
     ) {
-        $this->_resourceConnection       = $resourceConnection;
+        $this->_resourceConnection = $resourceConnection;
         $this->_connection = $this->_resourceConnection->getConnection();
     }
 
@@ -23,13 +23,9 @@ class ProductCategory implements ObserverInterface
         return $this->_connection->query($query);
     }
 
-    protected function _getTableName($tableName = '')
+    private function _getTableName($tableName)
     {
-        if ($tableName) {
-            return $this->_connection->getTableName($tableName);
-        }
-
-        return '';
+        return $this->_resourceConnection->getTableName($tableName);
     }
 
     /**

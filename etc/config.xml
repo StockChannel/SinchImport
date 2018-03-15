@@ -12,7 +12,7 @@
                 <backup_data>0</backup_data>
             </sinch_ftp>
             <sinch_import_fullstatus>
-                <indexing_separately>0</indexing_separately>
+                <indexing_separately>1</indexing_separately>
             </sinch_import_fullstatus>
         </sinchimport>
     </default>

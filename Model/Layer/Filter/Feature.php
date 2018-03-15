@@ -248,16 +248,14 @@ class Feature extends \Magento\Catalog\Model\Layer\Filter\AbstractFilter
                     ) {
                         $value = '-,' . $interval['high'];
                     }
-                    if ($this->_getResource()->getIntervalsCountDescending(
-                        $this,
-                        $interval
-                    ) > 0
-                    ) {
+                    if ($this->_getResource()->getIntervalsCount($this, $interval) > 0) {
                         $data[] = [
                             'label' => $label,
                             'value' => $value,
-                            'count' => $this->_getResource()
-                                ->getIntervalsCountDescending($this, $interval),
+                            'count' => $this->_getResource()->getIntervalsCount(
+                                $this,
+                                $interval
+                            ),
                         ];
                     }
                 } else {

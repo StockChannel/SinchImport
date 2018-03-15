@@ -295,67 +295,6 @@ class Feature extends \Magento\Framework\Model\ResourceModel\Db\AbstractDb
         return $count;
     }
     
-    function getIntervalsCountDescending($filter, $interval)
-    {
-        \Magento\Framework\Profiler::start(__METHOD__);
-        
-        // clone select from collection with filters
-        $select = clone $filter->getLayer()->getProductCollection()->getSelect(
-        );
-        
-        // reset columns, order and limitation conditions
-        $select->reset(\Magento\Framework\DB\Select::COLUMNS);
-        $select->reset(\Magento\Framework\DB\Select::ORDER);
-        $select->reset(\Magento\Framework\DB\Select::LIMIT_COUNT);
-        $select->reset(\Magento\Framework\DB\Select::LIMIT_OFFSET);
-        
-        $connection = $this->getConnection();
-        $feature    = $filter->getFeatureModel();
-        
-        $select->joinInner(
-            ['spf' => $connection->getTableName('sinch_product_features')],
-            "spf.sinch_product_id = e.sinch_product_id",
-            []
-        )->joinLeft(
-            ['srv' => $connection->getTableName(
-                'sinch_restricted_values'
-            )],
-            "srv.restricted_value_id = spf.restricted_value_id",
-            ['value' => 'srv.text']
-        )->joinLeft(
-            ['scf' => $connection->getTableName(
-                'sinch_categories_features'
-            )],
-            "scf.category_feature_id = srv.category_feature_id",
-            []
-        )->joinLeft(
-            ['scm' => $connection->getTableName(
-                'sinch_categories_mapping'
-            )],
-            "scm.shop_store_category_id = scf.store_category_id",
-            ['count' => "COUNT(DISTINCT e.entity_id)"]
-        )
-            ->where(
-                'srv.category_feature_id = ?',
-                $feature['category_feature_id']
-            );
-        
-        if (isset($interval['low'], $interval['high'])) {
-            $select->where('CAST(srv.text AS SIGNED) >= ?', $interval['low'])
-                ->where('CAST(srv.text AS SIGNED) < ?', $interval['high']);
-        } elseif (isset($interval['low'])) {
-            $select->where('CAST(srv.text AS SIGNED) >= ?', $interval['low']);
-        } elseif (isset($interval['high'])) {
-            $select->where('CAST(srv.text AS SIGNED) < ?', $interval['high']);
-        }
-        
-        $count = $connection->fetchOne($select);
-        
-        \Magento\Framework\Profiler::stop(__METHOD__);
-        
-        return $count;
-    }
-    
     /**
      * Initialize connection and define main table name
      *
