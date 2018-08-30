@@ -87,25 +87,7 @@ class Sinch
 
     protected $_eavAttribute;
 
-    /**
-     * @param \Magento\Framework\Model\Context $context
-     * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList ,
-     * @param \Magento\Store\Model\StoreManagerInterface $storeManager ,
-     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig ,
-     * @param \SITC\Sinchimport\Logger\Logger $sinchLogger
-     * @param \Magento\Framework\App\ResourceConnection $resourceConnection
-     * @param \Magento\Indexer\Model\Processor $indexProcessor ,
-     * @param \Magento\Framework\App\Cache\Frontend\Pool $cacheFrontendPool ,
-     * @param \Magento\Framework\App\DeploymentConfig $deploymentConfig ,
-     * @param \Magento\Framework\Model\ResourceModel\Iterator $resourceIterator ,
-     * @param \Magento\Catalog\Model\ProductFactory $productFactory ,
-     * @param \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory ,
-     * @param \SITC\Sinchimport\Model\Product\UrlFactory $productUrlFactory ,
-     * @param \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory
-     * @param \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute
-     * @param \Symfony\Component\Console\Output\ConsoleOutput $output
-     * @throws \Exception
-     */
+    private $nickAttributes;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -120,8 +102,11 @@ class Sinch
         \SITC\Sinchimport\Model\Product\UrlFactory $productUrlFactory,
         \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory,
         \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute,
-        ConsoleOutput $output
+        ConsoleOutput $output,
+        \SITC\Sinchimport\Model\Import\Attributes $nickAttributes
     ) {
+        $this->nickAttributes = $nickAttributes;
+
         $this->output = $output;
         $this->_storeManager = $storeManager;
         $this->scopeConfig = $scopeConfig;
@@ -307,6 +292,13 @@ class Sinch
                 $this->print("Parse Related Products...");
                 $this->parseRelatedProducts();
                 $this->addImportStatus('Parse Related Products');
+
+//Nick test built in magento attributes
+$this->nickAttributes->parse(
+    $this->varDir . FILE_CATEGORIES_FEATURES,
+    $this->varDir . FILE_RESTRICTED_VALUES,
+    $this->varDir . FILE_PRODUCT_FEATURES
+);
 
                 $this->print("Parse Product Features...");
                 $this->parseProductFeatures();
