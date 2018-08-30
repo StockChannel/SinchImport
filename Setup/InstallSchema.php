@@ -1,6 +1,5 @@
 <?php
 
-
 namespace SITC\Sinchimport\Setup;
 
 use Magento\Framework\Setup\InstallSchemaInterface;
