@@ -101,7 +101,7 @@ class Image
         \Closure $proceed
     ) {
         if ($this->_baseFileTmp) {
-            return ['x' => 100, 'y' => 100];
+            return [150, 150];
         }
 
         return $proceed();

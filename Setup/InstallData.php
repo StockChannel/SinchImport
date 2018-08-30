@@ -236,16 +236,16 @@ class InstallData implements InstallDataInterface
                     'frontend'                   => '',
                     'source'                     => '',
                     'global'                     => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
-                    'visible'                    => false,
+                    'visible'                    => true,
                     'required'                   => false,
                     'user_defined'               => false,
-                    'searchable'                 => 1,
+                    'searchable'                 => true,
                     'filterable'                 => false,
                     'comparable'                 => false,
-                    'visible_on_front'           => true,
-                    'is_visible_on_front'        => 1,
+                    'visible_on_front'           => false,
+                    'is_visible_on_front'        => 0,
                     'is_html_allowed_on_front'   => 1,
-                    'visible_in_advanced_search' => false,
+                    'visible_in_advanced_search' => true,
                     'unique'                     => false
                 ]
             );
