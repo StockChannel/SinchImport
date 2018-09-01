@@ -8,7 +8,8 @@
     "magento/framework": ">=101.0.0",
     "magento/module-store": ">=100.2.2",
     "magento/module-indexer": ">=100.2.0",
-    "magento/module-catalog": ">=102.0.0"
+    "magento/module-catalog": ">=102.0.0",
+    "magento/module-eav": ">=100.0.2"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "^2.6",
