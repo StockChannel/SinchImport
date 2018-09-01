@@ -11,11 +11,6 @@ class Attributes {
     //CSV parser
     private $csv;
 
-    //private $eavSetup;
-
-    //private $entityTypeId;
-    //private $attributeSetId;
-
     //ID, CategoryID, Name, Order
     private $category_features;
     //ID, CategoryFeatureID, Text, Order
@@ -41,24 +36,20 @@ class Attributes {
 
     private $logger;
 
-    
     public function __construct(
         \Magento\Framework\File\Csv $csv,
-        //\Magento\Eav\Setup\EavSetup $eavSetup,
-        //\Magento\Eav\Model\AttributeRepository $attributeRepository,
-        \Magento\Eav\Api\AttributeRepositoryInterface $attributeRepository,
-        \Magento\Eav\Api\AttributeGroupRepositoryInterface $attributeGroupRepository,
-        \Magento\Eav\Api\Data\AttributeInterfaceFactory $attributeFactory,
+        \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository,
+        \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
+        \Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory $attributeFactory,
         \Magento\Eav\Api\Data\AttributeGroupInterfaceFactory $attributeGroupFactory,
         \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder,
-        \Magento\Eav\Api\AttributeOptionManagementInterface $optionManagement,
+        \Magento\Catalog\Api\ProductAttributeOptionManagementInterface $optionManagement,
         \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory,
-        \Magento\Eav\Api\AttributeSetRepositoryInterface $attributeSetRepository,
-        \Magento\Eav\Api\AttributeManagementInterface $attributeManagement
+        \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository,
+        \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement
     )
     {
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
-        //$this->eavSetup = $eavSetup;
         $this->attributeRepository = $attributeRepository;
         $this->attributeGroupRepository = $attributeGroupRepository;
         $this->attributeFactory = $attributeFactory;
@@ -78,33 +69,40 @@ class Attributes {
     public function parse($categoryFeaturesFile, $restrictedValuesFile, $productFeaturesFile)
     {
         $this->category_features = $this->csv->getData($categoryFeaturesFile);
+        unset($this->category_features[0]); //Unset the first entry as the sinch export files have a header row
         $this->attribute_values = $this->csv->getData($restrictedValuesFile);
+        unset($this->attribute_values[0]);
         $this->product_features = $this->csv->getData($productFeaturesFile);
+        unset($this->product_features[0]);
 
-        //$this->entityTypeId = $this->eavSetup->getEntityTypeId(\Magento\Catalog\Model\Category::ENTITY);
-        //$this->attributeSetId = $this->eavSetup->getDefaultAttributeSetId($entityTypeId);
-
-        //$this->eavSetup->addAttributeGroup($this->entityTypeId, $this->attributeSetId, self::ATTRIBUTE_GROUP_NAME, self::ATTRIBUTE_GROUP_SORT);
         $criteria = $this->searchCriteriaBuilder->addFilter(\Magento\Eav\Api\Data\AttributeGroupInterface::GROUP_NAME, self::ATTRIBUTE_GROUP_NAME, "eq")->create();
         $groups = $this->attributeGroupRepository->getList($criteria)->getItems();
+        $this->logger->info("Matching attribute groups: " . count($groups));
 
         if(count($groups) < 1){
             foreach($this->getAttributeSetIds() as $idx => $attributeSetId){
+                $this->logger->info("Creating attribute group for attribute set id: " . $attributeSetId);
                 $ag = $this->attributeGroupFactory->create()
                     ->setAttributeGroupName(self::ATTRIBUTE_GROUP_NAME)
                     ->setAttributeSetId($attributeSetId)
                     ->setData('sort_order', self::ATTRIBUTE_GROUP_SORT);
                  $attributeGroup = $this->attributeGroupRepository->save($ag);
                  $this->attributeGroupIds[$idx] = $attributeGroup->getAttributeGroupId();
+                 $this->logger->info("Attribute group for set id " . $attributeSetId . " is " . $this->attributeGroupIds[$idx]);
             }
         } else {
-            //$this->attributeGroup = $groups[0];
+            $this->logger->info("Matching attribute groups to attribute sets");
             foreach($groups as $attributeGroup){
                 $setId = $attributeGroup->getAttributeSetId();
+                $matched = false;
                 foreach($this->getAttributeSetIds() as $idx => $attributeSetId){
                     if ($setId == $attributeSetId){
+                        $matched = true;
                         $this->attributeGroupIds[$idx] = $attributeGroup->getAttributeGroupId();
                     }
+                }
+                if(!$matched){
+                    $this->logger->err("Failed to match attribute group " . $attributeGroup->getAttributeGroupId() . " to an attribute set");
                 }
             }
             if(count($groups) != count($this->attributeGroupIds)){
@@ -114,10 +112,8 @@ class Attributes {
             }
         }
 
-        //$groupCode = $this->eavSetup->convertToAttributeGroupCode(self::ATTRIBUTE_GROUP_NAME);
-        //$this->attributeGroupId = $this->eavSetup->getAttributeGroupId($this->entityTypeId, $this->attributeSetId, $groupCode);
-
         //Parse features
+        $this->logger->info("Parsing category features file");
         foreach($this->category_features as $feature_row){
             if(count($feature_row) != 4) {
                 $this->logger->warn("Feature row not 4 columns");
@@ -133,6 +129,7 @@ class Attributes {
         }
 
         //Parse values
+        $this->logger->info("Parsing attribute values file");
         foreach($this->attribute_values as $rv_row){
             $this->attributes[$rv_row[1]]["values"][$rv_row[0]] = [
                 "text" => $rv_row[2],
@@ -142,71 +139,51 @@ class Attributes {
         
         
         //Create or update Magento attributes
+        $this->logger->info("Creating or updating Magento attributes");
         foreach($this->attributes as $sinch_id => $data){
             try {
-                //$attribute = $this->eavSetup->getAttribute($this->entityTypeId, self::ATTRIBUTE_PREFIX . $sinch_id);
-                $attribute = $this->attributeRepository->get(\Magento\Catalog\Model\Category::ENTITY, self::ATTRIBUTE_PREFIX . $sinch_id);
+                $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
+                $this->logger->info("Attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " exists, updating");
             } catch(\Magento\Framework\Exception\NoSuchEntityException $e){
                 $this->logger->info("Failed to get attribute, creating it");
-                $attribute = $this->createAttribute($sinch_id, $data);
+                $this->createAttribute($sinch_id, $data);
             }
-            $this->updateAttribute($attribute, $data);
+            $this->updateAttributeOptions(self::ATTRIBUTE_PREFIX . $sinch_id, $data);
         }
 
-        $this->logger->debug(print_r($this->attributes, true));
         $this->logger->info("---Nicka101--- Completed Attribute parse");
     }
 
     private function createAttribute($sinch_id, $data)
     {
-        /*$this->eavSetup->addAttribute(
-            \Magento\Catalog\Model\Category::ENTITY,
-            self::ATTRIBUTE_PREFIX . $sinch_id,
-            [
-                'type'     => 'int',
-                'label'    => $data["name"],
-                'input'    => 'select',
-                'visible'  => true,
-                'required' => false,
-                'global'   => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_STORE,
-                'group'    => self::ATTRIBUTE_GROUP_NAME,
-                'sort_order' => $data["order"],
-                'searchable' => false,
-                'filterable' => true,
-                'comparable' => true,
-                'visible_on_front' => true,
-                'used_in_product_listing' => true,
-                'unique' => false
-            ]
-        );*/
+        $this->logger->info("Creating attribute " . self::ATTRIBUTE_PREFIX . $sinch_id);
         $attribute = $this->attributeFactory->create()
+            ->setEntityTypeId(\Magento\Catalog\Model\Product::ENTITY)
             ->setAttributeCode(self::ATTRIBUTE_PREFIX . $sinch_id)
             ->setBackendType('int')
             ->setFrontendInput('select')
-            ->setEntityTypeId(\Magento\Catalog\Model\Category::ENTITY)
             ->setIsRequired(false)
             ->setIsUserDefined(false)
             ->setDefaultFrontendLabel($data["name"])
             ->setIsUnique(false)
-            ->setData('visible', true)
+            ->setIsVisible(true)
             ->setData('sort_order', $data["order"])
-            ->setData('searchable', false)
-            ->setData('filterable', true)
-            ->setData('comparable', true)
+            ->setIsUsedInGrid(true)
+            ->setIsVisibleInGrid(true)
+            ->setIsFilterableInGrid(true)
+            ->setIsFilterableInSearch(true)
+            ->setIsSearchable(false)
+            ->setIsVisibleInAdvancedSearch(false)
+            ->setIsComparable(true)
             ->setData('visible_on_front', true)
-            ->setData('used_in_product_listing', true);
+            ->setIsVisibleOnFront(true)
+            ->setData('used_in_product_listing', true)
+            ->setUsedInProductListing(true);
         $this->attributeRepository->save($attribute);
 
-        /*$this->eavSetup->addAttributeToGroup(
-            $this->entityTypeId,
-            $this->attributeSetId,
-            $this->attributeGroupId,
-            $attribute["attribute_id"],
-            $data["order"]
-        );*/
         foreach($this->getAttributeSetIds() as $idx => $attributeSetId){
+            $this->logger->info("Assigning attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " to set and group for set id " . $attributeSetId);
             $this->attributeManagement->assign(
-                \Magento\Catalog\Model\Category::ENTITY,
                 $attributeSetId,
                 $this->attributeGroupIds[$idx],
                 self::ATTRIBUTE_PREFIX . $sinch_id,
@@ -214,39 +191,30 @@ class Attributes {
             );
         }
 
-        //return $this->eavSetup->getAttribute($this->entityTypeId, self::ATTRIBUTE_PREFIX . $sinch_id);
-        return $this->attributeRepository->get(
-            \Magento\Catalog\Model\Category::ENTITY,
-            self::ATTRIBUTE_PREFIX . $sinch_id
-        );
+        //return $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
     }
 
-    private function updateAttribute($attribute, $data)
+    private function updateAttributeOptions($attribute_code, $data)
     {
         //Delete old options
-        $items = $this->optionManagement->getItems(\Magento\Catalog\Model\Category::ENTITY, $attribute->getAttributeCode());
-        $this->logger->debug("Old options:");
-        $this->logger->debug(print_r($items, true));
+        $items = $this->optionManagement->getItems($attribute_code);
+
+        $this->logger->info("Deleting old options (" . count($items) . ") for attribute " . $attribute_code);
         foreach($items as $option){
-            $this->optionManagement->delete(
-                \Magento\Catalog\Model\Category::ENTITY,
-                $attribute->getAttributeCode(),
-                $option->getValue()
-            );
+            $id = $option->getValue();
+            if($id == '') continue; //Magento seems to add an empty option to the array, ignore it
+            $this->optionManagement->delete($attribute_code, $id);
         }
         
         //Create new options
+        $this->logger->info("Create new options (" . count($data["values"]) . ") for attribute " . $attribute_code);
         foreach($data["values"] as $sinch_value_id => $option_data){
             $option = $this->optionFactory->create()
                 ->setLabel($option_data["text"])
                 ->setValue($sinch_value_id)
                 ->setSortOrder($option_data["order"]);
 
-            if(!$this->optionManagement->add(
-                    \Magento\Catalog\Model\Category::ENTITY,
-                    $attribute->getAttributeCode(),
-                    $option
-            )){
+            if(!$this->optionManagement->add($attribute_code, $option)){
                 $this->logger->error("Failed to add option id: " . $sinch_value_id);
                 throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
             }
