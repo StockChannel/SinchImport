@@ -28,7 +28,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $connection = $installer->getConnection();
             $mappingTable = $installer->getTable('sinch_restrictedvalue_mapping');
             // Check if the table already exists
-            if ($installer->getConnection()->isTableExists($tableName) != true) {
+            if ($installer->getConnection()->isTableExists($mappingTable) != true) {
                 // Create tutorial_simplenews table
                 $table = $installer->getConnection()
                     ->newTable($mappingTable)
