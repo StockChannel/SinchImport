@@ -226,7 +226,7 @@ class Attributes {
                 ->setSortOrder($option_data["order"]);
 
             if(!$this->optionManagement->add($attribute_code, $option)){
-                $this->logger->error("Failed to add option id: " . $sinch_value_id);
+                $this->logger->err("Failed to add option id: " . $sinch_value_id);
                 throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
             }
             
