@@ -30,6 +30,7 @@ class Attributes {
     private $optionFactory;
     private $attributeSetRepository;
     private $attributeManagement;
+    private $mappingFactory;
 
     private $attributeSetCache = null;
     private $attributeGroupIds = [];
@@ -46,7 +47,8 @@ class Attributes {
         \Magento\Catalog\Api\ProductAttributeOptionManagementInterface $optionManagement,
         \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory,
         \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository,
-        \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement
+        \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
+        \SITC\Sinchimport\Model\Import\Mapping\RestrictedValueMappingFactory $mappingFactory
     )
     {
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
@@ -59,6 +61,7 @@ class Attributes {
         $this->optionFactory = $optionFactory;
         $this->attributeSetRepository = $attributeSetRepository;
         $this->attributeManagement = $attributeManagement;
+        $this->mappingFactory = $mappingFactory;
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/nick_attribute_test.log');
         $logger = new \Zend\Log\Logger();
@@ -148,7 +151,7 @@ class Attributes {
                 $this->logger->info("Failed to get attribute, creating it");
                 $this->createAttribute($sinch_id, $data);
             }
-            $this->updateAttributeOptions(self::ATTRIBUTE_PREFIX . $sinch_id, $data);
+            $this->updateAttributeOptions($sinch_id, $data);
         }
 
         $this->logger->info("---Nicka101--- Completed Attribute parse");
@@ -194,10 +197,18 @@ class Attributes {
         //return $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
     }
 
-    private function updateAttributeOptions($attribute_code, $data)
+    private function updateAttributeOptions($sinch_feature_id, $data)
     {
+        $attribute_code = self::ATTRIBUTE_PREFIX . $sinch_feature_id;
         //Delete old options
         $items = $this->optionManagement->getItems($attribute_code);
+
+        //Delete old mapping entries
+        $this->logger->info("Deleting old restricted value mapping");
+        $this->mappingFactory
+            ->create()
+            ->getCollection()
+            ->walk('delete');
 
         $this->logger->info("Deleting old options (" . count($items) . ") for attribute " . $attribute_code);
         foreach($items as $option){
@@ -211,13 +222,20 @@ class Attributes {
         foreach($data["values"] as $sinch_value_id => $option_data){
             $option = $this->optionFactory->create()
                 ->setLabel($option_data["text"])
-                ->setValue($sinch_value_id)
+                //->setValue($sinch_value_id) //TODO: Don't set value (i.e. option id), use an assigned one and keep a mapping handy
                 ->setSortOrder($option_data["order"]);
 
             if(!$this->optionManagement->add($attribute_code, $option)){
                 $this->logger->error("Failed to add option id: " . $sinch_value_id);
                 throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
             }
+            
+            //Insert a mapping record for the option
+            $this->mappingFactory->create()->setData([
+                'sinch_id' => $sinch_value_id,
+                'sinch_feature_id' => $sinch_feature_id,
+                'option_id' => $option->getValue() //?
+            ])->save();
         }
     }
 
