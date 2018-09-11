@@ -319,6 +319,9 @@ $this->nickAttributes->parse(
                 $this->parseRestrictedValues();
                 $this->addImportStatus('Parse Restricted Values');
 
+//Nick test applying built in magento attributes
+$this->nickAttributes->applyAttributeValues();
+
                 $this->print("Parse Stock And Prices...");
                 $this->parseStockAndPrices();
                 $this->addImportStatus('Parse Stock And Prices');
