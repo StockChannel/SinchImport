@@ -87,7 +87,7 @@ class Sinch
 
     protected $_eavAttribute;
 
-    private $nickAttributes;
+    private $attributesImport;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -103,9 +103,9 @@ class Sinch
         \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory,
         \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute,
         ConsoleOutput $output,
-        \SITC\Sinchimport\Model\Import\Attributes $nickAttributes
+        \SITC\Sinchimport\Model\Import\Attributes $attributesImport
     ) {
-        $this->nickAttributes = $nickAttributes;
+        $this->attributesImport = $attributesImport;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -294,13 +294,11 @@ class Sinch
                 $this->addImportStatus('Parse Related Products');
 
                 $this->print("Parse Product Features...");
-//                $this->parseProductFeatures();
-//Nick test built in magento attributes
-$this->nickAttributes->parse(
-    $this->varDir . FILE_CATEGORIES_FEATURES,
-    $this->varDir . FILE_RESTRICTED_VALUES,
-    $this->varDir . FILE_PRODUCT_FEATURES
-);
+                $this->attributesImport->parse(
+                    $this->varDir . FILE_CATEGORIES_FEATURES,
+                    $this->varDir . FILE_RESTRICTED_VALUES,
+                    $this->varDir . FILE_PRODUCT_FEATURES
+                );
                 $this->addImportStatus('Parse Product Features');
 
                 $this->print("Parse Product Categories...");
@@ -315,12 +313,8 @@ $this->nickAttributes->parse(
                 $this->addImportStatus('Parse Pictures Gallery');
 
                 $this->print("Parse Restricted Values...");
-                //$this->parseRestrictedValues();
-//Nick test applying built in magento attributes
-$this->nickAttributes->applyAttributeValues();
+                $this->attributesImport->applyAttributeValues();
                 $this->addImportStatus('Parse Restricted Values');
-
-
 
                 $this->print("Parse Stock And Prices...");
                 $this->parseStockAndPrices();
@@ -4515,58 +4509,6 @@ $this->nickAttributes->applyAttributeValues();
         }
     }
 
-    private function parseProductFeatures()
-    {
-        $parseFile = $this->varDir . FILE_PRODUCT_FEATURES;
-        if (filesize($parseFile) || $this->_ignore_product_features) {
-            $this->_log("Start parse " . FILE_PRODUCT_FEATURES);
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'product_features_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->_getTableName('product_features_temp')
-                . "(
-                            product_feature_id int(11),
-                            sinch_product_id int(11),
-                            restricted_value_id int(11),
-                            KEY(sinch_product_id),
-                            KEY(restricted_value_id)
-                          )
-                        "
-            );
-            if (!$this->_ignore_product_features) {
-                $this->_doQuery(
-                    "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                              INTO TABLE " . $this->_getTableName(
-                        'product_features_temp'
-                    ) . "
-                              FIELDS TERMINATED BY '"
-                    . $this->field_terminated_char . "'
-                              OPTIONALLY ENCLOSED BY '\"'
-                              LINES TERMINATED BY \"\r\n\"
-                              IGNORE 1 LINES "
-                );
-            }
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'sinch_product_features'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->_getTableName('product_features_temp')
-                . "
-                          TO " . $this->_getTableName('sinch_product_features')
-            );
-
-            $this->_log("Finish parse " . FILE_PRODUCT_FEATURES);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
     private function parseProductCategories()
     {
         $parseFile = $this->varDir . FILE_PRODUCT_CATEGORIES;
@@ -8578,51 +8520,6 @@ $this->nickAttributes->applyAttributeValues();
         } else {
             $this->_log("Wrong file" . $parseFile);
         }
-    }
-
-    private function parseRestrictedValues()
-    {
-        $parseFile = $this->varDir . FILE_RESTRICTED_VALUES;
-        if (filesize($parseFile) || $this->_ignore_restricted_values) {
-            $this->_log("Start parse " . FILE_RESTRICTED_VALUES);
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName('restricted_values_temp')
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->_getTableName('restricted_values_temp'). "
-                (
-                    restricted_value_id int(11),
-                    category_feature_id int(11),
-                    text text,
-                    display_order_number int(11),
-                    KEY(restricted_value_id),
-                    KEY(category_feature_id)
-                )"
-            );
-            if (!$this->_ignore_restricted_values) {
-                $this->_doQuery(
-                    "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                        INTO TABLE " . $this->_getTableName('restricted_values_temp') . "
-                        FIELDS TERMINATED BY '". $this->field_terminated_char . "'
-                        OPTIONALLY ENCLOSED BY '\"'
-                        LINES TERMINATED BY \"\r\n\"
-                        IGNORE 1 LINES "
-                );
-            }
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName('sinch_restricted_values')
-            );
-
-            $this->_doQuery(
-                "RENAME TABLE " . $this->_getTableName('restricted_values_temp') . "
-                    TO " . $this->_getTableName('sinch_restricted_values')
-            );
-
-            $this->_log("Finish parse " . FILE_RESTRICTED_VALUES);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-
     }
 
     private function parseStockAndPrices()
