@@ -13,8 +13,6 @@ class Attributes {
     //Stats
     private $attributeCount = 0;
     private $optionCount = 0;
-    private $productsEdited = 0;
-    private $valuesSet = 0;
 
     //CSV parser
     private $csv;
@@ -28,8 +26,8 @@ class Attributes {
 
     //Attributes to produce
     private $attributes;
-    //Sinch product ID -> [RV] mapping
-    private $productAttributeValues;
+    //Sinch RV -> [Prod]
+    private $rvProds;
 
     private $attributeRepository;
     private $attributeGroupRepository;
@@ -42,10 +40,12 @@ class Attributes {
     private $attributeManagement;
 
     //For setting the attributes on the products
-    private $productCollectionFactory;
+    //private $productCollectionFactory;
     //private $productRepository;
-    private $productResource;
+    //private $productResource;
     private $resourceConn;
+    private $cacheType;
+    private $massProdValues;
 
     private $attributeSetCache = null;
     private $attributeGroupIds = [];
@@ -53,6 +53,8 @@ class Attributes {
     private $logger;
 
     private $mappingTable;
+    private $cpeTable;
+
     private $mappingInsert = null;
     private $mappingQuery = null;
 
@@ -67,10 +69,12 @@ class Attributes {
         \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory,
         \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository,
         \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
-        \Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory,
+        //\Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory,
         //\Magento\Catalog\Api\ProductRepositoryInterface $productRepository,
-        \Magento\Catalog\Model\ResourceModel\Product $productResource,
-        \Magento\Framework\App\ResourceConnection $resourceConn
+        //\Magento\Catalog\Model\ResourceModel\Product $productResource,
+        \Magento\Framework\App\ResourceConnection $resourceConn,
+        \Magento\Framework\App\Cache\TypeListInterface $cacheType,
+        \Magento\Catalog\Model\Product\Action $massProdValues
     )
     {
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
@@ -83,12 +87,15 @@ class Attributes {
         $this->optionFactory = $optionFactory;
         $this->attributeSetRepository = $attributeSetRepository;
         $this->attributeManagement = $attributeManagement;
-        $this->productCollectionFactory = $productCollectionFactory;
+        //$this->productCollectionFactory = $productCollectionFactory;
         //$this->productRepository = $productRepository;
-        $this->productResource = $productResource;
+        //$this->productResource = $productResource;
         $this->resourceConn = $resourceConn;
+        $this->cacheType = $cacheType;
+        $this->massProdValues = $massProdValues;
 
         $this->mappingTable = $this->getConnection()->getTableName('sinch_restrictedvalue_mapping');
+        $this->cpeTable = $this->getConnection()->getTableName('catalog_product_entity');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/nick_attribute_test.log');
         $logger = new \Zend\Log\Logger();
@@ -133,10 +140,10 @@ class Attributes {
                 "order" => $rv_row[3]
             ];
         }
-        
-        //Product -> [RV]
+
+        //RV -> [Product]
         foreach($this->product_features as $pf_row){
-            $this->productAttributeValues[$pf_row[1]][] = $pf_row[2];
+            $this->rvProds[$pf_row[2]][] = $pf_row[1];
         }
         
         //Delete old mapping entries
@@ -156,6 +163,9 @@ class Attributes {
             }
             $this->updateAttributeOptions($sinch_id, $data);
         }
+
+        //Flush EAV cache
+        $this->cacheType->cleanType('eav');
 
         $elapsed = $this->microtime_float() - $parseStart;
         $this->logger->info("--- Completed Attribute parse ---");
@@ -184,12 +194,12 @@ class Attributes {
             ->setIsFilterableInSearch(0)
             ->setIsSearchable(0)
             ->setIsComparable(0)
-            ->setUsedInProductListing(0)
+            ->setUsedInProductListing(1)
             ->setPosition($data["order"]);
         $this->attributeRepository->save($attribute);
-
+        
+        $this->logger->info("Assigning attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " to sets and groups");
         foreach($this->getAttributeSetIds() as $idx => $attributeSetId){
-            $this->logger->info("Assigning attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " to set and group for set id " . $attributeSetId);
             $this->attributeManagement->assign(
                 $attributeSetId,
                 $this->attributeGroupIds[$idx],
@@ -197,8 +207,6 @@ class Attributes {
                 $data["order"]
             );
         }
-
-        //return $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
     }
 
     private function updateAttributeOptions($sinch_feature_id, $data)
@@ -235,7 +243,6 @@ class Attributes {
             //Skip adding the option but still map it if it exists
             $existingOptId = $attribute->getSource()->getOptionId($option_data["text"]);
             if(is_numeric($existingOptId)){
-                $this->logger->info("Skipping add of rv " . $sinch_value_id . " as it was detected to be present as option id: " . $existingOptId);
                 $this->addMapping($sinch_value_id, $sinch_feature_id, $existingOptId);
                 continue;
             }
@@ -251,11 +258,8 @@ class Attributes {
                 //Get option id
                 $option_id = $attribute->getSource()->getOptionId($option_data["text"]);
                 if(!is_numeric($option_id)){
-                    $this->logger->warn("Unable to add mapping as we couldn't establish option_id for \"" . $option_data["text"] . "\"");
-
                     foreach($this->optionManagement->getItems($attribute_code) as $option){
                         if($option->getLabel() == $option_data["text"]){
-                            $this->logger->warn("Late option_id match, required manual getItems reload");
                             $this->addMapping($sinch_value_id, $sinch_feature_id, $option->getValue());
                         }
                     }
@@ -330,7 +334,7 @@ class Attributes {
     {
         if(empty($this->mappingInsert)){
             $this->mappingInsert = $this->getConnection()->prepare(
-                "INSERT IGNORE INTO {$this->mappingTable} (sinch_id, sinch_feature_id, option_id) VALUES(:sinch_id, :sinch_feature_id, :option_id)"
+                "REPLACE INTO {$this->mappingTable} (sinch_id, sinch_feature_id, option_id) VALUES(:sinch_id, :sinch_feature_id, :option_id)"
             );
         }
 
@@ -341,68 +345,62 @@ class Attributes {
         $this->mappingInsert->closeCursor();
     }
 
-    private function queryMappings($rv_ids)
+    private function queryMapping($rv_id)
     {
-        $placeholders = implode(',', array_fill(0, count($rv_ids), '?'));
-        $massMap = $this->getConnection()->prepare(
-            "SELECT sinch_feature_id, option_id FROM {$this->mappingTable} WHERE sinch_id IN ($placeholders)"
+        if(empty($this->mappingQuery)){
+            $this->mappingQuery = $this->getConnection()->prepare(
+                "SELECT sinch_feature_id, option_id FROM {$this->mappingTable} WHERE sinch_id = :rv_id"
+            );
+        }
+
+        $this->mappingQuery->bindValue(":rv_id", $rv_id, \PDO::PARAM_INT);
+        $this->mappingQuery->execute();
+        $result = $this->mappingQuery->fetch(\PDO::FETCH_ASSOC);
+        $this->mappingQuery->closeCursor();
+        return $result;
+    }
+
+    private function sinchToEntityIds($sinch_prod_ids)
+    {
+        $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
+        $entIdQuery = $this->getConnection()->prepare(
+            "SELECT entity_id FROM {$this->cpeTable} WHERE sinch_product_id IN ($placeholders)"
         );
-        $massMap->execute($rv_ids);
-        return $massMap->fetchAll(\PDO::FETCH_ASSOC);
+        $entIdQuery->execute($sinch_prod_ids);
+        return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
     }
 
     public function applyAttributeValues()
     {
         $applyStart = $this->microtime_float();
         $this->logger->info("--- Begin applying attribute values to products ---");
-        //TODO: Implement finding, loading and setting attribute values on products
-        $productCollection = $this->productCollectionFactory
-            ->create()
-            ->setPageSize(self::PRODUCT_PAGE_SIZE)
-            ->setCurPage(1);
-        
-        while(true){
-            $productCollection->load();
 
-            foreach($productCollection as $product){
-                $sinch_prod_id = $product->getSinchProductId();
-                if(empty($sinch_prod_id)){
-                    $this->logger->warn("Non sinch product, skipping");
-                    continue;
-                }
-                if(!isset($this->productAttributeValues[$sinch_prod_id])) continue; //Skip sinch products we have nothing to apply to
-
-                $this->productsEdited += 1;
-
-                $valuesMap = $this->queryMappings($this->productAttributeValues[$sinch_prod_id]);
-                if($valuesMap === false){
-                    $this->logger->err("Failed to retrieve attribute mappings");
-                    throw new \Magento\Framework\Exception\StateException(__("Failed to retrieve attribute mappings"));
-                }
-                foreach($valuesMap as $attrData){
-                    $this->valuesSet += 1;
-                    //setCustomAttribute currently broken, see https://github.com/magento/magento2/issues/4703
-                    $product->setData(self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'], $attrData['option_id']);
-                    $this->productResource->saveAttribute($product, self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id']);
-                    //Try $productResource->saveAttribute($product, self::ATTRIBUTE_PREFIX . $attrData['attr']);
-                    //vs the full save product below. see https://mage2-blog.com/magento-2-speed-up-product-save/
-                }
-                //$this->productRepository->save($product);
+        $valueCount = count($this->rvProds);
+        $currVal = 0;
+        foreach($this->rvProds as $rv_id => $products){
+            $currVal += 1;
+            $attrData = $this->queryMapping($rv_id);
+            if($attrData === false){
+                $this->logger->err("Failed to retrieve attribute mapping for rv {$rv_id}");
+                throw new \Magento\Framework\Exception\StateException(__("Failed to retrieve attribute mappings"));
             }
-
-            $page = $productCollection->getCurPage();
-            $lastPage = $productCollection->getLastPageNumber();
-            $this->logger->info("Page " . $page . "/" . $lastPage . " complete");
-            if($lastPage <= $page){
-                break;
+            $entityIds = $this->sinchToEntityIds($products);
+            if($entityIds === false){
+                $this->logger->err("Failed to retreive entity ids");
+                throw new \Magento\Framework\Exception\StateException(__("Failed to retrieve entity ids"));
             }
-            $productCollection->setCurPage($page + 1);
+            $prodCount = count($entityIds);
+            $this->logger->info("({$currVal}/{$valueCount}) Setting option id {$attrData['option_id']} for {$prodCount} products");
+            $this->massProdValues->updateAttributes(
+                $entityIds, 
+                [self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] => $attrData['option_id']],
+                0 //store id (dummy value as they're global attributes)
+            );
         }
 
         $elapsed = $this->microtime_float() - $applyStart;
         $this->logger->info(
-            "--- Completed applying attribute values. Edited " . $this->productsEdited .
-            " products, applied " . $this->valuesSet . " values in " . $elapsed . " seconds ---"
+            "--- Completed applying attribute values. Took {$elapsed} seconds ---"
         );
     }
 

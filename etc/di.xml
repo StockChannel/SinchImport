@@ -30,9 +30,6 @@
     <type name="Magento\Catalog\Model\Product\Attribute\Frontend\Image">
         <plugin name="mb_change_product_attribute_frontend_image" type="SITC\Sinchimport\Plugin\Catalog\Product\Attribute\Frontend\Image" sortOrder="0"/>
     </type>
-    <type name="Magento\Catalog\Model\Layer\FilterList">
-        <plugin name="mb_change_layer_filter_fist" type="SITC\Sinchimport\Plugin\Catalog\Layer\FilterList" sortOrder="0"/>
-    </type>
     <type name="Magento\Catalog\Model\Category">
         <plugin name="mb_change_category_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Category" sortOrder="0"/>
     </type>

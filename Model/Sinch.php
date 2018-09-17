@@ -293,15 +293,14 @@ class Sinch
                 $this->parseRelatedProducts();
                 $this->addImportStatus('Parse Related Products');
 
+                $this->print("Parse Product Features...");
+//                $this->parseProductFeatures();
 //Nick test built in magento attributes
 $this->nickAttributes->parse(
     $this->varDir . FILE_CATEGORIES_FEATURES,
     $this->varDir . FILE_RESTRICTED_VALUES,
     $this->varDir . FILE_PRODUCT_FEATURES
 );
-
-                $this->print("Parse Product Features...");
-                $this->parseProductFeatures();
                 $this->addImportStatus('Parse Product Features');
 
                 $this->print("Parse Product Categories...");
@@ -316,11 +315,12 @@ $this->nickAttributes->parse(
                 $this->addImportStatus('Parse Pictures Gallery');
 
                 $this->print("Parse Restricted Values...");
-                $this->parseRestrictedValues();
-                $this->addImportStatus('Parse Restricted Values');
-
+                //$this->parseRestrictedValues();
 //Nick test applying built in magento attributes
 $this->nickAttributes->applyAttributeValues();
+                $this->addImportStatus('Parse Restricted Values');
+
+
 
                 $this->print("Parse Stock And Prices...");
                 $this->parseStockAndPrices();
@@ -458,6 +458,18 @@ $this->nickAttributes->applyAttributeValues();
         }
 
         return $this->_connection->query($query);
+    }
+
+    private function retriableQuery($query)
+    {
+        while(true){
+            try {
+                return $this->_doQuery($query);
+            } catch(\Magento\Framework\DB\Adapter\DeadlockException $_e){
+                $this->print("Sleeping as the previous attempt deadlocked");
+                sleep(10);
+            }
+        }
     }
 
     private function initImportStatuses($type)
@@ -7511,7 +7523,7 @@ $this->nickAttributes->applyAttributeValues();
 
         $this->print("--Replace Magento Multistore 18....");
 
-        $this->_doQuery(
+        $this->retriableQuery(
             "
             INSERT INTO $catalog_category_product_index
                 (category_id, product_id, position, is_parent, store_id, visibility)
@@ -7530,7 +7542,7 @@ $this->nickAttributes->applyAttributeValues();
         );
         $this->print("--Replace Magento Multistore 19...");
 
-        $this->_doQuery(
+        $this->retriableQuery(
             "
             INSERT ignore INTO $catalog_category_product_index
                 (category_id, product_id, position, is_parent, store_id, visibility)
@@ -7553,7 +7565,7 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 20...");
 
         //Set product name for specific web sites
-        $this->_doQuery(
+        $this->retriableQuery(
             "
             DELETE cpev
             FROM $catalog_product_entity_varchar cpev
@@ -7562,7 +7574,7 @@ $this->nickAttributes->applyAttributeValues();
             WHERE cpe.entity_id IS NULL"
         );
 
-        $this->_doQuery(
+        $this->retriableQuery(
             "
             INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
@@ -7584,7 +7596,7 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 21...");
 
         // product name for all web sites
-        $this->_doQuery(
+        $this->retriableQuery(
             "
             INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
@@ -7623,10 +7635,8 @@ $this->nickAttributes->applyAttributeValues();
 
         $this->print("--Replace Magento Multistore 23...");
 
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
-                (attribute_id, store_id, entity_id, value)
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_visibility,
                 w.website,
@@ -7642,9 +7652,8 @@ $this->nickAttributes->applyAttributeValues();
 
         $this->print("--Replace Magento Multistore 24...");
 
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_int
                 ( attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_visibility,
@@ -7661,8 +7670,7 @@ $this->nickAttributes->applyAttributeValues();
 
         try {
             $this->_doQuery(
-                "
-                DELETE cpw
+                "DELETE cpw
                 FROM $catalog_product_website cpw
                 LEFT JOIN $catalog_product_entity cpe
                     ON cpw.product_id = cpe.entity_id
@@ -7674,9 +7682,8 @@ $this->nickAttributes->applyAttributeValues();
 
         $this->print("--Replace Magento Multistore 26...");
 
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_website
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_website
                 (product_id, website_id)
             (SELECT
                 a.entity_id,
@@ -7693,9 +7700,8 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 27...");
 
         //Adding tax class "Taxable Goods"
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_int
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_tax_class_id,
@@ -7712,9 +7718,8 @@ $this->nickAttributes->applyAttributeValues();
 
         $this->print("--Replace Magento Multistore 28...");
 
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_int
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_tax_class_id,
@@ -7730,9 +7735,8 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 29...");
 
         // Load url Image
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_image,
@@ -7751,9 +7755,8 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 30...");
 
         // image for specific web sites
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_image,
@@ -7771,10 +7774,8 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 31...");
 
         // small_image for specific web sites
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
-                (attribute_id, store_id, entity_id, value)
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_small_image,
                 w.store_id,
@@ -7792,10 +7793,8 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 32...");
 
         // small_image for all web sites
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
-                ( attribute_id, store_id, entity_id, value)
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_small_image,
                 0,
@@ -7813,9 +7812,8 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 33...");
 
         // thumbnail for specific web site
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_thumbnail,
@@ -7834,9 +7832,8 @@ $this->nickAttributes->applyAttributeValues();
         $this->print("--Replace Magento Multistore 34...");
 
         // thumbnail for all web sites
-        $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+        $this->retriableQuery(
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_thumbnail,
