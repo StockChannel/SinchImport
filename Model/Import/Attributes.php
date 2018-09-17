@@ -382,7 +382,7 @@ class Attributes {
             $attrData = $this->queryMapping($rv_id);
             if($attrData === false){
                 $this->logger->err("Failed to retrieve attribute mapping for rv {$rv_id}");
-                throw new \Magento\Framework\Exception\StateException(__("Failed to retrieve attribute mappings"));
+                continue;
             }
             $entityIds = $this->sinchToEntityIds($products);
             if($entityIds === false){
