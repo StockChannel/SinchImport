@@ -7659,14 +7659,18 @@ $this->nickAttributes->applyAttributeValues();
 
         $this->print("--Replace Magento Multistore 25...");
 
-        $this->_doQuery(
-            "
-            DELETE cpw
-            FROM $catalog_product_website cpw
-            LEFT JOIN $catalog_product_entity cpe
-                ON cpw.product_id = cpe.entity_id
-            WHERE cpe.entity_id IS NULL"
-        );
+        try {
+            $this->_doQuery(
+                "
+                DELETE cpw
+                FROM $catalog_product_website cpw
+                LEFT JOIN $catalog_product_entity cpe
+                    ON cpw.product_id = cpe.entity_id
+                WHERE cpe.entity_id IS NULL"
+            );
+        } catch(\Magento\Framework\DB\Adapter\DeadlockException $_e){
+            //Do nothing, the foreign key should ensure this is fulfilled anyway
+        }
 
         $this->print("--Replace Magento Multistore 26...");
 
