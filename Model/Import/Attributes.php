@@ -97,7 +97,7 @@ class Attributes {
         $this->mappingTable = $this->getConnection()->getTableName('sinch_restrictedvalue_mapping');
         $this->cpeTable = $this->getConnection()->getTableName('catalog_product_entity');
 
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/nick_attribute_test.log');
+        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_attributes.log');
         $logger = new \Zend\Log\Logger();
         $logger->addWriter($writer);
         $this->logger = $logger;
@@ -194,7 +194,7 @@ class Attributes {
             ->setIsFilterableInSearch(0)
             ->setIsSearchable(0)
             ->setIsComparable(0)
-            ->setUsedInProductListing(1)
+            ->setUsedInProductListing(0)
             ->setPosition($data["order"]);
         $this->attributeRepository->save($attribute);
         
