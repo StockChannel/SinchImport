@@ -16,12 +16,20 @@ use Magento\Framework\DB\Ddl\Table;
  */
 class UpgradeSchema implements UpgradeSchemaInterface
 {
+    /** @var \Magento\Eav\Setup\EavSetupFactory */
+    private $eavSetupFactory;
+
+    public function __construct(\Magento\Eav\Setup\EavSetupFactory $eavSetupFactory)
+    {
+        $this->eavSetupFactory = $eavSetupFactory;
+    }
+
     /**
      * {@inheritdoc}
      */
     public function upgrade(SchemaSetupInterface $setup, ModuleContextInterface $context)
     {
-        if (version_compare($context->getVersion(), '2.0.11', '<')) {
+        if (version_compare($context->getVersion(), '2.1.0', '<')) {
             $installer = $setup;
 
             $installer->startSetup();
@@ -30,7 +38,6 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $mappingTable = $installer->getTable('sinch_restrictedvalue_mapping');
             // Check if the table already exists
             if ($installer->getConnection()->isTableExists($mappingTable) != true) {
-                // Create tutorial_simplenews table
                 $table = $installer->getConnection()
                     ->newTable($mappingTable)
                     ->addColumn(
@@ -71,6 +78,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 $installer->getConnection()->createTable($table);
             }
 
+            //Make sinch_search_cache not visible on frontend
+            $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
+            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $eavSetup->updateAttribute($entityTypeId, 'sinch_search_cache', 'is_visible_on_front', 0);
 
             $installer->endSetup();
         }

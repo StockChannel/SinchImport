@@ -39,10 +39,6 @@ class Attributes {
     private $attributeSetRepository;
     private $attributeManagement;
 
-    //For setting the attributes on the products
-    //private $productCollectionFactory;
-    //private $productRepository;
-    //private $productResource;
     private $resourceConn;
     private $cacheType;
     private $massProdValues;
@@ -69,9 +65,6 @@ class Attributes {
         \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory,
         \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository,
         \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
-        //\Magento\Catalog\Model\ResourceModel\Product\CollectionFactory $productCollectionFactory,
-        //\Magento\Catalog\Api\ProductRepositoryInterface $productRepository,
-        //\Magento\Catalog\Model\ResourceModel\Product $productResource,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
         \Magento\Catalog\Model\Product\Action $massProdValues
@@ -87,9 +80,6 @@ class Attributes {
         $this->optionFactory = $optionFactory;
         $this->attributeSetRepository = $attributeSetRepository;
         $this->attributeManagement = $attributeManagement;
-        //$this->productCollectionFactory = $productCollectionFactory;
-        //$this->productRepository = $productRepository;
-        //$this->productResource = $productResource;
         $this->resourceConn = $resourceConn;
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
