@@ -16,20 +16,12 @@ use Magento\Framework\DB\Ddl\Table;
  */
 class UpgradeSchema implements UpgradeSchemaInterface
 {
-    /** @var \Magento\Eav\Setup\EavSetupFactory */
-    private $eavSetupFactory;
-
-    public function __construct(\Magento\Eav\Setup\EavSetupFactory $eavSetupFactory)
-    {
-        $this->eavSetupFactory = $eavSetupFactory;
-    }
-
     /**
      * {@inheritdoc}
      */
     public function upgrade(SchemaSetupInterface $setup, ModuleContextInterface $context)
     {
-        if (version_compare($context->getVersion(), '2.1.0', '<')) {
+        if (version_compare($context->getVersion(), '2.1.1', '<')) {
             $installer = $setup;
 
             $installer->startSetup();
@@ -77,11 +69,6 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     ->setOption('charset', 'utf8');
                 $installer->getConnection()->createTable($table);
             }
-
-            //Make sinch_search_cache not visible on frontend
-            $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
-            $eavSetup->updateAttribute($entityTypeId, 'sinch_search_cache', 'is_visible_on_front', 0);
 
             $installer->endSetup();
         }
