@@ -155,8 +155,10 @@ class Attributes {
         foreach($this->attributes as $sinch_id => $data){
             $this->attributeCount += 1;
             try {
-                $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
+                $attribute = $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
                 $this->logger->info("Attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " exists, updating");
+                $attribute = $this->setAttributeConfig($attribute, $data);
+                $this->attributeRepository->save($attribute);
             } catch(\Magento\Framework\Exception\NoSuchEntityException $e){
                 $this->logger->info("Failed to get " . self::ATTRIBUTE_PREFIX . $sinch_id . ", creating it");
                 $this->createAttribute($sinch_id, $data);
@@ -182,20 +184,8 @@ class Attributes {
             ->setFrontendInput('select')
             ->setIsRequired(0)
             ->setIsUserDefined(1)
-            ->setDefaultFrontendLabel($data["name"])
-            ->setIsUnique(0)
-            ->setIsVisible(1)
-            ->setIsVisibleInGrid(0)
-            ->setIsVisibleInAdvancedSearch(0)
-            ->setIsVisibleOnFront(1)
-            ->setIsUsedInGrid(0)
-            ->setIsFilterable(1)
-            ->setIsFilterableInGrid(0)
-            ->setIsFilterableInSearch(0)
-            ->setIsSearchable(0)
-            ->setIsComparable(0)
-            ->setUsedInProductListing(0)
-            ->setPosition($data["order"]);
+            ->setIsUnique(0);
+        $attribute = $this->setAttributeConfig($attribute, $data);
         $this->attributeRepository->save($attribute);
         
         $this->logger->info("Assigning attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " to sets and groups");
@@ -207,6 +197,24 @@ class Attributes {
                 $data["order"]
             );
         }
+    }
+
+    //Sets the catalog_eav_attribute options
+    private function setAttributeConfig($attribute, $data)
+    {
+        return $attribute->setDefaultFrontendLabel($data["name"])
+            ->setIsVisible(1)
+            ->setIsVisibleInGrid(0)
+            ->setIsVisibleInAdvancedSearch(0)
+            ->setIsVisibleOnFront(0)
+            ->setIsUsedInGrid(0)
+            ->setIsFilterable(1)
+            ->setIsFilterableInGrid(0)
+            ->setIsFilterableInSearch(0)
+            ->setIsSearchable(0)
+            ->setIsComparable(0)
+            ->setUsedInProductListing(0)
+            ->setPosition($data["order"]);
     }
 
     private function updateAttributeOptions($sinch_feature_id, $data)
@@ -228,7 +236,6 @@ class Attributes {
                 if($option_data["text"] == $label) $found = true;
             }
             if($found) {
-                $this->logger->info("Skipping delete of option id " . $id . " as its text matches a rv");
                 continue;
             }
 
