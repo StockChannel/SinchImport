@@ -2,9 +2,9 @@
   "name": "stockinthechannel/import",
   "description": "Stockinthechannel Import",
   "type": "magento2-module",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "require": {
-    "php": "~5.5.0|~5.6.0|~7.0.0",
+    "php": "~5.5.0|~5.6.0|>=7.0.0",
     "magento/framework": ">=101.0.0",
     "magento/module-store": ">=100.2.2",
     "magento/module-indexer": ">=100.2.0",
