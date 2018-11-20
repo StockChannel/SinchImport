@@ -87,7 +87,9 @@ class Sinch
 
     protected $_eavAttribute;
 
+    //Nick
     private $attributesImport;
+    private $stockConfig;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -103,9 +105,11 @@ class Sinch
         \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory,
         \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute,
         ConsoleOutput $output,
-        \SITC\Sinchimport\Model\Import\Attributes $attributesImport
+        \SITC\Sinchimport\Model\Import\Attributes $attributesImport,
+        \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig
     ) {
         $this->attributesImport = $attributesImport;
+        $this->stockConfig = $stockConfig;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -8617,8 +8621,12 @@ class Sinch
                 AND spt.stock IS NULL"
         );
 
+        /* The website_id used in cataloginventory_stock_item serves no purpose and setting it to anything but
+            the value of \Magento\CatalogInventory\Api\StockConfigurationInterface->getDefaultScopeId() only serves to break the checkout process */
+        $stockItemScope = $this->stockConfig->getDefaultScopeId();
+
         $this->_doQuery(
-            "INSERT INTO " . $catalogInvStockItem . "
+            "INSERT INTO {$catalogInvStockItem}
             (
                 product_id,
                 stock_id,
@@ -8634,9 +8642,9 @@ class Sinch
                 b.stock,
                 IF(b.stock > 0, 1, 0),
                 1,
-                1
-                FROM " . $catalogProductEntity . " a
-                INNER JOIN " . $stockPriceTemp . " b
+                {$stockItemScope}
+                FROM {$catalogProductEntity} a
+                INNER JOIN {$stockPriceTemp} b
                     ON a.store_product_id = b.store_product_id
             )
                 ON DUPLICATE KEY UPDATE

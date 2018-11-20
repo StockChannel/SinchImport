@@ -25,9 +25,9 @@ class Attributes {
     private $product_features;
 
     //Attributes to produce
-    private $attributes;
+    private $attributes = [];
     //Sinch RV -> [Prod]
-    private $rvProds;
+    private $rvProds = [];
 
     private $attributeRepository;
     private $attributeGroupRepository;
