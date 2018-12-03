@@ -21,11 +21,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
      */
     public function upgrade(SchemaSetupInterface $setup, ModuleContextInterface $context)
     {
+        $installer = $setup;
+        $installer->startSetup();
+
         if (version_compare($context->getVersion(), '2.1.1', '<')) {
-            $installer = $setup;
-
-            $installer->startSetup();
-
             $connection = $installer->getConnection();
             $mappingTable = $installer->getTable('sinch_restrictedvalue_mapping');
             // Check if the table already exists
@@ -69,8 +68,28 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     ->setOption('charset', 'utf8');
                 $installer->getConnection()->createTable($table);
             }
+        }
 
-            $installer->endSetup();
+        if (version_compare($context->getVersion(), '2.1.5', '<')) {
+            $this->upgrade215($installer);
+        }
+        $installer->endSetup();
+    }
+
+    public function upgrade215($installer)
+    {
+        $connection = $installer->getConnection();
+        $filterCategoryTable = $installer->getTable('sinch_filter_categories');
+        if ($connection->isTableExists($filterCategoryTable) != true) {
+            //Magento doesn't support composite primary keys, so just create the table manually (we won't be using it via Models anyway)
+            $connection->query(
+                "CREATE TABLE IF NOT EXISTS {$filterCategoryTable} (
+                    feature_id INT NOT NULL COMMENT 'Sinch Feature ID',
+                    category_id INT NOT NULL COMMENT 'Sinch Category ID',
+                    PRIMARY KEY (feature_id, category_id),
+                    INDEX(category_id)
+                ) ENGINE=InnoDB"
+            );
         }
     }
 }

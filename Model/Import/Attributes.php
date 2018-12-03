@@ -50,9 +50,11 @@ class Attributes {
 
     private $mappingTable;
     private $cpeTable;
+    private $filterCategoriesTable;
 
     private $mappingInsert = null;
     private $mappingQuery = null;
+    private $filterMappingInsert = null;
 
     public function __construct(
         \Magento\Framework\File\Csv $csv,
@@ -86,6 +88,7 @@ class Attributes {
 
         $this->mappingTable = $this->getConnection()->getTableName('sinch_restrictedvalue_mapping');
         $this->cpeTable = $this->getConnection()->getTableName('catalog_product_entity');
+        $this->filterCategoriesTable = $this->getConnection()->getTableName('sinch_filter_categories');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_attributes.log');
         $logger = new \Zend\Log\Logger();
@@ -138,7 +141,11 @@ class Attributes {
         
         //Delete old mapping entries
         $this->logger->info("Deleting old restricted value mapping");
-        $this->getConnection()->query("DELETE FROM " . $this->mappingTable);
+        $this->getConnection()->query("DELETE FROM {$this->mappingTable}");
+
+        //Delete old filter-category mapping
+        $this->logger->info("Deleting old filter-category mapping");
+        $this->getConnection()->query("DELETE FROM {$this->filterCategoriesTable}");
 
         //Create or update Magento attributes
         $this->logger->info("Creating or updating Magento attributes");
@@ -154,6 +161,7 @@ class Attributes {
                 $this->createAttribute($sinch_id, $data);
             }
             $this->updateAttributeOptions($sinch_id, $data);
+            $this->updateFilterCategoryMapping($sinch_id, $data["catId"]);
         }
 
         //Flush EAV cache
@@ -410,5 +418,19 @@ class Attributes {
     private function getConnection()
     {
         return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
+    }
+
+    private function updateFilterCategoryMapping($sinch_feature_id, $sinch_category_id)
+    {
+        if(empty($this->filterMappingInsert)){
+            $this->filterMappingInsert = $this->getConnection()->prepare(
+                "INSERT IGNORE INTO {$this->filterCategoriesTable} (feature_id, category_id) VALUES(:feature_id, :category_id)"
+            );
+        }
+
+        $this->filterMappingInsert->bindValue(":feature_id", $sinch_feature_id, \PDO::PARAM_INT);
+        $this->filterMappingInsert->bindValue(":category_id", $sinch_category_id, \PDO::PARAM_INT);
+        $this->filterMappingInsert->execute();
+        $this->filterMappingInsert->closeCursor();
     }
 }

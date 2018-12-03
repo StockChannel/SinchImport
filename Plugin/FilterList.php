@@ -5,14 +5,21 @@ class FilterList
 {
     private $moduleManager;
     private $layerResolver;
+    private $resourceConn;
+
+    private $filterCategoryTable;
 
     public function __construct(
         \Magento\Framework\Module\Manager $moduleManager,
-        \Magento\Catalog\Model\Layer\Resolver $layerResolver
+        \Magento\Catalog\Model\Layer\Resolver $layerResolver,
+        \Magento\Framework\App\ResourceConnection $resourceConn
     )
     {
         $this->moduleManager = $moduleManager;
         $this->layerResolver = $layerResolver;
+        $this->resourceConn = $resourceConn;
+
+        $this->filterCategoryTable = $resourceConn->getTableName('sinch_filter_categories');
     }
 
     public function afterGetFilters(\Magento\Catalog\Model\Layer\FilterList $subject, $result)
@@ -28,28 +35,31 @@ class FilterList
             return $result;
         }
 
-        $catSaleableProds = $currentCategory->getProductCollection()->count();
+        $sinch_feature_ids = $this->getConnection()->fetchCol(
+            "SELECT feature_id FROM {$this->filterCategoryTable} WHERE category_id = :category_id",
+            [":category_id" => $currentCategory->getStoreCategoryId()] //The sinch id (badly named)
+        );
 
         foreach($result as $idx => $abstractFilter) {
-            $attributeCode = $abstractFilter->getAttributeModel()->getName();
+            $attributeCode = $abstractFilter->getRequestVar();
             if (strpos($attributeCode, \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) != 0){
                 //Not a sinch attribute
                 continue;
             }
 
-            $productsAffected = 0;
-            $filterItems = $abstractFilter->getItems();
-            foreach($filterItems as $filterItem){
-                $productsAffected += $filterItem->getCount();
-            }
+            $sinch_id = substr($attributeCode, strlen(\SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX));
 
-            //If filter has 1 item or affects less than 50% of products in the category, remove the filter
-            //TODO: Configurable percentage
-            if(count($filterItems) < 2 || ($productsAffected / $cat_saleable_products) <= 0.5){
+            //If $sinch_feature_ids doesn't contain this filters sinch id, remove it from the results
+            if(!in_array($sinch_id, $sinch_feature_ids)) {
                 unset($result[$idx]);
             }
         }
 
         return array_values($result);
+    }
+
+    private function getConnection()
+    {
+        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
     }
 }
