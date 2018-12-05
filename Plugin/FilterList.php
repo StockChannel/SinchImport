@@ -42,7 +42,7 @@ class FilterList
 
         foreach($result as $idx => $abstractFilter) {
             $attributeCode = $abstractFilter->getRequestVar();
-            if (strpos($attributeCode, \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) != 0){
+            if (strpos($attributeCode, \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) !== 0){
                 //Not a sinch attribute
                 continue;
             }
