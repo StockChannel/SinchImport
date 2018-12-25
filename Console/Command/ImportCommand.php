@@ -8,9 +8,12 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * Class ImportCommand
+ * @package SITC\Sinchimport\Console\Command
+ */
 class ImportCommand extends Command
 {
-    
     const INPUT_KEY_IMPORT_TYPE = 'import_type';
     
     /**
@@ -22,8 +25,12 @@ class ImportCommand extends Command
      * @var \SITC\Sinchimport\Model\Sinch
      */
     protected $sinch;
-    
-    
+
+    /**
+     * ImportCommand constructor.
+     * @param AppState $appState
+     * @param \SITC\Sinchimport\Model\Sinch $sinch
+     */
     public function __construct(
         AppState $appState,
         \SITC\Sinchimport\Model\Sinch $sinch

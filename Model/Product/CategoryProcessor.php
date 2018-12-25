@@ -10,60 +10,71 @@ use Magento\CatalogUrlRewrite\Model\CategoryUrlRewriteGenerator;
 use Magento\CatalogUrlRewrite\Service\V1\StoreViewService;
 use Magento\UrlRewrite\Model\UrlPersistInterface;
 
+/**
+ * Class CategoryProcessor
+ * @package SITC\Sinchimport\Model\Product
+ */
 class CategoryProcessor
 {
     /**
      * Delimiter in category path.
      */
     const DELIMITER_CATEGORY = '/';
-    
+
     /**
      * @var CategoryUrlPathGenerator
      */
     protected $categoryUrlPathGenerator;
-    
+
     /**
      * @var \Magento\CatalogUrlRewrite\Model\Category\ChildrenCategoriesProvider
      */
     protected $childrenCategoriesProvider;
-    
+
     /**
      * @var StoreViewService
      */
     protected $storeViewService;
-    
+
     /**
      * @var \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory
      */
     protected $categoryColFactory;
-    
+
     /**
      * Categories id to object cache.
      *
      * @var array
      */
     protected $categoriesCache = [];
-    
+
     /**
      * Instance of catalog category factory.
      *
      * @var \Magento\Catalog\Model\CategoryFactory
      */
     protected $categoryFactory;
-    
+
     /**
      * @var CategoryUrlRewriteGenerator
      */
     protected $categoryUrlRewriteGenerator;
-    
+
     /**
      * @var UrlPersistInterface
      */
     protected $urlPersist;
-    
+
     /**
+     * CategoryProcessor constructor.
      * @param \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory $categoryColFactory
-     * @param \Magento\Catalog\Model\CategoryFactory                          $categoryFactory
+     * @param \Magento\Catalog\Model\CategoryFactory $categoryFactory
+     * @param CategoryUrlPathGenerator $categoryUrlPathGenerator
+     * @param ChildrenCategoriesProvider $childrenCategoriesProvider
+     * @param StoreViewService $storeViewService
+     * @param CategoryUrlRewriteGenerator $categoryUrlRewriteGenerator
+     * @param UrlPersistInterface $urlPersist
+     * @throws \Magento\UrlRewrite\Model\Exception\UrlAlreadyExistsException
      */
     public function __construct(
         \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory $categoryColFactory,
@@ -74,13 +85,13 @@ class CategoryProcessor
         CategoryUrlRewriteGenerator $categoryUrlRewriteGenerator,
         UrlPersistInterface $urlPersist
     ) {
-        $this->categoryColFactory          = $categoryColFactory;
-        $this->categoryFactory             = $categoryFactory;
-        $this->categoryUrlPathGenerator    = $categoryUrlPathGenerator;
-        $this->childrenCategoriesProvider  = $childrenCategoriesProvider;
-        $this->storeViewService            = $storeViewService;
+        $this->categoryColFactory = $categoryColFactory;
+        $this->categoryFactory = $categoryFactory;
+        $this->categoryUrlPathGenerator = $categoryUrlPathGenerator;
+        $this->childrenCategoriesProvider = $childrenCategoriesProvider;
+        $this->storeViewService = $storeViewService;
         $this->categoryUrlRewriteGenerator = $categoryUrlRewriteGenerator;
-        $this->urlPersist                  = $urlPersist;
+        $this->urlPersist = $urlPersist;
         $this->initCategories();
     }
 
@@ -97,12 +108,12 @@ class CategoryProcessor
                 ->addAttributeToSelect('url_key')
                 ->addAttributeToSelect('url_path')
                 ->setOrder('level');
-            
+
             /* @var $collection \Magento\Catalog\Model\ResourceModel\Category\Collection */
             foreach ($collection as $category) {
                 // save category url_key
                 if ($category->getId() != Category::TREE_ROOT_ID
-                    && ! in_array(
+                    && !in_array(
                         $category->getParentId(),
                         [Category::ROOT_CATEGORY_ID, Category::TREE_ROOT_ID]
                     )
@@ -116,15 +127,15 @@ class CategoryProcessor
                     );
                 }
             }
-            
+
             $urlRewrites = [];
-            
+
             $collection->clear()->load();
             /* @var $collection \Magento\Catalog\Model\ResourceModel\Category\Collection */
             foreach ($collection as $category) {
                 // save category url_path
                 if ($category->getId() != Category::TREE_ROOT_ID
-                    && ! in_array(
+                    && !in_array(
                         $category->getParentId(),
                         [Category::ROOT_CATEGORY_ID, Category::TREE_ROOT_ID]
                     )
@@ -136,22 +147,22 @@ class CategoryProcessor
                         $category,
                         'url_path'
                     );
-                    
+
                     $urlRewrites = array_merge(
                         $urlRewrites,
                         $this->categoryUrlRewriteGenerator->generate($category)
                     );
                 }
-                
+
                 $this->categoriesCache[$category->getId()] = $category;
             }
-            
+
             $this->urlPersist->replace($urlRewrites);
         }
-        
+
         return $this;
     }
-    
+
     /**
      * Get category by Id
      *

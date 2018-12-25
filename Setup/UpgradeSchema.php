@@ -1,8 +1,4 @@
 <?php
-/**
- * Copyright © 2015 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
 
 namespace SITC\Sinchimport\Setup;
 
@@ -73,9 +69,13 @@ class UpgradeSchema implements UpgradeSchemaInterface
         if (version_compare($context->getVersion(), '2.1.5', '<')) {
             $this->upgrade215($installer);
         }
+
         $installer->endSetup();
     }
 
+    /**
+     * @param $installer
+     */
     public function upgrade215($installer)
     {
         $connection = $installer->getConnection();

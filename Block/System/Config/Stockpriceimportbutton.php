@@ -4,13 +4,20 @@ namespace SITC\Sinchimport\Block\System\Config;
 
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
+/**
+ * Class Stockpriceimportbutton
+ * @package SITC\Sinchimport\Block\System\Config
+ */
 class Stockpriceimportbutton extends \Magento\Config\Block\System\Config\Form\Field
 {
+    /**
+     * @var \SITC\Sinchimport\Model\Sinch
+     */
     protected $sinch;
-    
+
     /**
      * @param \Magento\Backend\Block\Template\Context $context
-     * @param array                                   $data
+     * @param array $data
      */
     public function __construct(
         \Magento\Backend\Block\Template\Context $context,
@@ -20,7 +27,7 @@ class Stockpriceimportbutton extends \Magento\Config\Block\System\Config\Form\Fi
         parent::__construct($context, $data);
         $this->sinch = $sinch;
     }
-    
+
     /**
      * @param AbstractElement $element
      *
@@ -34,25 +41,28 @@ class Stockpriceimportbutton extends \Magento\Config\Block\System\Config\Form\Fi
         $html .= '<div id="sinchimport_stock_price_status_template" name="sinchimport_stock_price_status_template" style="display:none">';
         $html .= $this->_getStatusTemplateHtml();
         $html .= '</div>';
-        
+
         $startImportButtonHtml = $this->getLayout()->createBlock(
             'Magento\Backend\Block\Widget\Button'
         )->setData(
-            ['label' => 'Force Stock & Prices Import Now',
-             'id'    => 'mb-sinch-stock-price-import-button',
-             'class' => 'mb-start-button', 'style' => 'margin-top:30px']
+            [
+                'label' => 'Force Stock & Prices Import Now',
+                'id' => 'mb-sinch-stock-price-import-button',
+                'class' => 'mb-start-button',
+                'style' => 'margin-top:30px'
+            ]
         )->toHtml();
-        
+
         $safe_mode_set = ini_get('safe_mode');
-        
+
         if ($safe_mode_set) {
             $html .= "<p class='sinch-error'><b>You can't start import (safe_mode is 'On'. set safe_mode = Off in php.ini )<b></p>";
-        } elseif (! $this->sinch->isFullImportHaveBeenRun()) {
+        } elseif (!$this->sinch->isFullImportHaveBeenRun()) {
             $html .= "Full import have never finished with success";
         } else {
             $html .= $startImportButtonHtml;
         }
-        
+
         $lastImportData = $this->sinch->getDataOfLatestImport();
 
         if (!empty($lastImportData) && $lastImportData['import_type'] == 'PRICE STOCK') {
@@ -74,16 +84,19 @@ class Stockpriceimportbutton extends \Magento\Config\Block\System\Config\Form\Fi
         } else {
             $html .= '<div id="sinchimport_stock_price_current_status_message" name="sinchimport_stock_price_current_status_message" style="display:true"></div>';
         }
-        
+
         return $html;
     }
-    
+
+    /**
+     * @return string
+     */
     protected function _getStatusTemplateHtml()
     {
         $runningIcon = $this->getViewFileUrl(
             'SITC_Sinchimport::images/ajax_running.gif'
         );
-        
+
         $html
             = "
 <table class='data-table history'>
@@ -137,7 +150,7 @@ class Stockpriceimportbutton extends \Magento\Config\Block\System\Config\Form\Fi
     </tbody>
 </table>
         ";
-        
+
         return $html;
     }
 }

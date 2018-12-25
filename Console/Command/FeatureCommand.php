@@ -8,6 +8,10 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * Class FeatureCommand
+ * @package SITC\Sinchimport\Console\Command
+ */
 class FeatureCommand extends Command
 {
     const INPUT_KEY_FEATURE_ACTION = 'feature_action';
@@ -21,8 +25,12 @@ class FeatureCommand extends Command
      * @var \SITC\Sinchimport\Model\Sinch
      */
     protected $sinch;
-    
-    
+
+    /**
+     * FeatureCommand constructor.
+     * @param AppState $appState
+     * @param \SITC\Sinchimport\Model\Sinch $sinch
+     */
     public function __construct(
         AppState $appState,
         \SITC\Sinchimport\Model\Sinch $sinch

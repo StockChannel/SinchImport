@@ -11,13 +11,27 @@ use Magento\Framework\Setup\ModuleDataSetupInterface;
  */
 class UpgradeData implements UpgradeDataInterface
 {
-    /** @var \Magento\Eav\Setup\EavSetupFactory */
+    /**
+     * @var \Magento\Eav\Setup\EavSetupFactory
+     */
     private $eavSetupFactory;
-    /** @var \Magento\Framework\App\ResourceConnection */
+
+    /**
+     * @var \Magento\Framework\App\ResourceConnection
+     */
     private $resourceConn;
-    /** @var \Magento\CatalogInventory\Api\StockConfigurationInterface */
+
+    /**
+     * @var \Magento\CatalogInventory\Api\StockConfigurationInterface
+     */
     private $stockConfig;
 
+    /**
+     * UpgradeData constructor.
+     * @param \Magento\Eav\Setup\EavSetupFactory $eavSetupFactory
+     * @param \Magento\Framework\App\ResourceConnection $resourceConn
+     * @param \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig
+     */
     public function __construct(
         \Magento\Eav\Setup\EavSetupFactory $eavSetupFactory,
         \Magento\Framework\App\ResourceConnection $resourceConn,
@@ -50,6 +64,9 @@ class UpgradeData implements UpgradeDataInterface
         $installer->endSetup();
     }
 
+    /**
+     *
+     */
     private function fixStockManagement()
     {
         $conn = $this->getConnection();
@@ -62,6 +79,9 @@ class UpgradeData implements UpgradeDataInterface
         );
     }
 
+    /**
+     * @return \Magento\Framework\DB\Adapter\AdapterInterface
+     */
     private function getConnection()
     {
         return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);

@@ -1,20 +1,44 @@
 <?php
+
 namespace SITC\Sinchimport\Plugin;
 
+/**
+ * Class FilterList
+ * @package SITC\Sinchimport\Plugin
+ */
 class FilterList
 {
+    /**
+     * @var \Magento\Framework\Module\Manager
+     */
     private $moduleManager;
+
+    /**
+     * @var \Magento\Catalog\Model\Layer\Resolver
+     */
     private $layerResolver;
+
+    /**
+     * @var \Magento\Framework\App\ResourceConnection
+     */
     private $resourceConn;
 
+    /**
+     * @var string
+     */
     private $filterCategoryTable;
 
+    /**
+     * FilterList constructor.
+     * @param \Magento\Framework\Module\Manager $moduleManager
+     * @param \Magento\Catalog\Model\Layer\Resolver $layerResolver
+     * @param \Magento\Framework\App\ResourceConnection $resourceConn
+     */
     public function __construct(
         \Magento\Framework\Module\Manager $moduleManager,
         \Magento\Catalog\Model\Layer\Resolver $layerResolver,
         \Magento\Framework\App\ResourceConnection $resourceConn
-    )
-    {
+    ) {
         $this->moduleManager = $moduleManager;
         $this->layerResolver = $layerResolver;
         $this->resourceConn = $resourceConn;
@@ -22,6 +46,11 @@ class FilterList
         $this->filterCategoryTable = $resourceConn->getTableName('sinch_filter_categories');
     }
 
+    /**
+     * @param \Magento\Catalog\Model\Layer\FilterList $subject
+     * @param $result
+     * @return array
+     */
     public function afterGetFilters(\Magento\Catalog\Model\Layer\FilterList $subject, $result)
     {
         //If smile/elasticsuite is installed and enabled, don't touch the list of filters (as it already does similar)
@@ -30,7 +59,7 @@ class FilterList
         }
 
         $currentCategory = $this->layerResolver->get()->getCurrentCategory();
-        if(empty($currentCategory) || empty($currentCategory->getId())){
+        if (empty($currentCategory) || empty($currentCategory->getId())) {
             //Not a category, ignore
             return $result;
         }
@@ -40,9 +69,9 @@ class FilterList
             [":category_id" => $currentCategory->getStoreCategoryId()] //The sinch id (badly named)
         );
 
-        foreach($result as $idx => $abstractFilter) {
+        foreach ($result as $idx => $abstractFilter) {
             $attributeCode = $abstractFilter->getRequestVar();
-            if (strpos($attributeCode, \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) !== 0){
+            if (strpos($attributeCode, \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) !== 0) {
                 //Not a sinch attribute
                 continue;
             }
@@ -50,7 +79,7 @@ class FilterList
             $sinch_id = substr($attributeCode, strlen(\SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX));
 
             //If $sinch_feature_ids doesn't contain this filters sinch id, remove it from the results
-            if(!in_array($sinch_id, $sinch_feature_ids)) {
+            if (!in_array($sinch_id, $sinch_feature_ids)) {
                 unset($result[$idx]);
             }
         }
@@ -58,6 +87,9 @@ class FilterList
         return array_values($result);
     }
 
+    /**
+     * @return \Magento\Framework\DB\Adapter\AdapterInterface
+     */
     private function getConnection()
     {
         return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);

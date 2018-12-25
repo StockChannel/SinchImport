@@ -6,11 +6,30 @@ require_once __DIR__ . '/Config.php';
 
 use Symfony\Component\Console\Output\ConsoleOutput;
 
+/**
+ * Class Sinch
+ * @package SITC\Sinchimport\Model
+ */
 class Sinch
 {
+    /**
+     * @var mixed
+     */
     public $connection;
+
+    /**
+     * @var mixed
+     */
     public $varDir;
+
+    /**
+     * @var array
+     */
     public $files;
+
+    /**
+     * @var bool
+     */
     public $debug_mode = false;
 
     /**
@@ -26,6 +45,10 @@ class Sinch
      * @var \Magento\Store\Model\StoreManagerInterface
      */
     protected $_storeManager;
+
+    /**
+     * @var \Magento\Framework\App\Config\ScopeConfigInterface
+     */
     protected $scopeConfig;
 
     /**
@@ -34,7 +57,15 @@ class Sinch
      * @var \SITC\Sinchimport\Logger\Logger
      */
     protected $_sinchLogger;
+
+    /**
+     * @var \Magento\Framework\App\ResourceConnection
+     */
     protected $_resourceConnection;
+
+    /**
+     * @var \Magento\Framework\DB\Adapter\AdapterInterface
+     */
     protected $_connection;
 
     /**
@@ -58,39 +89,171 @@ class Sinch
      * @var \Magento\Indexer\Model\Indexer\CollectionFactory
      */
     protected $indexersFactory;
-    private $output;
-    private $galleryPhotos = [];
-    private $_productEntityTypeId = 0;
-    private $defaultAttributeSetId = 0;
-    private $field_terminated_char;
-    private $import_status_table;
-    private $import_status_statistic_table;
-    private $current_import_status_statistic_id;
-    private $_attributeId;
-    private $_categoryEntityTypeId;
-    private $_categoryDefault_attribute_set_id;
-    private $_rootCat;
-    private $import_run_type = 'MANUAL';
-    private $_ignore_category_features = false;
-    private $_ignore_product_features = false;
-    private $_ignore_product_related = false;
-    private $_ignore_product_contracts = false;
-    private $_ignore_price_rules = false;
-    private $product_file_format = "NEW";
-    private $_ignore_restricted_values = false;
-    private $_categoryMetaTitleAttrId;
-    private $_categoryMetadescriptionAttrId;
-    private $_categoryDescriptionAttrId;
-    private $_dataConf;
-    private $_deploymentData;
-    private $imType;
 
+    /**
+     * @var \Magento\Eav\Model\ResourceModel\Entity\Attribute
+     */
     protected $_eavAttribute;
 
-    //Nick
+    /**
+     * @var ConsoleOutput
+     */
+    private $output;
+
+    /**
+     * @var array
+     */
+    private $galleryPhotos = [];
+
+    /**
+     * @var int
+     */
+    private $_productEntityTypeId = 0;
+
+    /**
+     * @var int
+     */
+    private $defaultAttributeSetId = 0;
+
+    /**
+     * @var string
+     */
+    private $field_terminated_char;
+
+    /**
+     * @var string
+     */
+    private $import_status_table;
+
+    /**
+     * @var string
+     */
+    private $import_status_statistic_table;
+
+    /**
+     * @var mixed
+     */
+    private $current_import_status_statistic_id;
+
+    /**
+     * @var mixed
+     */
+    private $_attributeId;
+
+    /**
+     * @var mixed
+     */
+    private $_categoryEntityTypeId;
+
+    /**
+     * @var mixed
+     */
+    private $_categoryDefault_attribute_set_id;
+
+    /**
+     * @var mixed
+     */
+    private $_rootCat;
+
+    /**
+     * @var string
+     */
+    private $import_run_type = 'MANUAL';
+
+    /**
+     * @var bool
+     */
+    private $_ignore_category_features = false;
+
+    /**
+     * @var bool
+     */
+    private $_ignore_product_features = false;
+
+    /**
+     * @var bool
+     */
+    private $_ignore_product_related = false;
+
+    /**
+     * @var bool
+     */
+    private $_ignore_product_contracts = false;
+
+    /**
+     * @var bool
+     */
+    private $_ignore_price_rules = false;
+
+    /**
+     * @var string
+     */
+    private $product_file_format = "NEW";
+
+    /**
+     * @var bool
+     */
+    private $_ignore_restricted_values = false;
+
+    /**
+     * @var mixed
+     */
+    private $_categoryMetaTitleAttrId;
+
+    /**
+     * @var mixed
+     */
+    private $_categoryMetadescriptionAttrId;
+
+    /**
+     * @var mixed
+     */
+    private $_categoryDescriptionAttrId;
+
+    /**
+     * @var mixed
+     */
+    private $_dataConf;
+
+    /**
+     * @var mixed|null
+     */
+    private $_deploymentData;
+
+    /**
+     * @var mixed
+     */
+    private $imType;
+
+    /**
+     * @var Import\Attributes
+     */
     private $attributesImport;
+
+    /**
+     * @var \Magento\CatalogInventory\Api\StockConfigurationInterface
+     */
     private $stockConfig;
 
+    /**
+     * Sinch constructor.
+     * @param \Magento\Framework\Model\Context $context
+     * @param \Magento\Framework\App\Filesystem\DirectoryList $directoryList
+     * @param \Magento\Store\Model\StoreManagerInterface $storeManager
+     * @param \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+     * @param \SITC\Sinchimport\Logger\Logger $sinchLogger
+     * @param \Magento\Framework\App\ResourceConnection $resourceConnection
+     * @param \Magento\Indexer\Model\Processor $indexProcessor
+     * @param \Magento\Framework\App\Cache\Frontend\Pool $cacheFrontendPool
+     * @param \Magento\Framework\App\DeploymentConfig $deploymentConfig
+     * @param Product\UrlFactory $productUrlFactory
+     * @param \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory
+     * @param \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute
+     * @param ConsoleOutput $output
+     * @param Import\Attributes $attributesImport
+     * @param \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
     public function __construct(
         \Magento\Framework\Model\Context $context,
         \Magento\Framework\App\Filesystem\DirectoryList $directoryList,
@@ -148,9 +311,16 @@ class Sinch
             FILE_PRODUCT_CONTRACTS
         ];
 
-        $this->_dataConf = $this->scopeConfig->getValue(
-            'sinchimport/sinch_ftp',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+        $this->_dataConf = array_merge(
+            [
+                'ftp_server' => '',
+                'username' => '',
+                'password' => ''
+            ],
+            $this->scopeConfig->getValue(
+                'sinchimport/sinch_ftp',
+                \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            )
         );
 
         $this->_deploymentData = $deploymentConfig->getConfigData();
@@ -158,6 +328,10 @@ class Sinch
         $this->field_terminated_char = DEFAULT_FILE_TERMINATED_CHAR;
     }
 
+    /**
+     * @param string $tableName
+     * @return string
+     */
     private function _getTableName(string $tableName)
     {
         return $this->_resourceConnection->getTableName($tableName);
@@ -171,7 +345,7 @@ class Sinch
      */
     private function createTempDir(\Magento\Framework\App\Filesystem\DirectoryList $directoryList)
     {
-        $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/magebuzz/sinchimport/';
+        $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/stockinthechannel/import/';
         if (!is_dir($dir)) {
             if (!mkdir($dir, 0777, true)) {
                 throw new \Magento\Framework\Exception\LocalizedException("Failed to create import directory. Check filesystem permissions");
@@ -195,9 +369,9 @@ class Sinch
 
     /**
      * Log some data to the sinch log file
-     * 
+     *
      * @param string $logString The message
-     * 
+     *
      * @return void
      */
     private function _log(string $logString)
@@ -226,16 +400,6 @@ class Sinch
         );
 
         $this->initImportStatuses('FULL');
-
-        $store_proc = $this->checkStoreProcedureExist();
-        if (!$store_proc) {
-            $this->_setErrorMessage(
-                'Stored procedure "' . $this->_getTableName(
-                    'sinch_filter_products'
-                ) . '" is absent in this database'
-            );
-            throw new \Magento\Framework\Exception\LocalizedException("sinch_filter_products procedure missing from database");
-        }
 
         $file_privileg = $this->checkDbPrivileges();
         if (!$file_privileg) {
@@ -371,7 +535,7 @@ class Sinch
 
                 $this->_eventManager->dispatch(
                     'sinch_import_after_finish',
-                    [ 'data' => $this ]
+                    ['data' => $this]
                 );
 
                 $this->print("========>FINISH SINCH IMPORT...");
@@ -383,11 +547,21 @@ class Sinch
         }
     }
 
+    /**
+     * @param $attributeCode
+     * @return mixed
+     */
     private function _getCategoryAttributeId($attributeCode)
     {
         return $this->_getAttributeId($attributeCode, 'catalog_category');
     }
 
+    /**
+     * @param $attributeCode
+     * @param $typeCode
+     * @return mixed
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _getAttributeId($attributeCode, $typeCode)
     {
         if ($typeCode == 'catalog_product') {
@@ -420,6 +594,9 @@ class Sinch
         return $this->_attributeId[$typeCode][$attributeCode];
     }
 
+    /**
+     * @return bool|int
+     */
     private function _getProductEntityTypeId()
     {
         if (!$this->_productEntityTypeId) {
@@ -431,6 +608,11 @@ class Sinch
         return $this->_productEntityTypeId;
     }
 
+    /**
+     * @param $code
+     * @return bool
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _getEntityTypeId($code)
     {
         $sql
@@ -449,6 +631,11 @@ class Sinch
         return false;
     }
 
+    /**
+     * @param $query
+     * @param bool $forceStopLogging
+     * @return \Zend_Db_Statement_Interface
+     */
     private function _doQuery($query, $forceStopLogging = false)
     {
         if ($this->debug_mode && !$forceStopLogging) {
@@ -458,18 +645,10 @@ class Sinch
         return $this->_connection->query($query);
     }
 
-    private function retriableQuery($query)
-    {
-        while(true){
-            try {
-                return $this->_doQuery($query);
-            } catch(\Magento\Framework\DB\Adapter\DeadlockException $_e){
-                $this->print("Sleeping as the previous attempt deadlocked");
-                sleep(10);
-            }
-        }
-    }
-
+    /**
+     * @param $type
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function initImportStatuses($type)
     {
         $this->_doQuery("DROP TABLE IF EXISTS " . $this->import_status_table);
@@ -512,30 +691,12 @@ class Sinch
         );
     }
 
-    private function checkStoreProcedureExist()
-    {
-        $q = 'SHOW PROCEDURE STATUS LIKE "' . $this->_getTableName(
-                'sinch_filter_products'
-            ) . '"';
-        $result = $this->_doQuery($q)->fetchAll();
-
-        foreach ($result as $item) {
-            if (($item['Name'] == $this->_getTableName('sinch_filter_products'))
-                && ($item['Db'] == $this->_deploymentData['db']['connection']['default']['dbname'])
-            ) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /**
      * Set the error message for the import
      * including logging it
-     * 
+     *
      * @param string $message The error message
-     * 
+     *
      * @return void
      */
     private function _setErrorMessage(string $message)
@@ -549,6 +710,10 @@ class Sinch
         );
     }
 
+    /**
+     * @return bool
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function checkDbPrivileges()
     {
         return true;
@@ -566,6 +731,10 @@ class Sinch
         return false;
     }
 
+    /**
+     * @return bool
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function checkLocalInFile()
     {
         $q = 'SHOW VARIABLES LIKE "local_infile"';
@@ -581,6 +750,10 @@ class Sinch
         return false;
     }
 
+    /**
+     * @return bool
+     * @throws \Zend_Db_Statement_Exception
+     */
     public function isImportNotRun()
     {
         $q = "SELECT IS_FREE_LOCK('sinchimport') as getlock";
@@ -606,6 +779,10 @@ class Sinch
         return true;
     }
 
+    /**
+     * @return mixed
+     * @throws \Zend_Db_Statement_Exception
+     */
     public function getDataOfLatestImport()
     {
         $q
@@ -626,6 +803,10 @@ class Sinch
         return $imp_status;
     }
 
+    /**
+     * @param $message
+     * @param int $finished
+     */
     private function addImportStatus($message, $finished = 0)
     {
         $q = "INSERT INTO " . $this->import_status_table . "
@@ -662,6 +843,10 @@ class Sinch
         $this->_log($message);
     }
 
+    /**
+     * @return bool
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
     private function uploadFiles()
     {
         $this->_log("Start upload files");
@@ -808,6 +993,11 @@ class Sinch
         $this->_log("Finish upload files");
     }
 
+    /**
+     * @param $content
+     * @param $hash
+     * @return null|string|string[]
+     */
     private function replPh($content, $hash)
     {
         if ($hash) {
@@ -824,12 +1014,20 @@ class Sinch
         return $content;
     }
 
+    /**
+     * @param string $url
+     * @param string $file
+     * @return bool
+     */
     private function wget(string $url, string $file)
     {
         exec("wget -O$file $url");
         return true;
     }
 
+    /**
+     *
+     */
     private function parseCategoryTypes()
     {
         $parseFile = $this->varDir . FILE_CATEGORY_TYPES;
@@ -877,6 +1075,10 @@ class Sinch
         }
     }
 
+    /**
+     * @return array
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
     private function parseCategories()
     {
         $imType = $this->_dataConf['replace_category'];
@@ -1054,11 +1256,14 @@ class Sinch
             $this->_log("Wrong file " . $parseFile);
         }
         $this->_log(' ');
-        $this->_set_default_rootCategory();
+        $this->_setDefaultRootCategory();
 
         return $coincidence;
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _getCategoryEntityTypeIdAndDefault_attribute_set_id()
     {
         if (!$this->_categoryEntityTypeId
@@ -1080,6 +1285,11 @@ class Sinch
         }
     }
 
+    /**
+     * @param $categories_temp
+     * @param $parseFile
+     * @param $field_terminated_char
+     */
     private function loadCategoriesTemp(
         $categories_temp,
         $parseFile,
@@ -1133,6 +1343,13 @@ class Sinch
         );
     }
 
+    /**
+     * @param $categories_temp
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @return array
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function calculateCategoryCoincidence(
         $categories_temp,
         $catalog_category_entity,
@@ -1165,6 +1382,11 @@ class Sinch
         return $existsCoincidence;
     }
 
+    /**
+     * @param $file
+     * @param $table
+     * @return bool
+     */
     private function check_loaded_data($file, $table)
     {
         $cnt_strings_in_file = $this->file_strings_count($file);
@@ -1177,11 +1399,20 @@ class Sinch
         }
     }
 
+    /**
+     * @param $parseFile
+     * @return int|void
+     */
     private function file_strings_count($parseFile)
     {
         return count(file($parseFile));
     }
 
+    /**
+     * @param $table
+     * @return string
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function table_rows_count($table)
     {
         return $this->_doQuery(
@@ -1189,6 +1420,19 @@ class Sinch
         )->fetchColumn();
     }
 
+    /**
+     * @param $rootCat
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $name_attrid
+     * @param $attr_url_key
+     * @param $attr_display_mode
+     * @param $attr_is_active
+     * @param $attr_include_in_menu
+     * @return mixed
+     */
     private function truncateAllCateriesAndRecreateDefaults(
         $rootCat,
         $catalog_category_entity,
@@ -1267,6 +1511,12 @@ class Sinch
         return $rootCat;
     }
 
+    /**
+     * @param int $cat_id
+     * @return int
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _getShopRootCategoryId($cat_id = 0)
     {
         if ($rootCat = $this->_storeManager->getStore()->getRootCategoryId()) {
@@ -1303,6 +1553,11 @@ class Sinch
         }
     }
 
+    /**
+     * @param $categories_temp
+     * @param $rootCat
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function setCategorySettings($categories_temp, $rootCat)
     {
         $this->_doQuery(
@@ -1332,6 +1587,11 @@ class Sinch
         }
     }
 
+    /**
+     * @param $id
+     * @return int|mixed
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function count_children($id)
     {
         $q
@@ -1355,6 +1615,11 @@ class Sinch
         return ($count);
     }
 
+    /**
+     * @param $id
+     * @return int
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function get_category_level($id)
     {
         $q
@@ -1385,6 +1650,13 @@ class Sinch
         return $level;
     }
 
+    /**
+     * @param $sinch_categories_mapping
+     * @param $catalog_category_entity
+     * @param $categories_temp
+     * @param $imType
+     * @param bool $mapping_again
+     */
     private function mapSinchCategories(
         $sinch_categories_mapping,
         $catalog_category_entity,
@@ -1622,6 +1894,11 @@ class Sinch
         );
     }
 
+    /**
+     * @param $table
+     * @return bool
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _checkDataExist($table)
     {
         $tableData = $this->_doQuery(
@@ -1638,6 +1915,22 @@ class Sinch
         return false;
     }
 
+    /**
+     * @param $categories_temp
+     * @param $sinch_categories_mapping
+     * @param $sinch_categories
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $name_attrid
+     * @param $attr_is_active
+     * @param $attr_include_in_menu
+     * @param $is_anchor_attrid
+     * @param $image_attrid
+     * @param $imType
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addCategoryData(
         $categories_temp,
         $sinch_categories_mapping,
@@ -2158,6 +2451,12 @@ class Sinch
         $this->_doQuery("RENAME TABLE $categories_temp TO $sinch_categories");
     }
 
+    /**
+     * @param $parent_id
+     * @param $ent_id
+     * @return string
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function culc_path($parent_id, $ent_id)
     {
         $path = '';
@@ -2190,6 +2489,9 @@ class Sinch
         }
     }
 
+    /**
+     *
+     */
     private function delete_old_sinch_categories_from_shop()
     {
         $cce = $this->_getTableName('catalog_category_entity');
@@ -2225,6 +2527,25 @@ class Sinch
         );
     }
 
+    /**
+     * @param $coincidence
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $imType
+     * @param $name_attrid
+     * @param $attr_display_mode
+     * @param $attr_url_key
+     * @param $attr_include_in_menu
+     * @param $attr_is_active
+     * @param $image_attrid
+     * @param $is_anchor_attrid
+     * @param $sinch_categories_mapping_temp
+     * @param $sinch_categories_mapping
+     * @param $sinch_categories
+     * @param $categories_temp
+     */
     private function rewriteMultistoreCategories(
         $coincidence,
         $catalog_category_entity,
@@ -2301,6 +2622,15 @@ class Sinch
         );
     }
 
+    /**
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $name_attrid
+     * @param $attr_url_key
+     * @param $attr_include_in_menu
+     */
     private function truncateCategoriesAndCreateRoot(
         $catalog_category_entity,
         $catalog_category_entity_varchar,
@@ -2341,6 +2671,18 @@ class Sinch
         );
     }
 
+    /**
+     * @param $coincidence
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $name_attrid
+     * @param $attr_display_mode
+     * @param $attr_url_key
+     * @param $attr_is_active
+     * @param $attr_include_in_menu
+     */
     private function createDefaultCategories(
         $coincidence,
         $catalog_category_entity,
@@ -2387,6 +2729,17 @@ class Sinch
         }
     }
 
+    /**
+     * @param $sinch_categories_mapping_temp
+     * @param $sinch_categories_mapping
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $categories_temp
+     * @param $imType
+     * @param $name_attrid
+     * @param bool $mapping_again
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function mapSinchCategoriesMultistore(
         $sinch_categories_mapping_temp,
         $sinch_categories_mapping,
@@ -2670,6 +3023,10 @@ class Sinch
         $this->_doQuery($query);
     }
 
+    /**
+     * @param $sinch_categories_mapping_temp
+     * @param $sinch_categories_mapping
+     */
     private function createMappingSinchTables(
         $sinch_categories_mapping_temp,
         $sinch_categories_mapping
@@ -2703,6 +3060,23 @@ class Sinch
         );
     }
 
+    /**
+     * @param $categories_temp
+     * @param $sinch_categories_mapping_temp
+     * @param $sinch_categories_mapping
+     * @param $sinch_categories
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $imType
+     * @param $name_attrid
+     * @param $attr_is_active
+     * @param $attr_include_in_menu
+     * @param $is_anchor_attrid
+     * @param $image_attrid
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addCategoryDataMultistore(
         $categories_temp,
         $sinch_categories_mapping_temp,
@@ -3206,6 +3580,13 @@ class Sinch
         $this->_doQuery("RENAME TABLE $categories_temp TO $sinch_categories");
     }
 
+    /**
+     * @param $parent_id
+     * @param $ent_id
+     * @param $catalog_category_entity
+     * @return string
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function culcPathMultistore(
         $parent_id,
         $ent_id,
@@ -3249,6 +3630,25 @@ class Sinch
         return $path;
     }
 
+    /**
+     * @param $coincidence
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $imType
+     * @param $name_attrid
+     * @param $attr_display_mode
+     * @param $attr_url_key
+     * @param $attr_include_in_menu
+     * @param $attr_is_active
+     * @param $image_attrid
+     * @param $is_anchor_attrid
+     * @param $sinch_categories_mapping_temp
+     * @param $sinch_categories_mapping
+     * @param $sinch_categories
+     * @param $categories_temp
+     */
     private function mergeMultistoreCategories(
         $coincidence,
         $catalog_category_entity,
@@ -3313,6 +3713,19 @@ class Sinch
         $this->print("mergeMultistoreCategories DONE");
     }
 
+    /**
+     * @param $coincidence
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $name_attrid
+     * @param $attr_display_mode
+     * @param $attr_url_key
+     * @param $attr_is_active
+     * @param $attr_include_in_menu
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function createNewDefaultCategories(
         $coincidence,
         $catalog_category_entity,
@@ -3395,6 +3808,16 @@ class Sinch
         $this->print("Create New Default Categories -> DONE...");
     }
 
+    /**
+     * @param $sinch_categories_mapping_temp
+     * @param $sinch_categories_mapping
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $categories_temp
+     * @param $imType
+     * @param $name_attrid
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function mapSinchCategoriesMultistoreMerge(
         $sinch_categories_mapping_temp,
         $sinch_categories_mapping,
@@ -3505,6 +3928,23 @@ class Sinch
         $this->_doQuery($query);
     }
 
+    /**
+     * @param $categories_temp
+     * @param $sinch_categories_mapping_temp
+     * @param $sinch_categories_mapping
+     * @param $sinch_categories
+     * @param $catalog_category_entity
+     * @param $catalog_category_entity_varchar
+     * @param $catalog_category_entity_int
+     * @param $_categoryDefault_attribute_set_id
+     * @param $imType
+     * @param $name_attrid
+     * @param $attr_is_active
+     * @param $attr_include_in_menu
+     * @param $is_anchor_attrid
+     * @param $image_attrid
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addCategoryDataMultistoreMerge(
         $categories_temp,
         $sinch_categories_mapping_temp,
@@ -4019,6 +4459,9 @@ class Sinch
         );
     }
 
+    /**
+     * @param $catalog_category_entity
+     */
     private function deleteOldSinchCategoriesFromShopMerge(
         $catalog_category_entity
     ) {
@@ -4056,7 +4499,10 @@ class Sinch
         $this->_doQuery($query);
     }
 
-    private function _set_default_rootCategory()
+    /**
+     * Set default root category
+     */
+    private function _setDefaultRootCategory()
     {
         $q = "UPDATE " . $this->_getTableName('store_group') . " csg
             LEFT JOIN " . $this->_getTableName('catalog_category_entity') . " cce
@@ -4067,6 +4513,9 @@ class Sinch
         $this->_doQuery($q);
     }
 
+    /**
+     * Parse category features
+     */
     private function parseCategoryFeatures()
     {
         $parseFile = $this->varDir . FILE_CATEGORIES_FEATURES;
@@ -4124,6 +4573,9 @@ class Sinch
         }
     }
 
+    /**
+     *  Parse distributors
+     */
     private function parseDistributors()
     {
         $parseFile = $this->varDir . FILE_DISTRIBUTORS;
@@ -4172,6 +4624,9 @@ class Sinch
         }
     }
 
+    /**
+     * Parse distributors stock and price
+     */
     private function parseDistributorsStockAndPrice()
     {
         $parseFile = $this->varDir . FILE_DISTRIBUTORS_STOCK_AND_PRICES;
@@ -4234,6 +4689,9 @@ class Sinch
         }
     }
 
+    /**
+     *
+     */
     private function parseProductContracts()
     {
         $parseFile = $this->varDir . FILE_PRODUCT_CONTRACTS;
@@ -4283,6 +4741,9 @@ class Sinch
         }
     }
 
+    /**
+     * Parse EAN Codes
+     */
     private function parseEANCodes()
     {
         $parseFile = $this->varDir . FILE_EANCODES;
@@ -4327,6 +4788,9 @@ class Sinch
         }
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function parseManufacturers()
     {
         $parseFile = $this->varDir . FILE_MANUFACTURERS;
@@ -4454,11 +4918,19 @@ class Sinch
         }
     }
 
+    /**
+     * @param $attributeCode
+     * @return mixed
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _getProductAttributeId($attributeCode)
     {
         return $this->_getAttributeId($attributeCode, 'catalog_product');
     }
 
+    /**
+     *
+     */
     private function parseRelatedProducts()
     {
         $parseFile = $this->varDir . FILE_RELATED_PRODUCTS;
@@ -4513,6 +4985,9 @@ class Sinch
         }
     }
 
+    /**
+     *
+     */
     private function parseProductCategories()
     {
         $parseFile = $this->varDir . FILE_PRODUCT_CATEGORIES;
@@ -4567,6 +5042,10 @@ class Sinch
         }
     }
 
+    /**
+     * @param $coincidence
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function parseProducts($coincidence)
     {
         $this->print("--Parse Products 1");
@@ -4781,6 +5260,9 @@ class Sinch
         }
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addProductsWebsite()
     {
         $this->_doQuery(
@@ -4833,6 +5315,11 @@ class Sinch
         }
     }
 
+    /**
+     * @param string $mode
+     * @param bool $mapping_again
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function mapSinchProducts($mode = 'MERGE', $mapping_again = false)
     {
         $this->_doQuery(
@@ -4953,6 +5440,10 @@ class Sinch
         );
     }
 
+    /**
+     * @param null $delete_eav
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addManufacturers($delete_eav = null)
     {
         // this cleanup is not needed due to foreign keys
@@ -5049,6 +5540,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addManufacturer_attribute()
     {
         $this->_doQuery(
@@ -5082,6 +5576,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function replaceMagentoProducts()
     {
         $this->_doQuery(
@@ -5920,6 +6417,10 @@ class Sinch
         $this->addRelatedProducts();
     }
 
+    /**
+     * @return int
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _getProductDefaulAttributeSetId()
     {
         if (!$this->defaultAttributeSetId) {
@@ -5937,6 +6438,10 @@ class Sinch
         return $this->defaultAttributeSetId;
     }
 
+    /**
+     * @param $attribute_id
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function dropHTMLentities($attribute_id)
     {
         // product name for all web sites
@@ -5964,6 +6469,10 @@ class Sinch
         }
     }
 
+    /**
+     * @param $string
+     * @return null|string|string[]
+     */
     private function valid_char($string)
     {
         $string = preg_replace('/&#8482;/', ' ', $string);
@@ -5980,6 +6489,9 @@ class Sinch
         return $string;
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addDescriptions()
     {
         // product description for all web sites
@@ -6049,6 +6561,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function cleanProductDistributors()
     {
         for ($i = 1; $i <= 5; $i++) {
@@ -6064,6 +6579,9 @@ class Sinch
         }
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function cleanProductContracts()
     {
         $this->_doQuery(
@@ -6075,6 +6593,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addReviews()
     {
         // product reviews  for all web sites
@@ -6142,6 +6663,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addWeight()
     {
         // product weight for specific web site
@@ -6208,6 +6732,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addSearchCache()
     {
         // product search_cache for all web sites
@@ -6277,6 +6804,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addPdfUrl()
     {
         // product PDF Url for all web sites
@@ -6361,6 +6891,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addShortDescriptions()
     {
         // product short description for all web sites
@@ -6429,6 +6962,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addProductDistributors()
     {
         $this->_doQuery(
@@ -6557,6 +7093,9 @@ class Sinch
         }
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addProductContracts()
     {
         $this->_doQuery(
@@ -6653,6 +7192,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addMetaDescriptions()
     {
         if ($this->product_file_format == "NEW") {
@@ -6788,6 +7330,9 @@ class Sinch
         }
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addEAN()
     {
         //gather EAN codes for each product
@@ -6893,6 +7438,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addSpecification()
     {
         // product specification for all web sites
@@ -6961,6 +7509,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function addRelatedProducts()
     {
         $this->_doQuery(
@@ -7111,6 +7662,9 @@ class Sinch
         );
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function replaceMagentoProductsMultistore()
     {
         $this->print("--Replace Magento Products Multistore 1...");
@@ -7622,7 +8176,7 @@ class Sinch
                     ON cpw.product_id = cpe.entity_id
                 WHERE cpe.entity_id IS NULL"
             );
-        } catch(\Magento\Framework\DB\Adapter\DeadlockException $_e){
+        } catch (\Magento\Framework\DB\Adapter\DeadlockException $_e) {
             //Do nothing, the foreign key should ensure this is fulfilled anyway
         }
 
@@ -7800,6 +8354,25 @@ class Sinch
         $this->addRelatedProducts();
     }
 
+    /**
+     * @param $query
+     * @return \Zend_Db_Statement_Interface
+     */
+    private function retriableQuery($query)
+    {
+        while (true) {
+            try {
+                return $this->_doQuery($query);
+            } catch (\Magento\Framework\DB\Adapter\DeadlockException $_e) {
+                $this->print("Sleeping as the previous attempt deadlocked");
+                sleep(10);
+            }
+        }
+    }
+
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function replaceMagentoProductsMultistoreMERGE()
     {
         $this->print("--Replace Magento Multistore 1...");
@@ -8455,6 +9028,9 @@ class Sinch
         $this->addRelatedProducts();
     }
 
+    /**
+     * Parse product gallery
+     */
     private function parseProductsPicturesGallery()
     {
         $parseFile = $this->varDir . FILE_PRODUCTS_PICTURES_GALLERY;
@@ -8526,6 +9102,9 @@ class Sinch
         }
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function parseStockAndPrices()
     {
         $parseFile = $this->varDir . FILE_STOCK_AND_PRICES;
@@ -8538,7 +9117,7 @@ class Sinch
             $this->_log("Wrong file" . $parseFile);
             return;
         }
-    
+
         $this->_doQuery(
             "CREATE TABLE " . $stockPriceTemp
             . " (
@@ -8555,7 +9134,7 @@ class Sinch
         $this->_doQuery(
             "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                         INTO TABLE " . $stockPriceTemp . "
-                        FIELDS TERMINATED BY '" . $this->field_terminated_char. "'
+                        FIELDS TERMINATED BY '" . $this->field_terminated_char . "'
                         OPTIONALLY ENCLOSED BY '\"'
                         LINES TERMINATED BY \"\r\n\"
                         IGNORE 1 LINES
@@ -8590,6 +9169,9 @@ class Sinch
         $this->_log("Finish parse " . FILE_RELATED_PRODUCTS);
     }
 
+    /**
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function replaceMagentoProductsStockPrice()
     {
         $catalogInvStockItem = $this->_getTableName('cataloginventory_stock_item');
@@ -8840,6 +9422,10 @@ class Sinch
         }
     }
 
+    /**
+     * @return bool
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _cleanCateoryProductFlatTable()
     {
         $q = 'SHOW TABLES LIKE "' . $this->_getTableName('catalog_product_flat_') . '%"';
@@ -8849,7 +9435,7 @@ class Sinch
             if (is_array($res)) {
                 $catalog_product_flat = array_pop($res);
                 $this->_doQuery('DELETE pf1 FROM ' . $catalog_product_flat . ' pf1
-                    LEFT JOIN ' . $this->_getTableName('catalog_product_entity'). ' p
+                    LEFT JOIN ' . $this->_getTableName('catalog_product_entity') . ' p
                         ON pf1.entity_id = p.entity_id
                     WHERE p.entity_id IS NULL'
                 );
@@ -8862,11 +9448,18 @@ class Sinch
         return $result;
     }
 
+    /**
+     *  Run all of indexers
+     */
     private function runIndexer()
     {
         $this->_indexProcessor->reindexAll();
     }
 
+    /**
+     * @return bool
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function _reindexProductUrlKey()
     {
         $this->_doQuery("DELETE FROM " . $this->_getTableName('url_rewrite'));
@@ -8881,6 +9474,23 @@ class Sinch
         return true;
     }
 
+    /**
+     * Invalidate all of indexers
+     */
+    private function invalidateIndexers()
+    {
+        /**
+         * @var IndexerInterface[] $indexers
+         */
+        $indexers = $this->indexersFactory->create()->getItems();
+        foreach ($indexers as $indexer) {
+            $indexer->invalidate();
+        }
+    }
+
+    /**
+     * Clean all frontend cache
+     */
     private function runCleanCache()
     {
         foreach ($this->_cacheFrontendPool as $cacheFrontend) {
@@ -8889,6 +9499,9 @@ class Sinch
         }
     }
 
+    /**
+     *  Drop feature result tables
+     */
     public function dropFeatureResultTables()
     {
         $dbName
@@ -8916,6 +9529,11 @@ class Sinch
         }
     }
 
+    /**
+     * @param $table
+     * @return int|void
+     * @throws \Zend_Db_Statement_Exception
+     */
     private function check_table_exist($table)
     {
         $q = "SHOW TABLES LIKE '%" . $this->_getTableName($table) . "%'";
@@ -8923,6 +9541,9 @@ class Sinch
         return count($res);
     }
 
+    /**
+     * @throws \Magento\Framework\Exception\LocalizedException
+     */
     public function startCronStockPriceImport()
     {
         $this->_log("Start stock price import from cron");
@@ -8933,17 +9554,13 @@ class Sinch
         $this->_log("Finish stock price import from cron");
     }
 
+    /**
+     * @throws \Magento\Framework\Exception\LocalizedException
+     * @throws \Zend_Db_Statement_Exception
+     */
     public function runStockPriceImport()
     {
         $this->initImportStatuses('PRICE STOCK');
-        $store_proc = $this->checkStoreProcedureExist();
-
-        if (!$store_proc) {
-            $this->_setErrorMessage(
-                'Stored procedure "' . $this->_getTableName('sinch_filter_products') . '" is missing from the database'
-            );
-            throw new \Magento\Framework\Exception\LocalizedException("sinch_filter_products missing from the database");
-        }
 
         $file_privileg = $this->checkDbPrivileges();
         if (!$file_privileg) {
@@ -9015,6 +9632,10 @@ class Sinch
         }
     }
 
+    /**
+     * @return bool
+     * @throws \Zend_Db_Statement_Exception
+     */
     public function isFullImportHaveBeenRun()
     {
         $res = $this->_doQuery(
@@ -9030,6 +9651,9 @@ class Sinch
         }
     }
 
+    /**
+     * @return bool
+     */
     private function runStockPriceIndexer()
     {
         $priceIndexers = [
@@ -9050,17 +9674,9 @@ class Sinch
         return true;
     }
 
-    private function invalidateIndexers()
-    {
-        /**
-         * @var IndexerInterface[] $indexers
-         */
-        $indexers = $this->indexersFactory->create()->getItems();
-        foreach ($indexers as $indexer) {
-            $indexer->invalidate();
-        }
-    }
-
+    /**
+     * Run indexing url rewrite
+     */
     public function runReindexUrlRewrite()
     {
         try {
@@ -9080,6 +9696,9 @@ class Sinch
         }
     }
 
+    /**
+     * Run indexing data
+     */
     public function runIndexingData()
     {
         $this->initIndexingStatuses();
@@ -9094,6 +9713,9 @@ class Sinch
         }
     }
 
+    /**
+     * Initialize indexing statuses
+     */
     private function initIndexingStatuses()
     {
         $this->_doQuery("DROP TABLE IF EXISTS " . $this->import_status_table);
@@ -9105,18 +9727,6 @@ class Sinch
                 finished int(1) default 0
             )"
         );
-    }
-
-    private function getStoreProductIdByEntity($entity_id)
-    {
-        $res = $this->_doQuery(
-            "SELECT store_product_id
-                FROM " . $this->_getTableName('sinch_products_mapping') . "
-                WHERE entity_id = " . $entity_id,
-            true
-        )->fetch();
-
-        return ($res['store_product_id']);
     }
 
     /**
@@ -9166,11 +9776,35 @@ class Sinch
         return $this;
     }
 
+    /**
+     * @param $entity_id
+     * @return mixed
+     * @throws \Zend_Db_Statement_Exception
+     */
+    private function getStoreProductIdByEntity($entity_id)
+    {
+        $res = $this->_doQuery(
+            "SELECT store_product_id
+                FROM " . $this->_getTableName('sinch_products_mapping') . "
+                WHERE entity_id = " . $entity_id,
+            true
+        )->fetch();
+
+        return ($res['store_product_id']);
+    }
+
+    /**
+     * @return array
+     */
     public function getGalleryPhotos()
     {
         return $this->galleryPhotos;
     }
 
+    /**
+     * @return array
+     * @throws \Zend_Db_Statement_Exception
+     */
     public function getImportStatusHistory()
     {
         $res = $this->_doQuery(
@@ -9205,6 +9839,10 @@ class Sinch
         return $StatusHistory_arr;
     }
 
+    /**
+     * @return mixed
+     * @throws \Zend_Db_Statement_Exception
+     */
     public function getDateOfLatestSuccessImport()
     {
         $imp_date = $this->_doQuery(
@@ -9218,6 +9856,10 @@ class Sinch
         return $imp_date['start_import'];
     }
 
+    /**
+     * @return array
+     * @throws \Zend_Db_Statement_Exception
+     */
     public function getImportStatuses()
     {
         $messages = [];

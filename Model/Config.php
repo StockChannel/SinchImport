@@ -30,9 +30,7 @@ define('DEFAULT_FILE_TERMINATED_CHAR', "|");
 
 define('LANG_CODE', 'en');
 define('REWRITE_CATEGORIES_ORDER_ID', 'FALSE');
-define(
-    'PRICE_BREAKS',
-    "
+define('PRICE_BREAKS', "
 0-25;
 25-50;
 50-100;

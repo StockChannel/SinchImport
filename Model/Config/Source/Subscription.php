@@ -2,8 +2,15 @@
 
 namespace SITC\Sinchimport\Model\Config\Source;
 
+/**
+ * Class Subscription
+ * @package SITC\Sinchimport\Model\Config\Source
+ */
 class Subscription implements \Magento\Framework\Option\ArrayInterface
 {
+    /**
+     * @return array
+     */
     public function toOptionArray()
     {
         return [
@@ -33,7 +40,10 @@ class Subscription implements \Magento\Framework\Option\ArrayInterface
             ['value' => '0', 'label' => '12 PM']
         ];
     }
-    
+
+    /**
+     * @return array
+     */
     public function toArray()
     {
         return [

@@ -29,6 +29,10 @@ class Image
      */
     protected $_imageFactory;
 
+    /**
+     * Image constructor.
+     * @param MagentoImage\Factory $imageFactory
+     */
     public function __construct(
         \Magento\Framework\Image\Factory $imageFactory
     ) {
@@ -36,6 +40,12 @@ class Image
         $this->_baseFileTmp = false;
     }
 
+    /**
+     * @param \Magento\Catalog\Model\Product\Image $subject
+     * @param \Closure $proceed
+     * @param $file
+     * @return mixed
+     */
     public function aroundSetBaseFile(
         \Magento\Catalog\Model\Product\Image $subject,
         \Closure $proceed,
@@ -45,7 +55,7 @@ class Image
 
         if (substr($file, 0, 4) == 'http') {
             $this->_isBaseFilePlaceholderTmp = false;
-            $this->_baseFileTmp              = $file;
+            $this->_baseFileTmp = $file;
         }
 
         return $result;

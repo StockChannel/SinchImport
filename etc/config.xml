@@ -7,6 +7,9 @@
                 <additional_suffix>2</additional_suffix>
             </general>
             <sinch_ftp>
+                <ftp_server></ftp_server>
+                <username></username>
+                <password></password>
                 <replace_category>REWRITE</replace_category>
                 <replace_product>REWRITE</replace_product>
                 <backup_data>0</backup_data>

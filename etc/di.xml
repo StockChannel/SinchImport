@@ -1,7 +1,8 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-        <preference for="Magento\Catalog\Model\Indexer\Category\Flat\Action\Full" type="SITC\Sinchimport\Model\Catalog\Indexer\Category\Flat\Action\Full" />
+    <preference for="Magento\Catalog\Model\Indexer\Category\Flat\Action\Full"
+                type="SITC\Sinchimport\Model\Catalog\Indexer\Category\Flat\Action\Full"/>
     <type name="Magento\Framework\Console\CommandList">
         <arguments>
             <argument name="commands" xsi:type="array">
@@ -28,21 +29,27 @@
         <plugin name="mb_change_product_gallery" type="SITC\Sinchimport\Block\Product\View\Gallery" sortOrder="0"/>
     </type>
     <type name="Magento\Catalog\Model\Product\Attribute\Frontend\Image">
-        <plugin name="mb_change_product_attribute_frontend_image" type="SITC\Sinchimport\Plugin\Catalog\Product\Attribute\Frontend\Image" sortOrder="0"/>
+        <plugin name="mb_change_product_attribute_frontend_image"
+                type="SITC\Sinchimport\Plugin\Catalog\Product\Attribute\Frontend\Image" sortOrder="0"/>
     </type>
     <type name="Magento\Catalog\Model\Category">
-        <plugin name="mb_change_category_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Category" sortOrder="0"/>
+        <plugin name="mb_change_category_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Category"
+                sortOrder="0"/>
     </type>
     <type name="Magento\Catalog\Model\Product\Image">
-        <plugin name="mb_change_product_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Product\Image" sortOrder="0"/>
+        <plugin name="mb_change_product_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Product\Image"
+                sortOrder="0"/>
     </type>
     <type name="Magento\Catalog\Helper\Image">
-        <plugin name="mb_change_catalog_helper_image" type="SITC\Sinchimport\Plugin\Catalog\Helper\Image" sortOrder="0"/>
+        <plugin name="mb_change_catalog_helper_image" type="SITC\Sinchimport\Plugin\Catalog\Helper\Image"
+                sortOrder="0"/>
     </type>
     <type name="Magento\Catalog\Helper\Product\Flat\Indexer">
-        <plugin name="change_reindex_product_flat_mode" type="SITC\Sinchimport\Plugin\Catalog\Helper\Product\Flat\Indexer" sortOrder="0" />
+        <plugin name="change_reindex_product_flat_mode"
+                type="SITC\Sinchimport\Plugin\Catalog\Helper\Product\Flat\Indexer" sortOrder="0"/>
     </type>
     <type name="Magento\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder">
-        <plugin name="add_data_reindex_product_flat_mode" type="SITC\Sinchimport\Plugin\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder" sortOrder="0" />
+        <plugin name="add_data_reindex_product_flat_mode"
+                type="SITC\Sinchimport\Plugin\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder" sortOrder="0"/>
     </type>
 </config>

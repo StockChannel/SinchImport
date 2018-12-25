@@ -2,8 +2,15 @@
 
 namespace SITC\Sinchimport\Plugin\Catalog\Helper\Product\Flat;
 
+/**
+ * Class Indexer
+ * @package SITC\Sinchimport\Plugin\Catalog\Helper\Product\Flat
+ */
 class Indexer
 {
+    /**
+     * @var mixed
+     */
     protected $_columns;
 
     /**
