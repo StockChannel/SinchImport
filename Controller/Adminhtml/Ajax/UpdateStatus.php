@@ -15,16 +15,24 @@ class UpdateStatus extends \Magento\Backend\App\Action
      * @var \SITC\Sinchimport\Logger\Logger
      */
     protected $_logger;
-    
-    protected $_jsonEncoder;
-    
-    protected $sinch;
-    
+
     /**
-     * @param \Magento\Backend\App\Action\Context              $context
+     * @var \Magento\Framework\Json\EncoderInterface
+     */
+    protected $_jsonEncoder;
+
+    /**
+     * @var \SITC\Sinchimport\Model\Sinch
+     */
+    protected $sinch;
+
+    /**
+     * UpdateStatus constructor.
+     * @param \Magento\Backend\App\Action\Context $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\Json\EncoderInterface         $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger                  $logger
+     * @param \Magento\Framework\Json\EncoderInterface $jsonEncoder
+     * @param \SITC\Sinchimport\Model\Sinch $sinch
+     * @param \SITC\Sinchimport\Logger\Logger $logger
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,

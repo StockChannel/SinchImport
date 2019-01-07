@@ -271,3 +271,4 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         return $this;
     }
 }
+

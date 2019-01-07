@@ -7,7 +7,7 @@
             <argument name="commands" xsi:type="array">
                 <item name="import" xsi:type="object">SITC\Sinchimport\Console\Command\ImportCommand</item>
                 <item name="generateUrl" xsi:type="object">SITC\Sinchimport\Console\Command\GenerateCommand</item>
-                <item name="feature" xsi:type="object">SITC\Sinchimport\Console\Command\FeatureCommand</item>
+                <item name="productPartsfinder" xsi:type="object">SITC\Sinchimport\Console\Command\TonerFinderCommand</item>
             </argument>
         </arguments>
     </type>
@@ -45,4 +45,5 @@
     <type name="Magento\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder">
         <plugin name="add_data_reindex_product_flat_mode" type="SITC\Sinchimport\Plugin\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder" sortOrder="0" />
     </type>
+    <preference for="Magento\UrlRewrite\Model\Storage\DbStorage" type="SITC\Sinchimport\Model\Storage\DbStorage" />
 </config>

@@ -16,17 +16,29 @@ class StockPrice extends \Magento\Backend\App\Action
      */
     protected $_logger;
 
+    /**
+     * @var \Magento\Framework\Json\EncoderInterface
+     */
     protected $_jsonEncoder;
 
+    /**
+     * @var \SITC\Sinchimport\Model\Sinch
+     */
     protected $sinch;
 
+    /**
+     * @var \Magento\Framework\Filesystem\DirectoryList
+     */
     protected $_directory;
 
     /**
-     * @param \Magento\Backend\App\Action\Context              $context
+     * StockPrice constructor.
+     * @param \Magento\Backend\App\Action\Context $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\Json\EncoderInterface         $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger                  $logger
+     * @param \Magento\Framework\Json\EncoderInterface $jsonEncoder
+     * @param \SITC\Sinchimport\Model\Sinch $sinch
+     * @param \SITC\Sinchimport\Logger\Logger $logger
+     * @param \Magento\Framework\Filesystem\DirectoryList $directoryList
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,

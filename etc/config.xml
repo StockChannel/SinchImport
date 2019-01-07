@@ -4,7 +4,9 @@
     <default>
         <sinchimport>
             <general>
+                <is_debug_mode>1</is_debug_mode>
                 <additional_suffix>2</additional_suffix>
+                <meta_title>0</meta_title>
             </general>
             <sinch_ftp>
                 <replace_category>REWRITE</replace_category>
