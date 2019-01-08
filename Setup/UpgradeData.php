@@ -53,7 +53,7 @@ class UpgradeData implements UpgradeDataInterface
     private function fixStockManagement()
     {
         $conn = $this->getConnection();
-        $catalogInvStockItem = $conn->getTableName('cataloginventory_stock_item');
+        $catalogInvStockItem = $this->resourceConn->getTableName('cataloginventory_stock_item');
         $stockItemWebsiteId = $this->stockConfig->getDefaultScopeId();
 
         $conn->query(
