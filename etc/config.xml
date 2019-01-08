@@ -7,6 +7,7 @@
                 <is_debug_mode>1</is_debug_mode>
                 <additional_suffix>2</additional_suffix>
                 <meta_title>0</meta_title>
+                <index_tornerfinder>1</index_tornerfinder>
             </general>
             <sinch_ftp>
                 <replace_category>REWRITE</replace_category>
