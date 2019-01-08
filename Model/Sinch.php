@@ -1005,7 +1005,6 @@ class Sinch
      */
     public function uploadFiles()
     {
-        return true;
         $this->_logImportInfo("Start upload files");
 
         $username = $this->_dataConf['username'];
@@ -9859,6 +9858,8 @@ class Sinch
         $this->_indexProcessor->reindexAll();
         if ($configTonerFinder == 1 ){
             $this->insertCategoryIdForFinder();
+        } else {
+            $this->_logImportInfo("Skip reindex tonerfinder");
         }
 
     }
