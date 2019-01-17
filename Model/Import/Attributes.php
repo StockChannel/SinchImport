@@ -130,7 +130,7 @@ class Attributes {
     private $cacheType;
 
     /**
-     * @var \Magento\Catalog\Model\Product\Action
+     * @var \Magento\Catalog\Model\ResourceModel\Product\Action
      */
     private $massProdValues;
 
@@ -198,7 +198,7 @@ class Attributes {
      * @param \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement
      * @param \Magento\Framework\App\ResourceConnection $resourceConn
      * @param \Magento\Framework\App\Cache\TypeListInterface $cacheType
-     * @param \Magento\Catalog\Model\Product\Action $massProdValues
+     * @param \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
      * @param \Symfony\Component\Console\Output\ConsoleOutput $output
      */
     public function __construct(
@@ -214,7 +214,7 @@ class Attributes {
         \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
-        \Magento\Catalog\Model\Product\Action $massProdValues,
+        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
         \Symfony\Component\Console\Output\ConsoleOutput $output
     )
     {
