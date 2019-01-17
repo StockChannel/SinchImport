@@ -4,20 +4,27 @@ namespace SITC\Sinchimport\Block\System\Config;
 
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
+/**
+ * Class Importbutton
+ * @package SITC\Sinchimport\Block\System\Config
+ */
 class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
 {
+    /**
+     * @var \SITC\Sinchimport\Model\Sinch
+     */
     protected $sinch;
 
     /**
      * @param \Magento\Backend\Block\Template\Context $context
-     * @param array                                   $data
+     * @param array $data
      */
     public function __construct(
         \Magento\Backend\Block\Template\Context $context,
         \SITC\Sinchimport\Model\Sinch $sinch,
         array $data = []
     ) {
-    
+
         parent::__construct($context, $data);
         $this->sinch = $sinch;
     }
@@ -41,11 +48,15 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
         $html .= $this->getLayout()->createBlock(
             'Magento\Backend\Block\Widget\Button'
         )->setData(
-            ['label' => 'Force Import Now', 'id' => 'mb-sinch-import-button',
-             'class' => 'mb-start-button', 'style' => 'margin-top:30px']
+            [
+                'label' => 'Force Import Now',
+                'id' => 'mb-sinch-import-button',
+                'class' => 'mb-start-button',
+                'style' => 'margin-top:30px'
+            ]
         )->toHtml();
 
-        $lastImportData   = $this->sinch->getDataOfLatestImport();
+        $lastImportData = $this->sinch->getDataOfLatestImport();
         $lastImportStatus = $lastImportData['global_status_import'];
 
         $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true">';
@@ -66,6 +77,9 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
         return $html;
     }
 
+    /**
+     * @return string
+     */
     protected function _appendJs()
     {
         $completeIcon = $this->getViewFileUrl(
@@ -259,6 +273,9 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
         return $html;
     }
 
+    /**
+     * @return string
+     */
     protected function _appendCss()
     {
         $html = '';
@@ -267,6 +284,9 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
         return $html;
     }
 
+    /**
+     * @return string
+     */
     protected function _getStatusTemplateHtml()
     {
         $runningIcon = $this->getViewFileUrl(

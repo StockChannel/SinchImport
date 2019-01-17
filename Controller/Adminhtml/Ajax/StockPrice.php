@@ -2,6 +2,10 @@
 
 namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
+/**
+ * Class StockPrice
+ * @package SITC\Sinchimport\Controller\Adminhtml\Ajax
+ */
 class StockPrice extends \Magento\Backend\App\Action
 {
     /**
@@ -32,13 +36,10 @@ class StockPrice extends \Magento\Backend\App\Action
     protected $_directory;
 
     /**
-     * StockPrice constructor.
      * @param \Magento\Backend\App\Action\Context $context
      * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
      * @param \Magento\Framework\Json\EncoderInterface $jsonEncoder
-     * @param \SITC\Sinchimport\Model\Sinch $sinch
      * @param \SITC\Sinchimport\Logger\Logger $logger
-     * @param \Magento\Framework\Filesystem\DirectoryList $directoryList
      */
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
@@ -50,10 +51,10 @@ class StockPrice extends \Magento\Backend\App\Action
     ) {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
-        $this->_jsonEncoder      = $jsonEncoder;
-        $this->sinch             = $sinch;
-        $this->_logger           = $logger;
-        $this->_directory        = $directoryList;
+        $this->_jsonEncoder = $jsonEncoder;
+        $this->sinch = $sinch;
+        $this->_logger = $logger;
+        $this->_directory = $directoryList;
     }
 
     /**
@@ -74,11 +75,11 @@ class StockPrice extends \Magento\Backend\App\Action
                 'reload' => !$this->sinch->isImportNotRun() && !empty($lastImportData) && $lastImportData['import_type'] == 'FULL'
             ];
         } else {
-                exec(
-                    "nohup php " . $rootDir
-                    . "bin/magento sinch:import stockprice > /dev/null & echo $!"
-                );
-                
+            exec(
+                "nohup php " . $rootDir
+                . "bin/magento sinch:import stockprice > /dev/null & echo $!"
+            );
+
 
             $result = [
                 'success' => true,

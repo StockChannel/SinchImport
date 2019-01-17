@@ -2,6 +2,10 @@
 
 namespace SITC\Sinchimport\Logger;
 
+/**
+ * Class Handler
+ * @package SITC\Sinchimport\Logger
+ */
 class Handler extends \Magento\Framework\Logger\Handler\Base
 {
     /**

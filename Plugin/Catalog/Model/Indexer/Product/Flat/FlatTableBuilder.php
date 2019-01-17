@@ -2,9 +2,12 @@
 
 namespace SITC\Sinchimport\Plugin\Catalog\Model\Indexer\Product\Flat;
 
+/**
+ * Class FlatTableBuilder
+ * @package SITC\Sinchimport\Plugin\Catalog\Model\Indexer\Product\Flat
+ */
 class FlatTableBuilder
 {
-
     /**
      * @var \Magento\Framework\DB\Adapter\AdapterInterface
      */

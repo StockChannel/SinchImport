@@ -2,8 +2,16 @@
 
 namespace SITC\Sinchimport\Model\Catalog\Indexer\Category\Flat\Action;
 
+/**
+ * Class Full
+ * @package SITC\Sinchimport\Model\Catalog\Indexer\Category\Flat\Action
+ */
 class Full extends \Magento\Catalog\Model\Indexer\Category\Flat\Action\Full
 {
+    /**
+     * @param array $stores
+     * @return $this|\Magento\Catalog\Model\Indexer\Category\Flat\Action\Full
+     */
     public function populateFlatTables(array $stores)
     {
         $rootId = \Magento\Catalog\Model\Category::TREE_ROOT_ID;

@@ -5,7 +5,7 @@
         <resources>
             <resource id="Magento_Backend::admin">
                 <resource id="SITC_Sinchimport::sinchimport" title="Sinchimport" translate="title" sortOrder="30">
-                    <resource id="SITC_Sinchimport::importdata" title="Sinchimport" translate="title" sortOrder="10" />
+                    <resource id="SITC_Sinchimport::importdata" title="Sinchimport" translate="title" sortOrder="10"/>
                 </resource>
                 <resource id="Magento_Backend::stores">
                     <resource id="Magento_Backend::stores_settings">

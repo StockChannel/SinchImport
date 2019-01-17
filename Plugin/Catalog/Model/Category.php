@@ -2,6 +2,10 @@
 
 namespace SITC\Sinchimport\Plugin\Catalog\Model;
 
+/**
+ * Class Category
+ * @package SITC\Sinchimport\Plugin\Catalog\Model
+ */
 class Category
 {
     /**
@@ -14,13 +18,13 @@ class Category
         $result
     ) {
         $image = $subject->getImage();
-        
+
         if (is_string($image) && substr($image, 0, 4) == 'http') {
             $url = $image;
         } else {
             $url = $result;
         }
-        
+
         return $url;
     }
 }

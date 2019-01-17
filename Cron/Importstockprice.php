@@ -4,13 +4,17 @@ namespace SITC\Sinchimport\Cron;
 
 use SITC\Sinchimport\Model\Sinch;
 
+/**
+ * Class Importstockprice
+ * @package SITC\Sinchimport\Cron
+ */
 class Importstockprice
 {
     /**
      * @var Sinch
      */
     private $sinch;
-    
+
     /**
      * @param Sinch
      */
@@ -19,7 +23,7 @@ class Importstockprice
     ) {
         $this->sinch = $sinch;
     }
-    
+
     /**
      * Cron job method to fetch new tickets
      *

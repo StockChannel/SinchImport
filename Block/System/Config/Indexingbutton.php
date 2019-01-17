@@ -4,13 +4,20 @@ namespace SITC\Sinchimport\Block\System\Config;
 
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
+/**
+ * Class Indexingbutton
+ * @package SITC\Sinchimport\Block\System\Config
+ */
 class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
 {
+    /**
+     * @var \SITC\Sinchimport\Model\Sinch
+     */
     protected $sinch;
-    
+
     /**
      * @param \Magento\Backend\Block\Template\Context $context
-     * @param array                                   $data
+     * @param array $data
      */
     public function __construct(
         \Magento\Backend\Block\Template\Context $context,
@@ -20,7 +27,7 @@ class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
         parent::__construct($context, $data);
         $this->sinch = $sinch;
     }
-    
+
     /**
      * @param AbstractElement $element
      *
@@ -34,24 +41,30 @@ class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
         $html .= '<div id="sinchimport_indexing_status_template" name="sinchimport_indexing_status_template" style="display:none">';
         $html .= $this->_getStatusTemplateHtml();
         $html .= '</div>';
-        
+
         $html .= $this->getLayout()->createBlock(
             'Magento\Backend\Block\Widget\Button'
         )->setData(
-            ['label' => 'Indexing data',
-             'id'    => 'mb-sinch-indexing-data-button',
-             'class' => 'mb-indexing-button', 'style' => 'margin-top:30px']
+            [
+                'label' => 'Indexing data',
+                'id' => 'mb-sinch-indexing-data-button',
+                'class' => 'mb-indexing-button',
+                'style' => 'margin-top:30px'
+            ]
         )->toHtml();
-        
+
         return $html;
     }
-    
+
+    /**
+     * @return string
+     */
     protected function _getStatusTemplateHtml()
     {
         $runningIcon = $this->getViewFileUrl(
             'SITC_Sinchimport::images/ajax_running.gif'
         );
-        
+
         $html
             = "
 <table class='data-table history'>
@@ -73,7 +86,7 @@ class Indexingbutton extends \Magento\Config\Block\System\Config\Form\Field
     </tbody>
 </table>
         ";
-        
+
         return $html;
     }
 }

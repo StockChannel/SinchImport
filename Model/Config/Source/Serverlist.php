@@ -2,8 +2,15 @@
 
 namespace SITC\Sinchimport\Model\Config\Source;
 
+/**
+ * Class Serverlist
+ * @package SITC\Sinchimport\Model\Config\Source
+ */
 class Serverlist implements \Magento\Framework\Option\ArrayInterface
 {
+    /**
+     * @return array
+     */
     public function toOptionArray()
     {
         return [
@@ -33,7 +40,10 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
              'label' => 'Demo - ftpdemo.stockinthechannel.com']
         ];
     }
-    
+
+    /**
+     * @return array
+     */
     public function toArray()
     {
         return [

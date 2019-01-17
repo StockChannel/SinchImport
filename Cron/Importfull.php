@@ -2,13 +2,17 @@
 
 namespace SITC\Sinchimport\Cron;
 
+/**
+ * Class Importfull
+ * @package SITC\Sinchimport\Cron
+ */
 class Importfull
 {
     /**
      * @var \SITC\Sinchimport\Model\Sinch
      */
     private $sinch;
-    
+
     /**
      * @param \SITC\Sinchimport\Model\Sinch
      */
@@ -17,7 +21,7 @@ class Importfull
     ) {
         $this->sinch = $sinch;
     }
-    
+
     /**
      * Cron job method to fetch new tickets
      *

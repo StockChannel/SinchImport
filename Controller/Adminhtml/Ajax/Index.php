@@ -1,6 +1,11 @@
 <?php
+
 namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
+/**
+ * Class Index
+ * @package SITC\Sinchimport\Controller\Adminhtml\Ajax
+ */
 class Index extends \Magento\Backend\App\Action
 {
     /**
@@ -15,10 +20,19 @@ class Index extends \Magento\Backend\App\Action
      */
     protected $_logger;
 
+    /**
+     * @var \Magento\Framework\Json\EncoderInterface
+     */
     protected $_jsonEncoder;
 
+    /**
+     * @var \SITC\Sinchimport\Model\Sinch
+     */
     protected $sinch;
 
+    /**
+     * @var \Magento\Framework\Filesystem\DirectoryList
+     */
     protected $_directory;
 
     /**

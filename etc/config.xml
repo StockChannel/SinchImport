@@ -10,6 +10,9 @@
                 <index_tornerfinder>1</index_tornerfinder>
             </general>
             <sinch_ftp>
+                <ftp_server></ftp_server>
+                <username></username>
+                <password></password>
                 <replace_category>REWRITE</replace_category>
                 <replace_product>REWRITE</replace_product>
                 <backup_data>0</backup_data>
