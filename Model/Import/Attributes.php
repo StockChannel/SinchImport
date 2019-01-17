@@ -2,61 +2,205 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+/**
+ * Class Attributes
+ * @package SITC\Sinchimport\Model\Import
+ */
 class Attributes {
 
+    /**
+     * Attribute group name
+     */
     const ATTRIBUTE_GROUP_NAME = "Sinch features";
+    /**
+     * Attribute group sort
+     */
     const ATTRIBUTE_GROUP_SORT = 50;
+
+    /**
+     *  Attribute prefix
+     */
     const ATTRIBUTE_PREFIX = "sinch_attr_";
 
+    /**
+     * Product page size
+     */
     const PRODUCT_PAGE_SIZE = 50;
 
-    //Stats
+    /**
+     * Stats
+     * @var int
+     */
     private $attributeCount = 0;
+
+    /**
+     * @var int
+     */
     private $optionCount = 0;
 
-    //CSV parser
+    /**
+     * CSV parser
+     * @var \Magento\Framework\File\Csv
+     */
     private $csv;
 
-    //ID, CategoryID, Name, Order
+    /**
+     * ID, CategoryID, Name, Order
+     * @var
+     */
     private $category_features;
-    //ID, CategoryFeatureID, Text, Order
+
+    /**
+     * ID, CategoryFeatureID, Text, Order
+     * @var
+     */
     private $attribute_values;
-    //ID, ProductID, RestrictedValueID
+
+    /**
+     * ID, ProductID, RestrictedValueID
+     * @var
+     */
     private $product_features;
 
-    //Attributes to produce
+    /**
+     * Attributes to produce
+     * @var array
+     */
     private $attributes = [];
-    //Sinch RV -> [Prod]
+
+    /**
+     * Sinch RV -> [Prod]
+     * @var array
+     */
     private $rvProds = [];
 
+    /**
+     * @var \Magento\Catalog\Api\ProductAttributeRepositoryInterface
+     */
     private $attributeRepository;
+
+    /**
+     * @var \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface
+     */
     private $attributeGroupRepository;
+
+    /**
+     * @var \Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory
+     */
     private $attributeFactory;
+
+    /**
+     * @var \Magento\Eav\Api\Data\AttributeGroupInterfaceFactory
+     */
     private $attributeGroupFactory;
+
+    /**
+     * @var \Magento\Framework\Api\SearchCriteriaBuilder
+     */
     private $searchCriteriaBuilder;
+
+    /**
+     * @var \Magento\Catalog\Api\ProductAttributeOptionManagementInterface
+     */
     private $optionManagement;
+
+    /**
+     * @var \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory
+     */
     private $optionFactory;
+
+    /**
+     * @var \Magento\Catalog\Api\AttributeSetRepositoryInterface
+     */
     private $attributeSetRepository;
+
+    /**
+     * @var \Magento\Catalog\Api\ProductAttributeManagementInterface
+     */
     private $attributeManagement;
 
+    /**
+     * @var \Magento\Framework\App\ResourceConnection
+     */
     private $resourceConn;
+
+    /**
+     * @var \Magento\Framework\App\Cache\TypeListInterface
+     */
     private $cacheType;
+
+    /**
+     * @var \Magento\Catalog\Model\Product\Action
+     */
     private $massProdValues;
 
+    /**
+     * @var null
+     */
     private $attributeSetCache = null;
+
+    /**
+     * @var array
+     */
     private $attributeGroupIds = [];
 
+    /**
+     * @var \Zend\Log\Logger
+     */
     private $logger;
 
+    /**
+     * @var string
+     */
     private $mappingTable;
+
+    /**
+     * @var string
+     */
     private $cpeTable;
+
+    /**
+     * @var string
+     */
     private $filterCategoriesTable;
 
+    /**
+     * @var null
+     */
     private $mappingInsert = null;
+
+    /**
+     * @var null
+     */
     private $mappingQuery = null;
+
+    /**
+     * @var null
+     */
     private $filterMappingInsert = null;
+
+    /**
+     * @var \Symfony\Component\Console\Output\ConsoleOutput
+     */
     private $output;
 
+    /**
+     * Attributes constructor.
+     * @param \Magento\Framework\File\Csv $csv
+     * @param \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository
+     * @param \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface $attributeGroupRepository
+     * @param \Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory $attributeFactory
+     * @param \Magento\Eav\Api\Data\AttributeGroupInterfaceFactory $attributeGroupFactory
+     * @param \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
+     * @param \Magento\Catalog\Api\ProductAttributeOptionManagementInterface $optionManagement
+     * @param \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory
+     * @param \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository
+     * @param \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement
+     * @param \Magento\Framework\App\ResourceConnection $resourceConn
+     * @param \Magento\Framework\App\Cache\TypeListInterface $cacheType
+     * @param \Magento\Catalog\Model\Product\Action $massProdValues
+     * @param \Symfony\Component\Console\Output\ConsoleOutput $output
+     */
     public function __construct(
         \Magento\Framework\File\Csv $csv,
         \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository,
@@ -99,6 +243,13 @@ class Attributes {
         $this->output = $output;
     }
 
+    /**
+     * @param $categoryFeaturesFile
+     * @param $restrictedValuesFile
+     * @param $productFeaturesFile
+     * @throws \Magento\Framework\Exception\InputException
+     * @throws \Magento\Framework\Exception\StateException
+     */
     public function parse($categoryFeaturesFile, $restrictedValuesFile, $productFeaturesFile)
     {
         $this->output->writeln("---- Begin Attribute Parse ----");
@@ -185,6 +336,13 @@ class Attributes {
         $this->logger->info("-Processed a total of " . $this->attributeCount . " attributes and " . $this->optionCount . " options in " . $elapsed . " seconds");
     }
 
+    /**
+     * @param $sinch_id
+     * @param $data
+     * @throws \Magento\Framework\Exception\InputException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @throws \Magento\Framework\Exception\StateException
+     */
     private function createAttribute($sinch_id, $data)
     {
         $this->output->writeln("-- Creating attribute " . self::ATTRIBUTE_PREFIX . $sinch_id);
@@ -229,6 +387,13 @@ class Attributes {
             ->setPosition($data["order"]);
     }
 
+    /**
+     * @param $sinch_feature_id
+     * @param $data
+     * @throws \Magento\Framework\Exception\InputException
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @throws \Magento\Framework\Exception\StateException
+     */
     private function updateAttributeOptions($sinch_feature_id, $data)
     {
         $attribute_code = self::ATTRIBUTE_PREFIX . $sinch_feature_id;
@@ -294,6 +459,10 @@ class Attributes {
         }
     }
 
+    /**
+     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @throws \Magento\Framework\Exception\StateException
+     */
     private function createAttributeGroups()
     {
         $criteria = $this->searchCriteriaBuilder->addFilter(\Magento\Eav\Api\Data\AttributeGroupInterface::GROUP_NAME, self::ATTRIBUTE_GROUP_NAME, "eq")->create();
@@ -339,6 +508,10 @@ class Attributes {
         }
     }
 
+    /**
+     * @return array|null
+     * @throws \Magento\Framework\Exception\StateException
+     */
     private function getAttributeSetIds()
     {
         if($this->attributeSetCache == null){
@@ -358,6 +531,11 @@ class Attributes {
         return $this->attributeSetCache;
     }
 
+    /**
+     * @param $sinch_id
+     * @param $sinch_feature_id
+     * @param $option_id
+     */
     private function addMapping($sinch_id, $sinch_feature_id, $option_id)
     {
         if(empty($this->mappingInsert)){
@@ -373,6 +551,10 @@ class Attributes {
         $this->mappingInsert->closeCursor();
     }
 
+    /**
+     * @param $rv_id
+     * @return mixed
+     */
     private function queryMapping($rv_id)
     {
         if(empty($this->mappingQuery)){
@@ -388,6 +570,10 @@ class Attributes {
         return $result;
     }
 
+    /**
+     * @param $sinch_prod_ids
+     * @return mixed
+     */
     private function sinchToEntityIds($sinch_prod_ids)
     {
         $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
@@ -398,6 +584,9 @@ class Attributes {
         return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
     }
 
+    /**
+     * @throws \Magento\Framework\Exception\StateException
+     */
     public function applyAttributeValues()
     {
         $applyStart = $this->microtime_float();
@@ -439,17 +628,27 @@ class Attributes {
         );
     }
 
+    /**
+     * @return float
+     */
     private function microtime_float()
     {
         list($usec, $sec) = explode(" ", microtime());
         return ((float)$usec + (float)$sec);
     }
 
+    /**
+     * @return \Magento\Framework\DB\Adapter\AdapterInterface
+     */
     private function getConnection()
     {
         return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
     }
 
+    /**
+     * @param $sinch_feature_id
+     * @param $sinch_category_id
+     */
     private function updateFilterCategoryMapping($sinch_feature_id, $sinch_category_id)
     {
         if(empty($this->filterMappingInsert)){
