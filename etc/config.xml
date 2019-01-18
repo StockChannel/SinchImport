@@ -5,9 +5,9 @@
         <sinchimport>
             <general>
                 <is_debug_mode>1</is_debug_mode>
-                <additional_suffix>2</additional_suffix>
-                <meta_title>0</meta_title>
-                <index_tornerfinder>1</index_tornerfinder>
+                <additional_suffix>0</additional_suffix>
+                <meta_title>1</meta_title>
+                <index_tornerfinder>0</index_tornerfinder>
             </general>
             <sinch_ftp>
                 <ftp_server></ftp_server>
