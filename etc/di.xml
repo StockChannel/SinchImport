@@ -45,4 +45,7 @@
     <type name="Magento\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder">
         <plugin name="add_data_reindex_product_flat_mode" type="SITC\Sinchimport\Plugin\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder" sortOrder="0" />
     </type>
+    <type name="Magento\Cron\Model\Schedule">
+        <plugin name="sinchimport_lock_indexers" type="SITC\Sinchimport\Plugin\CronSchedule" sortOrder="0" />
+    </type>
 </config>
