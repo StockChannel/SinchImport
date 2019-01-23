@@ -543,21 +543,6 @@ class Sinch
 
         $this->initImportStatuses('FULL');
 
-        $store_proc = $this->checkStoreProcedureExist();
-        if (! $store_proc) {
-            $this->_logImportInfo(
-                'store prcedure "' . $this->_getTableName(
-                    'sinch_filter_products'
-                ) . '" is absent in this database. import stoped.'
-            );
-            $this->_setErrorMessage(
-                'Stored procedure "' . $this->_getTableName(
-                    'sinch_filter_products'
-                ) . '" is absent in this database. Import stopped.'
-            );
-            throw new \Exception("sinch_filter_products procedure missing from database");
-        }
-
         $file_privileg = $this->checkDbPrivileges();
         if (! $file_privileg) {
             $this->_logImportInfo(
@@ -878,28 +863,6 @@ class Sinch
             SET error_report_message=" . $this->_connection->quote($message) . "
             WHERE id=" . $this->current_import_status_statistic_id
         );
-    }
-
-    /**
-     * @return bool
-     * @throws \Zend_Db_Statement_Exception
-     */
-    public function checkStoreProcedureExist()
-    {
-        $q = 'SHOW PROCEDURE STATUS LIKE "' . $this->_getTableName(
-                'sinch_filter_products'
-            ) . '"';
-        $result = $this->_doQuery($q)->fetchAll();
-
-        foreach ($result as $item) {
-            if (($item['Name'] == $this->_getTableName('sinch_filter_products'))
-                && ($item['Db'] == $this->_deploymentData['db']['connection']['default']['dbname'])
-            ) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -9959,21 +9922,6 @@ class Sinch
     public function runStockPriceImport()
     {
         $this->initImportStatuses('PRICE STOCK');
-        $store_proc = $this->checkStoreProcedureExist();
-
-        if (! $store_proc) {
-            $this->_logImportInfo(
-                'store prcedure "' . $this->_getTableName(
-                    'sinch_filter_products'
-                ) . '" is absent in this database. import stoped.'
-            );
-            $this->_setErrorMessage(
-                'Stored procedure "' . $this->_getTableName(
-                    'sinch_filter_products'
-                ) . '" is absent in this database. Import stopped.'
-            );
-            throw new \Exception("sinch_filter_products missing from the database.");
-        }
 
         $file_privileg = $this->checkDbPrivileges();
 
