@@ -89,6 +89,7 @@ class Sinch
 
     //Nick
     private $attributesImport;
+    private $customerGroupCatsImport;
     private $stockConfig;
 
     public function __construct(
@@ -106,9 +107,11 @@ class Sinch
         \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute,
         ConsoleOutput $output,
         \SITC\Sinchimport\Model\Import\Attributes $attributesImport,
-        \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig
+        \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig,
+        \SITC\Sinchimport\Model\Import\CustomerGroupCategories $customerGroupCatsImport
     ) {
         $this->attributesImport = $attributesImport;
+        $this->customerGroupCatsImport = $customerGroupCatsImport;
         $this->stockConfig = $stockConfig;
 
         $this->output = $output;
@@ -145,7 +148,8 @@ class Sinch
             FILE_STOCK_AND_PRICES,
             FILE_PRODUCTS_PICTURES_GALLERY,
             FILE_PRICE_RULES,
-            FILE_PRODUCT_CONTRACTS
+            FILE_PRODUCT_CONTRACTS,
+            FILE_CUSTOMER_GROUP_CATEGORIES
         ];
 
         $this->_dataConf = $this->scopeConfig->getValue(
@@ -335,6 +339,11 @@ class Sinch
                             'ftp_password' => $this->_dataConf["password"]
                         ]
                     );
+                }
+
+                if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
+                    $this->print("Parsing customer group categories");
+                    $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
                 }
 
                 $this->print("Start generating category filters...");
@@ -731,6 +740,7 @@ class Sinch
                     && $file != FILE_DISTRIBUTORS_STOCK_AND_PRICES
                     && $file != FILE_PRODUCT_CONTRACTS
                     && $file != FILE_PRICE_RULES
+                    && $file != FILE_CUSTOMER_GROUP_CATEGORIES
                 ) {
                     $this->_setErrorMessage($file . " is empty");
                     throw new \Magento\Framework\Exception\LocalizedException("Import files empty, cannot continue");
@@ -8968,7 +8978,8 @@ class Sinch
 
                 $this->files = [
                     FILE_STOCK_AND_PRICES,
-                    FILE_PRICE_RULES
+                    FILE_PRICE_RULES,
+                    FILE_CUSTOMER_GROUP_CATEGORIES
                 ];
 
                 $this->uploadFiles();
@@ -8988,6 +8999,11 @@ class Sinch
                         'ftp_password' => $this->_dataConf["password"]
                     ]
                 );
+
+                if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
+                    $this->print("Parsing customer group categories");
+                    $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                }
 
                 $this->print("Start indexing  Stock & Price...");
                 $this->runStockPriceIndexer();
