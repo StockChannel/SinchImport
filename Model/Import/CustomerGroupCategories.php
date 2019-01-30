@@ -48,17 +48,18 @@ class CustomerGroupCategories {
         $customerGroupCats = $this->csv->getData($customerGroupCatsFile);
         unset($customerGroupCats[0]); //Unset the first entry as the sinch export files have a header row
 
-        //Clear existing records
+        $this->logger->info("Deleting existing entries in customer group categories mapping table");
         $this->getConnection()->query("DELETE FROM {$this->mappingTablenameFinal}");
 
         //Parse customer group categories
+        $this->logger->info("Begin parsing new entries (" . count($customerGroupCats) . ")");
         foreach($customerGroupCats as $row){
             if(count($row) != 2) {
                 $this->logger->warn("CustomerGroupCategories row not 2 columns");
                 $this->logger->debug(print_r($row, true));
                 continue;
             }
-            
+
             $this->insertMapping($row[0], $row[1]);
         }
 

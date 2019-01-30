@@ -28,6 +28,8 @@ class CategoryVisibility {
      * @var string
      */
     private $catVisTable;
+    //Stores the accountID
+    private $accountID;
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
@@ -45,6 +47,7 @@ class CategoryVisibility {
 
     public function aroundGetDisplayMode(\Magento\Catalog\Model\Category $subject, $proceed)
     {
+        //THIS FUNCTION RUNS AFTER DEPERSONALISE (so customer session is NOT available)
         //Valid display modes are Category::DM_PRODUCT, Category::DM_PAGE, and Category::DM_MIXED or "" if the value has never been modified (i.e. DM_PRODUCT)
         if (!$this->isCategoryVisible($subject)) {
             return \Magento\Catalog\Model\Category::DM_PAGE; //Display static blocks only (no products)
@@ -65,6 +68,13 @@ class CategoryVisibility {
 
     public function aroundGetIsActive(\Magento\Catalog\Model\Category $subject, $proceed)
     {
+        //Save the account id in this function (which runs before Magento's stupid as shit depersonalise)
+        if (!$this->customerSession->isLoggedIn()) {
+            $this->accountID = false;
+        } else {
+            $this->accountID = $this->customerSession->getCustomer()->getAccountId();
+        }
+
         //Just 404s the category, so setting display mode to DM_PAGE seems like a more reasonable compromise for now
         //if (!$this->isCategoryVisible($subject)) {
         //    return 0;
@@ -95,24 +105,18 @@ class CategoryVisibility {
             [":category_id" => $catId]
         );
 
-        if (!$this->customerSession->isLoggedIn()) {
-            $currentAccount = false;
-        } else {
-            $currentAccount = $this->customerSession->getCustomer()->getAccountId();
-        }
-
         if(empty($accountIds)){
             //If the query returns no account id's, then this category is public
             return true;
         }
 
-        if($currentAccount !== false && in_array($currentAccount, $accountIds)){
+        if($this->accountID !== false && in_array($this->accountID, $accountIds)){
             //Customer is logged in and their account can see this category
-            $this->logger->info("Category {$catId} is private, but account id {$currentAccount} can view it");
+            $this->logger->info("Category {$catId} is private, but account id {$this->accountID} can view it");
             return true;
         }
 
-        $this->logger->info("Category {$catId} is private and account id {$currentAccount} doesn't have permission to view it");
+        $this->logger->info("Category {$catId} is private and account id {$this->accountID} doesn't have permission to view it");
         return false;
     }
 }
