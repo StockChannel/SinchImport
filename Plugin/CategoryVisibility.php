@@ -99,7 +99,7 @@ class CategoryVisibility {
             return true;
         }
 
-        $catId = $category->getId();
+        $catId = $category->getStoreCategoryId();
         $accountIds = $this->resourceConn->getConnection()->fetchCol(
             "SELECT account_id FROM {$this->catVisTable} WHERE category_id = :category_id",
             [":category_id" => $catId]
