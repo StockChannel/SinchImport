@@ -49,4 +49,7 @@
     <type name="Magento\Cron\Model\Schedule">
         <plugin name="sinchimport_lock_indexers" type="SITC\Sinchimport\Plugin\CronSchedule" sortOrder="0" />
     </type>
+    <type name="Magento\Framework\View\Layout">
+        <plugin name="sinchimport_save_account_id" type="SITC\Sinchimport\Plugin\DontDepersonaliseAccount" sortOrder="0" />
+    </type>
 </config>
