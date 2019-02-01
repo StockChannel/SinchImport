@@ -52,9 +52,12 @@ class FlatTableBuilder
         $proceed($storeId, $changedIds, $valueFieldSuffix, $tableDropSuffix, $fillTmpTables);
         $connection = $this->_resource->getConnection();
         $flatTable = $this->_productIndexerHelper->getFlatTableName($storeId);
-        $tableName = $this->_resource->getTableName('catalog_product_entity');
-        $sql = "UPDATE {$flatTable} as t2 INNER JOIN {$tableName} AS e SET t2.store_product_id = e.store_product_id, t2.sinch_product_id = e.sinch_product_id where t2.entity_id = e.entity_id";
-        $connection->query($sql);
+        if ($connection->isTableExists($flatTable)) {
+            $tableName = $this->_resource->getTableName('catalog_product_entity');
+            $sql = "UPDATE {$flatTable} as t2 INNER JOIN {$tableName} AS e SET t2.store_product_id = e.store_product_id, t2.sinch_product_id = e.sinch_product_id where t2.entity_id = e.entity_id";
+            $connection->query($sql);
+        }
+
         return $this;
     }
 }
