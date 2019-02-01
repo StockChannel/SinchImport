@@ -5281,6 +5281,7 @@ class Sinch
                               spec_characte_u_count int(11),
                               description_type varchar(50),
                               medium_image_url varchar(255),
+                              Title varchar(255),
                               products_date_added datetime default NULL,
                               products_last_modified datetime default NULL,
                               availability_id_in_stock int(11) default '1',
