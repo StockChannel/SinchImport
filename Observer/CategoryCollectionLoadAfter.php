@@ -30,13 +30,13 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
         $filteredCategoryCollection->removeAllItems();
 
 
-        //the DontDepersonaliseAccount interceptor saves account id prior to depersonalise
-        $account_id = $this->registry->registry('sitc_account_id');
+        //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
+        $account_group_id = $this->registry->registry('sitc_account_group_id');
 
         //Categories explicitly made visible to this user
         $explicit_visible_cats = $this->resourceConn->getConnection()->fetchCol(
-            "SELECT category_id FROM {$this->catVisTable} WHERE account_id = :account_id",
-            [":account_id" => $account_id]
+            "SELECT category_id FROM {$this->catVisTable} WHERE account_group_id = :account_group_id",
+            [":account_group_id" => $account_group_id]
         );
         //Categories hidden in general (not necessarily from this user)
         $default_hidden_cats = $this->resourceConn->getConnection()->fetchCol(

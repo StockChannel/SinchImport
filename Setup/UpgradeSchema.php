@@ -107,8 +107,8 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $connection->query(
                 "CREATE TABLE IF NOT EXISTS {$catVisTable} (
                     category_id INT NOT NULL COMMENT 'Category ID',
-                    account_id INT NOT NULL COMMENT 'Account ID',
-                    PRIMARY KEY (category_id, account_id),
+                    account_group_id INT NOT NULL COMMENT 'Account Group ID',
+                    PRIMARY KEY (category_id, account_group_id),
                     INDEX(category_id)
                 ) ENGINE=InnoDB"
             );

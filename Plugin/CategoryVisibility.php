@@ -28,6 +28,7 @@ class CategoryVisibility {
      * @var string
      */
     private $catVisTable;
+    private $accountTable;
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
@@ -40,6 +41,7 @@ class CategoryVisibility {
         $this->moduleManager = $moduleManager;
         $this->customerSession = $customerSession;
         $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE);
+        $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
     }
 
     public function aroundGetIsActive(\Magento\Catalog\Model\Category $subject, $proceed)
@@ -67,22 +69,28 @@ class CategoryVisibility {
         }
 
         $catId = $category->getStoreCategoryId();
-        $accountIds = $this->resourceConn->getConnection()->fetchCol(
-            "SELECT account_id FROM {$this->catVisTable} WHERE category_id = :category_id",
+        $accountGroupIds = $this->resourceConn->getConnection()->fetchCol(
+            "SELECT account_group_id FROM {$this->catVisTable} WHERE category_id = :category_id",
             [":category_id" => $catId]
         );
 
-        if(empty($accountIds)){
+        if(empty($accountGroupIds)){
             //If the query returns no account id's, then this category is public
             return true;
         }
 
-        $account_id = false;
+        $account_group_id = false;
         if ($this->customerSession->isLoggedIn()) {
             $account_id = $this->customerSession->getCustomer()->getAccountId();
+            //TODO: Change this to use customer groups once account_group_id actually refers to Magento customer groups
+            //For now, just query the data we need directly from SQL
+            $account_group_id = $this->resourceConn->getConnection()->fetchOne(
+                "SELECT account_group_id FROM {$this->accountTable} WHERE account_id = :account_id",
+                [":account_id" => $account_id]
+            );
         }
 
-        if($account_id !== false && in_array($account_id, $accountIds)){
+        if($account_group_id !== false && in_array($account_group_id, $accountGroupIds)){
             //Customer is logged in and their account can see this category
             return true;
         }
