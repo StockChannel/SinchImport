@@ -66,16 +66,16 @@ class CustomerGroupCategories {
         $this->logger->info("--- Completed Customer Group Categories parse ---");
     }
 
-    private function insertMapping($category_id, $account_id)
+    private function insertMapping($category_id, $account_group_id)
     {
         if (empty($this->insertMapping)) {
             $this->insertMapping = $this->getConnection()->prepare(
-                "INSERT INTO {$this->mappingTablenameFinal} (category_id, account_id) VALUES(:category_id, :account_id)"
+                "INSERT INTO {$this->mappingTablenameFinal} (category_id, account_group_id) VALUES(:category_id, :account_group_id)"
             );
         }
 
         $this->insertMapping->bindValue(":category_id", $category_id, \PDO::PARAM_INT);
-        $this->insertMapping->bindValue(":account_id", $account_id, \PDO::PARAM_INT);
+        $this->insertMapping->bindValue(":account_group_id", $account_group_id, \PDO::PARAM_INT);
         $this->insertMapping->execute();
         $this->insertMapping->closeCursor();
     }
