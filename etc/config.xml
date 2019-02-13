@@ -14,6 +14,10 @@
             <sinch_import_fullstatus>
                 <indexing_separately>0</indexing_separately>
             </sinch_import_fullstatus>
+            <category_visibility>
+                <enable>0</enable>
+                <private_visible_to_guest>0</private_visible_to_guest>
+            </category_visibility>
         </sinchimport>
     </default>
 </config>

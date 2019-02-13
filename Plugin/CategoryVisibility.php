@@ -13,14 +13,9 @@ class CategoryVisibility {
     private $logger;
 
     /**
-     * @var \Magento\Framework\Module\Manager
+     * @var \SITC\Sinchimport\Helper\Data
      */
-    private $moduleManager;
-
-    /**
-     * @var \Magento\Customer\Model\Session
-     */
-    private $customerSession;
+    private $helper;
 
     /**
      * The table name of the category visibility mapping
@@ -28,20 +23,16 @@ class CategoryVisibility {
      * @var string
      */
     private $catVisTable;
-    private $accountTable;
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \SITC\Sinchimport\Logger\Logger $logger,
-        \Magento\Framework\Module\Manager $moduleManager,
-        \Magento\Customer\Model\Session $customerSession
+        \SITC\Sinchimport\Helper\Data $helper
     ){
         $this->resourceConn = $resourceConn;
         $this->logger = $logger;
-        $this->moduleManager = $moduleManager;
-        $this->customerSession = $customerSession;
+        $this->helper = $helper;
         $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE);
-        $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
     }
 
     public function aroundGetIsActive(\Magento\Catalog\Model\Category $subject, $proceed)
@@ -61,10 +52,7 @@ class CategoryVisibility {
      */
     private function isCategoryVisible(\Magento\Catalog\Model\Category $category)
     {
-        if (!$this->moduleManager->isEnabled("Tigren_CompanyAccount")) {
-            //We don't affect category visibility if the company account plugin is missing/disabled
-            //or if the category visibility table doesn't exist
-            $this->logger->info("Tigren_CompanyAccount is disabled");
+        if (!$this->helper->isCategoryVisibilityEnabled()) {
             return true;
         }
 
@@ -79,19 +67,15 @@ class CategoryVisibility {
             return true;
         }
 
-        $account_group_id = false;
-        if ($this->customerSession->isLoggedIn()) {
-            $account_id = $this->customerSession->getCustomer()->getAccountId();
-            //TODO: Change this to use customer groups once account_group_id actually refers to Magento customer groups
-            //For now, just query the data we need directly from SQL
-            $account_group_id = $this->resourceConn->getConnection()->fetchOne(
-                "SELECT account_group_id FROM {$this->accountTable} WHERE account_id = :account_id",
-                [":account_id" => $account_id]
-            );
-        }
+        $account_group_id = $this->helper->getCurrentAccountGroupId();
 
         if($account_group_id !== false && in_array($account_group_id, $accountGroupIds)){
             //Customer is logged in and their account can see this category
+            return true;
+        }
+
+        if($this->helper->getStoreConfig('sinchimport/category_visibility/private_visible_to_guest') && $account_group_id === false){
+            //Customer is not logged in and private_visible_to_guest is enabled
             return true;
         }
 

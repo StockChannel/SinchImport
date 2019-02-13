@@ -5,6 +5,7 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
 {
     private $resourceConn;
     private $registry;
+    private $helper;
 
     /** 
      * Holds the table name for the visibility mapping
@@ -14,24 +15,33 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Framework\Registry $registry
+        \Magento\Framework\Registry $registry,
+        \SITC\Sinchimport\Helper\Data $helper
     ) {
         $this->resourceConn = $resourceConn;
         $this->registry = $registry;
+        $this->helper = $helper;
         $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE);
     }
 
 
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
+        if(!$this->helper->isCategoryVisibilityEnabled()){
+            return; //No filtering if the feature isn't enabled
+        }
+
+        //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
+        $account_group_id = $this->registry->registry('sitc_account_group_id');
+
+        if($this->helper->getStoreConfig('sinchimport/category_visibility/private_visible_to_guest') && $account_group_id === false) {
+            return; //private_visible_to_guest is enabled and this is a guest (don't filter)
+        }
+
         /** @var \Magento\Catalog\Model\ResourceModel\Category\Collection $categoryCollection */
         $filteredCategoryCollection = $observer->getCategoryCollection();
         $categoryCollection = clone $filteredCategoryCollection;
         $filteredCategoryCollection->removeAllItems();
-
-
-        //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
-        $account_group_id = $this->registry->registry('sitc_account_group_id');
 
         //Categories explicitly made visible to this user
         $explicit_visible_cats = $this->resourceConn->getConnection()->fetchCol(
