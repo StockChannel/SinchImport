@@ -5,15 +5,20 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
 {
     private $resourceConn;
     private $customerSession;
+    private $moduleManager;
 
     private $accountTable;
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Customer\Model\Session $customerSession
+        \Magento\Customer\Model\Session $customerSession,
+        \Magento\Framework\Module\Manager $moduleManager,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     ) {
         $this->resourceConn = $resourceConn;
         $this->customerSession = $customerSession;
+        $this->moduleManager = $moduleManager;
+        $this->scopeConfig = $scopeConfig; //scopeConfig is defined in AbstractHelper
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
     }
 
@@ -27,7 +32,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function isModuleEnabled($moduleName)
     {
-        return $this->_moduleManager->isEnabled($moduleName);
+        return $this->moduleManager->isEnabled($moduleName);
     }
 
     public function isCategoryVisibilityEnabled()
