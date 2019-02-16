@@ -573,11 +573,7 @@ class Sinch
 
         if ($this->isImportNotRun()) {
             try {
-                $this->customerGroupImport->parse(
-                    $this->varDir . FILE_CUSTOMER_GROUPS,
-                    $this->varDir . FILE_CUSTOMER_GROUP_PRICE
-                );
-                die('test');
+
                 $imType = $this->_dataConf['replace_category'];
 
                 $this->_doQuery("SELECT GET_LOCK('sinchimport', 30)");
@@ -646,6 +642,12 @@ class Sinch
                 $this->printOutputMsg("Parse Stock And Prices...");
                 $this->parseStockAndPrices();
                 $this->addImportStatus('Parse Stock And Prices');
+
+                //denda
+                $this->customerGroupImport->parse(
+                    $this->varDir . FILE_CUSTOMER_GROUPS,
+                    $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                );
 
                 $this->printOutputMsg("Apply Customer Group Price...");
 
