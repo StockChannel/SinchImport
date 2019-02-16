@@ -1158,7 +1158,7 @@ class Sinch
      */
     private function wget(string $url, string $file)
     {
-        exec("wget -O$file $url");
+        exec("wget --no-passive -O$file $url");
         return true;
     }
 
