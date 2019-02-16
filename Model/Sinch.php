@@ -344,6 +344,8 @@ class Sinch
      */
     private $attributesImport;
 
+    private $customerGroupImport;
+
     /**
      * Sinch constructor.
      * @param \Magento\Framework\Model\Context $context
@@ -383,6 +385,7 @@ class Sinch
         \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory,
         \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute,
         \SITC\Sinchimport\Model\Import\Attributes $attributesImport,
+        \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupImport,
         ConsoleOutput $output
     ) {
         $this->output = $output;
@@ -403,6 +406,7 @@ class Sinch
         $this->_connection = $this->_resourceConnection->getConnection();
         $this->_eavAttribute = $eavAttribute;
         $this->attributesImport = $attributesImport;
+        $this->customerGroupImport = $customerGroupImport;
         $this->_isDebugMode = (boolean) $this->scopeConfig->getValue(
             'sinchimport/general/is_debug_mode',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
@@ -435,7 +439,9 @@ class Sinch
             FILE_STOCK_AND_PRICES,
             FILE_PRODUCTS_PICTURES_GALLERY,
             FILE_PRICE_RULES,
-            FILE_PRODUCT_CONTRACTS
+            FILE_PRODUCT_CONTRACTS,
+            FILE_CUSTOMER_GROUPS,
+            FILE_CUSTOMER_GROUP_PRICE
         );
 
         $this->_dataConf = array_merge(
@@ -567,6 +573,11 @@ class Sinch
 
         if ($this->isImportNotRun()) {
             try {
+                $this->customerGroupImport->parse(
+                    $this->varDir . FILE_CUSTOMER_GROUPS,
+                    $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                );
+                die('test');
                 $imType = $this->_dataConf['replace_category'];
 
                 $this->_doQuery("SELECT GET_LOCK('sinchimport', 30)");
