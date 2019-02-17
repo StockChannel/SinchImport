@@ -91,6 +91,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
 
         $postUrl = $this->getUrl('sinchimport/ajax');
         $postStockPriceUrl = $this->getUrl('sinchimport/ajax/stockPrice');
+        $postCustomerGroupsStockPriceUrl = $this->getUrl('sinchimport/ajax/customergroupsPrice');
         $postUrlUpd = $this->getUrl('sinchimport/ajax/updateStatus');
         $indexingUrl = $this->getUrl('sinchimport/ajax/indexingData');
 
@@ -105,6 +106,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
             initialize: function() {
                 this.postUrl = '" . $postUrl . "';
                 this.postStockPriceUrl = '" . $postStockPriceUrl . "';
+                this.postCustomerGroupsPriceUrl = '" . $postCustomerGroupsStockPriceUrl . "';
                 this.indexingUrl = '" . $indexingUrl . "';
                 this.postUrlUpd = '" . $postUrlUpd . "';
                 this.failureUrl = document.URL;
@@ -127,7 +129,9 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 if($('mb-sinch-stock-price-import-button')) {
                     Event.observe($('mb-sinch-stock-price-import-button'), 'click', this.beforeStockPriceImport.bind(this));
                 }
-                
+                if($('mb-sinch-customer-groups-price-import-button')) {
+                    Event.observe($('mb-sinch-customer-groups-price-import-button'), 'click', this.beforeCustomerGroupsPriceImport.bind(this));
+                }
                 if($('mb-sinch-indexing-data-button')) {
                     Event.observe($('mb-sinch-indexing-data-button'), 'click', this.beforeIndexing.bind(this));
                 }
@@ -170,7 +174,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 status_div.style.display = '';
                 this.startSinchImport(this.postStockPriceUrl);
             },
-
+            
             setStockPriceRunningIcon: function () {
                 runningIcon='<img src=\"" . $runningIcon . "\"/>';
                 document.getElementById('sinchimport_stock_price_start_import').innerHTML=runningIcon;
@@ -178,6 +182,24 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 document.getElementById('sinchimport_stock_price_parse_products').innerHTML=runningIcon;
                 document.getElementById('sinchimport_stock_price_indexing_data').innerHTML=runningIcon;
                 document.getElementById('sinchimport_stock_price_finish_import').innerHTML=runningIcon;
+            },
+            
+            beforeCustomerGroupsPriceImport: function () {
+                this.setCustomerGroupsPriceRunningIcon();
+                status_div = document.getElementById('sinchimport_customer_groups_price_status_template');
+                curr_status_div = document.getElementById('sinchimport_customer_groups_price_current_status_message');
+                curr_status_div.style.display = 'none';
+                status_div.style.display = '';
+                this.startSinchImport(this.postCustomerGroupsPriceUrl);
+            },
+            
+            setCustomerGroupsPriceRunningIcon: function () {
+                runningIcon='<img src=\"" . $runningIcon . "\"/>';
+                document.getElementById('sinchimport_customer_groups_price_start_import').innerHTML=runningIcon;
+                document.getElementById('sinchimport_customer_groups_price_upload_files').innerHTML=runningIcon;
+                document.getElementById('sinchimport_customer_groups_price_parse_products').innerHTML=runningIcon;
+                document.getElementById('sinchimport_customer_groups_price_indexing_data').innerHTML=runningIcon;
+                document.getElementById('sinchimport_customer_groups_price_finish_import').innerHTML=runningIcon;
             },
             
             beforeIndexing: function () {

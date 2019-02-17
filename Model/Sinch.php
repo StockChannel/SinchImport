@@ -981,6 +981,7 @@ class Sinch
      */
     public function uploadFiles()
     {
+        return true;
         $this->_logImportInfo("Start upload files");
 
         $username = $this->_dataConf['username'];
@@ -10033,6 +10034,109 @@ class Sinch
         }
     }
 
+    public function runCustomerGroupsPriceImport()
+    {
+        $this->initImportStatuses('CUSTOMER GROUPS PRICE');
+
+        $file_privileg = $this->checkDbPrivileges();
+
+        if (! $file_privileg) {
+            $this->_logImportInfo(
+                "LOAD DATA option not set"
+            );
+            $this->_setErrorMessage(
+                "LOAD DATA option not set. Import stopped."
+            );
+            throw new \Exception("LOAD DATA option not set in the database.");
+        }
+        $local_infile = $this->checkLocalInFile();
+        if (! $local_infile) {
+            $this->_logImportInfo(
+                "LOCAL INFILE is not enabled"
+            );
+            $this->_setErrorMessage(
+                "LOCAL INFILE is not enabled. Import stopped."
+            );
+            throw new \Exception("LOCAL INFILE not enabled in the database.");
+        }
+
+        if ($this->isImportNotRun() && $this->isFullImportHaveBeenRun()) {
+            try {
+                $q = "SELECT GET_LOCK('sinchimport', 30)";
+                $this->_doQuery($q);
+                $import = $this;
+                $import->addImportStatus('Customer Groups Price Start Import');
+
+                $this->printOutputMsg("========IMPORTING CUSTOMER GROUPS AND PRICE========");
+
+                $this->printOutputMsg("Upload Files...");
+
+                $this->files = array(
+                    FILE_CUSTOMER_GROUPS,
+                    FILE_CUSTOMER_GROUP_PRICE
+                );
+
+                $import->uploadFiles();
+                $import->addImportStatus('Customer Groups Price Upload Files');
+
+                $this->printOutputMsg("Parse Customer Groups And Prices...");
+
+                $this->customerGroupImport->parse(
+                    $this->varDir . FILE_CUSTOMER_GROUPS,
+                    $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                );
+
+                $import->addImportStatus('Customer Groups Price Parse Products');
+
+                $this->printOutputMsg("Apply Customer Group Price...");
+                //$import->parsePriceRules();
+                //$import->addPriceRules();
+                //$import->applyCustomerGroupPrice();
+
+                $this->_eventManager->dispatch(
+                    'sinch_pricerules_import_ftp',
+                    [
+                        'ftp_host'     => $this->_dataConf["ftp_server"],
+                        'ftp_username' => $this->_dataConf["username"],
+                        'ftp_password' => $this->_dataConf["password"]
+                    ]
+                );
+
+                $this->_logImportInfo("Start indexing  Stock & Price");
+                $this->printOutputMsg("Start indexing  Stock & Price...");
+                $import->runStockPriceIndexer();
+                $import->addImportStatus('Stock Price Indexing data');
+                $this->_logImportInfo("Finish indexing  Stock & Price...");
+                $this->printOutputMsg("Finish indexing  Stock & Price...");
+
+                $this->_logImportInfo("Start cleanin Sinch cache...");
+                $this->printOutputMsg("Start cleanin Sinch cache...");
+                $this->runCleanCache();
+                $this->_logImportInfo("Finish cleanin Sinch cache...");
+                $this->printOutputMsg("Finish cleanin Sinch cache...");
+
+                $import->addImportStatus('Stock Price Finish import', 1);
+
+                $this->_logImportInfo("Finish Customer Groups & Price Sinch Import");
+                $this->printOutputMsg("========>FINISH CUSTOMER GROUPS & PRICE SINCH IMPORT");
+
+                $q = "SELECT RELEASE_LOCK('sinchimport')";
+                $this->_doQuery($q);
+            } catch (\Exception $e) {
+                $this->_setErrorMessage($e);
+            }
+        } else {
+            if (! $this->isImportNotRun()) {
+                $this->_logImportInfo("Sinchimport already run");
+                $this->printOutputMsg("--------SINCHIMPORT ALREADY RUN--------");
+            } else {
+                $this->_logImportInfo(
+                    "Full import have never finished with success"
+                );
+                $this->printOutputMsg("Full import have never finished with success...");
+            }
+        }
+    }
     /**
      * @return bool
      * @throws \Zend_Db_Statement_Exception
