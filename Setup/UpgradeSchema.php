@@ -31,6 +31,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
         }
 
         if (version_compare($context->getVersion(), '2.1.7', '<')) {
+            $this->convertEnumnToVarchar($setup);
             $this->createTableCustomerGroup($setup);
             $this->createTableCustomerGroupPrice($setup);
         }
@@ -179,17 +180,41 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     Table::TYPE_DECIMAL, '12,4', ['nullable' => false, 'default' => '0.0000'],
                     'Customer Group Price'
                 )
+                ->addColumn(
+                    'sinch_product_id',
+                    Table::TYPE_INTEGER, 11, ['unsigned' => true, 'nullable' => false],
+                    'Sinch Product Id'
+                )
                 ->addIndex(
                     $setup->getIdxName(
                         'sinch_customer_group_price',
-                        ['group_id', 'product_id', 'customer_group_price'],
+                        ['group_id', 'product_id', 'sinch_product_id' , 'customer_group_price'],
                         \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
                     ),
-                    ['group_id', 'product_id', 'customer_group_price'],
+                    ['group_id', 'product_id','sinch_product_id', 'customer_group_price'],
                     ['type' => \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE]
                 )
                 ->setComment('Sinch Customer Group Price');
             $setup->getConnection()->createTable($customerGroupTablePrice);
+        }
+    }
+
+    private function convertEnumnToVarchar(SchemaSetupInterface $setup)
+    {
+        $connection = $setup->getConnection();
+        if ($connection->tableColumnExists('sinch_import_status_statistic', 'import_type')) {
+            $connection->changeColumn(
+                'sinch_import_status_statistic',
+                'import_type',
+                'import_type',
+                [
+                    'type' => Table::TYPE_TEXT,
+                    'default' => null,
+                    'length'  => '25',
+                    'comment' => 'Import Type',
+                    'after'   => 'finish_import'
+                ]
+            );
         }
     }
 }

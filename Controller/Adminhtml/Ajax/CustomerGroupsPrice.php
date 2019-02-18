@@ -3,7 +3,7 @@
 namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
 /**
- * Class StockPrice
+ * Class CustomerGroupsPrice
  * @package SITC\Sinchimport\Controller\Adminhtml\Ajax
  */
 class CustomerGroupsPrice extends \Magento\Backend\App\Action

@@ -131,22 +131,6 @@ class Customerimportbutton extends \Magento\Config\Block\System\Config\Form\Fiel
                </span>
             </td>
         </tr>
-        <tr>
-            <td style='padding:10px 5px;' nowrap=''>Indexing Data</td>
-            <td style='padding:10px 5px;'>
-                <span id='sinchimport_customer_groups_price_indexing_data'>
-                    <img src='" . $runningIcon . "' alt='Indexing Data' />
-               </span>
-            </td>
-        </tr>
-        <tr>
-            <td style='padding:10px 5px;' nowrap=''>Import Finished</td>
-            <td style='padding:10px 5px;'>
-                <span id='sinchimport_customer_groups_price_finish_import'>
-                    <img src='" . $runningIcon . "' alt='Import Finished' />
-               </span>
-            </td>
-        </tr>
     </tbody>
 </table>
         ";

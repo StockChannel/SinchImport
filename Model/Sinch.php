@@ -10086,12 +10086,16 @@ class Sinch
                     $this->varDir . FILE_CUSTOMER_GROUP_PRICE
                 );
 
+                $rowCnt = count($this->customerGroupImport->countPriceGroups($this->varDir . FILE_CUSTOMER_GROUP_PRICE));
+                $this->_doQuery(
+                    "UPDATE " . $this->import_status_statistic_table . "
+                          SET number_of_products=" . $rowCnt . "
+                          WHERE id=" . $this->current_import_status_statistic_id
+                );
+
                 $import->addImportStatus('Customer Groups Price Parse Products');
 
                 $this->printOutputMsg("Apply Customer Group Price...");
-                //$import->parsePriceRules();
-                //$import->addPriceRules();
-                //$import->applyCustomerGroupPrice();
 
                 $this->_eventManager->dispatch(
                     'sinch_pricerules_import_ftp',
@@ -10101,13 +10105,13 @@ class Sinch
                         'ftp_password' => $this->_dataConf["password"]
                     ]
                 );
-
-                $this->_logImportInfo("Start indexing  Stock & Price");
-                $this->printOutputMsg("Start indexing  Stock & Price...");
-                $import->runStockPriceIndexer();
-                $import->addImportStatus('Stock Price Indexing data');
-                $this->_logImportInfo("Finish indexing  Stock & Price...");
-                $this->printOutputMsg("Finish indexing  Stock & Price...");
+//
+//                $this->_logImportInfo("Start indexing  Customer Groups & Price");
+//                $this->printOutputMsg("Start indexing  Customer Groups & Price...");
+//                $import->runStockPriceIndexer();
+//                $import->addImportStatus('Customer Groups Price Indexing data');
+//                $this->_logImportInfo("Finish indexing  Customer Groups & Price...");
+//                $this->printOutputMsg("Finish indexing  Customer Groups & Price...");
 
                 $this->_logImportInfo("Start cleanin Sinch cache...");
                 $this->printOutputMsg("Start cleanin Sinch cache...");
@@ -10115,7 +10119,7 @@ class Sinch
                 $this->_logImportInfo("Finish cleanin Sinch cache...");
                 $this->printOutputMsg("Finish cleanin Sinch cache...");
 
-                $import->addImportStatus('Stock Price Finish import', 1);
+                $import->addImportStatus('Customer Groups Price Finish import', 1);
 
                 $this->_logImportInfo("Finish Customer Groups & Price Sinch Import");
                 $this->printOutputMsg("========>FINISH CUSTOMER GROUPS & PRICE SINCH IMPORT");

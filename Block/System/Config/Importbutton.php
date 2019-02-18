@@ -198,8 +198,6 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 document.getElementById('sinchimport_customer_groups_price_start_import').innerHTML=runningIcon;
                 document.getElementById('sinchimport_customer_groups_price_upload_files').innerHTML=runningIcon;
                 document.getElementById('sinchimport_customer_groups_price_parse_products').innerHTML=runningIcon;
-                document.getElementById('sinchimport_customer_groups_price_indexing_data').innerHTML=runningIcon;
-                document.getElementById('sinchimport_customer_groups_price_finish_import').innerHTML=runningIcon;
             },
             
             beforeIndexing: function () {
