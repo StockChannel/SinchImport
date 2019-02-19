@@ -14,6 +14,9 @@
             <sinch_import_fullstatus>
                 <indexing_separately>0</indexing_separately>
             </sinch_import_fullstatus>
+            <attributes>
+                <visible_in_admin>0</visible_in_admin>
+            </attributes>
         </sinchimport>
     </default>
 </config>
