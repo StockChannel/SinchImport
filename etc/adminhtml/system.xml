@@ -97,7 +97,15 @@
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Importhistory</frontend_model>
                 </field>
             </group>
-            <group id="category_visibility" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+            <group id="attributes" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Attributes</label>
+                <field id="visible_in_admin" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Visible in Admin</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enable this if you want to check/edit attribute values within the Admin panel. It is applied on import</comment>
+                </field>
+            </group>
+            <group id="category_visibility" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Category Visibility Functionality</label>
                 <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable</label>

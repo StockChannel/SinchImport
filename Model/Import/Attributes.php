@@ -42,6 +42,7 @@ class Attributes {
     private $resourceConn;
     private $cacheType;
     private $massProdValues;
+    private $scopeConfig;
 
     private $attributeSetCache = null;
     private $attributeGroupIds = [];
@@ -69,7 +70,8 @@ class Attributes {
         \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
-        \Magento\Catalog\Model\Product\Action $massProdValues
+        \Magento\Catalog\Model\Product\Action $massProdValues,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     )
     {
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
@@ -85,6 +87,7 @@ class Attributes {
         $this->resourceConn = $resourceConn;
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
+        $this->scopeConfig = $scopeConfig;
 
         $this->mappingTable = $this->getConnection()->getTableName('sinch_restrictedvalue_mapping');
         $this->cpeTable = $this->getConnection()->getTableName('catalog_product_entity');
@@ -200,8 +203,12 @@ class Attributes {
     //Sets the catalog_eav_attribute options
     private function setAttributeConfig($attribute, $data)
     {
+        $attr_visible_in_admin = $this->scopeConfig->getValue(
+            'sinchimport/attributes/visible_in_admin',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+        );
         return $attribute->setDefaultFrontendLabel($data["name"])
-            ->setIsVisible(1)
+            ->setIsVisible($attr_visible_in_admin)
             ->setIsVisibleInGrid(0)
             ->setIsVisibleInAdvancedSearch(0)
             ->setIsVisibleOnFront(0)
