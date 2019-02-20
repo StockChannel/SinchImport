@@ -10,8 +10,6 @@ class CustomerGroupPrice {
 
     const CUSTOMER_GROUPS = 'group_name';
 
-    const CUSTOMER_GROUPS_PRICE = 'customer_group_price';
-
     /**
      * CSV parser
      * @var \Magento\Framework\File\Csv
@@ -21,12 +19,12 @@ class CustomerGroupPrice {
     /**
      * @var \Magento\Framework\App\ResourceConnection
      */
-    protected $_resource;
+    private $_resource;
 
     /**
      * @var \Magento\Framework\DB\Adapter\AdapterInterface
      */
-    protected $connection;
+    private $connection;
 
     /**
      * @var \Zend\Log\Logger
@@ -92,9 +90,10 @@ class CustomerGroupPrice {
         //Save data file customerGroups.csv
         $customerGroupData = [];
         foreach($customerGroupCsv as $groupData){
+
             $this->customerGroupCount += 1;
             $customerGroupData[] = [
-                'group_id'  => $groupData[0],
+                'group_id'   => $groupData[0],
                 'group_name' => $groupData[1],
             ];
         }
@@ -123,8 +122,8 @@ class CustomerGroupPrice {
 
 
             $customerGroupPriceData[] = [
-                'group_id' => $priceData[0],
-                'sinch_product_id' => $priceData[1],
+                'group_id'             => $priceData[0],
+                'sinch_product_id'     => $priceData[1],
                 'customer_group_price' => $priceData[2],
             ];
 
@@ -171,21 +170,6 @@ class CustomerGroupPrice {
     }
 
     /**
-     * @param $customerGroupPrice
-     * @return int
-     * @throws \Exception
-     */
-    public function countPriceGroups($customerGroupPrice)
-    {
-        $customerGroupPriceCsv = $this->csv->getData($customerGroupPrice);
-
-        $groupData = 0;
-        foreach($customerGroupPriceCsv as $groupData){
-            $groupData++;
-        }
-        return $groupData;
-    }
-    /**
      * @param array $entityData
      * @param $table
      * @return $this
@@ -201,27 +185,6 @@ class CustomerGroupPrice {
             if ($groupIn) {
                 $this->connection->query("TRUNCATE TABLE " . $table);
                 $this->connection->insertOnDuplicate($tableName, $groupIn, [self::CUSTOMER_GROUPS]);
-            }
-        }
-        return $this;
-    }
-
-    /**
-     * @param array $groupPriceData
-     * @param $table
-     * @return $this
-     */
-    private function saveCustomerGroupPriceFinish(array $groupPriceData, $table)
-    {
-        if ($groupPriceData) {
-            $tableName = $this->connection->getTableName($table);
-            $groupIn = [];
-            foreach ($groupPriceData as $id => $groupRows) {
-                $groupIn[] = $groupRows;
-            }
-            if ($groupIn) {
-                $this->connection->query("TRUNCATE TABLE " . $table);
-                $this->connection->insertOnDuplicate($tableName, $groupIn, [self::CUSTOMER_GROUPS_PRICE]);
             }
         }
         return $this;
