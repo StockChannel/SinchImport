@@ -176,6 +176,11 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     'Product Id'
                 )
                 ->addColumn(
+                    'price_type_id',
+                    Table::TYPE_INTEGER, 11, ['unsigned' => true, 'nullable' => false],
+                    'Price Type Id'
+                )
+                ->addColumn(
                     'customer_group_price',
                     Table::TYPE_DECIMAL, '12,4', ['nullable' => false, 'default' => '0.0000'],
                     'Customer Group Price'

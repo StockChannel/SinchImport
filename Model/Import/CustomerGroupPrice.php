@@ -115,16 +115,18 @@ class CustomerGroupPrice {
             $this->connection->query(
                 "CREATE TABLE `sinch_customer_group_price_tmp` (
                       `group_id` int(10) UNSIGNED NOT NULL COMMENT 'Group Id',
-                      `sinch_product_id` int(10) UNSIGNED NOT NULL COMMENT 'Product Id',
-                      `customer_group_price` decimal(12,4) NOT NULL DEFAULT '0.0000' COMMENT 'Customer Group Price'
+                      `product_id` int(10) UNSIGNED NOT NULL COMMENT 'Product Id',
+                      `price_type_id` int(10) UNSIGNED NOT NULL COMMENT 'Price Type Id',
+                      `customer_group_price` decimal(12,4) NOT NULL DEFAULT '0.0000' COMMENT 'Customer Group Price',
+                      `sinch_product_id` int(10) UNSIGNED NOT NULL COMMENT 'Sinch Product Id'
                     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Sinch Customer Group Price';"
             );
-
 
             $customerGroupPriceData[] = [
                 'group_id'             => $priceData[0],
                 'sinch_product_id'     => $priceData[1],
-                'customer_group_price' => $priceData[2],
+                'price_type_id'        => $priceData[2],
+                'customer_group_price' => $priceData[3],
             ];
 
             $this->connection->insertOnDuplicate(
