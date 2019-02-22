@@ -18,6 +18,11 @@
                     <label>Addition Suffix for Product Url Rewrite</label>
                     <source_model>SITC\Sinchimport\Model\Config\Source\AdditionalSuffix</source_model>
                 </field>
+                <field id="index_tornerfinder" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1"
+                       showInStore="1">
+                    <label>Index tonerfinder</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
             </group>
             <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1"
                    showInStore="1">

@@ -7,7 +7,7 @@
             <argument name="commands" xsi:type="array">
                 <item name="import" xsi:type="object">SITC\Sinchimport\Console\Command\ImportCommand</item>
                 <item name="generateUrl" xsi:type="object">SITC\Sinchimport\Console\Command\GenerateCommand</item>
-                <item name="feature" xsi:type="object">SITC\Sinchimport\Console\Command\FeatureCommand</item>
+                <item name="productPartsfinder" xsi:type="object">SITC\Sinchimport\Console\Command\TonerFinderCommand</item>
             </argument>
         </arguments>
     </type>

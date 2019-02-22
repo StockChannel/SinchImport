@@ -171,7 +171,7 @@ class Sinch
      */
     private function createTempDir(\Magento\Framework\App\Filesystem\DirectoryList $directoryList)
     {
-        $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/magebuzz/sinchimport/';
+        $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/SITC/Sinchimport/';
         if (!is_dir($dir)) {
             if (!mkdir($dir, 0777, true)) {
                 throw new \Magento\Framework\Exception\LocalizedException("Failed to create import directory. Check filesystem permissions");
@@ -185,12 +185,12 @@ class Sinch
      */
     public function startCronFullImport()
     {
-        $this->_log("Start full import from cron");
+        $this->_log("Start full import from cronjob");
 
         $this->import_run_type = 'CRON';
         $this->runSinchImport();
 
-        $this->_log("Finish full import from cron");
+        $this->_log("Finish full import from cronjob");
     }
 
     /**
@@ -8865,6 +8865,16 @@ class Sinch
     private function runIndexer()
     {
         $this->_indexProcessor->reindexAll();
+
+        $configTonerFinder = $this->scopeConfig->getValue(
+            'sinchimport/general/index_tornerfinder',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+
+        if ($configTonerFinder == 1 ){
+            $this->insertCategoryIdForFinder();
+        } else {
+            $this->_logImportInfo("Configuration ignores indexer tornerfinder");
+        }
     }
 
     private function _reindexProductUrlKey()
@@ -9239,5 +9249,53 @@ class Sinch
         }
 
         return $messages;
+    }
+
+    /**
+     * @param string $logString
+     * @param bool $isError
+     */
+    protected function _logImportInfo($logString = '', $isError = false)
+    {
+        if ($logString) {
+            if ($isError) {
+                $logString = "[ERROR] " . $logString;
+            }
+            $this->_sinchLogger->info($logString);
+        }
+    }
+
+    /**
+     * @insertCategoryIdForFinder
+     */
+    public function insertCategoryIdForFinder()
+    {
+        $tbl_store  = $this->_getTableName('store');
+        $tbl_cat    = $this->_getTableName( 'catalog_category_product' );
+
+        $this->_doQuery(" 
+                INSERT INTO ". $this->_getTableName('catalog_category_product_index') ." (
+                category_id, product_id, position, is_parent, store_id, visibility) (
+                    SELECT a.category_id, a.product_id, a.position, 1, b.store_id, 4
+                    FROM ". $tbl_cat ." a
+                        JOIN ". $tbl_store ." b )
+                ON DUPLICATE KEY UPDATE visibility = 4"
+        );
+
+        foreach ($this->_storeManager->getStores() as $store) {
+            $storeId = $store->getId();
+
+            $table = $this->_getTableName('catalog_category_product_index_store' . $storeId);
+
+            if ($this->_connection->isTableExists($table)) {
+                $this->_doQuery(" 
+                  INSERT INTO ". $table ." (category_id, product_id, position, is_parent, store_id, visibility) (
+                      SELECT  a.category_id, a.product_id, a.position, 1, b.store_id, 4
+                      FROM ". $tbl_cat ." a
+                        JOIN ". $tbl_store ." b )
+                  ON DUPLICATE KEY UPDATE visibility = 4"
+                );
+            }
+        }
     }
 }

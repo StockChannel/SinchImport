@@ -5,6 +5,7 @@
         <sinchimport>
             <general>
                 <additional_suffix>2</additional_suffix>
+                <index_tornerfinder>0</index_tornerfinder>
             </general>
             <sinch_ftp>
                 <replace_category>REWRITE</replace_category>
