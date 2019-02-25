@@ -4640,6 +4640,7 @@ class Sinch
                               spec_characte_u_count int(11),
                               description_type varchar(50),
                               medium_image_url varchar(255),
+                              Title varchar(255),
                               products_date_added datetime default NULL,
                               products_last_modified datetime default NULL,
                               availability_id_in_stock int(11) default '1',
@@ -5582,6 +5583,7 @@ class Sinch
                 $this->addProductContracts();
             }
         }
+        $this->addMetaTitle();
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
@@ -7574,6 +7576,7 @@ class Sinch
             $this->addShortDescriptions();
             $this->addProductDistributors();
         }
+        $this->addMetaTitle();
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
@@ -8218,6 +8221,7 @@ class Sinch
                 $this->addProductContracts();
             }
         }
+        $this->addMetaTitle();
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
@@ -9296,6 +9300,82 @@ class Sinch
                   ON DUPLICATE KEY UPDATE visibility = 4"
                 );
             }
+        }
+    }
+
+    private function addMetaTitle()
+    {
+        $configMetaTitle = $this->scopeConfig->getValue(
+            'sinchimport/general/meta_title',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+
+        if ($configMetaTitle == 1 ){
+            $this->_doQuery(
+                "
+                                    INSERT INTO " . $this->_getTableName(
+                    'catalog_product_entity_varchar'
+                ) . " (
+                                        attribute_id,
+                                        store_id,
+                                        entity_id,
+                                        value
+                                    )(
+                                      SELECT
+                                        " . $this->_getProductAttributeId(
+                    'meta_title'
+                ) . ",
+                                        w.website,
+                                        a.entity_id,
+                                        b.Title
+                                      FROM " . $this->_getTableName(
+                    'catalog_product_entity'
+                ) . " a
+                                      INNER JOIN " . $this->_getTableName(
+                    'products_temp'
+                ) . " b
+                                        ON a.store_product_id = b.store_product_id
+                                      INNER JOIN " . $this->_getTableName(
+                    'products_website_temp'
+                ) . " w
+                                        ON a.store_product_id=w.store_product_id
+                                    )
+                                    ON DUPLICATE KEY UPDATE
+                                        value = b.Title
+                                  "
+            );
+
+            $this->_doQuery(
+                "
+                                    INSERT INTO " . $this->_getTableName(
+                    'catalog_product_entity_varchar'
+                ) . " (
+                                        attribute_id,
+                                        store_id,
+                                        entity_id,
+                                        value
+                                    )(
+                                      SELECT
+                                        " . $this->_getProductAttributeId(
+                    'meta_title'
+                ) . ",
+                                        0,
+                                        a.entity_id,
+                                        b.Title
+                                      FROM " . $this->_getTableName(
+                    'catalog_product_entity'
+                ) . " a
+                                      INNER JOIN " . $this->_getTableName(
+                    'products_temp'
+                ) . " b
+                                        ON a.store_product_id = b.store_product_id
+                                    )
+                                    ON DUPLICATE KEY UPDATE
+                                        value = b.Title
+                                  "
+            );
+        } else {
+            $this->printOutputMsg("-- Ignore the meta title for product configuration.");
+            $this->_logImportInfo("-- Ignore the meta title for product configuration.");
         }
     }
 }
