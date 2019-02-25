@@ -75,8 +75,6 @@ class CategoryProcessor
      */
     protected function initCategories()
     {
-        set_time_limit(0);
-
         if (empty($this->categoriesCache)) {
             $collection = $this->categoryColFactory->create()
                 ->addAttributeToSelect('name')

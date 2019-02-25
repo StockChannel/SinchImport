@@ -130,7 +130,6 @@ class Url extends \Magento\Catalog\Model\Product\Url
         $process      = true;
         $step         = 0;
         while ($process == true) {
-            set_time_limit(0);
 
             $this->products = $this->_getResource()->getProductsByStore(
                 $storeId, $lastEntityId
