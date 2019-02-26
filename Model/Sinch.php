@@ -8877,7 +8877,7 @@ class Sinch
         return true;
     }
 
-    private function runCleanCache()
+    public function runCleanCache()
     {
         foreach ($this->_cacheFrontendPool as $cacheFrontend) {
             $cacheFrontend->getBackend()->clean();
