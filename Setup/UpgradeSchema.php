@@ -113,5 +113,14 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 ) ENGINE=InnoDB"
             );
         }
+        //Drop the sinch_filter_products procedure if it exists
+        $sinch_filter_products = $installer->getTable('sinch_filter_products');
+        $connection->query(
+            "DROP PROCEDURE IF EXISTS {$sinch_filter_products}"
+        );
+        //Drop the sinch_calc_price function if it exists
+        $connection->query(
+            "DROP FUNCTION IF EXISTS sinch_calc_price"
+        );
     }
 }
