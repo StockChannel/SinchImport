@@ -89,9 +89,9 @@ class Attributes {
         $this->massProdValues = $massProdValues;
         $this->scopeConfig = $scopeConfig;
 
-        $this->mappingTable = $this->getConnection()->getTableName('sinch_restrictedvalue_mapping');
-        $this->cpeTable = $this->getConnection()->getTableName('catalog_product_entity');
-        $this->filterCategoriesTable = $this->getConnection()->getTableName('sinch_filter_categories');
+        $this->mappingTable = $this->resourceConn->getTableName('sinch_restrictedvalue_mapping');
+        $this->cpeTable = $this->resourceConn->getTableName('catalog_product_entity');
+        $this->filterCategoriesTable = $this->resourceConn->getTableName('sinch_filter_categories');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_attributes.log');
         $logger = new \Zend\Log\Logger();

@@ -34,7 +34,7 @@ class CustomerGroupCategories {
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->resourceConn = $resourceConn;
         $this->logger = $logger;
-        $this->mappingTablenameFinal = $this->getConnection()->getTableName(self::MAPPING_TABLE);
+        $this->mappingTablenameFinal = $this->resourceConn->getTableName(self::MAPPING_TABLE);
     }
 
     /**
