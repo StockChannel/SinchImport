@@ -17,6 +17,10 @@
             <attributes>
                 <visible_in_admin>0</visible_in_admin>
             </attributes>
+            <category_visibility>
+                <enable>0</enable>
+                <private_visible_to_guest>0</private_visible_to_guest>
+            </category_visibility>
         </sinchimport>
     </default>
 </config>

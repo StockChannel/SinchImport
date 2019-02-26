@@ -32,6 +32,7 @@
     </type>
     <type name="Magento\Catalog\Model\Category">
         <plugin name="mb_change_category_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Category" sortOrder="0"/>
+        <plugin name="sinchimport_category_visibility" type="SITC\Sinchimport\Plugin\CategoryVisibility" sortOrder="1" />
     </type>
     <type name="Magento\Catalog\Model\Product\Image">
         <plugin name="mb_change_product_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Product\Image" sortOrder="0"/>
@@ -47,5 +48,8 @@
     </type>
     <type name="Magento\Cron\Model\Schedule">
         <plugin name="sinchimport_lock_indexers" type="SITC\Sinchimport\Plugin\CronSchedule" sortOrder="0" />
+    </type>
+    <type name="Magento\Framework\View\Layout">
+        <plugin name="sinchimport_save_account_id" type="SITC\Sinchimport\Plugin\DontDepersonaliseAccount" sortOrder="0" />
     </type>
 </config>

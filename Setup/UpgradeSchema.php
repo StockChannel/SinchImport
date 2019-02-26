@@ -73,6 +73,11 @@ class UpgradeSchema implements UpgradeSchemaInterface
         if (version_compare($context->getVersion(), '2.1.5', '<')) {
             $this->upgrade215($installer);
         }
+
+        if (version_compare($context->getVersion(), '2.1.6', '<')) {
+            $this->upgrade216($installer);
+        }
+
         $installer->endSetup();
     }
 
@@ -87,6 +92,23 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     feature_id INT NOT NULL COMMENT 'Sinch Feature ID',
                     category_id INT NOT NULL COMMENT 'Sinch Category ID',
                     PRIMARY KEY (feature_id, category_id),
+                    INDEX(category_id)
+                ) ENGINE=InnoDB"
+            );
+        }
+    }
+
+    public function upgrade216($installer)
+    {
+        $connection = $installer->getConnection();
+        $catVisTable = $installer->getTable(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE); //sinch_cat_visibility at the time of adding
+        if ($connection->isTableExists($catVisTable) != true) {
+            //Ditto of upgrade215
+            $connection->query(
+                "CREATE TABLE IF NOT EXISTS {$catVisTable} (
+                    category_id INT NOT NULL COMMENT 'Category ID',
+                    account_group_id INT NOT NULL COMMENT 'Account Group ID',
+                    PRIMARY KEY (category_id, account_group_id),
                     INDEX(category_id)
                 ) ENGINE=InnoDB"
             );
