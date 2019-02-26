@@ -227,16 +227,6 @@ class Sinch
 
         $this->initImportStatuses('FULL');
 
-        $store_proc = $this->checkStoreProcedureExist();
-        if (!$store_proc) {
-            $this->_setErrorMessage(
-                'Stored procedure "' . $this->_getTableName(
-                    'sinch_filter_products'
-                ) . '" is absent in this database'
-            );
-            throw new \Magento\Framework\Exception\LocalizedException("sinch_filter_products procedure missing from database");
-        }
-
         $file_privileg = $this->checkDbPrivileges();
         if (!$file_privileg) {
             $this->_setErrorMessage(
@@ -510,24 +500,6 @@ class Sinch
             WHERE global_status_import='Run' AND id!="
             . $this->current_import_status_statistic_id
         );
-    }
-
-    private function checkStoreProcedureExist()
-    {
-        $q = 'SHOW PROCEDURE STATUS LIKE "' . $this->_getTableName(
-                'sinch_filter_products'
-            ) . '"';
-        $result = $this->_doQuery($q)->fetchAll();
-
-        foreach ($result as $item) {
-            if (($item['Name'] == $this->_getTableName('sinch_filter_products'))
-                && ($item['Db'] == $this->_deploymentData['db']['connection']['default']['dbname'])
-            ) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**
@@ -8936,14 +8908,6 @@ class Sinch
     public function runStockPriceImport()
     {
         $this->initImportStatuses('PRICE STOCK');
-        $store_proc = $this->checkStoreProcedureExist();
-
-        if (!$store_proc) {
-            $this->_setErrorMessage(
-                'Stored procedure "' . $this->_getTableName('sinch_filter_products') . '" is missing from the database'
-            );
-            throw new \Magento\Framework\Exception\LocalizedException("sinch_filter_products missing from the database");
-        }
 
         $file_privileg = $this->checkDbPrivileges();
         if (!$file_privileg) {
