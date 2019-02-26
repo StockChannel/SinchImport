@@ -1,6 +1,0 @@
-<?xml version="1.0"?>
-<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
-    <event name="sinch_import_after_finish">
-        <observer name="sitc_sinch_update_catalog_category_product_index" instance="SITC\Sinchimport\Observer\Indexer\Model\Processor\ProductCategory" />
-    </event>
-</config>

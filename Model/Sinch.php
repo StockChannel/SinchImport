@@ -175,7 +175,7 @@ class Sinch
      */
     private function createTempDir(\Magento\Framework\App\Filesystem\DirectoryList $directoryList)
     {
-        $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/magebuzz/sinchimport/';
+        $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/SITC/Sinchimport/';
         if (!is_dir($dir)) {
             if (!mkdir($dir, 0777, true)) {
                 throw new \Magento\Framework\Exception\LocalizedException("Failed to create import directory. Check filesystem permissions");
@@ -4622,6 +4622,7 @@ class Sinch
                               spec_characte_u_count int(11),
                               description_type varchar(50),
                               medium_image_url varchar(255),
+                              Title varchar(255),
                               products_date_added datetime default NULL,
                               products_last_modified datetime default NULL,
                               availability_id_in_stock int(11) default '1',
@@ -5564,6 +5565,7 @@ class Sinch
                 $this->addProductContracts();
             }
         }
+        $this->addMetaTitle();
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
@@ -7556,6 +7558,7 @@ class Sinch
             $this->addShortDescriptions();
             $this->addProductDistributors();
         }
+        $this->addMetaTitle();
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
@@ -8200,6 +8203,7 @@ class Sinch
                 $this->addProductContracts();
             }
         }
+        $this->addMetaTitle();
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
@@ -8847,6 +8851,16 @@ class Sinch
     private function runIndexer()
     {
         $this->_indexProcessor->reindexAll();
+
+        $configTonerFinder = $this->scopeConfig->getValue(
+            'sinchimport/general/index_tonerfinder',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+
+        if ($configTonerFinder == 1 ){
+            $this->insertCategoryIdForFinder();
+        } else {
+            $this->_logImportInfo("Configuration ignores indexing tonerfinder");
+        }
     }
 
     private function _reindexProductUrlKey()
@@ -9219,5 +9233,129 @@ class Sinch
         }
 
         return $messages;
+    }
+
+    /**
+     * @param string $logString
+     * @param bool $isError
+     */
+    protected function _logImportInfo($logString = '', $isError = false)
+    {
+        if ($logString) {
+            if ($isError) {
+                $logString = "[ERROR] " . $logString;
+            }
+            $this->_sinchLogger->info($logString);
+        }
+    }
+
+    /**
+     * @insertCategoryIdForFinder
+     */
+    public function insertCategoryIdForFinder()
+    {
+        $tbl_store  = $this->_getTableName('store');
+        $tbl_cat    = $this->_getTableName( 'catalog_category_product' );
+
+        $this->_doQuery(" 
+                INSERT INTO ". $this->_getTableName('catalog_category_product_index') ." (
+                category_id, product_id, position, is_parent, store_id, visibility) (
+                    SELECT a.category_id, a.product_id, a.position, 1, b.store_id, 4
+                    FROM ". $tbl_cat ." a
+                        JOIN ". $tbl_store ." b )
+                ON DUPLICATE KEY UPDATE visibility = 4"
+        );
+
+        foreach ($this->_storeManager->getStores() as $store) {
+            $storeId = $store->getId();
+
+            $table = $this->_getTableName('catalog_category_product_index_store' . $storeId);
+
+            if ($this->_connection->isTableExists($table)) {
+                $this->_doQuery(" 
+                  INSERT INTO ". $table ." (category_id, product_id, position, is_parent, store_id, visibility) (
+                      SELECT  a.category_id, a.product_id, a.position, 1, b.store_id, 4
+                      FROM ". $tbl_cat ." a
+                        JOIN ". $tbl_store ." b )
+                  ON DUPLICATE KEY UPDATE visibility = 4"
+                );
+            }
+        }
+    }
+
+    private function addMetaTitle()
+    {
+        $configMetaTitle = $this->scopeConfig->getValue(
+            'sinchimport/general/meta_title',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
+
+        if ($configMetaTitle == 1 ){
+            $this->_doQuery(
+                "
+                                    INSERT INTO " . $this->_getTableName(
+                    'catalog_product_entity_varchar'
+                ) . " (
+                                        attribute_id,
+                                        store_id,
+                                        entity_id,
+                                        value
+                                    )(
+                                      SELECT
+                                        " . $this->_getProductAttributeId(
+                    'meta_title'
+                ) . ",
+                                        w.website,
+                                        a.entity_id,
+                                        b.Title
+                                      FROM " . $this->_getTableName(
+                    'catalog_product_entity'
+                ) . " a
+                                      INNER JOIN " . $this->_getTableName(
+                    'products_temp'
+                ) . " b
+                                        ON a.store_product_id = b.store_product_id
+                                      INNER JOIN " . $this->_getTableName(
+                    'products_website_temp'
+                ) . " w
+                                        ON a.store_product_id=w.store_product_id
+                                    )
+                                    ON DUPLICATE KEY UPDATE
+                                        value = b.Title
+                                  "
+            );
+
+            $this->_doQuery(
+                "
+                                    INSERT INTO " . $this->_getTableName(
+                    'catalog_product_entity_varchar'
+                ) . " (
+                                        attribute_id,
+                                        store_id,
+                                        entity_id,
+                                        value
+                                    )(
+                                      SELECT
+                                        " . $this->_getProductAttributeId(
+                    'meta_title'
+                ) . ",
+                                        0,
+                                        a.entity_id,
+                                        b.Title
+                                      FROM " . $this->_getTableName(
+                    'catalog_product_entity'
+                ) . " a
+                                      INNER JOIN " . $this->_getTableName(
+                    'products_temp'
+                ) . " b
+                                        ON a.store_product_id = b.store_product_id
+                                    )
+                                    ON DUPLICATE KEY UPDATE
+                                        value = b.Title
+                                  "
+            );
+        } else {
+            $this->printOutputMsg("-- Ignore the meta title for product configuration.");
+            $this->_logImportInfo("-- Ignore the meta title for product configuration.");
+        }
     }
 }

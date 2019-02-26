@@ -5,6 +5,8 @@
         <sinchimport>
             <general>
                 <additional_suffix>2</additional_suffix>
+                <meta_title>1</meta_title>
+                <index_tonerfinder>1</index_tonerfinder>
             </general>
             <sinch_ftp>
                 <replace_category>REWRITE</replace_category>
