@@ -70,7 +70,7 @@ class Attributes {
         \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
-        \Magento\Catalog\Model\Product\Action $massProdValues,
+        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     )
     {
