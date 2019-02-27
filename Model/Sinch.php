@@ -8627,7 +8627,7 @@ class Sinch
                 1,
                 b.stock,
                 IF(b.stock > 0, 1, 0),
-                1,
+                0,
                 {$stockItemScope}
                 FROM {$catalogProductEntity} a
                 INNER JOIN {$stockPriceTemp} b
