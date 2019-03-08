@@ -63,8 +63,13 @@ class DbStorage extends \Magento\UrlRewrite\Model\Storage\DbStorage
                     $url->setRequestPath($requestPath);
                 }
                 // Skip if is exist in the database
-                $sql = "SELECT * FROM $tableName where store_id = $storeId and request_path = '$requestPath'";
-                $exists = $this->connection->fetchOne($sql);
+                $exists = $this->connection->fetchOne(
+                    "SELECT * FROM $tableName where store_id = :store_id and request_path = :request_path",
+                    [
+                        ":store_id" => $storeId,
+                        ":request_path" => $requestPath
+                    ]
+                );
 
                 if ($exists) continue;
 
