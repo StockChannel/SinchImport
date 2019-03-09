@@ -4,4 +4,5 @@
     <type name="Magento\Catalog\Model\Layer\FilterList">
         <plugin name="filterSinchAttributes" type="SITC\Sinchimport\Plugin\FilterList"/>
     </type>
+    <preference for="Magento\Catalog\Block\Product\Image" type="SITC\Sinchimport\Block\Product\Image" />
 </config>

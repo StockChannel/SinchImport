@@ -297,6 +297,16 @@ class Sinch
     /**
      * @var bool
      */
+    private $_ignore_customer_group = false;
+
+    /**
+     * @var bool
+     */
+    private $_ignore_customer_group_price = false;
+
+    /**
+     * @var bool
+     */
     private $_ignore_restricted_values = false;
 
     /**
@@ -344,6 +354,8 @@ class Sinch
      */
     private $attributesImport;
 
+    private $customerGroupImport;
+
     /**
      * Sinch constructor.
      * @param \Magento\Framework\Model\Context $context
@@ -383,6 +395,7 @@ class Sinch
         \Magento\Indexer\Model\Indexer\CollectionFactory $indexersFactory,
         \Magento\Eav\Model\ResourceModel\Entity\Attribute $eavAttribute,
         \SITC\Sinchimport\Model\Import\Attributes $attributesImport,
+        \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupImport,
         ConsoleOutput $output
     ) {
         $this->output = $output;
@@ -403,6 +416,7 @@ class Sinch
         $this->_connection = $this->_resourceConnection->getConnection();
         $this->_eavAttribute = $eavAttribute;
         $this->attributesImport = $attributesImport;
+        $this->customerGroupImport = $customerGroupImport;
         $this->_isDebugMode = (boolean) $this->scopeConfig->getValue(
             'sinchimport/general/is_debug_mode',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
@@ -435,7 +449,9 @@ class Sinch
             FILE_STOCK_AND_PRICES,
             FILE_PRODUCTS_PICTURES_GALLERY,
             FILE_PRICE_RULES,
-            FILE_PRODUCT_CONTRACTS
+            FILE_PRODUCT_CONTRACTS,
+            FILE_CUSTOMER_GROUPS,
+            FILE_CUSTOMER_GROUP_PRICE
         );
 
         $this->_dataConf = array_merge(
@@ -567,6 +583,7 @@ class Sinch
 
         if ($this->isImportNotRun()) {
             try {
+
                 $imType = $this->_dataConf['replace_category'];
 
                 $this->_doQuery("SELECT GET_LOCK('sinchimport', 30)");
@@ -636,6 +653,17 @@ class Sinch
                 $this->parseStockAndPrices();
                 $this->addImportStatus('Parse Stock And Prices');
 
+                $customerGrFile = $this->varDir . FILE_CUSTOMER_GROUPS;
+                $customerGrFilePrice = $this->varDir . FILE_CUSTOMER_GROUP_PRICE;
+
+                if (file_exists($customerGrFile) == true
+                    && file_exists($customerGrFilePrice) == true
+                ) {
+                    if (filesize($customerGrFile) == true
+                        && filesize($customerGrFilePrice) == true) {
+                        $this->customerGroupImport->parse($customerGrFile, $customerGrFilePrice);
+                    }
+                }
                 $this->printOutputMsg("Apply Customer Group Price...");
 
                 if (file_exists($this->varDir . FILE_PRICE_RULES)) {
@@ -968,6 +996,7 @@ class Sinch
      */
     public function uploadFiles()
     {
+        return true;
         $this->_logImportInfo("Start upload files");
 
         $username = $this->_dataConf['username'];
@@ -1042,6 +1071,8 @@ class Sinch
                     && $file != FILE_DISTRIBUTORS_STOCK_AND_PRICES
                     && $file != FILE_PRODUCT_CONTRACTS
                     && $file != FILE_PRICE_RULES
+//                    && $file != FILE_CUSTOMER_GROUPS
+//                    && $file != FILE_CUSTOMER_GROUP_PRICE
                 ) {
                     $this->_logImportInfo(
                         "Can't copy " . $file_url_and_dir . $file
@@ -1111,6 +1142,18 @@ class Sinch
                         );
                         $this->_ignore_price_rules = true;
                     }
+//                    elseif ($file == FILE_CUSTOMER_GROUPS) {
+//                        $this->_logImportInfo(
+//                            "Can't copy " . FILE_CUSTOMER_GROUPS . " file ignored"
+//                        );
+//                        $this->_ignore_customer_group = true;
+//                    }
+//                    elseif ($file == FILE_CUSTOMER_GROUP_PRICE) {
+//                        $this->_logImportInfo(
+//                            "Can't copy " . FILE_CUSTOMER_GROUP_PRICE . " file ignored"
+//                        );
+//                        $this->_ignore_customer_group_price = true;
+//                    }
                 }
             }
         }
@@ -10020,6 +10063,115 @@ class Sinch
         }
     }
 
+    public function runCustomerGroupsPriceImport()
+    {
+        $this->initImportStatuses('CUSTOMER GROUPS PRICE');
+
+        $file_privileg = $this->checkDbPrivileges();
+
+        if (! $file_privileg) {
+            $this->_logImportInfo(
+                "LOAD DATA option not set"
+            );
+            $this->_setErrorMessage(
+                "LOAD DATA option not set. Import stopped."
+            );
+            throw new \Exception("LOAD DATA option not set in the database.");
+        }
+        $local_infile = $this->checkLocalInFile();
+        if (! $local_infile) {
+            $this->_logImportInfo(
+                "LOCAL INFILE is not enabled"
+            );
+            $this->_setErrorMessage(
+                "LOCAL INFILE is not enabled. Import stopped."
+            );
+            throw new \Exception("LOCAL INFILE not enabled in the database.");
+        }
+
+        if ($this->isImportNotRun() && $this->isFullImportHaveBeenRun()) {
+            try {
+                $customerGrFile = $this->varDir . FILE_CUSTOMER_GROUPS;
+                $customerGrFilePrice = $this->varDir . FILE_CUSTOMER_GROUP_PRICE;
+
+                if (file_exists($customerGrFile) == true && file_exists($customerGrFilePrice) == true) {
+                    if (filesize($customerGrFile) == true && filesize($customerGrFilePrice) == true ){
+                        $q = "SELECT GET_LOCK('sinchimport', 30)";
+                        $this->_doQuery($q);
+                        $import = $this;
+                        $import->addImportStatus('Customer Groups Price Start Import');
+                        $this->printOutputMsg("========IMPORTING CUSTOMER GROUPS AND PRICE========");
+                        $this->printOutputMsg("Upload Files...");
+
+                        $this->files = array(
+                            FILE_CUSTOMER_GROUPS,
+                            FILE_CUSTOMER_GROUP_PRICE
+                        );
+
+                        $import->uploadFiles();
+                        $import->addImportStatus('Customer Groups Price Upload Files');
+
+                        $this->printOutputMsg("Parse Customer Groups And Prices...");
+
+                        $this->customerGroupImport->parse(
+                            $customerGrFile,
+                            $customerGrFilePrice
+                        );
+
+                        $res = $this->_doQuery(
+                            "SELECT count(*) as cnt
+                                 FROM " . $this->_getTableName(
+                                'sinch_customer_group_price'
+                            )
+                        )->fetch();
+
+                        $this->_doQuery(
+                            "UPDATE " . $this->import_status_statistic_table . "
+                          SET number_of_products=" . $res['cnt'] . "
+                          WHERE id=" . $this->current_import_status_statistic_id
+                        );
+
+                        $import->addImportStatus('Customer Groups Price Parse Products');
+
+                        $this->_logImportInfo("Start cleanin Sinch cache...");
+                        $this->printOutputMsg("Start cleanin Sinch cache...");
+                        $this->runCleanCache();
+                        $this->_logImportInfo("Finish cleanin Sinch cache...");
+                        $this->printOutputMsg("Finish cleanin Sinch cache...");
+
+                        $import->addImportStatus('Customer Groups Price Finish import', 1);
+
+                        $this->_logImportInfo("Finish Customer Groups & Price Sinch Import");
+                        $this->printOutputMsg("========>FINISH CUSTOMER GROUPS & PRICE SINCH IMPORT");
+
+                        $q = "SELECT RELEASE_LOCK('sinchimport')";
+                        $this->_doQuery($q);
+                    } else{
+                        $this->_logImportInfo("File csv is empty");
+                        $this->printOutputMsg("File csv is empty");
+                    }
+
+                } else {
+                    $this->_logImportInfo("File csv do not exits");
+                    $this->printOutputMsg("File csv do not exits");
+                }
+
+
+            } catch (\Exception $e) {
+                $this->_setErrorMessage($e);
+            }
+        } else {
+            if (! $this->isImportNotRun()) {
+                $this->_logImportInfo("Sinchimport already run");
+                $this->printOutputMsg("--------SINCHIMPORT ALREADY RUN--------");
+            } else {
+                $this->_logImportInfo(
+                    "Full import have never finished with success"
+                );
+                $this->printOutputMsg("Full import have never finished with success...");
+            }
+        }
+    }
     /**
      * @return bool
      * @throws \Zend_Db_Statement_Exception

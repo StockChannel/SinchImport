@@ -24,6 +24,8 @@ define('FILE_STOCK_AND_PRICES', 'StockAndPrices.csv');
 define('FILE_PRODUCTS_PICTURES_GALLERY', 'ProductPictures.csv');
 define('FILE_PRODUCT_CONTRACTS', 'ProductContracts.csv');
 define('FILE_PRICE_RULES', 'contractprices.csv');
+define('FILE_CUSTOMER_GROUPS', 'CustomerGroups.csv');
+define('FILE_CUSTOMER_GROUP_PRICE', 'CustomerGroupPrices.csv');
 define('FILE_URL_AND_DIR', "ftp://%%%login%%%:%%%password%%%@%%%server%%%/");
 
 define('DEFAULT_FILE_TERMINATED_CHAR', "|");
