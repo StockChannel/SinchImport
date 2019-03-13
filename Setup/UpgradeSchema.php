@@ -78,6 +78,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $this->upgrade216($installer);
         }
 
+        if (version_compare($context->getVersion(), '2.1.7', '<')) {
+            $this->upgrade216($installer);
+            $this->changeColumnStatus($installer);
+        }
         $installer->endSetup();
     }
 
@@ -122,5 +126,29 @@ class UpgradeSchema implements UpgradeSchemaInterface
         $connection->query(
             "DROP FUNCTION IF EXISTS sinch_calc_price"
         );
+    }
+
+    /**
+     * @param SchemaSetupInterface $setup
+     */
+    public function changeColumnStatus(SchemaSetupInterface $setup)
+    {
+        $connection = $setup->getConnection();
+        if ($connection->tableColumnExists(
+            'sinch_import_status_statistic', 'import_type')
+        ) {
+            $connection->changeColumn(
+                'sinch_import_status_statistic',
+                'import_type',
+                'import_type',
+                [
+                    'type' => Table::TYPE_TEXT,
+                    'default' => null,
+                    'length'  => '25',
+                    'comment' => 'Import Type',
+                    'after'   => 'finish_import'
+                ]
+            );
+        }
     }
 }
