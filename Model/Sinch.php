@@ -9255,7 +9255,7 @@ class Sinch
      * @param string $logString
      * @param bool $isError
      */
-    protected function _logImportInfo($logString = '', $isError = false)
+    public function _logImportInfo($logString = '', $isError = false)
     {
         if ($logString) {
             if ($isError) {
@@ -9370,7 +9370,7 @@ class Sinch
                                   "
             );
         } else {
-            $this->printOutputMsg("-- Ignore the meta title for product configuration.");
+            $this->print("-- Ignore the meta title for product configuration.");
             $this->_logImportInfo("-- Ignore the meta title for product configuration.");
         }
     }
