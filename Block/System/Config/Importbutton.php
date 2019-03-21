@@ -117,6 +117,12 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 if($('mb-sinch-indexing-data-button')) {
                     Event.observe($('mb-sinch-indexing-data-button'), 'click', this.beforeIndexing.bind(this));
                 }
+                if($('mb-sinch-customer-groups-price-import-button')) {
+                    Event.observe($('mb-sinch-customer-groups-price-import-button'), 'click', this.beforeCustomerGroupsPriceImport.bind(this));
+                }
+                if($('mb-sinch-indexing-data-button')) {
+                    Event.observe($('mb-sinch-indexing-data-button'), 'click', this.beforeIndexing.bind(this));
+                }
             },
 
             beforeFullImport: function () {
@@ -164,6 +170,22 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 document.getElementById('sinchimport_stock_price_parse_products').innerHTML=runningIcon;
                 document.getElementById('sinchimport_stock_price_indexing_data').innerHTML=runningIcon;
                 document.getElementById('sinchimport_stock_price_finish_import').innerHTML=runningIcon;
+            },
+             
+            beforeCustomerGroupsPriceImport: function () {
+                this.setCustomerGroupsPriceRunningIcon();
+                status_div = document.getElementById('sinchimport_customer_groups_price_status_template');
+                curr_status_div = document.getElementById('sinchimport_customer_groups_price_current_status_message');
+                curr_status_div.style.display = 'none';
+                status_div.style.display = '';
+                this.startSinchImport(this.postCustomerGroupsPriceUrl);
+            },
+            
+            setCustomerGroupsPriceRunningIcon: function () {
+                runningIcon='<img src=\"" . $runningIcon . "\"/>';
+                document.getElementById('sinchimport_customer_groups_price_start_import').innerHTML=runningIcon;
+                document.getElementById('sinchimport_customer_groups_price_upload_files').innerHTML=runningIcon;
+                document.getElementById('sinchimport_customer_groups_price_parse_products').innerHTML=runningIcon;
             },
             
             beforeIndexing: function () {
