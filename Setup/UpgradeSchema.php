@@ -144,7 +144,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 [
                     'type' => Table::TYPE_TEXT,
                     'default' => null,
-                    'length'  => '25',
+                    'length'  => '50',
                     'comment' => 'Import Type',
                     'after'   => 'finish_import'
                 ]
