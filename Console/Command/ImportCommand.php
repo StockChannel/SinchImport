@@ -66,6 +66,9 @@ class ImportCommand extends Command
             case 'stockprice':
                 $this->sinch->runStockPriceImport();
                 break;
+            case 'customergroupsprice':
+                $this->sinch->runCustomerGroupsPriceImport();
+                break;
             default:
                 $this->sinch->runSinchImport();
                 break;
