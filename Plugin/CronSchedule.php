@@ -17,16 +17,23 @@ class CronSchedule {
      */
     private $resourceConn;
 
+    /**
+     * @var \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+     */
+    private $scopeConfig;
+
     public function __construct(
         \Magento\Cron\Model\ConfigInterface $cronConfig,
         \Magento\Framework\Filesystem\DirectoryList $dir,
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \SITC\Sinchimport\Logger\Logger $logger
+        \SITC\Sinchimport\Logger\Logger $logger,
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     ){
         $this->cronConfig = $cronConfig;
         $this->dir = $dir;
         $this->resourceConn = $resourceConn;
         $this->logger = $logger;
+        $this->scopeConfig = $scopeConfig;
     }
 
     public function aroundTryLockJob(\Magento\Cron\Model\Schedule $subject, $proceed){
@@ -40,7 +47,11 @@ class CronSchedule {
             }
 
             //Import lock
-            $is_lock_free = $this->resourceConn->getConnection()->fetchOne("SELECT IS_FREE_LOCK('sinchimport')");
+            $current_vhost = $this->scopeConfig->getValue(
+                'web/unsecure/base_url',
+                \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            );
+            $is_lock_free = $this->resourceConn->getConnection()->fetchOne("SELECT IS_FREE_LOCK('sinchimport_{$current_vhost}')");
             if ($is_lock_free === '0') {
                 $this->logger->info("Preventing task {$cronjob['name']} from running as the sinchimport lock is currently held");
                 return false;

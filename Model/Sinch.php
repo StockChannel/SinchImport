@@ -91,6 +91,7 @@ class Sinch
     private $attributesImport;
     private $customerGroupCatsImport;
     private $stockConfig;
+    private $customerGroupPrice;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -108,11 +109,13 @@ class Sinch
         ConsoleOutput $output,
         \SITC\Sinchimport\Model\Import\Attributes $attributesImport,
         \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig,
-        \SITC\Sinchimport\Model\Import\CustomerGroupCategories $customerGroupCatsImport
+        \SITC\Sinchimport\Model\Import\CustomerGroupCategories $customerGroupCatsImport,
+        \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupPrice
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
         $this->stockConfig = $stockConfig;
+        $this->customerGroupPrice = $customerGroupPrice;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -149,7 +152,9 @@ class Sinch
             FILE_PRODUCTS_PICTURES_GALLERY,
             FILE_PRICE_RULES,
             FILE_PRODUCT_CONTRACTS,
-            FILE_CUSTOMER_GROUP_CATEGORIES
+            FILE_CUSTOMER_GROUP_CATEGORIES,
+            FILE_CUSTOMER_GROUPS,
+            FILE_CUSTOMER_GROUP_PRICE
         ];
 
         $this->_dataConf = $this->scopeConfig->getValue(
@@ -251,7 +256,11 @@ class Sinch
             try {
                 $imType = $this->_dataConf['replace_category'];
 
-                $this->_doQuery("SELECT GET_LOCK('sinchimport', 30)");
+                $current_vhost = $this->scopeConfig->getValue(
+                    'web/unsecure/base_url',
+                    \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+                );
+                $this->_doQuery("SELECT GET_LOCK('sinchimport_{$current_vhost}', 30)");
                 $this->addImportStatus('Start Import');
 
                 $this->print("========IMPORTING DATA IN $imType MODE========");
@@ -319,6 +328,12 @@ class Sinch
                 $this->addImportStatus('Parse Stock And Prices');
 
                 $this->print("Apply Customer Group Price...");
+                $custGroupFile = $this->varDir . FILE_CUSTOMER_GROUPS;
+                $custGroupPriceFile = $this->varDir . FILE_CUSTOMER_GROUP_PRICE;
+
+                if (file_exists($custGroupFile) && file_exists($custGroupPriceFile)) {
+                    $this->customerGroupPrice->parse($custGroupFile, $custGroupPriceFile);
+                }
 
                 if (file_exists($this->varDir . FILE_PRICE_RULES)) {
                     $this->_eventManager->dispatch(
@@ -8947,7 +8962,11 @@ class Sinch
 
         if ($this->isImportNotRun() && $this->isFullImportHaveBeenRun()) {
             try {
-                $this->_doQuery("SELECT GET_LOCK('sinchimport', 30)");
+                $current_vhost = $this->scopeConfig->getValue(
+                    'web/unsecure/base_url',
+                    \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+                );
+                $this->_doQuery("SELECT GET_LOCK('sinchimport_{$current_vhost}', 30)");
                 $this->addImportStatus('Stock Price Start Import');
 
                 $this->print("========IMPORTING STOCK AND PRICE========");

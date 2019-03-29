@@ -78,6 +78,12 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $this->upgrade216($installer);
         }
 
+        if (version_compare($context->getVersion(), '2.1.7', '<')) {
+            $this->convertEnumToVarchar($setup);
+            $this->createTableCustomerGroup($setup);
+            $this->createTableCustomerGroupPrice($setup);
+        }
+
         $installer->endSetup();
     }
 
@@ -122,5 +128,132 @@ class UpgradeSchema implements UpgradeSchemaInterface
         $connection->query(
             "DROP FUNCTION IF EXISTS sinch_calc_price"
         );
+    }
+
+    /**
+     * @param SchemaSetupInterface $setup
+     * @throws \Zend_Db_Exception
+     */
+    private function createTableCustomerGroup(SchemaSetupInterface $setup)
+    {
+
+        $connection = $setup->getConnection();
+        $customerGroupTable = $connection->getTableName('sinch_customer_group');
+        if (!$connection->isTableExists($customerGroupTable)) {
+            $customerGroupTable = $setup->getConnection()
+                ->newTable($setup->getTable('sinch_customer_group'))
+                ->addColumn(
+                    'group_id',
+                    Table::TYPE_INTEGER,
+                    11,
+                    ['unsigned' => true, 'nullable' => false, 'primary' => true],
+                    'Group Id'
+                )
+                ->addColumn(
+                    'group_name',
+                    Table::TYPE_TEXT,
+                    255,
+                    ['unsigned' => true, 'nullable' => false],
+                    'Group Name'
+                )
+                ->addIndex(
+                    $setup->getIdxName(
+                        'sinch_customer_group',
+                        ['group_id', 'group_name'],
+                        \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                    ),
+                    ['group_id', 'group_name'],
+                    ['type' => \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE]
+                )
+                ->setComment('Sinch Customer Group');
+            $setup->getConnection()->createTable($customerGroupTable);
+        }
+    }
+
+    /**
+     * @param SchemaSetupInterface $setup
+     * @throws \Zend_Db_Exception
+     */
+    private function createTableCustomerGroupPrice(SchemaSetupInterface $setup)
+    {
+        $connection = $setup->getConnection();
+        $customerGroupTablePrice = $connection->getTableName('sinch_customer_group_price');
+
+        if (!$connection->isTableExists($customerGroupTablePrice)) {
+            $customerGroupTablePrice = $setup->getConnection()
+                ->newTable($setup->getTable('sinch_customer_group_price'))
+                ->addColumn(
+                    'group_id',
+                    Table::TYPE_INTEGER,
+                    11,
+                    ['unsigned' => true, 'nullable' => false],
+                    'Group Id'
+                )
+                ->addColumn(
+                    'product_id',
+                    Table::TYPE_INTEGER, null, ['unsigned' => true, 'nullable' => false],
+                    'Product Id'
+                )
+                ->addColumn(
+                    'price_type_id',
+                    Table::TYPE_INTEGER, 11, ['unsigned' => true, 'nullable' => false],
+                    'Price Type Id'
+                )
+                ->addColumn(
+                    'customer_group_price',
+                    Table::TYPE_DECIMAL, '12,4', ['nullable' => false, 'default' => '0.0000'],
+                    'Customer Group Price'
+                )
+                ->addColumn(
+                    'sinch_product_id',
+                    Table::TYPE_INTEGER, 11, ['unsigned' => true, 'nullable' => false],
+                    'Sinch Product Id'
+                )
+                ->addIndex(
+                    $setup->getIdxName(
+                        'sinch_customer_group_price',
+                        ['group_id', 'product_id', 'sinch_product_id' , 'customer_group_price'],
+                        \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                    ),
+                    ['group_id', 'product_id','sinch_product_id', 'customer_group_price'],
+                    ['type' => \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE]
+                )
+                ->setComment('Sinch Customer Group Price');
+            $setup->getConnection()->createTable($customerGroupTablePrice);
+        }
+    }
+
+    private function convertEnumToVarchar(SchemaSetupInterface $setup)
+    {
+        $connection = $setup->getConnection();
+        if ($connection->tableColumnExists('sinch_import_status_statistic', 'import_type')) {
+            $connection->changeColumn(
+                'sinch_import_status_statistic',
+                'import_type',
+                'import_type',
+                [
+                    'type' => Table::TYPE_TEXT,
+                    'default' => null,
+                    'length'  => '25',
+                    'comment' => 'Import Type',
+                    'after'   => 'finish_import'
+                ]
+            );
+        }
+
+        if ($connection->tableColumnExists('sinch_import_status_statistic', 'import_run_type')) {
+            $connection->changeColumn(
+                'sinch_import_status_statistic',
+                'import_run_type',
+                'import_run_type',
+                [
+                    'type' => Table::TYPE_TEXT,
+                    'default' => null,
+                    'length'  => '25',
+                    'comment' => 'Import Run Type',
+                    'after'   => 'detail_status_import'
+                ]
+            );
+        }
     }
 }
