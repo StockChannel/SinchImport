@@ -17,7 +17,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
         \SITC\Sinchimport\Model\Sinch $sinch,
         array $data = []
     ) {
-    
+
         parent::__construct($context, $data);
         $this->sinch = $sinch;
     }
@@ -42,7 +42,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
             'Magento\Backend\Block\Widget\Button'
         )->setData(
             ['label' => 'Force Import Now', 'id' => 'mb-sinch-import-button',
-             'class' => 'mb-start-button', 'style' => 'margin-top:30px']
+                'class' => 'mb-start-button', 'style' => 'margin-top:30px']
         )->toHtml();
 
         $lastImportData   = $this->sinch->getDataOfLatestImport();
@@ -77,6 +77,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
 
         $postUrl = $this->getUrl('sinchimport/ajax');
         $postStockPriceUrl = $this->getUrl('sinchimport/ajax/stockPrice');
+        $postCustomerGroupsStockPriceUrl = $this->getUrl('sinchimport/ajax/customergroupsPrice');
         $postUrlUpd = $this->getUrl('sinchimport/ajax/updateStatus');
         $indexingUrl = $this->getUrl('sinchimport/ajax/indexingData');
 
@@ -91,6 +92,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
             initialize: function() {
                 this.postUrl = '" . $postUrl . "';
                 this.postStockPriceUrl = '" . $postStockPriceUrl . "';
+                this.postCustomerGroupsPriceUrl = '" . $postCustomerGroupsStockPriceUrl . "';
                 this.indexingUrl = '" . $indexingUrl . "';
                 this.postUrlUpd = '" . $postUrlUpd . "';
                 this.failureUrl = document.URL;

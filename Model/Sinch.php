@@ -651,7 +651,7 @@ class Sinch
      *
      * @param string $message The message
      */
-    private function print($message)
+    public function print($message)
     {
         $this->output->writeln($message);
         $this->_log($message);
