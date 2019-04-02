@@ -9,6 +9,7 @@ namespace SITC\Sinchimport\Model\Import;
 class CustomerGroupPrice {
 
     const CUSTOMER_GROUPS = 'group_name';
+    const PRICE_COLUMN = 'customer_group_price';
 
     /**
      * CSV parser
@@ -36,15 +37,25 @@ class CustomerGroupPrice {
      */
     private $output;
 
-    /**
-     * @var int
-     */
     private $customerGroupCount = 0;
+    private $customerGroupPriceCount = 0;
 
     /**
-     * @var int
+     * @var string Customer Group table
      */
-    private $customerGroupPriceCount = 0;
+    private $customerGroup;
+    /**
+     * @var string Customer Group Price table
+     */
+    private $customerGroupPrice;
+    /**
+     * @var string Customer Group Price temporary table
+     */
+    private $tmpTable;
+    /**
+     * @var string Catalog Product Entity table
+     */
+    private $catalogProductEntity;
 
     /**
      * CustomerGroupPrice constructor.
@@ -59,9 +70,10 @@ class CustomerGroupPrice {
     ){
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->connection = $resource->getConnection();
-        $this->customerGroup = $this->connection->getTableName('sinch_customer_group');
-        $this->customerGroupPrice = $this->connection->getTableName('sinch_customer_group_price');
-        $this->catalogProductEntity = $this->connection->getTableName('catalog_product_entity');
+        $this->customerGroup = $resource->getTableName('sinch_customer_group');
+        $this->customerGroupPrice = $resource->getTableName('sinch_customer_group_price');
+        $this->tmpTable = $resource->getTableName('sinch_customer_group_price_tmp');
+        $this->catalogProductEntity = $resource->getTableName('catalog_product_entity');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_customer_groups_price.log');
         $logger = new \Zend\Log\Logger();
@@ -87,10 +99,9 @@ class CustomerGroupPrice {
         unset($customerGroupPriceCsv[0]);
 
 
-        //Save data file customerGroups.csv
+        //Prepare customer group data for insertion
         $customerGroupData = [];
         foreach($customerGroupCsv as $groupData){
-
             $this->customerGroupCount += 1;
             $customerGroupData[] = [
                 'group_id'   => $groupData[0],
@@ -98,99 +109,83 @@ class CustomerGroupPrice {
             ];
         }
 
-        $this->saveCustomerGroupFinish($customerGroupData, $this->customerGroup);
+        //Delete existing customer groups
+        $this->connection->query("DELETE FROM {$this->customerGroup}");
+
+        if(count($customerGroupData) > 0) {
+            //Insert new customer groups
+            $this->connection->insertOnDuplicate(
+                $this->customerGroup,
+                $customerGroupData,
+                [self::CUSTOMER_GROUPS]
+            );
+        }
+
         $elapsed = $this->microtime_float() - $parseStart;
+        $this->log("Processed {$this->customerGroupCount} customer groups in {$elapsed} seconds");
 
-        $this->output->writeln("Processed {$this->customerGroupCount} customer groups in {$elapsed} seconds");
-        $this->logger->info("Processed {$this->customerGroupCount} customer groups in {$elapsed} seconds");
-
-
-        //Save data file customerGroupPrice.csv
+        //Drop (if necessary) and recreate tmp table
+        $this->connection->query("DROP TABLE IF EXISTS {$this->tmpTable}");
+        $this->connection->query(
+            "CREATE TABLE `{$this->tmpTable}` (
+                `group_id` int(10) UNSIGNED NOT NULL COMMENT 'Group Id',
+                `sinch_product_id` int(10) UNSIGNED NOT NULL COMMENT 'Sinch Product Id',
+                `price_type_id` int(10) UNSIGNED NOT NULL COMMENT 'Price Type Id',
+                `customer_group_price` decimal(12,4) NOT NULL DEFAULT '0.0000' COMMENT 'Customer Group Price',
+                UNIQUE KEY (`group_id`, `sinch_product_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Sinch Customer Group Price Temp';"
+        );
+        
+        //Process price records ready for insertion
         $customerGroupPriceData = [];
-
         foreach($customerGroupPriceCsv as $priceData){
             $this->customerGroupPriceCount += 1;
-            $this->connection->query(
-                "DROP TABLE IF EXISTS sinch_customer_group_price_tmp"
-            );
-            $this->connection->query(
-                "CREATE TABLE `sinch_customer_group_price_tmp` (
-                      `group_id` int(10) UNSIGNED NOT NULL COMMENT 'Group Id',
-                      `product_id` int(10) UNSIGNED NOT NULL COMMENT 'Product Id',
-                      `price_type_id` int(10) UNSIGNED NOT NULL COMMENT 'Price Type Id',
-                      `customer_group_price` decimal(12,4) NOT NULL DEFAULT '0.0000' COMMENT 'Customer Group Price',
-                      `sinch_product_id` int(10) UNSIGNED NOT NULL COMMENT 'Sinch Product Id'
-                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Sinch Customer Group Price';"
-            );
-
             $customerGroupPriceData[] = [
                 'group_id'             => $priceData[0],
                 'sinch_product_id'     => $priceData[1],
                 'price_type_id'        => $priceData[2],
                 'customer_group_price' => $priceData[3],
             ];
-
-            $this->connection->insertOnDuplicate(
-                'sinch_customer_group_price_tmp', $customerGroupPriceData
-            );
-
-            $this->connection->query("TRUNCATE TABLE {$this->customerGroupPrice}");
-
-            $this->connection->query(
-                "INSERT INTO {$this->customerGroupPrice} (
-                    product_id,
-                    sinch_product_id
-                )
-                    SELECT
-                    a.entity_id,
-                    b.sinch_product_id
-                    FROM {$this->catalogProductEntity} a
-                    INNER JOIN sinch_customer_group_price_tmp b
-                    ON a.sinch_product_id = b.sinch_product_id
-                    ON DUPLICATE KEY UPDATE
-                    product_id= a.entity_id,
-                    sinch_product_id=b.sinch_product_id"
-            );
-
-            $this->connection->query(
-                "UPDATE {$this->customerGroupPrice} ccpfd
-                JOIN sinch_customer_group_price_tmp p
-                    ON ccpfd.sinch_product_id = p.sinch_product_id
-                SET ccpfd.group_id = p.group_id , ccpfd.customer_group_price = p.customer_group_price
-                WHERE ccpfd.sinch_product_id = p.sinch_product_id"
-            );
         }
 
-        $this->connection->query(
-            "DROP TABLE IF EXISTS sinch_customer_group_price_tmp"
+        //Insert the price records into the temp table ready for mapping
+        $this->connection->insertOnDuplicate(
+            $this->tmpTable,
+            $customerGroupPriceData,
+            [self::PRICE_COLUMN]
         );
 
-//        $this->saveCustomerGroupPriceFinish($customerGroupPriceData, $this->customerGroupPrice);
+        //Delete existing price records from the live table
+        $this->connection->query("DELETE FROM {$this->customerGroupPrice}");
+
+        //Perform the mapping into the live table
+        $this->connection->query(
+            "INSERT INTO {$this->customerGroupPrice} (
+                group_id,
+                price_type_id,
+                sinch_product_id,
+                customer_group_price,
+                product_id
+            )
+            SELECT 
+                tmp.group_id,
+                tmp.price_type_id,
+                tmp.sinch_product_id,
+                tmp.customer_group_price,
+                cpe.entity_id
+            FROM {$this->tmpTable} tmp
+            INNER JOIN {$this->catalogProductEntity} cpe
+                ON tmp.sinch_product_id = cpe.sinch_product_id
+            ON DUPLICATE KEY UPDATE
+                price_type_id = tmp.price_type_id,
+                customer_group_price = tmp.customer_group_price"
+        );
+
+        //Drop the tmp table as its no longer needed
+        $this->connection->query("DROP TABLE {$this->tmpTable}");
+
         $elapsed = $this->microtime_float() - $parseStart;
-
-        $this->output->writeln("Processed {$this->customerGroupPriceCount} group prices in {$elapsed} seconds");
-        $this->logger->info("Processed {$this->customerGroupPriceCount} group prices in {$elapsed} seconds");
-    }
-
-    /**
-     * @param array $entityData
-     * @param $table
-     * @return $this
-     */
-    private function saveCustomerGroupFinish(array $groupData, $table)
-    {
-        if ($groupData) {
-            $tableName = $this->connection->getTableName($table);
-            $groupIn = [];
-            foreach ($groupData as $id => $groupRows) {
-                $groupIn[] = $groupRows;
-            }
-            if ($groupIn) {
-                $this->connection->query("TRUNCATE TABLE {$table}");
-                $this->connection->insertOnDuplicate($tableName, $groupIn, [self::CUSTOMER_GROUPS]);
-            }
-        }
-        return $this;
+        $this->log("Processed {$this->customerGroupPriceCount} group prices in {$elapsed} seconds");
     }
 
     /**
@@ -202,4 +197,9 @@ class CustomerGroupPrice {
         return ((float)$usec + (float)$sec);
     }
 
+    private function log($msg)
+    {
+        $this->output->writeln($msg);
+        $this->logger->info($msg);
+    }
 }
