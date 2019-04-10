@@ -141,7 +141,6 @@ class Url extends \Magento\Catalog\Model\Product\Url
             }
 
             $productUrls = $this->generateUrls($storeId);
-
             if ($productUrls) {
                 try {
                     $this->urlPersist->replace($productUrls);

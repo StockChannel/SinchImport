@@ -82,12 +82,12 @@ class InstallSchema implements InstallSchemaInterface
                 id int(11) NOT NULL auto_increment PRIMARY KEY,
                 start_import timestamp NOT NULL default '0000-00-00 00:00:00',
                 finish_import timestamp NOT NULL default '0000-00-00 00:00:00',
-                import_type ENUM('FULL', 'PRICE STOCK') default NULL,
+                import_type varchar(255) default NULL,
                 number_of_products int(11) default '0',
-                global_status_import varchar(255) default '',
-                detail_status_import varchar(255) default '',
-                import_run_type ENUM ('MANUAL', 'CRON') default NULL,
-                error_report_message  text not null default ''
+                global_status_import varchar(255) default NULL,
+                detail_status_import varchar(255) default NULL,
+                import_run_type varchar(255) default NULL,
+                error_report_message  varchar(255) default NULL,
             );
         "
         );
