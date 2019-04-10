@@ -668,7 +668,6 @@ class Sinch
 
     private function uploadFiles()
     {
-        return true;
         $this->_log("Start upload files");
 
         $username = $this->_dataConf['username'];
