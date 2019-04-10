@@ -55,7 +55,7 @@ class ImportCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->_appState->setAreaCode('adminhtml');
+        $this->_appState->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
         $importType = $input->getArgument(self::INPUT_KEY_IMPORT_TYPE);
         
         try {
@@ -65,6 +65,9 @@ class ImportCommand extends Command
                 break;
             case 'stockprice':
                 $this->sinch->runStockPriceImport();
+                break;
+            case 'customergroupsprice':
+                $this->sinch->runCustomerGroupsPriceImport();
                 break;
             default:
                 $this->sinch->runSinchImport();
