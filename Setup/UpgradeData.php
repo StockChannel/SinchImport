@@ -35,16 +35,21 @@ class UpgradeData implements UpgradeDataInterface
     {
         $installer = $setup;
         $installer->startSetup();
- 
+
+        $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
+
         if (version_compare($context->getVersion(), '2.1.1', '<' )) {
             //Make sinch_search_cache not visible on frontend
-            $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
             $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, 'sinch_search_cache', 'is_visible_on_front', 0);
         }
 
         if (version_compare($context->getVersion(), '2.1.3', '<')){
             $this->fixStockManagement();
+        }
+
+        if (version_compare($context->getVersion(), '2.1.8', '<')){
+            $this->upgrade218($eavSetup);
         }
 
         $installer->endSetup();
@@ -59,6 +64,68 @@ class UpgradeData implements UpgradeDataInterface
         $conn->query(
             "UPDATE {$catalogInvStockItem} SET website_id = :websiteId WHERE website_id != :websiteId",
             [":websiteId" => $stockItemWebsiteId]
+        );
+    }
+
+    /**
+     * Adds the UNSPSC and product restriction attributes
+     * @var \Magento\Eav\Setup\EavSetup $eavSetup
+     */
+    private function upgrade218($eavSetup)
+    {
+        //UNSPSC product attribute
+        $eavSetup->addAttribute(
+            \Magento\Catalog\Model\Product::ENTITY,
+            'unspsc',
+            [
+                'label' => 'UNSPSC',
+                'type' => 'int',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'frontend_class' => 'validate-digits-range digits-range-0-99999999',
+                'source' => '',
+                'global' => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'is_visible_in_grid' => true,
+                'is_filterable_in_grid' => true,
+                'used_for_promo_rules' => true, //Allow use for promo rules
+                'group' => 'General'
+            ]
+        );
+
+        //Restrict products attribute
+        $eavSetup->addAttribute(
+            \Magento\Catalog\Model\Product::ENTITY,
+            'sinch_restrict',
+            [
+                'label' => 'Restrict Product to',
+                'note' => 'Enter a comma separated list of Account IDs',
+                'type' => 'varchar',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
         );
     }
 
