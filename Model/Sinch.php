@@ -92,6 +92,7 @@ class Sinch
     private $customerGroupCatsImport;
     private $stockConfig;
     private $customerGroupPrice;
+    private $unspscImport;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -110,12 +111,14 @@ class Sinch
         \SITC\Sinchimport\Model\Import\Attributes $attributesImport,
         \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig,
         \SITC\Sinchimport\Model\Import\CustomerGroupCategories $customerGroupCatsImport,
-        \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupPrice
+        \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupPrice,
+        \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
         $this->stockConfig = $stockConfig;
         $this->customerGroupPrice = $customerGroupPrice;
+        $this->unspscImport = $unspscImport;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -350,6 +353,9 @@ class Sinch
                     $this->print("Parsing customer group categories");
                     $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
                 }
+
+                $this->print("Applying UNSPSC values...");
+                $this->unspscImport->apply();
 
                 $this->print("Start generating category filters...");
                 $this->addImportStatus('Generate category filters');
@@ -4598,6 +4604,7 @@ class Sinch
                              Reviews varchar(255),
                              pdf_url varchar(255),
                              product_short_description varchar(255),
+                             unspsc int(11),
                              products_date_added datetime default NULL,
                              products_last_modified datetime default NULL,
                              availability_id_in_stock int(11) default '1',
@@ -4694,6 +4701,8 @@ class Sinch
                           SET main_image_url = medium_image_url WHERE main_image_url = ''
                          "
                 );
+
+                $this->unspscImport->parse();
             }
 
             $this->print("--Parse Products 3");
