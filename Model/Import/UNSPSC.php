@@ -45,10 +45,10 @@ class UNSPSC {
     {
         $this->logger->info("--- Begin UNSPSC Mapping ---");
 
-        $unspsc_values = $this->getConnection()->query("SELECT DISTINCT unspsc FROM {$this->productTempTable} WHERE unspsc IS NOT NULL");
+        $unspsc_values = $this->getConnection()->fetchCol("SELECT DISTINCT unspsc FROM {$this->productTempTable} WHERE unspsc IS NOT NULL");
         foreach($unspsc_values as $unspsc){
             //List of Sinch products with the specified UNSPSC value
-            $sinch_ids = $this->getConnection()->query(
+            $sinch_ids = $this->getConnection()->fetchCol(
                 "SELECT store_product_id FROM {$this->productTempTable} WHERE unspsc = :unspsc",
                 [":unspsc" => $unspsc]
             );
