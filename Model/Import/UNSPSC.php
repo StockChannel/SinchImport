@@ -91,6 +91,11 @@ class UNSPSC {
                 0 //store id (dummy value as they're global attributes)
             );
         }
+
+        //Reset the mapping array to save memory
+        $this->mapping = [];
+        $this->hasParseRun = false;
+
         
         //Flush EAV cache
         $this->cacheType->cleanType('eav');
