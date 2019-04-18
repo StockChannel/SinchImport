@@ -8,6 +8,7 @@ class UNSPSC {
     const PRODUCT_PAGE_SIZE = 50;
 
     private $hasParseRun = false;
+    private $enableLogging = false;
 
     private $resourceConn;
     private $cacheType;
@@ -43,12 +44,12 @@ class UNSPSC {
 
     public function parse()
     {
-        $this->logger->info("--- Begin UNSPSC Mapping ---");
+        $this->log("--- Begin UNSPSC Mapping ---");
 
-        $unspsc_values = $this->getConnection()->query("SELECT DISTINCT unspsc FROM {$this->productTempTable} WHERE unspsc IS NOT NULL");
+        $unspsc_values = $this->getConnection()->fetchCol("SELECT DISTINCT unspsc FROM {$this->productTempTable} WHERE unspsc IS NOT NULL");
         foreach($unspsc_values as $unspsc){
             //List of Sinch products with the specified UNSPSC value
-            $sinch_ids = $this->getConnection()->query(
+            $sinch_ids = $this->getConnection()->fetchCol(
                 "SELECT store_product_id FROM {$this->productTempTable} WHERE unspsc = :unspsc",
                 [":unspsc" => $unspsc]
             );
@@ -57,17 +58,17 @@ class UNSPSC {
         }
 
         $this->hasParseRun = true;
-        $this->logger->info("--- Completed UNSPSC mapping ---");
+        $this->log("--- Completed UNSPSC mapping ---");
     }
 
     public function apply()
     {
         if(!$this->hasParseRun) {
-            $this->logger->info("Not applying UNSPSC values as parse hasn't run");
+            $this->log("Not applying UNSPSC values as parse hasn't run");
             return;
         }
         
-        $this->logger->info("--- Begin applying UNSPSC values ---");
+        $this->log("--- Begin applying UNSPSC values ---");
         $applyStart = $this->microtime_float();
 
         $valueCount = count($this->mapping);
@@ -83,7 +84,7 @@ class UNSPSC {
             }
 
             $productCount = count($entityIds);
-            $this->logger->info("({$currIter}/{$valueCount}) Setting UNSPSC to {$unspsc} for {$productCount} products");
+            $this->log("({$currIter}/{$valueCount}) Setting UNSPSC to {$unspsc} for {$productCount} products");
 
             $this->massProdValues->updateAttributes(
                 $entityIds, 
@@ -91,12 +92,17 @@ class UNSPSC {
                 0 //store id (dummy value as they're global attributes)
             );
         }
+
+        //Reset the mapping array to save memory
+        $this->mapping = [];
+        $this->hasParseRun = false;
+
         
         //Flush EAV cache
         $this->cacheType->cleanType('eav');
 
         $elapsed = $this->microtime_float() - $applyStart;
-        $this->logger->info("--- Completed applying UNSPSC values in {$elapsed} seconds");
+        $this->log("--- Completed applying UNSPSC values in {$elapsed} seconds");
     }
 
     /**
@@ -124,5 +130,12 @@ class UNSPSC {
     private function getConnection()
     {
         return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
+    }
+
+    private function log($msg)
+    {
+        if($this->enableLogging){
+            $this->logger->info($msg);
+        }
     }
 }
