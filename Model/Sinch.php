@@ -8548,7 +8548,11 @@ class Sinch
             $this->_log("Wrong file" . $parseFile);
             return;
         }
-    
+
+        $this->_doQuery(
+            "DROP TABLE IF EXISTS " . $stockPriceTemp
+        );
+
         $this->_doQuery(
             "CREATE TABLE " . $stockPriceTemp
             . " (
@@ -9382,7 +9386,7 @@ class Sinch
                                   "
             );
         } else {
-            $this->printOutputMsg("-- Ignore the meta title for product configuration.");
+            $this->print("-- Ignore the meta title for product configuration.");
             $this->_logImportInfo("-- Ignore the meta title for product configuration.");
         }
     }
