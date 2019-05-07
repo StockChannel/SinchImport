@@ -10,6 +10,8 @@ class CustomerGroupPrice {
 
     const CUSTOMER_GROUPS = 'group_name';
     const PRICE_COLUMN = 'customer_group_price';
+    const CHUNK_SIZE = 1000;
+    const LOG_PREFIX = "CustomerGroupPrice: ";
 
     /**
      * CSV parser
@@ -64,7 +66,7 @@ class CustomerGroupPrice {
      * @param \Symfony\Component\Console\Output\ConsoleOutput $output
      */
     public function __construct(
-        \Magento\Framework\File\Csv $csv,
+        \SITC\Sinchimport\Util\CsvIterator $csv,
         \Magento\Framework\App\ResourceConnection $resource,
         \Symfony\Component\Console\Output\ConsoleOutput $output
     ){
@@ -84,19 +86,19 @@ class CustomerGroupPrice {
 
 
     /**
-     * @param $customerGroup
-     * @param $customerGroupPrice
+     * @param string $customerGroupFile
+     * @param string $customerGroupPriceFile
      * @throws \Exception
      */
-    public function parse($customerGroup, $customerGroupPrice)
+    public function parse($customerGroupFile, $customerGroupPriceFile)
     {
         $parseStart = $this->microtime_float();
 
-        $customerGroupCsv = $this->csv->getData($customerGroup);
+        $customerGroupCsv = $this->csv->getData($customerGroupFile);
         unset($customerGroupCsv[0]);
 
-        $customerGroupPriceCsv = $this->csv->getData($customerGroupPrice);
-        unset($customerGroupPriceCsv[0]);
+        $this->csv->openIter($customerGroupPriceFile);
+        $this->csv->take(1); //Discard first row
 
 
         //Prepare customer group data for insertion
@@ -135,25 +137,32 @@ class CustomerGroupPrice {
                 UNIQUE KEY (`group_id`, `sinch_product_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Sinch Customer Group Price Temp';"
         );
-        
-        //Process price records ready for insertion
-        $customerGroupPriceData = [];
-        foreach($customerGroupPriceCsv as $priceData){
-            $this->customerGroupPriceCount += 1;
-            $customerGroupPriceData[] = [
-                'group_id'             => $priceData[0],
-                'sinch_product_id'     => $priceData[1],
-                'price_type_id'        => $priceData[2],
-                'customer_group_price' => $priceData[3],
-            ];
-        }
 
-        //Insert the price records into the temp table ready for mapping
-        $this->connection->insertOnDuplicate(
-            $this->tmpTable,
-            $customerGroupPriceData,
-            [self::PRICE_COLUMN]
-        );
+        $loopNum = 0;
+        while($toProcess = $this->csv->take(self::CHUNK_SIZE)) {
+            //Process price records ready for insertion
+            $customerGroupPriceData = [];
+            foreach($toProcess as $priceData){
+                $this->customerGroupPriceCount += 1;
+                $customerGroupPriceData[] = [
+                    'group_id'             => $priceData[0],
+                    'sinch_product_id'     => $priceData[1],
+                    'price_type_id'        => $priceData[2],
+                    'customer_group_price' => $priceData[3],
+                ];
+            }
+
+            //Insert the price records into the temp table ready for mapping
+            $this->connection->insertOnDuplicate(
+                $this->tmpTable,
+                $customerGroupPriceData,
+                [self::PRICE_COLUMN]
+            );
+            $loopNum += 1;
+            $numRecords = count($customerGroupPriceData);
+            $this->log("Inserted {$numRecords} records ready for processing (Iteration #{$loopNum})");
+        }
+        $this->csv->closeIter();
 
         //Delete existing price records from the live table
         $this->connection->query("DELETE FROM {$this->customerGroupPrice}");
@@ -199,7 +208,7 @@ class CustomerGroupPrice {
 
     private function log($msg)
     {
-        $this->output->writeln($msg);
-        $this->logger->info($msg);
+        $this->output->writeln(self::LOG_PREFIX . $msg);
+        $this->logger->info(self::LOG_PREFIX . $msg);
     }
 }
