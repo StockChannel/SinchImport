@@ -4741,15 +4741,26 @@ class Sinch
             }
 
             if ($replace_merge_product == "REWRITE") {
-                $this->_doQuery(
-                    "DELETE FROM " . $this->_getTableName(
-                        'catalog_product_entity'
-                    )
-                );
                 $this->_doQuery("SET FOREIGN_KEY_CHECKS=0");
                 $this->_doQuery(
-                    "TRUNCATE " . $this->_getTableName('catalog_product_entity')
+                    "DELETE FROM " . $this->_getTableName('catalog_product_entity')
                 );
+                $this->_doQuery(
+                    "ALTER TABLE " .$this->_getTableName('catalog_product_entity'). " AUTO_INCREMENT=1 "
+                );
+                $this->_doQuery("SET FOREIGN_KEY_CHECKS=1");
+            } else {
+                $this->_doQuery("SET FOREIGN_KEY_CHECKS=0");
+                $this->_doQuery("
+                        DELETE cpe FROM " . $this->_getTableName('catalog_product_entity') ." cpe
+                        WHERE cpe.store_product_id IS NOT NULL
+                            AND cpe.store_product_id <> 0
+                            AND cpe.store_product_id NOT IN
+                                (
+                                    SELECT sp.store_product_id
+                                    FROM " . $this->_getTableName('products_temp') ." sp
+                                )
+                ");
                 $this->_doQuery("SET FOREIGN_KEY_CHECKS=1");
             }
 
