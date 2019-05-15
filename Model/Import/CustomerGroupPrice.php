@@ -61,7 +61,7 @@ class CustomerGroupPrice {
 
     /**
      * CustomerGroupPrice constructor.
-     * @param \Magento\Framework\File\Csv $csv
+     * @param \SITC\Sinchimport\Util\CsvIterator $csv
      * @param \Magento\Framework\App\ResourceConnection $resource
      * @param \Symfony\Component\Console\Output\ConsoleOutput $output
      */

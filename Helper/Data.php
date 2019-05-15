@@ -38,6 +38,12 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
             $this->getStoreConfig('sinchimport/category_visibility/enable') == 1;
     }
 
+    public function isProductVisibilityEnabled()
+    {
+        return $this->isModuleEnabled("Tigren_CompanyAccount") &&
+            $this->getStoreConfig('sinchimport/product_visibility/enable') == 1;
+    }
+
     public function getCurrentAccountGroupId()
     {
         $account_group_id = false;

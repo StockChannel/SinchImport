@@ -3,4 +3,7 @@
     <event name="catalog_category_collection_load_after">
         <observer name="sitc_sinchimport_category_collection_load_after" instance="SITC\Sinchimport\Observer\CategoryCollectionLoadAfter"/>
     </event>
+    <event name="catalog_product_collection_load_after">
+        <observer name="sitc_sinchimport_product_collection_load_after" instance="SITC\Sinchimport\Observer\ProductCollectionLoadAfter"/>
+    </event>
 </config>

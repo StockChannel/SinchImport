@@ -93,6 +93,7 @@ class Sinch
     private $stockConfig;
     private $customerGroupPrice;
     private $unspscImport;
+    private $customCatalogImport;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -112,13 +113,15 @@ class Sinch
         \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig,
         \SITC\Sinchimport\Model\Import\CustomerGroupCategories $customerGroupCatsImport,
         \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupPrice,
-        \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport
+        \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport,
+        \SITC\Sinchimport\Model\Import\CustomCatalogVisibility $customCatalogImport
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
         $this->stockConfig = $stockConfig;
         $this->customerGroupPrice = $customerGroupPrice;
         $this->unspscImport = $unspscImport;
+        $this->customCatalogImport = $customCatalogImport;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -357,6 +360,14 @@ class Sinch
                 $this->print("Applying UNSPSC values...");
                 $this->unspscImport->apply();
 
+                if(file_exists($custGroupPriceFile) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)){
+                    $this->print("Processing Custom catalog restrictions...");
+                    $this->customCatalogImport->parse(
+                        $this->varDir . FILE_STOCK_AND_PRICES,
+                        $custGroupPriceFile
+                    );
+                }
+
                 $this->print("Start generating category filters...");
                 $this->addImportStatus('Generate category filters');
                 $this->print("Finish generating category filters...");
@@ -385,10 +396,6 @@ class Sinch
                 $this->addImportStatus('Finish import', 1);
                 $this->_doQuery("SELECT RELEASE_LOCK('sinchimport')");
 
-                $this->print("Start dropping feature result tables...");
-                $this->dropFeatureResultTables();
-                $this->print("Finish dropping feature result tables...");
-
                 $this->_eventManager->dispatch(
                     'sinch_import_after_finish',
                     [ 'data' => $this ]
@@ -397,6 +404,7 @@ class Sinch
                 $this->print("========>FINISH SINCH IMPORT...");
             } catch (\Exception $e) {
                 $this->_setErrorMessage($e);
+                $this->print("Error: " . $e->getMessage());
             }
         } else {
             $this->print("--------SINCHIMPORT ALREADY RUN--------");
@@ -8906,33 +8914,6 @@ class Sinch
         foreach ($this->_cacheFrontendPool as $cacheFrontend) {
             $cacheFrontend->getBackend()->clean();
             $cacheFrontend->clean();
-        }
-    }
-
-    public function dropFeatureResultTables()
-    {
-        $dbName
-            = $this->_deploymentData['db']['connection']['default']['dbname'];
-
-        $filterResultTablePrefix = $this->_getTableName('sinch_filter_result_');
-
-        if (!$this->check_table_exist($filterResultTablePrefix)) {
-            return;
-        }
-
-        $dropSqls = [
-            "SET GROUP_CONCAT_MAX_LEN = 10000",
-            "SET @tbls = (SELECT GROUP_CONCAT(TABLE_NAME)
-                FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA = '$dbName' AND TABLE_NAME LIKE '$filterResultTablePrefix%');",
-            "SET @delStmt = CONCAT('DROP TABLE ',  @tbls)",
-            "PREPARE stmt FROM @delStmt",
-            "EXECUTE stmt",
-            "DEALLOCATE PREPARE stmt",
-        ];
-
-        foreach ($dropSqls as $dropSql) {
-            $this->_doQuery($dropSql);
         }
     }
 
