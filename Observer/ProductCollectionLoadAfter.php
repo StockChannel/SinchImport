@@ -1,7 +1,7 @@
 <?php
 namespace SITC\Sinchimport\Observer;
 
-class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverInterface
+class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInterface
 {
     private $registry;
     private $helper;
@@ -29,13 +29,14 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
         }
 
         /** @var \Magento\Catalog\Model\ResourceModel\Product\Collection $filteredProductCollection */
-        $filteredProductCollection = $observer->getProductCollection();
+        $filteredProductCollection = $observer->getCollection();
         $productCollection = clone $filteredProductCollection;
         $filteredProductCollection->removeAllItems();
 
         /** @var \Magento\Catalog\Model\Product $product */
         foreach ($productCollection as $product) {
             $sinch_restrict = $product->getSinchRestrict();
+
             if(empty($sinch_restrict)){ //If sinch_restrict is empty, product is always visible
                 $filteredProductCollection->addItem($product);
                 continue;

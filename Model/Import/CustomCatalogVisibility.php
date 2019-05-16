@@ -50,6 +50,7 @@ class CustomCatalogVisibility {
                 //Check if Price and Cost columns are empty
                 if(empty($row[2]) && empty($row[3])){
                     //Store the Product ID
+                    $this->logger->info("Found restricted product: {$row[0]}");
                     $restricted[] = $row[0];
                 }
             }
@@ -64,6 +65,7 @@ class CustomCatalogVisibility {
 
     private function findAccountRestrictions($customerGroupPriceFile, $restricted)
     {
+        $this->logger->info("Finding matching account groups for " . count($restricted) . " products");
         //Holds a mapping of Sinch product ID -> [Account Group ID]
         $mapping = [];
 
