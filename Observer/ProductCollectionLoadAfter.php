@@ -43,10 +43,48 @@ class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInt
             }
 
             $product_account_groups = explode(",", $sinch_restrict);
-            //If the product account groups contains the current account group, add it back
-            if(in_array($account_group_id, $product_account_groups)){
+            
+            if($this->areRulesInverted($product_account_groups)){
+                //If not logged in or not prevented, show
+                if($account_group_id === false || !$this->shouldPrevent($account_group_id, $product_account_groups)) {
+                    $filteredProductCollection->addItem($product);
+                }
+            } else if(in_array($account_group_id, $product_account_groups)){
+                //If the product account groups contains the current account group, add it back (also conveniently ignores entries with ! in front, so still works with prevention rules)
                 $filteredProductCollection->addItem($product);
             }
         }
+    }
+
+    /**
+     * Returns true if the product should specifically NOT be shown to the given account group.
+     * @param int $account_group_id
+     * @param string[] $product_account_groups
+     * @return bool
+     */
+    private function shouldPrevent($account_group_id, $product_account_groups)
+    {
+        foreach($product_account_groups as $product_acc_grp){
+            if(substr($product_acc_grp, 0, 1) == "!"){
+                $prevent_account = substr($product_acc_grp, 1);
+                if($account_group_id == $prevent_account) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns true if ALL account groups in the set are inverted rules (i.e the product should be shown publically)
+     * @param string[] $product_account_groups
+     * @return bool
+     */
+    private function areRulesInverted($product_account_groups)
+    {
+        $all_inverted = true;
+        foreach($product_account_groups as $product_acc_grp){
+            $all_inverted &= substr($product_acc_grp, 0, 1) == "!";
+        }
+        return $all_inverted;
     }
 }

@@ -60,7 +60,24 @@ class CustomCatalogVisibility {
             }
         }
         $this->findAccountRestrictions($customerGroupPriceFile, $restricted);
-        $this->csv->closeIter();
+        $this->stockPriceCsv->closeIter();
+
+        //Find inverse rules
+        $this->groupPriceCsv->openIter($customerGroupPriceFile);
+        $this->groupPriceCsv->take(1);
+
+        $inverse = [];
+        //CustomerGroupID|ProductID|PriceTypeID|Price
+        while($toProcess = $this->groupPriceCsv->take(self::CHUNK_SIZE)) {
+            foreach($toProcess as $row){
+                if(empty(trim($row[3]))) {
+                    $inverse[$row[1]][] = "!" . $row[0];
+                }
+            }
+        }
+        $this->applyAccountRestrictions($inverse);
+
+        $this->groupPriceCsv->closeIter();
     }
 
     private function findAccountRestrictions($customerGroupPriceFile, $restricted)
@@ -77,20 +94,21 @@ class CustomCatalogVisibility {
             foreach($groupPriceChunk as $groupPrice){
                 if(in_array($groupPrice[1], $restricted)){
                     //Group price matches a restricted product
-                    $mapping[$groupPrice[0]][] = $groupPrice[1];
+                    $prefix = empty(trim($groupPrice[3])) ? "!" : "";
+                    $mapping[$groupPrice[1]][] = $prefix . $groupPrice[0];
                 }
             }
         }
+        $this->groupPriceCsv->closeIter();
         $this->applyAccountRestrictions($mapping);
     }
 
     private function applyAccountRestrictions($mapping)
     {
+        $this->logger->info("Processing restrictions for " . count($mapping) . " products");
         $sinchEntityPairs = $this->sinchToEntityIds(array_keys($mapping));
         foreach($sinchEntityPairs as $pair){
             $restrictValue = implode(",", $mapping[$pair['sinch_product_id']]);
-
-            $this->logger->info("{$pair['sinch_product_id']} => {$restrictValue}");
 
             $this->massProdValues->updateAttributes(
                 [$pair['entity_id']],
@@ -107,6 +125,7 @@ class CustomCatalogVisibility {
 
     private function sinchToEntityIds($sinch_prod_ids)
     {
+        if(empty($sinch_prod_ids)) return [];
         $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
         $entIdQuery = $this->getConnection()->prepare(
             "SELECT sinch_product_id, entity_id FROM {$this->cpeTable} WHERE sinch_product_id IN ($placeholders)"
