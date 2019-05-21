@@ -334,11 +334,12 @@ class Sinch
                 $this->addImportStatus('Parse Stock And Prices');
 
                 $this->print("Apply Customer Group Price...");
-                $custGroupFile = $this->varDir . FILE_CUSTOMER_GROUPS;
-                $custGroupPriceFile = $this->varDir . FILE_CUSTOMER_GROUP_PRICE;
-
-                if (file_exists($custGroupFile) && file_exists($custGroupPriceFile)) {
-                    $this->customerGroupPrice->parse($custGroupFile, $custGroupPriceFile);
+                if (file_exists($this->varDir . FILE_CUSTOMER_GROUPS) &&
+                    file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE)) {
+                    $this->customerGroupPrice->parse(
+                        $this->varDir . FILE_CUSTOMER_GROUPS,
+                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                    );
                 }
 
                 if (file_exists($this->varDir . FILE_PRICE_RULES)) {
@@ -353,7 +354,7 @@ class Sinch
                 }
 
                 if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
-                    $this->print("Parsing customer group categories");
+                    $this->print("Parsing customer group categories...");
                     $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
                 }
 
@@ -8966,7 +8967,9 @@ class Sinch
                 $this->files = [
                     FILE_STOCK_AND_PRICES,
                     FILE_PRICE_RULES,
-                    FILE_CUSTOMER_GROUP_CATEGORIES
+                    FILE_CUSTOMER_GROUPS,
+                    FILE_CUSTOMER_GROUP_CATEGORIES,
+                    FILE_CUSTOMER_GROUP_PRICE
                 ];
 
                 $this->uploadFiles();
@@ -8978,6 +8981,14 @@ class Sinch
                 $this->addImportStatus('Stock Price Parse Products');
 
                 $this->print("Apply Customer Group Price...");
+                if (file_exists($this->varDir . FILE_CUSTOMER_GROUPS) &&
+                    file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE)) {
+                    $this->customerGroupPrice->parse(
+                        $this->varDir . FILE_CUSTOMER_GROUPS,
+                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                    );
+                }
+
                 $this->_eventManager->dispatch(
                     'sinch_pricerules_import_ftp',
                     [
@@ -8988,8 +8999,17 @@ class Sinch
                 );
 
                 if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
-                    $this->print("Parsing customer group categories");
+                    $this->print("Parsing customer group categories...");
                     $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                }
+
+                if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) &&
+                    file_exists($this->varDir . FILE_STOCK_AND_PRICES)) {
+                    $this->print("Processing Custom catalog restrictions...");
+                    $this->customCatalogImport->parse(
+                        $this->varDir . FILE_STOCK_AND_PRICES,
+                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                    );
                 }
 
                 $this->print("Start indexing  Stock & Price...");

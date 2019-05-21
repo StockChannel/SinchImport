@@ -2,7 +2,7 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
-class Attributes {
+class Attributes extends AbstractImportSection {
 
     const ATTRIBUTE_GROUP_NAME = "Sinch features";
     const ATTRIBUTE_GROUP_SORT = 50;
@@ -39,7 +39,6 @@ class Attributes {
     private $attributeSetRepository;
     private $attributeManagement;
 
-    private $resourceConn;
     private $cacheType;
     private $massProdValues;
     private $scopeConfig;
@@ -58,6 +57,7 @@ class Attributes {
     private $filterMappingInsert = null;
 
     public function __construct(
+        \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Framework\File\Csv $csv,
         \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository,
         \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
@@ -68,12 +68,12 @@ class Attributes {
         \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory,
         \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository,
         \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
-        \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
         \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     )
     {
+        parent::__construct($resourceConn);
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->attributeRepository = $attributeRepository;
         $this->attributeGroupRepository = $attributeGroupRepository;
@@ -84,14 +84,13 @@ class Attributes {
         $this->optionFactory = $optionFactory;
         $this->attributeSetRepository = $attributeSetRepository;
         $this->attributeManagement = $attributeManagement;
-        $this->resourceConn = $resourceConn;
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
         $this->scopeConfig = $scopeConfig;
 
-        $this->mappingTable = $this->resourceConn->getTableName('sinch_restrictedvalue_mapping');
-        $this->cpeTable = $this->resourceConn->getTableName('catalog_product_entity');
-        $this->filterCategoriesTable = $this->resourceConn->getTableName('sinch_filter_categories');
+        $this->mappingTable = $this->getTableName('sinch_restrictedvalue_mapping');
+        $this->cpeTable = $this->getTableName('catalog_product_entity');
+        $this->filterCategoriesTable = $this->getTableName('sinch_filter_categories');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_attributes.log');
         $logger = new \Zend\Log\Logger();
@@ -170,9 +169,9 @@ class Attributes {
         //Flush EAV cache
         $this->cacheType->cleanType('eav');
 
-        $elapsed = $this->microtime_float() - $parseStart;
+        $elapsed = number_format($this->microtime_float() - $parseStart, 2);
         $this->logger->info("--- Completed Attribute parse ---");
-        $this->logger->info("Processed a total of " . $this->attributeCount . " attributes and " . $this->optionCount . " options in " . $elapsed . " seconds");
+        $this->logger->info("Processed a total of {$this->attributeCount} attributes and {$this->optionCount} options in {$elapsed} seconds");
     }
 
     private function createAttribute($sinch_id, $data)
@@ -410,21 +409,10 @@ class Attributes {
             );
         }
 
-        $elapsed = $this->microtime_float() - $applyStart;
+        $elapsed = number_format($this->microtime_float() - $applyStart, 2);
         $this->logger->info(
             "--- Completed applying attribute values. Took {$elapsed} seconds ---"
         );
-    }
-
-    private function microtime_float()
-    {
-        list($usec, $sec) = explode(" ", microtime());
-        return ((float)$usec + (float)$sec);
-    }
-
-    private function getConnection()
-    {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
     }
 
     private function updateFilterCategoryMapping($sinch_feature_id, $sinch_category_id)

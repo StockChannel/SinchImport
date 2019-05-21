@@ -2,7 +2,7 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
-class UNSPSC {
+class UNSPSC extends AbstractImportSection {
 
     const ATTRIBUTE_NAME = "unspsc";
     const PRODUCT_PAGE_SIZE = 50;
@@ -10,7 +10,6 @@ class UNSPSC {
     private $hasParseRun = false;
     private $enableLogging = false;
 
-    private $resourceConn;
     private $cacheType;
     private $massProdValues;
 
@@ -29,12 +28,12 @@ class UNSPSC {
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
         \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
     ){
-        $this->resourceConn = $resourceConn;
+        parent::__construct($resourceConn);
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
 
-        $this->productTempTable = $this->resourceConn->getTableName('products_temp');
-        $this->cpeTable = $this->resourceConn->getTableName('catalog_product_entity');
+        $this->productTempTable = $this->getTableName('products_temp');
+        $this->cpeTable = $this->getTableName('catalog_product_entity');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_unspsc.log');
         $logger = new \Zend\Log\Logger();
@@ -101,7 +100,7 @@ class UNSPSC {
         //Flush EAV cache
         $this->cacheType->cleanType('eav');
 
-        $elapsed = $this->microtime_float() - $applyStart;
+        $elapsed = number_format($this->microtime_float() - $applyStart, 2);
         $this->log("--- Completed applying UNSPSC values in {$elapsed} seconds");
     }
 
@@ -119,17 +118,6 @@ class UNSPSC {
         );
         $entIdQuery->execute($sinch_prod_ids);
         return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
-    }
-
-    private function microtime_float()
-    {
-        list($usec, $sec) = explode(" ", microtime());
-        return ((float)$usec + (float)$sec);
-    }
-
-    private function getConnection()
-    {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
     }
 
     private function log($msg)

@@ -1,7 +1,7 @@
 <?php
 namespace SITC\Sinchimport\Model\Import;
 
-class CustomerGroupCategories {
+class CustomerGroupCategories extends AbstractImportSection {
 
     const MAPPING_TABLE = "sinch_cat_visibility";
 
@@ -9,11 +9,6 @@ class CustomerGroupCategories {
      * @var \Magento\Framework\File\Csv
      */
     private $csv;
-
-    /**
-     * @var \Magento\Framework\App\ResourceConnection
-     */
-    private $resourceConn;
 
     /**
      * @var \SITC\Sinchimport\Logger\Logger
@@ -26,15 +21,14 @@ class CustomerGroupCategories {
     private $insertMapping = null;
 
     public function __construct(
-        \Magento\Framework\File\Csv $csv,
         \Magento\Framework\App\ResourceConnection $resourceConn,
+        \Magento\Framework\File\Csv $csv,
         \SITC\Sinchimport\Logger\Logger $logger
-    )
-    {
+    ){
+        parent::__construct($resourceConn);
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
-        $this->resourceConn = $resourceConn;
         $this->logger = $logger;
-        $this->mappingTablenameFinal = $this->resourceConn->getTableName(self::MAPPING_TABLE);
+        $this->mappingTablenameFinal = $this->getTableName(self::MAPPING_TABLE);
     }
 
     /**
@@ -78,11 +72,5 @@ class CustomerGroupCategories {
         $this->insertMapping->bindValue(":account_group_id", $account_group_id, \PDO::PARAM_INT);
         $this->insertMapping->execute();
         $this->insertMapping->closeCursor();
-    }
-
-
-    private function getConnection()
-    {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
     }
 }

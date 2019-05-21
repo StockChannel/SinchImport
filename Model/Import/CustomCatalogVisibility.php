@@ -2,43 +2,81 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
-class CustomCatalogVisibility {
+class CustomCatalogVisibility extends AbstractImportSection {
     const CHUNK_SIZE = 500;
-    const RESTRICTED_THRESHOLD = 100;
+    const RESTRICTED_THRESHOLD = 1000;
     const ATTRIBUTE_NAME = "sinch_restrict";
+    const LOG_PREFIX = "CustomCatalog: ";
 
+    /**
+     * @var \SITC\Sinchimport\Util\CsvIterator $stockPriceCsv
+     */
     private $stockPriceCsv;
+    /**
+     * @var \SITC\Sinchimport\Util\CsvIterator $groupPriceCsv
+     */
     private $groupPriceCsv;
 
-    private $attributeManagement;
+    /**
+     * @var \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
+     */
     private $massProdValues;
 
+    /**
+     * @var string
+     */
     private $cpeTable;
 
+    /**
+     * @var \Zend\Log\Logger $logger
+     */
     private $logger;
+    /**
+     * @var \Symfony\Component\Console\Output\ConsoleOutput $output
+     */
+    private $output;
+
+    /**
+     * @var int
+     */
+    private $restrictCount = 0;
 
     public function __construct(
-        \SITC\Sinchimport\Util\CsvIterator $csv,
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
-        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
+        \SITC\Sinchimport\Util\CsvIterator $csv,
+        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
+        \Symfony\Component\Console\Output\ConsoleOutput $output
     ){
+        parent::__construct($resourceConn);
         $this->stockPriceCsv = $csv->setLineLength(256)->setDelimiter("|");
         $this->groupPriceCsv = clone $this->stockPriceCsv;
-        $this->resourceConn = $resourceConn;
-        $this->attributeManagement = $attributeManagement;
         $this->massProdValues = $massProdValues;
 
-        $this->cpeTable = $this->resourceConn->getTableName('catalog_product_entity');
+        $this->cpeTable = $this->getTableName('catalog_product_entity');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_custom_catalog.log');
         $logger = new \Zend\Log\Logger();
         $logger->addWriter($writer);
         $this->logger = $logger;
+        $this->output = $output;
     }
 
     
     public function parse($stockPriceFile, $customerGroupPriceFile)
+    {
+        $parseStart = $this->microtime_float();
+
+        $this->log("Processing inverse rules");
+        //Build inverse rules first as forward rules are more restrictive (and can safely replace inverse rules if applicable)
+        $this->buildInverseRules($customerGroupPriceFile); 
+        $this->log("Processing forward rules");
+        $this->buildForwardRules($stockPriceFile, $customerGroupPriceFile);
+
+        $elapsed = number_format($this->microtime_float() - $parseStart, 2);
+        $this->log("Imported {$this->restrictCount} restrictions in {$elapsed} seconds");
+    }
+
+    private function buildForwardRules($stockPriceFile, $customerGroupPriceFile)
     {
         $this->stockPriceCsv->openIter($stockPriceFile);
         $this->stockPriceCsv->take(1); //Discard first row
@@ -54,15 +92,17 @@ class CustomCatalogVisibility {
                     $restricted[] = $row[0];
                 }
             }
-            if(count($restricted) > self::RESTRICTED_THRESHOLD){
+            if(count($restricted) >= self::RESTRICTED_THRESHOLD){
                 $this->findAccountRestrictions($customerGroupPriceFile, $restricted);
                 $restricted = [];
             }
         }
         $this->findAccountRestrictions($customerGroupPriceFile, $restricted);
         $this->stockPriceCsv->closeIter();
+    }
 
-        //Find inverse rules
+    private function buildInverseRules($customerGroupPriceFile)
+    {
         $this->groupPriceCsv->openIter($customerGroupPriceFile);
         $this->groupPriceCsv->take(1);
 
@@ -74,6 +114,10 @@ class CustomCatalogVisibility {
                     $inverse[$row[1]][] = "!" . $row[0];
                 }
             }
+            if(count($inverse) >= self::RESTRICTED_THRESHOLD){
+                $this->applyAccountRestrictions($inverse);
+                $inverse = [];
+            }
         }
         $this->applyAccountRestrictions($inverse);
 
@@ -82,7 +126,7 @@ class CustomCatalogVisibility {
 
     private function findAccountRestrictions($customerGroupPriceFile, $restricted)
     {
-        $this->logger->info("Finding matching account groups for " . count($restricted) . " products");
+        $this->log("Finding matching account groups for " . count($restricted) . " products");
         //Holds a mapping of Sinch product ID -> [Account Group ID]
         $mapping = [];
 
@@ -115,12 +159,8 @@ class CustomCatalogVisibility {
                 [self::ATTRIBUTE_NAME => $restrictValue],
                 0 //store id (dummy value as they're global attributes)
             );
+            $this->restrictCount += 1;
         }
-    }
-
-    private function getConnection()
-    {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
     }
 
     private function sinchToEntityIds($sinch_prod_ids)
@@ -132,5 +172,11 @@ class CustomCatalogVisibility {
         );
         $entIdQuery->execute($sinch_prod_ids);
         return $entIdQuery->fetchAll(\PDO::FETCH_ASSOC, 0);
+    }
+
+    private function log($message)
+    {
+        $this->logger->info(self::LOG_PREFIX . $message);
+        $this->output->writeln(self::LOG_PREFIX . $message);
     }
 }
