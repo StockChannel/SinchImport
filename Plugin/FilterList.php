@@ -6,26 +6,30 @@ class FilterList
     private $moduleManager;
     private $layerResolver;
     private $resourceConn;
+    private $helper;
 
     private $filterCategoryTable;
 
     public function __construct(
         \Magento\Framework\Module\Manager $moduleManager,
         \Magento\Catalog\Model\Layer\Resolver $layerResolver,
-        \Magento\Framework\App\ResourceConnection $resourceConn
+        \Magento\Framework\App\ResourceConnection $resourceConn,
+        \SITC\Sinchimport\Helper\Data $helper
     )
     {
         $this->moduleManager = $moduleManager;
         $this->layerResolver = $layerResolver;
         $this->resourceConn = $resourceConn;
+        $this->helper = $helper;
 
         $this->filterCategoryTable = $resourceConn->getTableName('sinch_filter_categories');
     }
 
     public function afterGetFilters(\Magento\Catalog\Model\Layer\FilterList $subject, $result)
     {
-        //If smile/elasticsuite is installed and enabled, don't touch the list of filters (as it already does similar)
-        if ($this->moduleManager->isEnabled('Smile_ElasticsuiteCatalog')) {
+        //If smile/elasticsuite is installed and enabled, only touch the filters if "Override ElasticSuite" is on
+        if ($this->moduleManager->isEnabled('Smile_ElasticsuiteCatalog') &&
+            $this->helper->getStoreConfig('sinchimport/attributes/override_elasticsuite') != 1){
             return $result;
         }
 

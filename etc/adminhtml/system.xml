@@ -115,6 +115,11 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Enable this if you want to check/edit attribute values within the Admin panel. It is applied on import</comment>
                 </field>
+                <field id="override_elasticsuite" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Override Elasticsuite</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When enabled, overrides Elasticsuite's "Facet Min Coverage" functionality for Stockinthechannel Filterable Attributes, reverting them to default behaviour</comment>
+                </field>
             </group>
             <group id="category_visibility" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Category Visibility Functionality</label>
@@ -127,7 +132,7 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
             </group>
-            <group id="product_visibility" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
+            <group id="product_visibility" translate="label" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Product Visibility Functionality</label>
                 <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable</label>
