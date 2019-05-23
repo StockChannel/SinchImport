@@ -361,11 +361,11 @@ class Sinch
                 $this->print("Applying UNSPSC values...");
                 $this->unspscImport->apply();
 
-                if(file_exists($custGroupPriceFile) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)){
+                if(file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)){
                     $this->print("Processing Custom catalog restrictions...");
                     $this->customCatalogImport->parse(
                         $this->varDir . FILE_STOCK_AND_PRICES,
-                        $custGroupPriceFile
+                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
                     );
                 }
 

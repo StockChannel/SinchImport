@@ -10,12 +10,12 @@ class CustomerGroupPrice extends AbstractImportSection {
 
     const CUSTOMER_GROUPS = 'group_name';
     const PRICE_COLUMN = 'customer_group_price';
-    const CHUNK_SIZE = 1000;
+    const CHUNK_SIZE = 10000;
     const LOG_PREFIX = "CustomerGroupPrice: ";
 
     /**
      * CSV parser
-     * @var \Magento\Framework\File\Csv
+     * @var \SITC\Sinchimport\Util\CsvIterator
      */
     private $csv;
 
@@ -45,9 +45,9 @@ class CustomerGroupPrice extends AbstractImportSection {
      */
     private $tmpTable;
     /**
-     * @var string Catalog Product Entity table
+     * @var string Sinch_products_mapping table
      */
-    private $catalogProductEntity;
+    private $sinchProductsMapping;
 
     /**
      * CustomerGroupPrice constructor.
@@ -66,7 +66,7 @@ class CustomerGroupPrice extends AbstractImportSection {
         $this->customerGroup = $this->getTableName('sinch_customer_group');
         $this->customerGroupPrice = $this->getTableName('sinch_customer_group_price');
         $this->tmpTable = $this->getTableName('sinch_customer_group_price_tmp');
-        $this->catalogProductEntity = $this->getTableName('catalog_product_entity');
+        $this->sinchProductsMapping = $this->getTableName('sinch_products_mapping');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_customer_groups_price.log');
         $logger = new \Zend\Log\Logger();
@@ -130,9 +130,6 @@ class CustomerGroupPrice extends AbstractImportSection {
                 UNIQUE KEY (`group_id`, `sinch_product_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Sinch Customer Group Price Temp';"
         );
-        
-        //Delete existing price records from the live table
-        $this->getConnection()->query("DELETE FROM {$this->customerGroupPrice}");
 
         while($toProcess = $this->csv->take(self::CHUNK_SIZE)) {
             //Process price records ready for insertion
@@ -153,33 +150,34 @@ class CustomerGroupPrice extends AbstractImportSection {
                 $customerGroupPriceData,
                 [self::PRICE_COLUMN]
             );
-
-            //Perform the mapping into the live table (we do this in the loop to reduce the requirements on the SQL server with lots of group prices)
-            $this->getConnection()->query(
-                "INSERT INTO {$this->customerGroupPrice} (
-                    group_id,
-                    price_type_id,
-                    sinch_product_id,
-                    customer_group_price,
-                    product_id
-                )
-                SELECT 
-                    tmp.group_id,
-                    tmp.price_type_id,
-                    tmp.sinch_product_id,
-                    tmp.customer_group_price,
-                    cpe.entity_id
-                FROM {$this->tmpTable} tmp
-                INNER JOIN {$this->catalogProductEntity} cpe
-                    ON tmp.sinch_product_id = cpe.sinch_product_id
-                ON DUPLICATE KEY UPDATE
-                    price_type_id = tmp.price_type_id,
-                    customer_group_price = tmp.customer_group_price"
-            );
-
-            $this->getConnection()->query("DELETE FROM {$this->tmpTable}");
         }
         $this->csv->closeIter();
+
+        //Delete existing price records from the live table
+        $this->getConnection()->query("DELETE FROM {$this->customerGroupPrice}");
+
+        //Perform the mapping into the live table
+        $this->getConnection()->query(
+            "INSERT INTO {$this->customerGroupPrice} (
+                group_id,
+                price_type_id,
+                sinch_product_id,
+                customer_group_price,
+                product_id
+            )
+            SELECT 
+                tmp.group_id,
+                tmp.price_type_id,
+                tmp.sinch_product_id,
+                tmp.customer_group_price,
+                spm.entity_id
+            FROM {$this->tmpTable} tmp
+            INNER JOIN {$this->sinchProductsMapping} spm
+                ON tmp.sinch_product_id = spm.sinch_product_id
+            ON DUPLICATE KEY UPDATE
+                price_type_id = tmp.price_type_id,
+                customer_group_price = tmp.customer_group_price"
+        );
 
         //Drop the tmp table as its no longer needed
         $this->getConnection()->query("DROP TABLE {$this->tmpTable}");
