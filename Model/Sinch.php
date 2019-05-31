@@ -93,6 +93,7 @@ class Sinch
     private $stockConfig;
     private $customerGroupPrice;
     private $unspscImport;
+    private $customCatalogImport;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -112,13 +113,15 @@ class Sinch
         \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig,
         \SITC\Sinchimport\Model\Import\CustomerGroupCategories $customerGroupCatsImport,
         \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupPrice,
-        \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport
+        \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport,
+        \SITC\Sinchimport\Model\Import\CustomCatalogVisibility $customCatalogImport
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
         $this->stockConfig = $stockConfig;
         $this->customerGroupPrice = $customerGroupPrice;
         $this->unspscImport = $unspscImport;
+        $this->customCatalogImport = $customCatalogImport;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -331,12 +334,12 @@ class Sinch
                 $this->addImportStatus('Parse Stock And Prices');
 
                 $this->print("Apply Customer Group Price...");
-                $custGroupFile = $this->varDir . FILE_CUSTOMER_GROUPS;
-                $custGroupPriceFile = $this->varDir . FILE_CUSTOMER_GROUP_PRICE;
-
-                if (file_exists($custGroupFile) && file_exists($custGroupPriceFile)) {
-                    $this->print("Parsing Customer Group Price...");
-                    $this->customerGroupPrice->parse($custGroupFile, $custGroupPriceFile);
+                if (file_exists($this->varDir . FILE_CUSTOMER_GROUPS) &&
+                    file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE)) {
+                    $this->customerGroupPrice->parse(
+                        $this->varDir . FILE_CUSTOMER_GROUPS,
+                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                    );
                 }
 
                 if (file_exists($this->varDir . FILE_PRICE_RULES)) {
@@ -351,12 +354,20 @@ class Sinch
                 }
 
                 if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
-                    $this->print("Parsing customer group categories");
+                    $this->print("Parsing customer group categories...");
                     $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
                 }
 
                 $this->print("Applying UNSPSC values...");
                 $this->unspscImport->apply();
+
+                if(file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)){
+                    $this->print("Processing Custom catalog restrictions...");
+                    $this->customCatalogImport->parse(
+                        $this->varDir . FILE_STOCK_AND_PRICES,
+                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                    );
+                }
 
                 $this->print("Start generating category filters...");
                 $this->addImportStatus('Generate category filters');
@@ -369,7 +380,6 @@ class Sinch
 
                     $this->print("Start indexing catalog url rewrites...");
                     $this->_reindexProductUrlKey();
-                    $this->print("");
                     $this->print("Finish indexing catalog url rewrites...");
 
                     $this->addImportStatus('Indexing data');
@@ -387,10 +397,6 @@ class Sinch
                 $this->addImportStatus('Finish import', 1);
                 $this->_doQuery("SELECT RELEASE_LOCK('sinchimport')");
 
-                $this->print("Start dropping feature result tables...");
-                $this->dropFeatureResultTables();
-                $this->print("Finish dropping feature result tables...");
-
                 $this->_eventManager->dispatch(
                     'sinch_import_after_finish',
                     [ 'data' => $this ]
@@ -399,6 +405,7 @@ class Sinch
                 $this->print("========>FINISH SINCH IMPORT...");
             } catch (\Exception $e) {
                 $this->_setErrorMessage($e);
+                $this->print("Error: " . $e->getMessage());
             }
         } else {
             $this->print("--------SINCHIMPORT ALREADY RUN--------");
@@ -831,7 +838,7 @@ class Sinch
 
     private function wget(string $url, string $file)
     {
-        exec("wget --no-passive -O$file $url");
+        exec("wget -O$file $url");
         return true;
     }
 
@@ -4741,26 +4748,15 @@ class Sinch
             }
 
             if ($replace_merge_product == "REWRITE") {
+                $this->_doQuery(
+                    "DELETE FROM " . $this->_getTableName(
+                        'catalog_product_entity'
+                    )
+                );
                 $this->_doQuery("SET FOREIGN_KEY_CHECKS=0");
                 $this->_doQuery(
-                    "DELETE FROM " . $this->_getTableName('catalog_product_entity')
+                    "TRUNCATE " . $this->_getTableName('catalog_product_entity')
                 );
-                $this->_doQuery(
-                    "ALTER TABLE " .$this->_getTableName('catalog_product_entity'). " AUTO_INCREMENT=1 "
-                );
-                $this->_doQuery("SET FOREIGN_KEY_CHECKS=1");
-            } else {
-                $this->_doQuery("SET FOREIGN_KEY_CHECKS=0");
-                $this->_doQuery("
-                        DELETE cpe FROM " . $this->_getTableName('catalog_product_entity') ." cpe
-                        WHERE cpe.store_product_id IS NOT NULL
-                            AND cpe.store_product_id <> 0
-                            AND cpe.store_product_id NOT IN
-                                (
-                                    SELECT sp.store_product_id
-                                    FROM " . $this->_getTableName('products_temp') ." sp
-                                )
-                ");
                 $this->_doQuery("SET FOREIGN_KEY_CHECKS=1");
             }
 
@@ -8561,56 +8557,45 @@ class Sinch
             $this->_log("Wrong file" . $parseFile);
             return;
         }
+    
         $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $stockPriceTemp
-        );
-        $this->_doQuery(
-            "CREATE TABLE " . $stockPriceTemp
-            . " (
-                                store_product_id int(11),
-                                stock int(11),
-                                price decimal(15,4),
-                                cost decimal(15,4),
-                                distributor_id int(11),
-                                KEY(store_product_id),
-                                KEY(distributor_id)
-                        )"
+            "CREATE TABLE IF NOT EXISTS {$stockPriceTemp} (
+                store_product_id int(11),
+                stock int(11),
+                price decimal(15,4),
+                cost decimal(15,4),
+                distributor_id int(11),
+                KEY(store_product_id),
+                KEY(distributor_id)
+            )"
         );
 
         $this->_doQuery(
-            "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                        INTO TABLE " . $stockPriceTemp . "
-                        FIELDS TERMINATED BY '" . $this->field_terminated_char. "'
-                        OPTIONALLY ENCLOSED BY '\"'
-                        LINES TERMINATED BY \"\r\n\"
-                        IGNORE 1 LINES
-                        (store_product_id, stock, @price, @cost, distributor_id)
-                        SET price = REPLACE(@price, ',', '.'),
-                            cost = REPLACE(@cost, ',', '.')"
+            "LOAD DATA LOCAL INFILE '{$parseFile}'
+                INTO TABLE {$stockPriceTemp}
+                FIELDS TERMINATED BY '{$this->field_terminated_char}'
+                OPTIONALLY ENCLOSED BY '\"'
+                LINES TERMINATED BY \"\r\n\"
+                IGNORE 1 LINES
+                (store_product_id, stock, @price, @cost, distributor_id)
+                SET price = REPLACE(@price, ',', '.'),
+                    cost = REPLACE(@cost, ',', '.')"
         );
 
         $this->replaceMagentoProductsStockPrice();
 
-        $res = $this->_doQuery(
-            "SELECT count(*) as cnt
-                FROM " . $catalogProductEntity . " a
-                INNER JOIN " . $stockPriceTemp . " b
-                ON a.store_product_id=b.store_product_id"
-        )->fetch();
-
         $this->_doQuery(
-            "UPDATE " . $this->import_status_statistic_table . "
-                SET number_of_products=" . $res['cnt'] . "
-                WHERE id = " . $this->current_import_status_statistic_id
+            "UPDATE {$this->import_status_statistic_table}
+                SET number_of_products = (
+                    SELECT count(*) FROM {$catalogProductEntity} cpe
+                        INNER JOIN {$stockPriceTemp} spt
+                        ON cpe.store_product_id = spt.store_product_id
+                )
+                WHERE id = {$this->current_import_status_statistic_id}"
         );
 
-        $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $stockPriceFinal
-        );
-        $this->_doQuery(
-            "RENAME TABLE " . $stockPriceTemp . "
-                TO " . $stockPriceFinal
-        );
+        $this->_doQuery("DROP TABLE IF EXISTS {$stockPriceFinal}");
+        $this->_doQuery("RENAME TABLE {$stockPriceTemp} TO {$stockPriceFinal}");
 
         $this->_log("Finish parse " . FILE_RELATED_PRODUCTS);
     }
@@ -8623,22 +8608,22 @@ class Sinch
         $catalogProductEntityDecimal = $this->_getTableName('catalog_product_entity_decimal');
         $stockPriceTemp = $this->_getTableName('stock_and_prices_temp');
         $prodWebTemp = $this->_getTableName('products_website_temp');
+        $catalogProductIndexPrice = $this->_getTableName('catalog_product_index_price');
 
-        //Add stock
+        //Delete stock entries for non-existent products
         $this->_doQuery(
-            "DELETE csi
-                FROM " . $catalogInvStockItem . " csi
-                LEFT JOIN " . $catalogProductEntity . " cpe
+            "DELETE csi FROM {$catalogInvStockItem} csi
+                LEFT JOIN {$catalogProductEntity} cpe
                 ON csi.product_id = cpe.entity_id
-                WHERE cpe.entity_id IS NULL OR csi.website_id = 0"
+                WHERE cpe.entity_id IS NULL"
         );
 
         //Set stock to 0 for sinch products not present in the new data
         $this->_doQuery(
-            "UPDATE " . $catalogInvStockItem . " csi
-                JOIN " . $catalogProductEntity . " cpe
+            "UPDATE {$catalogInvStockItem} csi
+                JOIN {$catalogProductEntity} cpe
                     ON cpe.entity_id = csi.product_id
-                LEFT JOIN " . $stockPriceTemp . " spt
+                LEFT JOIN {$stockPriceTemp} spt
                     ON spt.store_product_id = cpe.store_product_id
                 SET csi.qty = 0,
                     csi.is_in_stock = 0
@@ -8650,6 +8635,7 @@ class Sinch
             the value of \Magento\CatalogInventory\Api\StockConfigurationInterface->getDefaultScopeId() only serves to break the checkout process */
         $stockItemScope = $this->stockConfig->getDefaultScopeId();
 
+        //Insert new sinch stock levels
         $this->_doQuery(
             "INSERT INTO {$catalogInvStockItem}
             (
@@ -8678,12 +8664,17 @@ class Sinch
                     manage_stock = 1"
         );
 
+        //Delete records for sinch products (and non-existent) from cataloginventory_stock_status
         $this->_doQuery(
-            "DELETE FROM " . $catalogInvStockStatus
+            "DELETE css FROM {$catalogInvStockStatus} css
+                LEFT JOIN {$catalogProductEntity} cpe
+                    ON cpe.entity_id = css.product_id
+                WHERE cpe.store_product_id IS NOT NULL
+                    OR cpe.entity_id IS NULL"
         );
 
         $this->_doQuery(
-            "INSERT INTO " . $catalogInvStockStatus . "
+            "INSERT INTO {$catalogInvStockStatus}
             (
                 product_id,
                 website_id,
@@ -8698,10 +8689,10 @@ class Sinch
                 1,
                 a.qty,
                 IF(qty > 0, 1, 0)
-                FROM " . $catalogInvStockItem . " a
-                INNER JOIN " . $catalogProductEntity . " b
+                FROM {$catalogInvStockItem} a
+                INNER JOIN {$catalogProductEntity} b
                     ON a.product_id = b.entity_id
-                INNER JOIN " . $prodWebTemp . " w
+                INNER JOIN {$prodWebTemp} w
                     ON b.store_product_id = w.store_product_id
             )
                 ON DUPLICATE KEY UPDATE
@@ -8709,17 +8700,18 @@ class Sinch
                     stock_status = IF(a.qty > 0, 1, 0)"
         );
 
-        //Add prices
+        //Delete prices for non-existent products
         $this->_doQuery(
-            "DELETE cped
-                FROM " . $catalogProductEntityDecimal . " cped
-                LEFT JOIN " . $catalogProductEntity . " cpe
+            "DELETE cped FROM {$catalogProductEntityDecimal} cped
+                LEFT JOIN {$catalogProductEntity} cpe
                     ON cped.entity_id = cpe.entity_id
                 WHERE cpe.entity_id IS NULL"
         );
 
+        $priceAttrId = $this->_getProductAttributeId('price');
+
         $this->_doQuery(
-            "INSERT INTO " . $catalogProductEntityDecimal . "
+            "INSERT INTO {$catalogProductEntityDecimal}
             (
                 attribute_id,
                 store_id,
@@ -8728,14 +8720,14 @@ class Sinch
             )
             (
                 SELECT
-                " . $this->_getProductAttributeId('price') . ",
+                {$priceAttrId},
                 w.website,
                 a.entity_id,
                 b.price
-                FROM " . $catalogProductEntity . "   a
-                INNER JOIN " . $stockPriceTemp . " b
+                FROM {$catalogProductEntity} a
+                INNER JOIN {$stockPriceTemp} b
                     ON a.store_product_id = b.store_product_id
-                INNER JOIN " . $prodWebTemp . " w
+                INNER JOIN {$prodWebTemp} w
                     ON a.store_product_id = w.store_product_id
             )
             ON DUPLICATE KEY UPDATE
@@ -8743,7 +8735,7 @@ class Sinch
         );
 
         $this->_doQuery(
-            "INSERT INTO " . $this->_getTableName('catalog_product_entity_decimal') . "
+            "INSERT INTO {$catalogProductEntityDecimal}
             (
                 attribute_id,
                 store_id,
@@ -8752,21 +8744,23 @@ class Sinch
             )
             (
                 SELECT
-                " . $this->_getProductAttributeId('price') . ",
+                {$priceAttrId},
                 0,
                 a.entity_id,
                 b.price
-                FROM " . $catalogProductEntity . "  a
-                INNER JOIN " . $stockPriceTemp . " b
+                FROM {$catalogProductEntity}  a
+                INNER JOIN {$stockPriceTemp} b
                     ON a.store_product_id = b.store_product_id
             )
             ON DUPLICATE KEY UPDATE
                 value = b.price"
         );
 
+        $costAttrId = $this->_getProductAttributeId('cost');
+
         //Add cost
         $this->_doQuery(
-            "INSERT INTO " . $catalogProductEntityDecimal . "
+            "INSERT INTO {$catalogProductEntityDecimal}
             (
                 attribute_id,
                 store_id,
@@ -8775,14 +8769,14 @@ class Sinch
             )
             (
                 SELECT
-                " . $this->_getProductAttributeId('cost') . ",
+                {$costAttrId},
                 w.website,
                 a.entity_id,
                 b.cost
-                FROM " . $catalogProductEntity . "   a
-                INNER JOIN " . $stockPriceTemp . " b
+                FROM {$catalogProductEntity}   a
+                INNER JOIN {$stockPriceTemp} b
                     ON a.store_product_id = b.store_product_id
-                INNER JOIN " . $prodWebTemp . " w
+                INNER JOIN {$prodWebTemp} w
                     ON a.store_product_id = w.store_product_id
             )
             ON DUPLICATE KEY UPDATE
@@ -8790,7 +8784,7 @@ class Sinch
         );
 
         $this->_doQuery(
-            "INSERT INTO " . $catalogProductEntityDecimal . "
+            "INSERT INTO {$catalogProductEntityDecimal}
             (
                 attribute_id,
                 store_id,
@@ -8799,12 +8793,12 @@ class Sinch
             )
             (
                 SELECT
-                " . $this->_getProductAttributeId('cost') . ",
+                {$costAttrId},
                 0,
                 a.entity_id,
                 b.cost
-                FROM " . $catalogProductEntity . " a
-                INNER JOIN " . $stockPriceTemp . " b
+                FROM {$catalogProductEntity} a
+                INNER JOIN {$stockPriceTemp} b
                     ON a.store_product_id = b.store_product_id
             )
             ON DUPLICATE KEY UPDATE
@@ -8812,23 +8806,22 @@ class Sinch
         );
 
         //make products enable in FO
-        //^dunno what thats supposed to mean, but this delete orphaned entries
+        //^dunno what thats supposed to mean, but this deletes orphaned entries
         $this->_doQuery(
             "DELETE cpip
-                FROM " . $this->_getTableName('catalog_product_index_price') . " cpip
-                LEFT JOIN " . $catalogProductEntity . " cpe
+                FROM {$catalogProductIndexPrice} cpip
+                LEFT JOIN {$catalogProductEntity} cpe
                     ON cpip.entity_id = cpe.entity_id
                 WHERE cpe.entity_id IS NULL"
         );
 
         $customergroups = $this->_doQuery(
-            "SELECT customer_group_id
-            FROM " . $this->_getTableName('customer_group')
+            "SELECT customer_group_id FROM " . $this->_getTableName('customer_group')
         )->fetchAll();
 
         foreach ($customergroups as $customerGroup) {
             $this->_doQuery(
-                "INSERT INTO " . $this->_getTableName('catalog_product_index_price') . "
+                "INSERT INTO {$catalogProductIndexPrice}
                 (
                     entity_id,
                     customer_group_id,
@@ -8842,17 +8835,17 @@ class Sinch
                 (
                     SELECT
                     a.entity_id,
-                    " . $customerGroup['customer_group_id'] . ",
+                    {$customerGroup['customer_group_id']},
                     w.website_id,
                     2,
                     b.price,
                     b.price,
                     b.price,
                     b.price
-                    FROM " . $catalogProductEntity . "  a
-                    INNER JOIN " . $stockPriceTemp . " b
+                    FROM {$catalogProductEntity}  a
+                    INNER JOIN {$stockPriceTemp} b
                         ON a.store_product_id = b.store_product_id
-                    INNER JOIN " . $prodWebTemp . " w
+                    INNER JOIN {$prodWebTemp} w
                         ON a.store_product_id = w.store_product_id
                 )
                 ON DUPLICATE KEY UPDATE
@@ -8862,105 +8855,6 @@ class Sinch
                     min_price = b.price,
                     max_price = b.price"
             );
-        }
-    }
-
-    public function runCustomerGroupsPriceImport()
-    {
-        $this->initImportStatuses('CUSTOMER GROUPS PRICE');
-
-        $file_privileg = $this->checkDbPrivileges();
-
-        if (! $file_privileg) {
-            $this->_logImportInfo(
-                "LOAD DATA option not set"
-            );
-            $this->_setErrorMessage(
-                "LOAD DATA option not set. Import stopped."
-            );
-            throw new \Exception("LOAD DATA option not set in the database.");
-        }
-        $local_infile = $this->checkLocalInFile();
-        if (! $local_infile) {
-            $this->_logImportInfo(
-                "LOCAL INFILE is not enabled"
-            );
-            $this->_setErrorMessage(
-                "LOCAL INFILE is not enabled. Import stopped."
-            );
-            throw new \Exception("LOCAL INFILE not enabled in the database.");
-        }
-
-        if ($this->isImportNotRun() && $this->isFullImportHaveBeenRun()) {
-            try {
-                if (file_exists($this->varDir . FILE_CUSTOMER_GROUPS) && file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE)) {
-                    if (filesize($this->varDir . FILE_CUSTOMER_GROUPS) && filesize($this->varDir . FILE_CUSTOMER_GROUP_PRICE)){
-                        $q = "SELECT GET_LOCK('sinchimport', 30)";
-                        $this->_doQuery($q);
-                        $import = $this;
-                        $import->addImportStatus('Customer Groups Price Start Import');
-                        $this->print("========IMPORTING CUSTOMER GROUPS AND PRICE========");
-                        $this->print("Upload Files...");
-                        $this->files = array(
-                            FILE_CUSTOMER_GROUPS,
-                            FILE_CUSTOMER_GROUP_PRICE
-                        );
-                        $import->uploadFiles();
-                        $import->addImportStatus('Customer Groups Price Upload Files');
-                        $this->print("Parse Customer Groups And Prices...");
-
-                        $this->customerGroupPrice->parse(
-                            $this->varDir . FILE_CUSTOMER_GROUPS,
-                            $this->varDir . FILE_CUSTOMER_GROUP_PRICE
-                        );
-
-                        $res = $this->_doQuery("SELECT count(*) as cnt FROM " . $this->_getTableName('sinch_customer_group_price'))->fetch();
-
-                        $this->_doQuery(
-                            "UPDATE " . $this->import_status_statistic_table . "
-                          SET number_of_products=" . $res['cnt'] . "
-                          WHERE id=" . $this->current_import_status_statistic_id
-                        );
-
-                        $import->addImportStatus('Customer Groups Price Parse Products');
-
-                        $this->_logImportInfo("Start cleanin Sinch cache...");
-                        $this->print("Start cleanin Sinch cache...");
-                        $this->runCleanCache();
-                        $this->_logImportInfo("Finish cleanin Sinch cache...");
-                        $this->print("Finish cleanin Sinch cache...");
-
-                        $import->addImportStatus('Customer Groups Price Finish import', 1);
-
-                        $this->_logImportInfo("Finish Customer Groups & Price Sinch Import");
-                        $this->print("========>FINISH CUSTOMER GROUPS & PRICE SINCH IMPORT");
-
-                        $q = "SELECT RELEASE_LOCK('sinchimport')";
-                        $this->_doQuery($q);
-                    } else{
-                        $this->_logImportInfo("File csv is empty");
-                        $this->print("File csv is empty");
-                    }
-
-                } else {
-                    $this->_logImportInfo("File csv do not exits");
-                    $this->print("File csv do not exits");
-                }
-
-
-            } catch (\Exception $e) {
-                $this->_setErrorMessage($e);
-            }
-        } else {
-            if (! $this->isImportNotRun()) {
-                $this->_logImportInfo("Sinchimport already run");
-                $this->print("--------SINCHIMPORT ALREADY RUN--------");
-            } else {
-                $this->_logImportInfo(
-                    "Full import have never finished with success"
-                );
-                $this->print("Full import have never finished with success...");
-            }
         }
     }
 
@@ -9023,33 +8917,6 @@ class Sinch
         }
     }
 
-    public function dropFeatureResultTables()
-    {
-        $dbName
-            = $this->_deploymentData['db']['connection']['default']['dbname'];
-
-        $filterResultTablePrefix = $this->_getTableName('sinch_filter_result_');
-
-        if (!$this->check_table_exist($filterResultTablePrefix)) {
-            return;
-        }
-
-        $dropSqls = [
-            "SET GROUP_CONCAT_MAX_LEN = 10000",
-            "SET @tbls = (SELECT GROUP_CONCAT(TABLE_NAME)
-                FROM information_schema.TABLES
-                WHERE TABLE_SCHEMA = '$dbName' AND TABLE_NAME LIKE '$filterResultTablePrefix%');",
-            "SET @delStmt = CONCAT('DROP TABLE ',  @tbls)",
-            "PREPARE stmt FROM @delStmt",
-            "EXECUTE stmt",
-            "DEALLOCATE PREPARE stmt",
-        ];
-
-        foreach ($dropSqls as $dropSql) {
-            $this->_doQuery($dropSql);
-        }
-    }
-
     private function check_table_exist($table)
     {
         $q = "SHOW TABLES LIKE '%" . $this->_getTableName($table) . "%'";
@@ -9099,7 +8966,9 @@ class Sinch
                 $this->files = [
                     FILE_STOCK_AND_PRICES,
                     FILE_PRICE_RULES,
-                    FILE_CUSTOMER_GROUP_CATEGORIES
+                    FILE_CUSTOMER_GROUPS,
+                    FILE_CUSTOMER_GROUP_CATEGORIES,
+                    FILE_CUSTOMER_GROUP_PRICE
                 ];
 
                 $this->uploadFiles();
@@ -9111,6 +8980,14 @@ class Sinch
                 $this->addImportStatus('Stock Price Parse Products');
 
                 $this->print("Apply Customer Group Price...");
+                if (file_exists($this->varDir . FILE_CUSTOMER_GROUPS) &&
+                    file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE)) {
+                    $this->customerGroupPrice->parse(
+                        $this->varDir . FILE_CUSTOMER_GROUPS,
+                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                    );
+                }
+
                 $this->_eventManager->dispatch(
                     'sinch_pricerules_import_ftp',
                     [
@@ -9121,8 +8998,17 @@ class Sinch
                 );
 
                 if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
-                    $this->print("Parsing customer group categories");
+                    $this->print("Parsing customer group categories...");
                     $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                }
+
+                if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) &&
+                    file_exists($this->varDir . FILE_STOCK_AND_PRICES)) {
+                    $this->print("Processing Custom catalog restrictions...");
+                    $this->customCatalogImport->parse(
+                        $this->varDir . FILE_STOCK_AND_PRICES,
+                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                    );
                 }
 
                 $this->print("Start indexing  Stock & Price...");
@@ -9496,7 +9382,7 @@ class Sinch
                                   "
             );
         } else {
-            $this->print("-- Ignore the meta title for product configuration.");
+            $this->printOutputMsg("-- Ignore the meta title for product configuration.");
             $this->_logImportInfo("-- Ignore the meta title for product configuration.");
         }
     }

@@ -2,7 +2,7 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
-class Attributes {
+class Attributes extends AbstractImportSection {
 
     const ATTRIBUTE_GROUP_NAME = "Sinch features";
     const ATTRIBUTE_GROUP_SORT = 50;
@@ -39,7 +39,6 @@ class Attributes {
     private $attributeSetRepository;
     private $attributeManagement;
 
-    private $resourceConn;
     private $cacheType;
     private $massProdValues;
     private $scopeConfig;
@@ -48,7 +47,6 @@ class Attributes {
     private $attributeGroupIds = [];
 
     private $logger;
-    private $output;
 
     private $mappingTable;
     private $cpeTable;
@@ -59,6 +57,7 @@ class Attributes {
     private $filterMappingInsert = null;
 
     public function __construct(
+        \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Framework\File\Csv $csv,
         \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository,
         \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
@@ -69,13 +68,12 @@ class Attributes {
         \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory,
         \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository,
         \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
-        \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
         \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
-        \Symfony\Component\Console\Output\ConsoleOutput $output
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     )
     {
+        parent::__construct($resourceConn);
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->attributeRepository = $attributeRepository;
         $this->attributeGroupRepository = $attributeGroupRepository;
@@ -86,15 +84,13 @@ class Attributes {
         $this->optionFactory = $optionFactory;
         $this->attributeSetRepository = $attributeSetRepository;
         $this->attributeManagement = $attributeManagement;
-        $this->resourceConn = $resourceConn;
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
         $this->scopeConfig = $scopeConfig;
-        $this->output = $output;
 
-        $this->mappingTable = $this->resourceConn->getTableName('sinch_restrictedvalue_mapping');
-        $this->cpeTable = $this->resourceConn->getTableName('catalog_product_entity');
-        $this->filterCategoriesTable = $this->resourceConn->getTableName('sinch_filter_categories');
+        $this->mappingTable = $this->getTableName('sinch_restrictedvalue_mapping');
+        $this->cpeTable = $this->getTableName('catalog_product_entity');
+        $this->filterCategoriesTable = $this->getTableName('sinch_filter_categories');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_attributes.log');
         $logger = new \Zend\Log\Logger();
@@ -104,7 +100,7 @@ class Attributes {
 
     public function parse($categoryFeaturesFile, $restrictedValuesFile, $productFeaturesFile)
     {
-        $this->printOutMsg("--- Begin Attribute Parse ---");
+        $this->logger->info("--- Begin Attribute Parse ---");
         $parseStart = $this->microtime_float();
         $this->category_features = $this->csv->getData($categoryFeaturesFile);
         unset($this->category_features[0]); //Unset the first entry as the sinch export files have a header row
@@ -116,7 +112,7 @@ class Attributes {
         $this->createAttributeGroups();
 
         //Parse features
-        $this->printOutMsg("Parsing category features file");
+        $this->logger->info("Parsing category features file");
         foreach($this->category_features as $feature_row){
             if(count($feature_row) != 4) {
                 $this->logger->warn("Feature row not 4 columns");
@@ -132,7 +128,7 @@ class Attributes {
         }
 
         //Parse values
-        $this->printOutMsg("Parsing attribute values file");
+        $this->logger->info("Parsing attribute values file");
         foreach($this->attribute_values as $rv_row){
             $this->attributes[$rv_row[1]]["values"][$rv_row[0]] = [
                 "text" => $rv_row[2],
@@ -173,14 +169,14 @@ class Attributes {
         //Flush EAV cache
         $this->cacheType->cleanType('eav');
 
-        $elapsed = $this->microtime_float() - $parseStart;
-        $this->printOutMsg("--- Completed Attribute parse ---");
-        $this->printOutMsg("Processed a total of " . $this->attributeCount . " attributes and " . $this->optionCount . " options in " . $elapsed . " seconds");
+        $elapsed = number_format($this->microtime_float() - $parseStart, 2);
+        $this->logger->info("--- Completed Attribute parse ---");
+        $this->logger->info("Processed a total of {$this->attributeCount} attributes and {$this->optionCount} options in {$elapsed} seconds");
     }
 
     private function createAttribute($sinch_id, $data)
     {
-        $this->printOutMsg("Creating attribute " . self::ATTRIBUTE_PREFIX . $sinch_id);
+        $this->logger->info("Creating attribute " . self::ATTRIBUTE_PREFIX . $sinch_id);
         $attribute = $this->attributeFactory->create()
             ->setEntityTypeId(\Magento\Catalog\Model\Product::ENTITY)
             ->setAttributeCode(self::ATTRIBUTE_PREFIX . $sinch_id)
@@ -192,7 +188,7 @@ class Attributes {
         $attribute = $this->setAttributeConfig($attribute, $data);
         $this->attributeRepository->save($attribute);
         
-        $this->printOutMsg("Assigning attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " to sets and groups");
+        $this->logger->info("Assigning attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " to sets and groups");
         foreach($this->getAttributeSetIds() as $idx => $attributeSetId){
             $this->attributeManagement->assign(
                 $attributeSetId,
@@ -294,7 +290,7 @@ class Attributes {
 
         if(count($groups) < 1){
             foreach($this->getAttributeSetIds() as $idx => $attributeSetId){
-                $this->printOutMsg("Creating attribute group for attribute set id: " . $attributeSetId);
+                $this->logger->info("Creating attribute group for attribute set id: " . $attributeSetId);
                 $ag = $this->attributeGroupFactory->create()
                     ->setAttributeGroupName(self::ATTRIBUTE_GROUP_NAME)
                     ->setAttributeSetId($attributeSetId)
@@ -388,7 +384,7 @@ class Attributes {
     public function applyAttributeValues()
     {
         $applyStart = $this->microtime_float();
-        $this->printOutMsg("--- Begin applying attribute values to products ---");
+        $this->logger->info("--- Begin applying attribute values to products ---");
 
         $valueCount = count($this->rvProds);
         $currVal = 0;
@@ -405,7 +401,7 @@ class Attributes {
                 throw new \Magento\Framework\Exception\StateException(__("Failed to retrieve entity ids"));
             }
             $prodCount = count($entityIds);
-            $this->printOutMsg("({$currVal}/{$valueCount}) Setting option id {$attrData['option_id']} for {$prodCount} products");
+            $this->logger->info("({$currVal}/{$valueCount}) Setting option id {$attrData['option_id']} for {$prodCount} products");
             $this->massProdValues->updateAttributes(
                 $entityIds, 
                 [self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] => $attrData['option_id']],
@@ -413,21 +409,10 @@ class Attributes {
             );
         }
 
-        $elapsed = $this->microtime_float() - $applyStart;
-        $this->printOutMsg(
+        $elapsed = number_format($this->microtime_float() - $applyStart, 2);
+        $this->logger->info(
             "--- Completed applying attribute values. Took {$elapsed} seconds ---"
         );
-    }
-
-    private function microtime_float()
-    {
-        list($usec, $sec) = explode(" ", microtime());
-        return ((float)$usec + (float)$sec);
-    }
-
-    private function getConnection()
-    {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
     }
 
     private function updateFilterCategoryMapping($sinch_feature_id, $sinch_category_id)
@@ -442,10 +427,5 @@ class Attributes {
         $this->filterMappingInsert->bindValue(":category_id", $sinch_category_id, \PDO::PARAM_INT);
         $this->filterMappingInsert->execute();
         $this->filterMappingInsert->closeCursor();
-    }
-    private function printOutMsg($msg)
-    {
-        $this->output->writeln($msg);
-        $this->logger->info($msg);
     }
 }

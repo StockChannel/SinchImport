@@ -38,10 +38,16 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
             $this->getStoreConfig('sinchimport/category_visibility/enable') == 1;
     }
 
+    public function isProductVisibilityEnabled()
+    {
+        return $this->isModuleEnabled("Tigren_CompanyAccount") &&
+            $this->getStoreConfig('sinchimport/product_visibility/enable') == 1;
+    }
+
     public function getCurrentAccountGroupId()
     {
         $account_group_id = false;
-        if ($this->isCategoryVisibilityEnabled() && $this->customerSession->isLoggedIn()) {
+        if (($this->isCategoryVisibilityEnabled() || $this->isProductVisibilityEnabled()) && $this->customerSession->isLoggedIn()) {
             $account_id = $this->customerSession->getCustomer()->getAccountId();
             //TODO: Change this to use customer groups once account_group_id actually refers to Magento customer groups
             //For now, just query the data we need directly from SQL

@@ -18,11 +18,16 @@
             </sinch_import_fullstatus>
             <attributes>
                 <visible_in_admin>0</visible_in_admin>
+                <override_elasticsuite>0</override_elasticsuite>
             </attributes>
             <category_visibility>
                 <enable>0</enable>
                 <private_visible_to_guest>0</private_visible_to_guest>
             </category_visibility>
+            <product_visibility>
+                <enable>0</enable>
+                <private_visible_to_guest>0</private_visible_to_guest>
+            </product_visibility>
         </sinchimport>
     </default>
 </config>
