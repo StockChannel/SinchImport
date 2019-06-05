@@ -29,6 +29,10 @@ class Image
      */
     protected $_imageFactory;
 
+    /**
+     * Image constructor.
+     * @param MagentoImage\Factory $imageFactory
+     */
     public function __construct(
         \Magento\Framework\Image\Factory $imageFactory
     ) {
@@ -49,46 +53,6 @@ class Image
         }
 
         return $result;
-    }
-
-    /**
-     * @return string
-     */
-    public function aroundGetBaseFile(
-        \Magento\Catalog\Model\Product\Image $subject,
-        \Closure $proceed
-    ) {
-        return false;
-    }
-
-    /**
-     * @return string
-     */
-    public function aroundGetNewFile(
-        \Magento\Catalog\Model\Product\Image $subject,
-        \Closure $proceed
-    ) {
-        if ($this->_baseFileTmp) {
-            return $this->_baseFileTmp;
-        }
-
-        return $proceed();
-    }
-
-    /**
-     * Retrieve 'true' if image is a base file placeholder
-     *
-     * @return bool
-     */
-    public function aroundIsBaseFilePlaceholder(
-        \Magento\Catalog\Model\Product\Image $subject,
-        \Closure $proceed
-    ) {
-        if ($this->_baseFileTmp) {
-            return (bool)$this->_isBaseFilePlaceholderTmp;
-        } else {
-            return $proceed();
-        }
     }
 
     /**
@@ -119,36 +83,5 @@ class Image
         }
 
         return $proceed();
-    }
-
-    /**
-     * @return MagentoImage
-     */
-    public function aroundGetImageProcessor(
-        \Magento\Catalog\Model\Product\Image $subject,
-        \Closure $proceed
-    ) {
-        if (!$this->_processorTmp) {
-            $this->_processorTmp = $this->_imageFactory->create();
-            $subject->setImageProcessor($this->_processorTmp);
-        }
-
-        return $proceed();
-    }
-
-    /**
-     * @return bool
-     */
-    public function aroundIsCached(
-        \Magento\Catalog\Model\Product\Image $subject,
-        \Closure $proceed
-    ) {
-        if ($this->_baseFileTmp) {
-            $result = true;
-        } else {
-            $result = $proceed();
-        }
-
-        return $result;
     }
 }
