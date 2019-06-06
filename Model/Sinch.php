@@ -377,18 +377,17 @@ class Sinch
                     $this->print("Start indexing data...");
                     $this->_cleanCateoryProductFlatTable();
                     $this->runIndexer();
-
-                    $this->print("Start indexing catalog url rewrites...");
-                    $this->_reindexProductUrlKey();
-                    $this->print("Finish indexing catalog url rewrites...");
-
-                    $this->addImportStatus('Indexing data');
-                    $this->print("Finish indexing data...");
                 } else {
                     $this->print("Bypass indexing data...");
-                    $this->addImportStatus('Indexing data');
                     $this->invalidateIndexers();
                 }
+
+                $this->print("Start indexing catalog url rewrites...");
+                $this->_reindexProductUrlKey();
+                $this->print("Finish indexing catalog url rewrites...");
+
+                $this->addImportStatus('Indexing data');
+                $this->print("Finish indexing data...");
 
                 $this->print("Start cleaning Sinch cache...");
                 $this->runCleanCache();

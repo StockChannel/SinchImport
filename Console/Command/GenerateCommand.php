@@ -43,15 +43,12 @@ class GenerateCommand extends Command
      */
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $this->_appState->setAreaCode('adminhtml');
-        
         try {
-            $this->sinch->runIndexingData();
+            $this->_appState->setAreaCode('adminhtml');
             $this->sinch->runReindexUrlRewrite();
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
-            
-            return \Magento\Framework\Console\Cli::RETURN_FAILURE;
         }
+        return \Magento\Framework\Console\Cli::RETURN_FAILURE;
     }
 }

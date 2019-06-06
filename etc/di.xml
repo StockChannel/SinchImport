@@ -3,6 +3,7 @@
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
     <preference for="Magento\Catalog\Model\Indexer\Category\Flat\Action\Full" type="SITC\Sinchimport\Model\Catalog\Indexer\Category\Flat\Action\Full" />
     <preference for="Magento\UrlRewrite\Model\Storage\DbStorage" type="SITC\Sinchimport\Model\Storage\DbStorage" />
+    <preference for="Magento\Catalog\Model\View\Asset\Image" type="SITC\Sinchimport\Model\View\Asset\Image" />
     <type name="Magento\Framework\Console\CommandList">
         <arguments>
             <argument name="commands" xsi:type="array">

@@ -22,13 +22,15 @@ class TonerFinderCommand extends Command {
     }
 
 
-    protected function configure() {
+    protected function configure()
+    {
         $this->setName('sinch:tonerfinder')
             ->setDescription('Create product part finder multi-store.');
         parent::configure();
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output) {
+    protected function execute(InputInterface $input, OutputInterface $output)
+    {
         $returnValue = \Magento\Framework\Console\Cli::RETURN_FAILURE;
         try {
             $this->appState->setAreaCode('adminhtml');
