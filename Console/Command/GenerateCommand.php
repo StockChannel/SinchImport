@@ -45,6 +45,7 @@ class GenerateCommand extends Command
     {
         try {
             $this->_appState->setAreaCode('adminhtml');
+            $this->sinch->runIndexingData();
             $this->sinch->runReindexUrlRewrite();
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");

@@ -374,12 +374,13 @@ class Sinch
                 $this->print("Finish generating category filters...");
 
                 if (!$indexingSeparately) {
-                    $this->print("Start indexing data...");
-                    $this->_cleanCateoryProductFlatTable();
-                    $this->runIndexer();
-                } else {
                     $this->print("Bypass indexing data...");
                     $this->invalidateIndexers();
+                    $this->_cleanCateoryProductFlatTable();
+                    $this->print("Clean category product flat...");
+                } else {
+                    $this->print("Index will need to run manually when the import is completed...");
+                    $this->_logImportInfo("Index will need to run manually when the import is completed...");
                 }
 
                 $this->print("Start indexing catalog url rewrites...");
