@@ -8,6 +8,8 @@ class CustomCatalogVisibility extends AbstractImportSection {
     const ATTRIBUTE_NAME = "sinch_restrict";
     const LOG_PREFIX = "CustomCatalog: ";
 
+    private $tmpTable = "sinch_custom_catalog_tmp";
+
     /**
      * @var \SITC\Sinchimport\Util\CsvIterator $stockPriceCsv
      */
@@ -61,16 +63,27 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->output = $output;
     }
 
-    
+    private function createTempTable()
+    {
+        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->tmpTable}");
+        $this->getConnection()->query(
+            "CREATE TABLE {$this->tmpTable} (
+                product_id int(10) unsigned NOT NULL PRIMARY KEY COMMENT 'Magento Product ID',
+                value varchar(255) NOT NULL COMMENT 'Rules',
+                FOREIGN KEY (product_id) REFERENCES {$this->cpeTable} (entity_id) ON DELETE CASCADE ON UPDATE CASCADE
+            )"
+        );
+    }
+
     public function parse($stockPriceFile, $customerGroupPriceFile)
     {
         $parseStart = $this->microtime_float();
 
-        $this->log("Processing inverse rules");
+        $this->createTempTable();
         //Build inverse rules first as forward rules are more restrictive (and can safely replace inverse rules if applicable)
         $this->buildInverseRules($customerGroupPriceFile); 
-        $this->log("Processing forward rules");
         $this->buildForwardRules($stockPriceFile, $customerGroupPriceFile);
+        $this->setAttributeValues();
 
         $elapsed = number_format($this->microtime_float() - $parseStart, 2);
         $this->log("Imported {$this->restrictCount} restrictions in {$elapsed} seconds");
@@ -78,6 +91,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
 
     private function buildForwardRules($stockPriceFile, $customerGroupPriceFile)
     {
+        $this->log("Processing forward rules");
         $this->stockPriceCsv->openIter($stockPriceFile);
         $this->stockPriceCsv->take(1); //Discard first row
 
@@ -103,6 +117,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
 
     private function buildInverseRules($customerGroupPriceFile)
     {
+        $this->log("Processing inverse rules");
         $this->groupPriceCsv->openIter($customerGroupPriceFile);
         $this->groupPriceCsv->take(1);
 
@@ -151,15 +166,53 @@ class CustomCatalogVisibility extends AbstractImportSection {
     {
         $this->logger->info("Processing restrictions for " . count($mapping) . " products");
         $sinchEntityPairs = $this->sinchToEntityIds(array_keys($mapping));
-        foreach($sinchEntityPairs as $pair){
-            $restrictValue = implode(",", $mapping[$pair['sinch_product_id']]);
 
+        $prepared = [];
+        foreach($sinchEntityPairs as $pair){
+            //Check for existing record in the temp table with value for this product and merge if yes
+            $existing = $this->getConnection()->fetchOne("SELECT value FROM {$this->tmpTable} WHERE product_id = ?", $pair['entity_id']);
+            if(!empty($existing)) {
+                $restrictArr = array_merge(
+                    explode(",", $existing),
+                    $mapping[$pair['sinch_product_id']]
+                );
+            } else {
+                $restrictArr = $mapping[$pair['sinch_product_id']];
+            }
+
+            $prepared[] = [
+                'product_id' => $pair['entity_id'],
+                'value' => implode(",", $restrictArr)
+            ];
+            $this->restrictCount += 1;
+        }
+
+        if(count($prepared) > 0){
+            $this->getConnection()->insertOnDuplicate(
+                $this->tmpTable,
+                $prepared,
+                ["value"]
+            );
+        }
+    }
+
+    private function setAttributeValues()
+    {
+        $this->log("Updating attributes");
+        $values = $this->getConnection()->fetchCol("SELECT DISTINCT value FROM {$this->tmpTable}");
+        $numValues = count($values);
+        $this->log("{$numValues} distinct values to update attributes for");
+        $i = 1;
+        foreach($values as $value){
+            $productIds = $this->getConnection()->fetchCol("SELECT product_id FROM {$this->tmpTable} WHERE value = ?", $value);
+            $numProds = count($productIds);
+            $this->log("({$i}/{$numValues}) Updating attribute for {$numProds} products to: {$value}");
             $this->massProdValues->updateAttributes(
-                [$pair['entity_id']],
-                [self::ATTRIBUTE_NAME => $restrictValue],
+                $productIds,
+                [self::ATTRIBUTE_NAME => $value],
                 0 //store id (dummy value as they're global attributes)
             );
-            $this->restrictCount += 1;
+            $i += 1;
         }
     }
 
