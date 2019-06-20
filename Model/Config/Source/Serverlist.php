@@ -7,30 +7,58 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
     public function toOptionArray()
     {
         return [
-            ['value' => 'ftp.stockinthechannel.com',
-             'label' => 'UK - ftp.stockinthechannel.com'],
-            ['value' => 'ftpus.stockinthechannel.com',
-             'label' => 'USA - ftpus.stockinthechannel.com'],
-            ['value' => 'ftp.canalstock.es',
-             'label' => 'Spain - ftp.canalstock.es'],
-            ['value' => 'ftp.canalstock.mx',
-             'label' => 'Mexico - ftp.canalstock.mx'],
-            ['value' => 'ftp.stockradar.be',
-             'label' => 'Belgium - ftp.stockradar.be'],
-            ['value' => 'ftpau.stockinthechannel.com',
-             'label' => 'Australia - ftpau.stockinthechannel.com'],
-            ['value' => 'ftpfr.stockinthechannel.com',
-             'label' => 'France - ftpfr.stockinthechannel.com'],
-            ['value' => 'ftpit.stockinthechannel.com',
-             'label' => 'Italy - ftpit.stockinthechannel.com'],
-            ['value' => 'ftpnl.stockinthechannel.com',
-             'label' => 'Holland - ftpnl.stockinthechannel.com'],
-            ['value' => 'ftpde.stockinthechannel.com',
-             'label' => 'Germany - ftpde.stockinthechannel.com'],
-            ['value' => 'ftpse.stockinthechannel.com',
-             'label' => 'Sweden - ftpse.stockinthechannel.com'],
-            ['value' => 'ftpdemo.stockinthechannel.com',
-             'label' => 'Demo - ftpdemo.stockinthechannel.com']
+            [
+                'value' => 'ftp.stockinthechannel.com',
+                'label' => 'UK - ftp.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftpus.stockinthechannel.com',
+                'label' => 'USA - ftpus.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftp.canalstock.es',
+                'label' => 'Spain - ftp.canalstock.es'
+            ],
+            [
+                'value' => 'ftp.canalstock.mx',
+                'label' => 'Mexico - ftp.canalstock.mx'
+            ],
+            [
+                'value' => 'ftp.stockradar.be',
+                'label' => 'Belgium - ftp.stockradar.be'
+            ],
+            [
+                'value' => 'ftpau.stockinthechannel.com',
+                'label' => 'Australia - ftpau.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftpfr.stockinthechannel.com',
+                'label' => 'France - ftpfr.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftpit.stockinthechannel.com',
+                'label' => 'Italy - ftpit.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftpnl.stockinthechannel.com',
+                'label' => 'Holland - ftpnl.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftpde.stockinthechannel.com',
+                'label' => 'Germany - ftpde.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftpse.stockinthechannel.com',
+                'label' => 'Sweden - ftpse.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftpdemo.stockinthechannel.com',
+                'label' => 'Demo - ftpdemo.stockinthechannel.com'
+            ],
+            [
+                'value' => 'ftp.sandbox.stockinthechannel.com',
+                'label' => 'Sandbox - ftp.sandbox.stockinthechannel.com'
+            ]
         ];
     }
     
@@ -48,7 +76,8 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
             'ftpnl.stockinthechannel.com'   => 'Holland - ftpnl.stockinthechannel.com',
             'ftpde.stockinthechannel.com'   => 'Germany - ftpde.stockinthechannel.com',
             'ftpse.stockinthechannel.com'   => 'Sweden - ftpse.stockinthechannel.com',
-            'ftpdemo.stockinthechannel.com' => 'Demo - ftpdemo.stockinthechannel.com'
+            'ftpdemo.stockinthechannel.com' => 'Demo - ftpdemo.stockinthechannel.com',
+            'ftp.sandbox.stockinthechannel.com' => 'Sandbox - ftp.sandbox.stockinthechannel.com'
         ];
     }
 }
