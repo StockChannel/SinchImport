@@ -44,22 +44,19 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
         $filteredCategoryCollection->removeAllItems();
 
         //Categories explicitly made visible to this user
-        $explicit_visible_cats = $this->resourceConn->getConnection()->fetchCol(
+        $visible_cats = $this->resourceConn->getConnection()->fetchCol(
             "SELECT category_id FROM {$this->catVisTable} WHERE account_group_id = :account_group_id",
             [":account_group_id" => $account_group_id]
         );
-        //Categories hidden in general (not necessarily from this user)
-        $default_hidden_cats = $this->resourceConn->getConnection()->fetchCol(
-            "SELECT DISTINCT category_id FROM {$this->catVisTable}"
-        );
-
+        $noRestrict = empty($visible_cats);
 
         /** @var \Magento\Catalog\Model\Category $category */
         foreach ($categoryCollection as $category) {
             $sinch_cat_id = $category->getStoreCategoryId();
 
-            //If the category is not hidden in general or is explicitly visible to this account, add it back to the collection
-            if (!in_array($sinch_cat_id, $default_hidden_cats) || in_array($sinch_cat_id, $explicit_visible_cats)) {
+            //If the category is explicitly visible to this account, add it back to the collection
+            //Also allow seeing all categories if no restrictions exist for this account
+            if (in_array($sinch_cat_id, $visible_cats) || $noRestrict) {
                 $filteredCategoryCollection->addItem($category);
             }
         }
