@@ -214,6 +214,21 @@ class CustomCatalogVisibility extends AbstractImportSection {
             );
             $i += 1;
         }
+
+        //Clear the sinch_restrict value for products that no longer have a rule (but not non-sinch products)
+        $noValueSinchProds = $this->getConnection()->fetchCol(
+            "SELECT entity_id FROM {$this->cpeTable}
+                WHERE entity_id NOT IN (SELECT product_id FROM {$this->tmpTable})
+                AND store_product_id IS NOT NULL"
+        );
+
+        $numProds = count($noValueSinchProds);
+        $this->log("Clearing attribute value for {$numProds} products");
+        $this->massProdValues->updateAttributes(
+            $noValueSinchProds,
+            [self::ATTRIBUTE_NAME => ""],
+            0
+        );
     }
 
     private function sinchToEntityIds($sinch_prod_ids)
