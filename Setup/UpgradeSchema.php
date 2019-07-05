@@ -84,6 +84,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $this->createTableCustomerGroupPrice($setup);
         }
 
+        if (version_compare($context->getVersion(), '2.2.0', '<')) {
+            $this->fixCustomerGroupPriceTable($setup);
+        }
+
         $installer->endSetup();
     }
 
@@ -104,7 +108,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
         }
     }
 
-    public function upgrade216($installer)
+    private function upgrade216($installer)
     {
         $connection = $installer->getConnection();
         $catVisTable = $installer->getTable(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE); //sinch_cat_visibility at the time of adding
@@ -212,7 +216,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 ->addIndex(
                     $setup->getIdxName(
                         'sinch_customer_group_price',
-                        ['group_id', 'product_id', 'sinch_product_id' , 'customer_group_price'],
+                        ['group_id', 'product_id', 'sinch_product_id', 'customer_group_price'],
                         \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
                     ),
                     ['group_id', 'product_id','sinch_product_id', 'customer_group_price'],
@@ -255,5 +259,28 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 ]
             );
         }
+    }
+
+    private function fixCustomerGroupPriceTable(SchemaSetupInterface $setup) {
+        $customerGroupPrice = $setup->getTable('sinch_customer_group_price');
+        $setup->getConnection()->dropIndex(
+            $customerGroupPrice,
+            $setup->getIdxName(
+                'sinch_customer_group_price',
+                ['group_id', 'product_id', 'sinch_product_id', 'customer_group_price'],
+                \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+            )
+        );
+        $setup->getConnection()->dropColumn($customerGroupPrice, 'sinch_product_id');
+        $setup->getConnection()->addIndex(
+            $customerGroupPrice,
+            $setup->getIdxName(
+                'sinch_customer_group_price',
+                ['group_id', 'product_id', 'price_type_id'],
+                \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+            ),
+            ['group_id', 'product_id','price_type_id'],
+            \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+        );
     }
 }

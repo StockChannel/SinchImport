@@ -125,7 +125,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         //CustomerGroupID|ProductID|PriceTypeID|Price
         while($toProcess = $this->groupPriceCsv->take(self::CHUNK_SIZE)) {
             foreach($toProcess as $row){
-                if(empty(trim($row[3]))) {
+                if(!isset($row[3]) || empty(trim($row[3]))) {
                     $inverse[$row[1]][] = "!" . $row[0];
                 }
             }

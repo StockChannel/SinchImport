@@ -127,7 +127,7 @@ class CustomerGroupPrice extends AbstractImportSection {
                 `sinch_product_id` int(10) UNSIGNED NOT NULL COMMENT 'Sinch Product Id',
                 `price_type_id` int(10) UNSIGNED NOT NULL COMMENT 'Price Type Id',
                 `customer_group_price` decimal(12,4) NOT NULL DEFAULT '0.0000' COMMENT 'Customer Group Price',
-                UNIQUE KEY (`group_id`, `sinch_product_id`)
+                UNIQUE KEY (`group_id`, `sinch_product_id`, `price_type_id`)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Sinch Customer Group Price Temp';"
         );
 
@@ -160,22 +160,19 @@ class CustomerGroupPrice extends AbstractImportSection {
         $this->getConnection()->query(
             "INSERT INTO {$this->customerGroupPrice} (
                 group_id,
+                product_id,
                 price_type_id,
-                sinch_product_id,
-                customer_group_price,
-                product_id
+                customer_group_price
             )
             SELECT 
                 tmp.group_id,
+                spm.entity_id,
                 tmp.price_type_id,
-                tmp.sinch_product_id,
-                tmp.customer_group_price,
-                spm.entity_id
+                tmp.customer_group_price
             FROM {$this->tmpTable} tmp
             INNER JOIN {$this->sinchProductsMapping} spm
                 ON tmp.sinch_product_id = spm.sinch_product_id
             ON DUPLICATE KEY UPDATE
-                price_type_id = tmp.price_type_id,
                 customer_group_price = tmp.customer_group_price"
         );
 
