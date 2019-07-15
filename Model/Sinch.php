@@ -5084,16 +5084,11 @@ class Sinch
     {
         $this->_doQuery(
             "DELETE cpe
-                                FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " cpe
-                                JOIN " . $this->_getTableName(
-                'sinch_products_mapping'
-            ) . " pm
-                                    ON cpe.entity_id=pm.entity_id
-                                WHERE pm.shop_store_product_id IS NOT NULL
-                                    AND pm.store_product_id IS NULL
-                              "
+                FROM " . $this->_getTableName('catalog_product_entity') . " cpe
+                JOIN " . $this->_getTableName('sinch_products_mapping') . " pm
+                    ON cpe.entity_id = pm.entity_id
+                WHERE pm.shop_store_product_id IS NOT NULL
+                    AND pm.store_product_id IS NULL"
         );
 
         //Inserting new products and updating old others.
@@ -7892,8 +7887,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 4...");
         //Set enabled
         $this->_doQuery(
-            "
-            DELETE cpei
+            "DELETE cpei
             FROM $catalog_product_entity_int cpei
             LEFT JOIN $catalog_product_entity cpe
                 ON cpei.entity_id = cpe.entity_id
@@ -7939,8 +7933,7 @@ class Sinch
 
         //Unifying products with categories.
         $this->_doQuery(
-            "
-            DELETE ccp
+            "DELETE ccp
             FROM $catalog_category_product ccp
             LEFT JOIN $catalog_product_entity cpe
                 ON ccp.product_id = cpe.entity_id
@@ -7953,8 +7946,7 @@ class Sinch
 
         $this->_doQuery("DROP TABLE IF EXISTS $rootCats");
         $this->_doQuery(
-            "
-            CREATE TABLE $rootCats
+            "CREATE TABLE $rootCats
             SELECT
                 entity_id,
                 path,
@@ -7970,8 +7962,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 8...");
 
         $this->_doQuery(
-            "
-            UPDATE IGNORE $catalog_category_product ccp
+            "UPDATE IGNORE $catalog_category_product ccp
             LEFT JOIN $catalog_category_entity cce
                 ON ccp.category_id = cce.entity_id
             JOIN $rootCats rc
@@ -7983,8 +7974,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 9...");
 
         $this->_doQuery(
-            "
-            DELETE ccp
+            "DELETE ccp
             FROM $catalog_category_product ccp
             LEFT JOIN $catalog_category_entity cce
                 ON ccp.category_id = cce.entity_id
@@ -7997,16 +7987,18 @@ class Sinch
 
         $this->_doQuery("DROP TABLE IF EXISTS $stinch_products_delete");
         $this->_doQuery(
-            "
-            CREATE TABLE $stinch_products_delete
+            "CREATE TABLE $stinch_products_delete
             SELECT cpe.entity_id
             FROM $catalog_product_entity cpe
             WHERE cpe.entity_id NOT IN
             (
-            SELECT cpe2.entity_id
-            FROM $catalog_product_entity cpe2
-            JOIN $sinch_products sp
-                ON cpe2.sinch_product_id = sp.sinch_product_id)"
+                SELECT cpe2.entity_id
+                FROM $catalog_product_entity cpe2
+                JOIN $sinch_products sp
+                ON cpe2.sinch_product_id = sp.sinch_product_id
+            )
+            AND cpe.type_id = 'simple'
+            AND cpe.sinch_product_id IS NOT NULL"
         );
         $this->_doQuery(
             "DELETE cpe FROM $catalog_product_entity cpe JOIN $stinch_products_delete spd USING(entity_id)"
@@ -8017,8 +8009,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 10...");
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_category_product
+            "INSERT INTO $catalog_category_product
                 (category_id,  product_id)
             (SELECT
                 scm.shop_entity_id,
@@ -8036,8 +8027,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 11 (add multi categories)...");
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_category_product
+            "INSERT INTO $catalog_category_product
                 (category_id,  product_id)
             (SELECT
                 scm.shop_entity_id,
@@ -8058,8 +8048,7 @@ class Sinch
 
         //Indexing products and categories in the shop
         $this->_doQuery(
-            "
-            DELETE ccpi
+            "DELETE ccpi
             FROM $catalog_category_product_index ccpi
             LEFT JOIN $catalog_product_entity cpe
                 ON ccpi.product_id = cpe.entity_id
@@ -8069,8 +8058,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 13...");
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_category_product_index
+            "INSERT INTO $catalog_category_product_index
                 (category_id, product_id, position, is_parent, store_id, visibility)
             (SELECT
                 a.category_id,
@@ -8090,8 +8078,7 @@ class Sinch
 
         $rootCats = $this->_getTableName('rootCats');
         $this->_doQuery(
-            "
-            INSERT ignore INTO $catalog_category_product_index
+            "INSERT ignore INTO $catalog_category_product_index
                 (category_id, product_id, position, is_parent, store_id, visibility)
             (SELECT
                 rc.rootCat,
@@ -8113,8 +8100,7 @@ class Sinch
 
         //Set product name for specific web sites
         $this->_doQuery(
-            "
-            DELETE cpev
+            "DELETE cpev
             FROM $catalog_product_entity_varchar cpev
             LEFT JOIN $catalog_product_entity cpe
                 ON cpev.entity_id = cpe.entity_id
@@ -8122,8 +8108,7 @@ class Sinch
         );
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_name,
@@ -8144,8 +8129,7 @@ class Sinch
 
         // product name for all web sites
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_name,
@@ -8190,8 +8174,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 18...");
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
+            "INSERT INTO $catalog_product_entity_int
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_visibility,
@@ -8209,9 +8192,8 @@ class Sinch
         $this->print("--Replace Magento Multistore 19...");
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
-                ( attribute_id, store_id, entity_id, value)
+            "INSERT INTO $catalog_product_entity_int
+                (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_visibility,
                 0,
@@ -8226,8 +8208,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 20...");
 
         $this->_doQuery(
-            "
-            DELETE cpw
+            "DELETE cpw
             FROM $catalog_product_website cpw
             LEFT JOIN $catalog_product_entity cpe
                 ON cpw.product_id = cpe.entity_id
@@ -8237,8 +8218,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 21...");
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_website
+            "INSERT INTO $catalog_product_website
                 (product_id, website_id)
             (SELECT
                 a.entity_id,
@@ -8256,8 +8236,7 @@ class Sinch
 
         //Adding tax class "Taxable Goods"
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
+            "INSERT INTO $catalog_product_entity_int
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_tax_class_id,
@@ -8275,8 +8254,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 23...");
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
+            "INSERT INTO $catalog_product_entity_int
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_tax_class_id,
@@ -8293,8 +8271,7 @@ class Sinch
 
         // Load url Image
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_image,
@@ -8314,8 +8291,7 @@ class Sinch
 
         // image for specific web sites
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_image,
@@ -8334,8 +8310,7 @@ class Sinch
 
         // small_image for specific web sites
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_small_image,
@@ -8355,8 +8330,7 @@ class Sinch
 
         // small_image for all web sites
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+            "INSERT INTO $catalog_product_entity_varchar
                 ( attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_small_image,
@@ -8376,8 +8350,7 @@ class Sinch
 
         // thumbnail for specific web site
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_thumbnail,
@@ -8397,8 +8370,7 @@ class Sinch
 
         // thumbnail for all web sites
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_varchar
+            "INSERT INTO $catalog_product_entity_varchar
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_thumbnail,
