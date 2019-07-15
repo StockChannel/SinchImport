@@ -1212,9 +1212,8 @@ class Sinch
         $attr_is_active,
         $attr_include_in_menu
     ) {
-        $this->_doQuery('SET foreign_key_checks=0');
+        $this->_doQuery("DELETE FROM $catalog_category_entity");
 
-        $this->_doQuery("TRUNCATE $catalog_category_entity");
         $this->_doQuery(
             "
                     INSERT $catalog_category_entity
@@ -1235,8 +1234,6 @@ class Sinch
                                 (1, $_categoryDefault_attribute_set_id, 0, '0000-00-00 00:00:00', now(), '1', 0, 0, 1, null, null),
                                 (2, $_categoryDefault_attribute_set_id, 1, now(), now(), '1/2', 1, 1, 1, null, null)"
         );
-
-        $this->_doQuery("TRUNCATE $catalog_category_entity_varchar");
         $this->_doQuery(
             "
                     INSERT $catalog_category_entity_varchar
@@ -1256,8 +1253,6 @@ class Sinch
                         (6, $attr_display_mode, 1, 2, 'PRODUCTS'),
                         (7, $attr_url_key, 0, 2, 'default-category')"
         );
-
-        $this->_doQuery("TRUNCATE $catalog_category_entity_int");
         $this->_doQuery(
             "
                     INSERT $catalog_category_entity_int
@@ -2321,11 +2316,7 @@ class Sinch
         $attr_url_key,
         $attr_include_in_menu
     ) {
-        $this->_doQuery('SET foreign_key_checks=0');
-
-        $this->_doQuery("TRUNCATE $catalog_category_entity");
-        $this->_doQuery("TRUNCATE $catalog_category_entity_varchar");
-        $this->_doQuery("TRUNCATE $catalog_category_entity_int");
+        $this->_doQuery("DELETE FROM $catalog_category_entity");
 
         $this->_doQuery(
             "INSERT $catalog_category_entity
@@ -4747,16 +4738,8 @@ class Sinch
             }
 
             if ($replace_merge_product == "REWRITE") {
-                $this->_doQuery(
-                    "DELETE FROM " . $this->_getTableName(
-                        'catalog_product_entity'
-                    )
-                );
-                $this->_doQuery("SET FOREIGN_KEY_CHECKS=0");
-                $this->_doQuery(
-                    "TRUNCATE " . $this->_getTableName('catalog_product_entity')
-                );
-                $this->_doQuery("SET FOREIGN_KEY_CHECKS=1");
+                $catalog_product_entity = $this->_getTableName('catalog_product_entity');
+                $this->_doQuery("DELETE FROM $catalog_product_entity WHERE type_id = 'simple'");
             }
 
             $this->print("--Parse Products 6");
@@ -7012,118 +6995,81 @@ class Sinch
             $link_type[$res['code']] = $res['link_type_id'];
         }
 
-        // delete old data
-        $this->_doQuery("SET FOREIGN_KEY_CHECKS=0");
+        $catalog_product_link = $this->_getTableName('catalog_product_link');
+        $sinch_related_products = $this->_getTableName('sinch_related_products');
+
         $this->_doQuery(
-            "TRUNCATE " . $this->_getTableName('catalog_product_link')
-        );
-        $this->_doQuery(
-            "TRUNCATE " . $this->_getTableName(
-                'catalog_product_link_attribute_int'
+            "INSERT INTO $catalog_product_link (
+                product_id,
+                linked_product_id,
+                link_type_id
+            )(
+                SELECT
+                    entity_id,
+                    related_entity_id,
+                    {$link_type['relation']}
+                FROM $sinch_related_products
+                WHERE store_product_id IS NOT NULL
+                AND store_related_product_id IS NOT NULL
             )
+            ON DUPLICATE KEY UPDATE
+                product_id = entity_id,
+                linked_product_id = related_entity_id"
         );
-        $this->_doQuery("SET FOREIGN_KEY_CHECKS=1");
 
+        $link_attribute_int = $this->_getTableName('catalog_product_link_attribute_int');
+        $link_attribute_tmp = $this->_getTableName('catalog_product_link_attribute_int_tmp');
+
+        $this->_doQuery("DROP TABLE IF EXISTS $link_attribute_tmp");
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_link'
-            ) . " (
-                                    product_id,
-                                    linked_product_id,
-                                    link_type_id
-                                )(
-                                  SELECT
-                                    entity_id,
-                                    related_entity_id,
-                                    " . $link_type['relation'] . "
-                                  FROM " . $this->_getTableName(
-                'sinch_related_products'
-            ) . "
-                                  WHERE store_product_id IS NOT NULL
-                                  AND store_related_product_id IS NOT NULL
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    product_id = entity_id,
-                                    linked_product_id = related_entity_id
-                "
-        );
-        $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $this->_getTableName(
-                'catalog_product_link_attribute_int'
-            ) . "_tmp"
+            "CREATE TEMPORARY TABLE $link_attribute_tmp (
+                `value_id` int(11) default NULL,
+                `product_link_attribute_id` smallint(6) unsigned default NULL,
+                `link_id` int(11) unsigned default NULL,
+                `value` int(11) NOT NULL default '0',
+                    KEY `FK_INT_PRODUCT_LINK_ATTRIBUTE` (`product_link_attribute_id`),
+                    KEY `FK_INT_PRODUCT_LINK` (`link_id`)
+            )"
         );
 
         $this->_doQuery(
-            "CREATE TEMPORARY TABLE " . $this->_getTableName(
-                'catalog_product_link_attribute_int'
-            ) . "_tmp (
-                        `value_id` int(11) default NULL,
-                        `product_link_attribute_id` smallint(6) unsigned default NULL,
-                        `link_id` int(11) unsigned default NULL,
-                        `value` int(11) NOT NULL default '0',
-                         KEY `FK_INT_PRODUCT_LINK_ATTRIBUTE` (`product_link_attribute_id`),
-                         KEY `FK_INT_PRODUCT_LINK` (`link_id`)
-                      )
-                    "
+            "INSERT INTO $link_attribute_tmp (
+                product_link_attribute_id,
+                link_id,
+                value
+            )(
+                SELECT
+                2,
+                cpl.link_id,
+                0
+                FROM $catalog_product_link cpl
+            )"
         );
 
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_link_attribute_int'
-            ) . "_tmp(
-                                    product_link_attribute_id,
-                                    link_id,
-                                    value
-                                )(
-                                  SELECT
-                                    2,
-                                    cpl.link_id,
-                                    0
-                                  FROM " . $this->_getTableName(
-                'catalog_product_link'
-            ) . " cpl
-                                )
-                              "
+            "UPDATE $link_attribute_tmp ct
+                JOIN $link_attribute_int c
+                    ON ct.link_id=c.link_id
+                SET ct.value_id=c.value_id
+                WHERE c.product_link_attribute_id=2"
         );
 
         $this->_doQuery(
-            "UPDATE " . $this->_getTableName(
-                'catalog_product_link_attribute_int'
-            ) . "_tmp ct
-                                JOIN " . $this->_getTableName(
-                'catalog_product_link_attribute_int'
-            ) . " c
-                                    ON ct.link_id=c.link_id
-                                SET ct.value_id=c.value_id
-                                WHERE c.product_link_attribute_id=2
-                              "
-        );
-
-        $this->_doQuery(
-            "
-                                    INSERT INTO " . $this->_getTableName(
-                'catalog_product_link_attribute_int'
-            ) . " (
-                                        value_id,
-                                        product_link_attribute_id,
-                                        link_id,
-                                        value
-                                    )(
-                                      SELECT
-                                        value_id,
-                                        product_link_attribute_id,
-                                        link_id,
-                                        value
-                                      FROM " . $this->_getTableName(
-                'catalog_product_link_attribute_int'
-            ) . "_tmp ct
-                                    )
-                                    ON DUPLICATE KEY UPDATE
-                                        link_id=ct.link_id
-
-                                  "
+            "INSERT INTO $link_attribute_int (
+                value_id,
+                product_link_attribute_id,
+                link_id,
+                value
+            )(
+                SELECT
+                value_id,
+                product_link_attribute_id,
+                link_id,
+                value
+                FROM $link_attribute_tmp ct
+            )
+            ON DUPLICATE KEY UPDATE
+                link_id=ct.link_id"
         );
     }
 
