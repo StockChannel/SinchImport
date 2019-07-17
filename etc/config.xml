@@ -22,7 +22,6 @@
             </attributes>
             <category_visibility>
                 <enable>0</enable>
-                <private_visible_to_guest>0</private_visible_to_guest>
             </category_visibility>
             <product_visibility>
                 <enable>0</enable>

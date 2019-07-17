@@ -9299,7 +9299,7 @@ class Sinch
                                   "
             );
         } else {
-            $this->printOutputMsg("-- Ignore the meta title for product configuration.");
+            $this->print("-- Ignore the meta title for product configuration.");
             $this->_logImportInfo("-- Ignore the meta title for product configuration.");
         }
     }
