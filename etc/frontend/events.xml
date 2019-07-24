@@ -6,4 +6,13 @@
     <event name="catalog_product_collection_load_after">
         <observer name="sitc_sinchimport_product_collection_load_after" instance="SITC\Sinchimport\Observer\ProductCollectionLoadAfter"/>
     </event>
+    <event name="catalog_block_product_list_collection">
+        <observer name="change_list_final_price" instance="SITC\Sinchimport\Observer\FinalPriceList" />
+    </event>
+    <event name="catalog_product_get_final_price">
+        <observer name="change_final_price" instance="SITC\Sinchimport\Observer\FinalPrice" />
+    </event>
+    <event name="checkout_cart_product_add_after">
+        <observer name="change_cart_price" instance="SITC\Sinchimport\Observer\ChangeCartPrice" />
+    </event>
 </config>
