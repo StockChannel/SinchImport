@@ -49,7 +49,7 @@ class IndexingData extends \Magento\Backend\App\Action
      */
     public function execute()
     {
-        $this->_logger->info('Start Full Import');
+        $this->_logger->info('Start Index process and URL generation');
 
         $resultJson = $this->resultJsonFactory->create();
         

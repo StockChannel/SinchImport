@@ -4,56 +4,42 @@ namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
 class StockPrice extends \Magento\Backend\App\Action
 {
-    /**
-     * @var \Magento\Framework\Controller\Result\JsonFactory
-     */
+    /** @var \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory */
     protected $resultJsonFactory;
 
-    /**
-     * Logging instance
-     *
-     * @var \SITC\Sinchimport\Logger\Logger
-     */
-    protected $_logger;
-
+    /** @var \Magento\Framework\Json\EncoderInterface $_jsonEncoder */
     protected $_jsonEncoder;
 
+    /** @var \SITC\Sinchimport\Model\Sinch $sinch */
     protected $sinch;
 
-    protected $_directory;
+    /** @var \SITC\Sinchimport\Logger\Logger $logger */
+    protected $logger;
 
-    /**
-     * @param \Magento\Backend\App\Action\Context              $context
-     * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\Json\EncoderInterface         $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger                  $logger
-     */
+    /** @var \SITC\Sinchimport\Helper\Data $helper */
+    private $helper;
+
     public function __construct(
         \Magento\Backend\App\Action\Context $context,
         \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
         \Magento\Framework\Json\EncoderInterface $jsonEncoder,
         \SITC\Sinchimport\Model\Sinch $sinch,
         \SITC\Sinchimport\Logger\Logger $logger,
-        \Magento\Framework\Filesystem\DirectoryList $directoryList
+        \SITC\Sinchimport\Helper\Data $helper
     ) {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
-        $this->_jsonEncoder      = $jsonEncoder;
-        $this->sinch             = $sinch;
-        $this->_logger           = $logger;
-        $this->_directory        = $directoryList;
+        $this->_jsonEncoder = $jsonEncoder;
+        $this->sinch = $sinch;
+        $this->logger = $logger;
+        $this->helper = $helper;
     }
 
-    /**
-     * Stock Price
-     */
     public function execute()
     {
+        $this->logger->info('Schedule Stock & Price Import');
+
         $resultJson = $this->resultJsonFactory->create();
-
-        $this->_logger->info('Start Stock & Price Import');
-
-        $rootDir = $this->_directory->getRoot() . '/';
 
         if (!$this->sinch->isImportNotRun()) {
             $result = [
@@ -62,15 +48,10 @@ class StockPrice extends \Magento\Backend\App\Action
                 'reload' => !$this->sinch->isImportNotRun() && !empty($lastImportData) && $lastImportData['import_type'] == 'FULL'
             ];
         } else {
-                exec(
-                    "nohup php " . $rootDir
-                    . "bin/magento sinch:import stockprice > /dev/null & echo $!"
-                );
-                
-
+            $this->helper->scheduleImport('PRICE STOCK');
             $result = [
                 'success' => true,
-                'message' => '',
+                'message' => 'Stock & price import has been scheduled. It may take up to 60 seconds to begin',
                 'reload' => false
             ];
         }

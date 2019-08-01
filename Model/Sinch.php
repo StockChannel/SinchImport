@@ -508,35 +508,59 @@ class Sinch
                         finished int(1) default 0
                       )"
         );
-        $this->_doQuery(
-            "INSERT INTO " . $this->import_status_statistic_table . " (
-                        start_import,
-                        finish_import,
-                        import_type,
-                        global_status_import,
-                        import_run_type,
-                        error_report_message)
-                      VALUES(
-                        now(),
-                        '0000-00-00 00:00:00',
-                        '$type',
-                        'Run',
-                        '" . $this->import_run_type . "',
-                        ''
-                      )
-                    "
-        );
-        $q = "SELECT MAX(id) AS id FROM "
-            . $this->import_status_statistic_table;
 
-        $result = $this->_doQuery($q)->fetch();
-        $this->current_import_status_statistic_id = !empty($result['id'])
-            ? $result['id'] : 0;
-        $this->_doQuery(
-            "UPDATE " . $this->import_status_statistic_table . "
-            SET global_status_import='Failed'
-            WHERE global_status_import='Run' AND id!="
-            . $this->current_import_status_statistic_id
+        $scheduledImportId = false;
+        if($this->import_run_type == 'MANUAL') {
+            $scheduledImportId = $this->_resourceConnection->getConnection()->fetchOne(
+                "SELECT id FROM {$this->import_status_statistic_table}
+                    WHERE import_run_type = 'MANUAL'
+                    AND global_status_import = 'Scheduled'
+                    ORDER BY start_import DESC
+                    LIMIT 1"
+            );
+        }
+
+        if(empty($scheduledImportId)) {
+            $this->_doQuery(
+                "INSERT INTO " . $this->import_status_statistic_table . " (
+                            start_import,
+                            finish_import,
+                            import_type,
+                            global_status_import,
+                            import_run_type,
+                            error_report_message)
+                        VALUES(
+                            now(),
+                            '0000-00-00 00:00:00',
+                            '$type',
+                            'Run',
+                            '" . $this->import_run_type . "',
+                            ''
+                        )
+                        "
+            );
+            
+            $result = $this->_doQuery(
+                "SELECT MAX(id) AS id FROM {$this->import_status_statistic_table}"
+            )->fetch();
+            $this->current_import_status_statistic_id = !empty($result['id']) ? $result['id'] : 0;
+        } else {
+            $this->_resourceConnection->getConnection()->query(
+                "UPDATE {$this->import_status_statistic_table}
+                    SET global_status_import = 'Run'
+                    WHERE id = :id",
+                [":id" => $scheduledImportId]
+            );
+
+            $this->current_import_status_statistic_id = $scheduledImportId;
+        }
+
+        $this->_resourceConnection->getConnection()->query(
+            "UPDATE {$this->import_status_statistic_table}
+                SET global_status_import = 'Failed'
+                WHERE (global_status_import = 'Run' OR global_status_import = 'Scheduled')
+                AND id != :id",
+            [":id" => $this->current_import_status_statistic_id]
         );
     }
 
