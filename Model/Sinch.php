@@ -2341,7 +2341,15 @@ class Sinch
         $attr_include_in_menu
     ) {
         $this->_doQuery("DELETE FROM $catalog_category_entity");
-
+        $this->_doQuery("SET FOREIGN_KEY_CHECKS = 0;");
+        $this->_doQuery("TRUNCATE TABLE catalog_category_entity_datetime;");
+        $this->_doQuery("TRUNCATE TABLE catalog_category_entity_decimal;");
+        $this->_doQuery("TRUNCATE TABLE catalog_category_entity_int;");
+        $this->_doQuery("TRUNCATE TABLE catalog_category_entity_text;");
+        $this->_doQuery("TRUNCATE TABLE catalog_category_entity_varchar;");
+        $this->_doQuery("TRUNCATE TABLE catalog_category_product;");
+        $this->_doQuery("TRUNCATE TABLE catalog_category_product_index;");
+        $this->_doQuery("SET FOREIGN_KEY_CHECKS = 1;");
         $this->_doQuery(
             "INSERT $catalog_category_entity
                     (entity_id, attribute_set_id, parent_id, created_at, updated_at,
