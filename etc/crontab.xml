@@ -8,5 +8,8 @@
         <job name="sinchimport_stockprice" instance="SITC\Sinchimport\Cron\Importstockprice" method="execute">
             <schedule>0 8 * * *</schedule>
         </job>
+        <job name="sinchimport_pickup_import" instance="SITC\Sinchimport\Cron\PickupImport" method="execute">
+            <schedule>* * * * *</schedule>
+        </job>
     </group>
 </config>

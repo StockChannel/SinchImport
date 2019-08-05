@@ -34,8 +34,8 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
         //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
         $account_group_id = $this->registry->registry('sitc_account_group_id');
 
-        if($this->helper->getStoreConfig('sinchimport/category_visibility/private_visible_to_guest') && $account_group_id === false) {
-            return; //private_visible_to_guest is enabled and this is a guest (don't filter)
+        if($account_group_id === false) {
+            return; //this is a guest (don't filter)
         }
 
         /** @var \Magento\Catalog\Model\ResourceModel\Category\Collection $categoryCollection */

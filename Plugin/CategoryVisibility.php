@@ -57,25 +57,30 @@ class CategoryVisibility {
         }
 
         $catId = $category->getStoreCategoryId();
+        $account_group_id = $this->helper->getCurrentAccountGroupId();
+
+        if($account_group_id === false){
+            //Customer is not logged in
+            return true;
+        }
+
+        $groupRuleCount = $this->resourceConn->getConnection()->fetchOne(
+            "SELECT COUNT(*) FROM {$this->catVisTable} WHERE account_group_id = :account_group_id",
+            [":account_group_id" => $account_group_id]
+        );
+
+        if($groupRuleCount == 0) {
+            //This account group has no category visibility rules, everything is public
+            return true;
+        }
+
         $accountGroupIds = $this->resourceConn->getConnection()->fetchCol(
             "SELECT account_group_id FROM {$this->catVisTable} WHERE category_id = :category_id",
             [":category_id" => $catId]
         );
 
-        if(empty($accountGroupIds)){
-            //If the query returns no account id's, then this category is public
-            return true;
-        }
-
-        $account_group_id = $this->helper->getCurrentAccountGroupId();
-
-        if($account_group_id !== false && in_array($account_group_id, $accountGroupIds)){
+        if(in_array($account_group_id, $accountGroupIds)){
             //Customer is logged in and their account can see this category
-            return true;
-        }
-
-        if($this->helper->getStoreConfig('sinchimport/category_visibility/private_visible_to_guest') && $account_group_id === false){
-            //Customer is not logged in and private_visible_to_guest is enabled
             return true;
         }
 
