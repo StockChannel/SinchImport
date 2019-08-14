@@ -4,7 +4,6 @@ namespace SITC\Sinchimport\Model\Import;
 
 class CustomCatalogVisibility extends AbstractImportSection {
     const CHUNK_SIZE = 1000;
-    const RESTRICTED_THRESHOLD = 1000;
     const ATTRIBUTE_NAME = "sinch_restrict";
     const LOG_PREFIX = "CustomCatalog: ";
 
