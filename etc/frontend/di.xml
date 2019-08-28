@@ -4,7 +4,7 @@
         <plugin name="filterSinchAttributes" type="SITC\Sinchimport\Plugin\FilterList" />
     </type>
     <type name="Magento\Catalog\Model\Layer">
-        <plugin name="beforeCollectionLoadLayer" type="SITC\Sinchimport\Plugin\LayerPluginTest" sortOrder="0"/>
+        <plugin name="beforeCollectionLoadLayer" type="SITC\Sinchimport\Plugin\Layer" sortOrder="0"/>
     </type>
     <type name="Magento\Search\Model\SearchEngine">
         <plugin name="beforeElasticsearch" type="SITC\Sinchimport\Plugin\Elasticsuite" />

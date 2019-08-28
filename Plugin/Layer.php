@@ -1,6 +1,6 @@
 <?php
 namespace SITC\Sinchimport\Plugin;
-class LayerPluginTest {
+class Layer {
     /**
      * @var \SITC\Sinchimport\Helper\Data
      */
@@ -8,11 +8,9 @@ class LayerPluginTest {
     private $registry;
 
     public function __construct(
-        \SITC\Sinchimport\Helper\Data $helper,
-        \Magento\Framework\Registry $registry
+        \SITC\Sinchimport\Helper\Data $helper
     ){
         $this->helper = $helper;
-        $this->registry = $registry;
     }
 
     /**
@@ -29,12 +27,8 @@ class LayerPluginTest {
             $account_group_id = 0;
         }
 
-        // $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/test.log');
-        // $logger = new \Zend\Log\Logger();
-        // $logger->addWriter($writer);
-
         $collection->addAttributeToSelect('sinch_restrict', 'left');
-        if(!$this->helper->isModuleEnabled('Smile_ElasticsuiteCatalog')){
+        if($this->helper->isProductVisibilityEnabled() && !$this->helper->isModuleEnabled('Smile_ElasticsuiteCatalog')){
             $collection->getSelect()->where(
                 "(at_sinch_restrict.value IS NULL OR (LEFT(at_sinch_restrict.value, 1) != '!' AND FIND_IN_SET({$account_group_id}, at_sinch_restrict.value) >= 1) OR (LEFT(at_sinch_restrict.value, 1) = '!' AND FIND_IN_SET({$account_group_id}, SUBSTR(at_sinch_restrict.value,2)) = 0))",
                 null,
@@ -42,7 +36,6 @@ class LayerPluginTest {
             );
         }
 
-        // $logger->info("Layer plugin: " . $collection->getSelect());
-        //$subject->getCurrentCategory();
+        return null;
     }
 }
