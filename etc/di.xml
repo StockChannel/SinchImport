@@ -62,4 +62,23 @@
     <type name="Smile\ElasticsuiteCatalog\Search\Request\Product\Aggregation\Provider\FilterableAttributes\Modifier\Coverage">
         <plugin name="sinchimport_override_elasticsuite_filters_28" type="SITC\Sinchimport\Plugin\Elasticsuite\Coverage28" sortOrder="0" />
     </type>
+    <!-- The following is to allow additional Elasticsearch query types in ElasticSuite -->
+    <type name="Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory">
+        <arguments>
+            <argument name="factories" xsi:type="array">
+                <item name="scriptQuery" xsi:type="object">scriptQueryFactory</item>
+            </argument>
+        </arguments>
+    </type>
+
+    <virtualType name="scriptQueryFactory" type="SITC\Sinchimport\Search\Request\Query\ScriptFactory" />
+
+    <type name="Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder">
+        <arguments>
+            <argument name="builders" xsi:type="array">
+                <item name="scriptQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\Script\Proxy</item>
+            </argument>
+        </arguments>
+    </type>
+    <!-- End extended query types -->
 </config>
