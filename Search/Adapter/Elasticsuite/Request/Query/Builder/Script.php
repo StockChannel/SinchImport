@@ -11,9 +11,12 @@
  * @copyright 2019 StockChannel Ltd
  * @license   Open Software License ("OSL") v. 3.0
  */
-namespace Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder;
+namespace SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder;
+
+use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder\AbstractComplexBuilder;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\BuilderInterface;
+
 /**
  * Build an ES script query.
  *

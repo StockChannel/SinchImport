@@ -5,10 +5,13 @@ use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 
 class Elasticsuite {
     /**
-     * @var \SITC\Sinchimport\Helper\Data
+     * @var \SITC\Sinchimport\Helper\Data $helper
      */
     private $helper;
-    private $registry;
+    /**
+     * @var \Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory $queryFactory
+     */
+    private $queryFactory;
 
     public function __construct(
         \SITC\Sinchimport\Helper\Data $helper,
@@ -19,38 +22,76 @@ class Elasticsuite {
     }
 
     /**
-     * Initialize product collection
+     * Add Elasticsearch filter for Account group to the request being built
      *
-     * @param \Magento\Search\Model\SearchEngine $subject
-     * @param \Magento\Framework\Api\Search\SearchCriteriaInterface $searchCriteria
+     * @param \Smile\ElasticsuiteCore\Search\Request\Builder $subject
+     * @param integer               $storeId       Search request store id.
+     * @param string                $containerName Search request name.
+     * @param integer               $from          Search request pagination from clause.
+     * @param integer               $size          Search request pagination size.
+     * @param string|QueryInterface $query         Search request query.
+     * @param array                 $sortOrders    Search request sort orders.
+     * @param array                 $filters       Search request filters.
+     * @param QueryInterface[]      $queryFilters  Search request filters prebuilt as QueryInterface.
+     * @param array                 $facets        Search request facets.
+     *
+     * @return array|null
      */
-    public function beforeSearch($subject, $searchCriteria)
-    {
-        if(!$this->helper->isProductVisiblityEnabled()) return null;
+    public function beforeCreate(
+        $subject,
+        $storeId,
+        $containerName,
+        $from,
+        $size,
+        $query = null,
+        $sortOrders = [],
+        $filters = [],
+        $queryFilters = [],
+        $facets = []
+    ){
+        if(!$this->helper->isProductVisibilityEnabled()) return null;
         
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/test.log');
-        $logger = new \Zend\Log\Logger();
-        $logger->addWriter($writer);
-        $logger->info(print_r($searchCriteria, true));
-        return null;
+        $filterParam = $this->buildEsQuery();
+        if(!in_array($filterParam, $queryFilters)) {
+            $queryFilters[] = $filterParam;
+        }
+
+        return [
+            $subject,
+            $storeId,
+            $containerName,
+            $from,
+            $size,
+            $query,
+            $sortOrders,
+            $filters,
+            $queryFilters,
+            $facets
+        ];
     }
 
     private function buildEsQuery()
     {
-        $topLevelBool = $this->queryFactory->create(
-            QueryInterface::TYPE_BOOL,
-            [
-                'should' => [
-                    $this->buildBlacklistCondition(),
-                    $this->buildWhitelistCondition(),
-                    $this->buildNotPresentCondition()
-                ]
-            ]
-        );
+        // $topLevelBool = $this->queryFactory->create(
+        //     QueryInterface::TYPE_BOOL,
+        //     [
+        //         'should' => [
+        //             $this->buildBlacklistCondition(),
+        //             $this->buildWhitelistCondition(),
+        //             $this->buildNotPresentCondition()
+        //         ]
+        //     ]
+        // );
 
+        // return $this->queryFactory->create(
+        //     QueryInterface::TYPE_FILTERED,
+        //     ['filter' => $topLevelBool] //Not specifying a "must" clause causes the filter to be constant_score
+        // );
+
+        //Or possibly just:
         return $this->queryFactory->create(
-            QueryInterface::TYPE_FILTERED,
-            ['filter' => $topLevelBool] //Not specifying a "must" clause causes the filter to be constant_score
+            'sitcAccountGroupQuery',
+            ['account_group' => $this->helper->getCurrentAccountGroupId()]
         );
     }
 

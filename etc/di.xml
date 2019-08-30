@@ -67,16 +67,19 @@
         <arguments>
             <argument name="factories" xsi:type="array">
                 <item name="scriptQuery" xsi:type="object">scriptQueryFactory</item>
+                <item name="sitcAccountGroupQuery" xsi:type="object">sitcAccountGroupQueryFactory</item>
             </argument>
         </arguments>
     </type>
 
     <virtualType name="scriptQueryFactory" type="SITC\Sinchimport\Search\Request\Query\ScriptFactory" />
+    <virtualType name="sitcAccountGroupQueryFactory" type="SITC\Sinchimport\Search\Request\Query\AccountGroupFilterFactory" />
 
     <type name="Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder">
         <arguments>
             <argument name="builders" xsi:type="array">
                 <item name="scriptQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\Script\Proxy</item>
+                <item name="sitcAccountGroupQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\AccountGroupFilter\Proxy</item>
             </argument>
         </arguments>
     </type>

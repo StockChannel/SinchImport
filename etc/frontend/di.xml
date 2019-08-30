@@ -6,7 +6,7 @@
     <type name="Magento\Catalog\Model\Layer">
         <plugin name="beforeCollectionLoadLayer" type="SITC\Sinchimport\Plugin\Layer" sortOrder="0"/>
     </type>
-    <type name="Magento\Search\Model\SearchEngine">
-        <plugin name="beforeElasticsearch" type="SITC\Sinchimport\Plugin\Elasticsuite" />
+    <type name="Smile\ElasticsuiteCore\Search\Request\Builder">
+        <plugin name="beforeESQuery" type="SITC\Sinchimport\Plugin\Elasticsuite" />
     </type>
 </config>
