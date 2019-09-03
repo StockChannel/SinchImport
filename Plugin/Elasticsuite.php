@@ -57,7 +57,6 @@ class Elasticsuite {
         }
 
         return [
-            $subject,
             $storeId,
             $containerName,
             $from,
@@ -72,107 +71,9 @@ class Elasticsuite {
 
     private function buildEsQuery()
     {
-        // $topLevelBool = $this->queryFactory->create(
-        //     QueryInterface::TYPE_BOOL,
-        //     [
-        //         'should' => [
-        //             $this->buildBlacklistCondition(),
-        //             $this->buildWhitelistCondition(),
-        //             $this->buildNotPresentCondition()
-        //         ]
-        //     ]
-        // );
-
-        // return $this->queryFactory->create(
-        //     QueryInterface::TYPE_FILTERED,
-        //     ['filter' => $topLevelBool] //Not specifying a "must" clause causes the filter to be constant_score
-        // );
-
-        //Or possibly just:
         return $this->queryFactory->create(
             'sitcAccountGroupQuery',
             ['account_group' => $this->helper->getCurrentAccountGroupId()]
-        );
-    }
-
-    private function buildBlacklistCondition()
-    {
-        $partOne = $this->queryFactory->create(
-            QueryInterface::TYPE_BOOL, //TODO: Query type for prefix?
-            ['prefix' => ['sinch_restrict' => '!']]
-        );
-
-
-        $partTwo = $this->queryFactory->create(
-            QueryInterface::TYPE_BOOL,
-            ['must_not' => []] //TODO: Add script condition
-        );
-        // "script": {
-        //     "script": {
-        //         "source": """Arrays.asList(/,/.split(doc['sinch_restrict'].value.replace("!", ""))).contains(params.group_id)""",
-        //         "params": {
-        //             "group_id": "2518"
-        //         }
-        //     }
-        // }
-
-        return $this->queryFactory->create(
-            QueryInterface::TYPE_BOOL,
-            [
-                'must' => [
-                    $partOne,
-                    $partTwo
-                ]
-            ]
-        );
-    }
-
-    private function buildWhitelistCondition()
-    {
-        $prefix = $this->queryFactory->create(
-            QueryInterface::TYPE_TERM, //TODO: Query type for prefix?
-            ['prefix' => ['sinch_restrict' => '!']]
-        );
-
-        $partOne = $this->queryFactory->create(
-            QueryInterface::TYPE_BOOL,
-            ['must_not' => [$prefix]]
-        );
-
-        $partTwo = $this->queryFactory->create(
-            QueryInterface::TYPE_BOOL,
-            ['must' => []] //TODO: Add script condition
-        );
-        // "script": {
-        //     "script": {
-        //       "source": "Arrays.asList(/,/.split(doc['sinch_restrict'].value)).contains(params.group_id)",
-        //       "params": {
-        //         "group_id": "2518"
-        //       }
-        //     }
-        //   }
-
-        return $this->queryFactory->create(
-            QueryInterface::TYPE_BOOL,
-            [
-                'must' => [
-                    $partOne,
-                    $partTwo
-                ]
-            ]
-        );
-    }
-
-    private function buildNotPresentCondition()
-    {
-        $exists = $this->queryFactory->create(
-            QueryInterface::TYPE_EXISTS,
-            ['field' => 'sinch_restrict']
-        );
-
-        return $this->queryFactory->create(
-            QueryInterface::TYPE_BOOL,
-            ['must_not' => $exists]
         );
     }
 }
