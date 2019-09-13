@@ -124,7 +124,7 @@ class AccountGroupFilter extends AbstractComplexBuilder implements BuilderInterf
                                     "script" => [
                                         "source" => "Arrays.asList(/,/.split(doc['sinch_restrict'].value.replace(\"!\", \"\"))).contains(params.group_id)",
                                         "params" => [
-                                            "group_id" => $query->getAccountGroup()
+                                            "group_id" => (string)$query->getAccountGroup()
                                         ]
                                     ]
                                 ]
@@ -143,7 +143,7 @@ class AccountGroupFilter extends AbstractComplexBuilder implements BuilderInterf
                             "script" => [
                                 "source" => "Arrays.asList(/,/.split(doc['sinch_restrict'].value)).contains(params.group_id)",
                                 "params" => [
-                                    "group_id" => $query->getAccountGroup()
+                                    "group_id" => (string)$query->getAccountGroup()
                                 ]
                             ]
                         ]

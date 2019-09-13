@@ -27,8 +27,8 @@ class Layer {
             $account_group_id = 0;
         }
 
-        $collection->addAttributeToSelect('sinch_restrict', 'left');
         if($this->helper->isProductVisibilityEnabled() && !$this->helper->isModuleEnabled('Smile_ElasticsuiteCatalog')){
+            $collection->addAttributeToSelect('sinch_restrict', 'left');
             $collection->getSelect()->where(
                 "(at_sinch_restrict.value IS NULL OR (LEFT(at_sinch_restrict.value, 1) != '!' AND FIND_IN_SET({$account_group_id}, at_sinch_restrict.value) >= 1) OR (LEFT(at_sinch_restrict.value, 1) = '!' AND FIND_IN_SET({$account_group_id}, SUBSTR(at_sinch_restrict.value,2)) = 0))",
                 null,
