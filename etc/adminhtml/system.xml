@@ -126,6 +126,7 @@
                 <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Requires disabling the "Blocks HTML output" cache (block_html) for the menu to update correctly</comment>
                 </field>
             </group>
             <group id="product_visibility" translate="label" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -133,10 +134,7 @@
                 <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                </field>
-                <field id="private_visible_to_guest" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Are private products visible to Guests</label>
-                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Requires disabling the "Page Cache" cache (full_page). Recommended to be using Smile ElasticSuite for full functionality</comment>
                 </field>
             </group>
         </section>

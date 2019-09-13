@@ -17,8 +17,8 @@ class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInt
 
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
-        if(!$this->helper->isProductVisibilityEnabled()){
-            return; //No filtering if the feature isn't enabled
+        if(!$this->helper->isProductVisibilityEnabled() || $this->helper->isModuleEnabled('Smile_ElasticsuiteCatalog')){
+            return; //No filtering if the feature isn't enabled or with Elasticsuite enabled (as thats handled by Plugin\Elasticsuite\ContainerConfiguration)
         }
 
         //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
