@@ -13,9 +13,8 @@
  */
 namespace SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder;
 
-use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder\AbstractComplexBuilder;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
-use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\BuilderInterface;
+use SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\BuilderInterface;
 
 /**
  * Build an ES query to limit the selection to just products visible to the current account group.
@@ -24,7 +23,7 @@ use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\BuilderInte
  * @package  SITC\Sinchimport
  * @author   Nick Anstee <nick.anstee@stockinthechannel.com>
  */
-class AccountGroupFilter extends AbstractComplexBuilder implements BuilderInterface
+class AccountGroupFilter implements BuilderInterface
 {
     /**
      * {@inheritDoc}

@@ -10,13 +10,13 @@ class ContainerConfiguration {
      */
     private $helper;
     /**
-     * @var \Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory $queryFactory
+     * @var \SITC\Sinchimport\Search\Request\Query\QueryFactory $queryFactory
      */
     private $queryFactory;
 
     public function __construct(
         \SITC\Sinchimport\Helper\Data $helper,
-        \Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory $queryFactory
+        \SITC\Sinchimport\Search\Request\Query\QueryFactory $queryFactory
     ){
         $this->helper = $helper;
         $this->queryFactory = $queryFactory;
