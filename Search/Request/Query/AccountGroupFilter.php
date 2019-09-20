@@ -1,7 +1,7 @@
 <?php
 namespace SITC\Sinchimport\Search\Request\Query;
 
-use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
+use SITC\Sinchimport\Search\Request\QueryInterface;
 /**
  * Account group filtering implementation.
  *
