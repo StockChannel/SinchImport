@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <!-- Latest import status info -->
+    <route url="/V1/sinchimport/latestImport" method="GET">
+        <service class="SITC\Sinchimport\Api\ImportInterface" method="getLatestStatus"/>
+        <resources>
+            <resource ref="SITC_Sinchimport::history_api"/>
+        </resources>
+    </route>
+    <!-- All import status info -->
+    <route url="/V1/sinchimport/importHistory" method="GET">
+        <service class="SITC\Sinchimport\Api\ImportInterface" method="getAllStatuses"/>
+        <resources>
+            <resource ref="SITC_Sinchimport::history_api"/>
+        </resources>
+    </route>
+    <!-- Schedule import -->
+    <route url="/V1/sinchimport/scheduleImport" method="POST">
+        <service class="SITC\Sinchimport\Api\ImportInterface" method="scheduleImport"/>
+        <resources>
+            <resource ref="SITC_Sinchimport::import_api"/>
+        </resources>
+    </route>
+</routes>
