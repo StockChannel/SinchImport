@@ -4,21 +4,21 @@
     <route url="/V1/sinchimport/latestImport" method="GET">
         <service class="SITC\Sinchimport\Api\ImportInterface" method="getLatestStatus"/>
         <resources>
-            <resource ref="SITC_Sinchimport::sinchimport"/>
+            <resource ref="SITC_Sinchimport::history_api"/>
         </resources>
     </route>
     <!-- All import status info -->
     <route url="/V1/sinchimport/importHistory" method="GET">
         <service class="SITC\Sinchimport\Api\ImportInterface" method="getAllStatuses"/>
         <resources>
-            <resource ref="SITC_Sinchimport::sinchimport"/>
+            <resource ref="SITC_Sinchimport::history_api"/>
         </resources>
     </route>
     <!-- Schedule import -->
-    <route url="/V1/sinchimport/scheduleImport/:importType" method="GET">
+    <route url="/V1/sinchimport/scheduleImport" method="POST">
         <service class="SITC\Sinchimport\Api\ImportInterface" method="scheduleImport"/>
         <resources>
-            <resource ref="SITC_Sinchimport::importdata"/>
+            <resource ref="SITC_Sinchimport::import_api"/>
         </resources>
     </route>
 </routes>

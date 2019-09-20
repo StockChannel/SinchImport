@@ -4,6 +4,10 @@
     <preference for="Magento\Catalog\Model\Indexer\Category\Flat\Action\Full" type="SITC\Sinchimport\Model\Catalog\Indexer\Category\Flat\Action\Full" />
     <preference for="Magento\UrlRewrite\Model\Storage\DbStorage" type="SITC\Sinchimport\Model\Storage\DbStorage" />
     <preference for="Magento\Catalog\Model\View\Asset\Image" type="SITC\Sinchimport\Model\View\Asset\Image" />
+    <!-- Setup the import API -->
+    <preference for="SITC\Sinchimport\Api\ImportInterface" type="SITC\Sinchimport\Model\Api\ImportService" />
+    <preference for="SITC\Sinchimport\Api\Data\ImportStatusInterface" type="SITC\Sinchimport\Model\Api\Data\ImportStatus" />
+    <!-- End API setup -->
     <type name="Magento\Framework\Console\CommandList">
         <arguments>
             <argument name="commands" xsi:type="array">

@@ -7,7 +7,7 @@ interface ImportInterface {
      * Returns the status information for the most recent import
      * 
      * @api
-     * @return mixed
+     * @return \SITC\Sinchimport\Api\Data\ImportStatusInterface|null
      */
     public function getLatestStatus();
 
@@ -15,16 +15,16 @@ interface ImportInterface {
      * Returns the status information for all imports in history
      * 
      * @api
-     * @return mixed
+     * @return \SITC\Sinchimport\Api\Data\ImportStatusInterface[]
      */
     public function getAllStatuses();
 
     /**
-     * Schedules an import to start as soon as possible
+     * Schedules an import to start as soon as possible. Valid import types are "FULL" and "PRICE STOCK"
      * 
      * @api
-     * @param string $importType The type of import to schedule, accepts "full" or "stockprice"
-     * @return bool Whether the import was scheduled successfully
+     * @param string $importType The type of import to schedule
+     * @return void
      */
     public function scheduleImport($importType);
 }
