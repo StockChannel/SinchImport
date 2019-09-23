@@ -353,20 +353,40 @@ class Sinch
                     );
                 }
 
-                if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
-                    $this->print("Parsing customer group categories...");
-                    $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                //Allow the CC category visibility import section to be skipped
+                $ccCategoryDisable = $this->scopeConfig->getValue(
+                    'sinchimport/category_visibility/disable_import',
+                    \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+                );
+
+                if(!$ccCategoryDisable){
+                    if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
+                        $this->print("Parsing customer group categories...");
+                        $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                    }
+                } else {
+                    $this->print("Skipping custom catalog categories as 'sinchimport/category_visibility/disable_import' is enabled");
                 }
 
                 $this->print("Applying UNSPSC values...");
                 $this->unspscImport->apply();
 
-                if(file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)){
-                    $this->print("Processing Custom catalog restrictions...");
-                    $this->customCatalogImport->parse(
-                        $this->varDir . FILE_STOCK_AND_PRICES,
-                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
-                    );
+                //Allow the CC product visibility import section to be skipped
+                $ccProductDisable = $this->scopeConfig->getValue(
+                    'sinchimport/product_visibility/disable_import',
+                    \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+                );
+
+                if(!$ccProductDisable) {
+                    if(file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)){
+                        $this->print("Processing Custom catalog restrictions...");
+                        $this->customCatalogImport->parse(
+                            $this->varDir . FILE_STOCK_AND_PRICES,
+                            $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                        );
+                    }
+                } else {
+                    $this->print("Skipping custom catalog restrictions as 'sinchimport/product_visibility/disable_import' is enabled");
                 }
 
                 $this->print("Start generating category filters...");
@@ -8938,18 +8958,37 @@ class Sinch
                     ]
                 );
 
-                if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
-                    $this->print("Parsing customer group categories...");
-                    $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                //Allow the CC category visibility import section to be skipped
+                $ccCategoryDisable = $this->scopeConfig->getValue(
+                    'sinchimport/category_visibility/disable_import',
+                    \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+                );
+
+                if(!$ccCategoryDisable){
+                    if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
+                        $this->print("Parsing customer group categories...");
+                        $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                    }
+                } else {
+                    $this->print("Skipping custom catalog categories as 'sinchimport/category_visibility/disable_import' is enabled");
                 }
 
-                if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) &&
-                    file_exists($this->varDir . FILE_STOCK_AND_PRICES)) {
-                    $this->print("Processing Custom catalog restrictions...");
-                    $this->customCatalogImport->parse(
-                        $this->varDir . FILE_STOCK_AND_PRICES,
-                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
-                    );
+                //Allow the CC product visibility import section to be skipped
+                $ccProductDisable = $this->scopeConfig->getValue(
+                    'sinchimport/product_visibility/disable_import',
+                    \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+                );
+
+                if(!$ccProductDisable) {
+                    if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)) {
+                        $this->print("Processing Custom catalog restrictions...");
+                        $this->customCatalogImport->parse(
+                            $this->varDir . FILE_STOCK_AND_PRICES,
+                            $this->varDir . FILE_CUSTOMER_GROUP_PRICE
+                        );
+                    }
+                } else {
+                    $this->print("Skipping custom catalog restrictions as 'sinchimport/product_visibility/disable_import' is enabled");
                 }
 
                 $this->print("Start indexing  Stock & Price...");

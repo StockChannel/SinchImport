@@ -128,6 +128,11 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Requires disabling the "Blocks HTML output" cache (block_html) for the menu to update correctly</comment>
                 </field>
+                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Disable import section</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>If you have no intention of using the Category visibility functionality in the near future, enable this option to skip this section of the import</comment>
+                </field>
             </group>
             <group id="product_visibility" translate="label" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Product Visibility Functionality</label>
@@ -135,6 +140,11 @@
                     <label>Enable</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Requires disabling the "Page Cache" cache (full_page). Recommended to be using Smile ElasticSuite for full functionality</comment>
+                </field>
+                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Disable import section</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>If you have no intention of using the Product visibility functionality in the near future, enable this option to skip this section of the import</comment>
                 </field>
             </group>
         </section>

@@ -9,6 +9,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
 
     private $tmpTable = "sinch_custom_catalog_tmp";
     private $finalRulesTable = "sinch_custom_catalog_final_tmp";
+    private $flagTable = "sinch_custom_catalog_flag";
 
     /**
      * @var \SITC\Sinchimport\Util\CsvIterator $stockPriceCsv
@@ -29,7 +30,6 @@ class CustomCatalogVisibility extends AbstractImportSection {
     /** @var string */
     private $productMappingTable;
 
-
     /**
      * @var \Zend\Log\Logger $logger
      */
@@ -43,11 +43,6 @@ class CustomCatalogVisibility extends AbstractImportSection {
      * @var int
      */
     private $restrictCount = 0;
-
-    /**
-     * @var array $productIsWhitelist Product ID => Whitelist/Blacklist mode (true = whitelist)
-     */
-    private $productIsWhitelist = [];
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
@@ -72,6 +67,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
 
     private function cleanupTempTables()
     {
+        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->flagTable}");
         $this->getConnection()->query("DROP TABLE IF EXISTS {$this->tmpTable}");
         $this->getConnection()->query("DROP TABLE IF EXISTS {$this->finalRulesTable}");
     }
@@ -80,6 +76,13 @@ class CustomCatalogVisibility extends AbstractImportSection {
     {
         $this->cleanupTempTables();
         $this->getConnection()->query("SET SESSION group_concat_max_len = 102400");
+        $this->getConnection()->query(
+            "CREATE TABLE {$this->flagTable} (
+                product_id int(11) unsigned NOT NULL PRIMARY KEY COMMENT 'Sinch Product ID',
+                whitelist tinyint(1) NOT NULL COMMENT 'Is Whitelisted product',
+                INDEX (whitelist)
+            )"
+        );
         $this->getConnection()->query(
             "CREATE TABLE {$this->tmpTable} (
                 rule_id int(11) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
@@ -111,15 +114,6 @@ class CustomCatalogVisibility extends AbstractImportSection {
     }
 
     /**
-     * @param string $value String to check for emptiness/whitespace
-     * @return bool True if empty or whitespace
-     */
-    private function isEmptyOrWhitespace($value)
-    {
-        return empty($value) || empty(trim($value));
-    }
-
-    /**
      * @param string $stockPriceFile The path to StockAndPrices.csv
      */
     private function checkProductModes($stockPriceFile)
@@ -130,15 +124,24 @@ class CustomCatalogVisibility extends AbstractImportSection {
 
         //ProductID|Stock|Price|Cost|DistributorID
         while($toProcess = $this->stockPriceCsv->take(self::CHUNK_SIZE)) {
+            $flagsInsert = [];
             foreach($toProcess as $row) {
                 //Check if Price and Cost columns are empty
-                $this->productIsWhitelist[$row[0]] = $this->isEmptyOrWhitespace($row[2]) && $this->isEmptyOrWhitespace($row[3]);
+                $flagsInsert[] = [
+                    "product_id" => $row[0],
+                    "whitelist" => $this->isEmptyOrWhitespace($row[2]) && $this->isEmptyOrWhitespace($row[3])
+                ];
             }
+            $this->getConnection()->insertOnDuplicate($this->flagTable, $flagsInsert);
         }
         $this->stockPriceCsv->closeIter();
 
-        $numWhitelist = count(array_filter($this->productIsWhitelist, function($v) { return $v == true; }));
-        $numBlacklist = count($this->productIsWhitelist) - $numWhitelist;
+        $numWhitelist = $this->getConnection()->fetchOne(
+            "SELECT COUNT(*) FROM {$this->flagTable} WHERE whitelist = 1"
+        );
+        $numBlacklist = $this->getConnection()->fetchOne(
+            "SELECT COUNT(*) FROM {$this->flagTable} WHERE whitelist = 0"
+        );
         $this->log("{$numWhitelist} products in whitelist mode");
         $this->log("{$numBlacklist} products in blacklist mode");
     }
@@ -157,7 +160,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
             $rulesForInsertion = [];
             foreach($toProcess as $row) {
                 //Whitelist/blacklist logic
-                $whitelist = $this->productIsWhitelist[$row[1]];
+                $whitelist = $this->isWhitelisted($row[1]);
                 $noPrice = $this->isEmptyOrWhitespace($row[3]);
                 //Whitelist mode (Non-empty group price means visible) || Blacklist mode (Empty group price means not visible)
                 if(($whitelist & !$noPrice) || (!$whitelist && $noPrice)) {
@@ -179,69 +182,34 @@ class CustomCatalogVisibility extends AbstractImportSection {
         //Prepare the final rules ready for attributes
         $this->getConnection()->query(
         "INSERT INTO {$this->finalRulesTable} (product_id, rule)
-            SELECT spm.entity_id, GROUP_CONCAT(group_id ORDER BY group_id ASC) FROM {$this->tmpTable} cct
+            SELECT spm.entity_id, CONCAT(IF(sft.whitelist, '', '!'), GROUP_CONCAT(group_id ORDER BY group_id ASC)) FROM {$this->tmpTable} cct
                 INNER JOIN {$this->productMappingTable} spm
-                ON cct.product_id = spm.sinch_product_id
-                GROUP BY product_id"
+                    ON cct.product_id = spm.sinch_product_id
+                INNER JOIN {$this->flagTable} sft
+                    ON cct.product_id = sft.product_id
+                GROUP BY spm.entity_id"
         );
 
-        $whitelistProducts = $this->sinchToEntityIds(array_keys(array_filter($this->productIsWhitelist, function($v) { return $v == 1; })));
-        $blacklistProducts = $this->sinchToEntityIds(array_keys(array_filter($this->productIsWhitelist, function($v) { return $v == 0; })));
+        $distinctRules = $this->getConnection()->fetchCol("SELECT DISTINCT rule FROM {$this->finalRulesTable}");
+        $ruleCount = count($distinctRules);
+        $this->log("{$ruleCount} distinct rules");
 
-        if(count($whitelistProducts) > 0) {
-            $placeholders = implode(',', array_fill(0, count($whitelistProducts), '?'));
-            $whitelistValues = $this->getConnection()->fetchCol(
-                "SELECT DISTINCT rule FROM {$this->finalRulesTable} WHERE product_id IN ({$placeholders})",
-                $whitelistProducts
+        foreach($distinctRules as $rule) {
+            $products = $this->getConnection()->fetchCol(
+                "SELECT product_id FROM {$this->finalRulesTable} WHERE rule = :value",
+                [":value" => $rule]
             );
-            $whitelistValCount = count($whitelistValues);
-            $this->log("{$whitelistValCount} distinct whitelist values");
 
-            foreach($whitelistValues as $whitelistValue) {
-                $products = $this->getConnection()->fetchCol(
-                    "SELECT product_id FROM {$this->finalRulesTable} WHERE rule = :value",
-                    [":value" => $whitelistValue]
+            if(!empty($products)) {
+                $this->massProdValues->updateAttributes(
+                    $products,
+                    [self::ATTRIBUTE_NAME => $rule],
+                    0 //store id (dummy value as they're global attributes)
                 );
-
-                if(!empty($products)) {
-                    $this->log("Applying whitelist values");
-                    $this->massProdValues->updateAttributes(
-                        $products,
-                        [self::ATTRIBUTE_NAME => $whitelistValue],
-                        0 //store id (dummy value as they're global attributes)
-                    );
-                    $this->restrictCount += count($products);
-                }
+                $this->restrictCount += count($products);
             }
-            $this->log("Whitelist values have been applied");
         }
-
-        if(count($blacklistProducts) > 0) {
-            $placeholders = implode(',', array_fill(0, count($blacklistProducts), '?'));
-            $blacklistValues = $this->getConnection()->fetchCol(
-                "SELECT DISTINCT rule FROM {$this->finalRulesTable} WHERE product_id IN ({$placeholders})",
-                $blacklistProducts
-            );
-            $blacklistValCount = count($blacklistValues);
-            $this->log("{$blacklistValCount} distinct blacklist values");
-
-            foreach($blacklistValues as $blacklistValue) {
-                $products = $this->getConnection()->fetchCol(
-                    "SELECT product_id FROM {$this->finalRulesTable} WHERE rule = :value",
-                    [":value" => $blacklistValue]
-                );
-
-                if(!empty($products)) {
-                    $this->massProdValues->updateAttributes(
-                        $products,
-                        [self::ATTRIBUTE_NAME => "!" . $blacklistValue],
-                        0 //store id (dummy value as they're global attributes)
-                    );
-                    $this->restrictCount += count($products);
-                }
-            }
-            $this->log("Blacklist values have been applied");
-        }
+        $this->log("Rule attribute values have been applied");
 
         //Clear the sinch_restrict value for products that no longer have a rule (but not non-sinch products)
         $noValueSinchProds = $this->getConnection()->fetchCol(
@@ -261,13 +229,24 @@ class CustomCatalogVisibility extends AbstractImportSection {
         }
     }
 
-    private function sinchToEntityIds($sinch_prod_ids)
+    /**
+     * @param string $value String to check for emptiness/whitespace
+     * @return bool True if empty or whitespace
+     */
+    private function isEmptyOrWhitespace($value)
     {
-        if(empty($sinch_prod_ids)) return [];
-        $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
-        return $this->getConnection()->fetchCol(
-            "SELECT entity_id FROM {$this->productMappingTable} WHERE sinch_product_id IN ($placeholders)",
-            $sinch_prod_ids
+        return empty($value) || empty(trim($value));
+    }
+
+    /**
+     * @param int $product_id the Sinch product ID
+     * @return bool
+     */
+    private function isWhitelisted($product_id)
+    {
+        return $this->getConnection()->fetchOne(
+            "SELECT whitelist FROM {$this->flagTable} WHERE product_id = :product_id",
+            [":product_id" => $product_id]
         );
     }
 
