@@ -5,7 +5,9 @@
         <resources>
             <resource id="Magento_Backend::admin">
                 <resource id="SITC_Sinchimport::sinchimport" title="Sinchimport" translate="title" sortOrder="30">
-                    <resource id="SITC_Sinchimport::importdata" title="Sinchimport" translate="title" sortOrder="10" />
+                    <resource id="SITC_Sinchimport::importdata" title="Sinchimport - Import data menu option" translate="title" sortOrder="10" />
+                    <resource id="SITC_Sinchimport::history_api" title="Sinchimport - Import history API" translate="title" sortOrder="11" />
+                    <resource id="SITC_Sinchimport::import_api" title="Sinchimport - Import scheduling API" translate="title" sortOrder="12" />
                 </resource>
                 <resource id="Magento_Backend::stores">
                     <resource id="Magento_Backend::stores_settings">

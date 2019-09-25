@@ -3,4 +3,13 @@
     <type name="Magento\Catalog\Model\Layer\FilterList">
         <plugin name="filterSinchAttributes" type="SITC\Sinchimport\Plugin\FilterList" />
     </type>
+    <type name="Magento\Catalog\Model\Layer">
+        <plugin name="sitc_customcatalog_nonESIntercept" type="SITC\Sinchimport\Plugin\Layer" sortOrder="0"/>
+    </type>
+    <type name="Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface">
+        <plugin name="sitc_customcatalog_ESConfiguration" type="SITC\Sinchimport\Plugin\Elasticsuite\ContainerConfiguration" />
+    </type>
+    <type name="Magento\Catalog\Model\Product">
+        <plugin name="sitc_customcatalog_product" type="SITC\Sinchimport\Plugin\Product" />
+    </type>
 </config>

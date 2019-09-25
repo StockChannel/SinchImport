@@ -22,10 +22,11 @@
             </attributes>
             <category_visibility>
                 <enable>0</enable>
+                <disable_import>0</disable_import>
             </category_visibility>
             <product_visibility>
                 <enable>0</enable>
-                <private_visible_to_guest>0</private_visible_to_guest>
+                <disable_import>0</disable_import>
             </product_visibility>
         </sinchimport>
     </default>

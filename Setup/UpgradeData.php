@@ -56,6 +56,12 @@ class UpgradeData implements UpgradeDataInterface
             $this->upgrade219($eavSetup);
         }
 
+        if (version_compare($context->getVersion(), '2.2.1', '<')){
+            //Make sinch_restrict useable for promo rules (causing Elasticsuite to include it in the indexed documents)
+            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'is_used_for_promo_rules', 1);
+        }
+
         $installer->endSetup();
     }
 

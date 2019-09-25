@@ -3,12 +3,13 @@
 namespace SITC\Sinchimport\Model\Import;
 
 class CustomCatalogVisibility extends AbstractImportSection {
-    const CHUNK_SIZE = 500;
-    const RESTRICTED_THRESHOLD = 1000;
+    const CHUNK_SIZE = 1000;
     const ATTRIBUTE_NAME = "sinch_restrict";
     const LOG_PREFIX = "CustomCatalog: ";
 
     private $tmpTable = "sinch_custom_catalog_tmp";
+    private $finalRulesTable = "sinch_custom_catalog_final_tmp";
+    private $flagTable = "sinch_custom_catalog_flag";
 
     /**
      * @var \SITC\Sinchimport\Util\CsvIterator $stockPriceCsv
@@ -24,10 +25,10 @@ class CustomCatalogVisibility extends AbstractImportSection {
      */
     private $massProdValues;
 
-    /**
-     * @var string
-     */
+    /** @var string */
     private $cpeTable;
+    /** @var string */
+    private $productMappingTable;
 
     /**
      * @var \Zend\Log\Logger $logger
@@ -55,6 +56,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->massProdValues = $massProdValues;
 
         $this->cpeTable = $this->getTableName('catalog_product_entity');
+        $this->productMappingTable = $this->getTableName('sinch_products_mapping');
 
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_custom_catalog.log');
         $logger = new \Zend\Log\Logger();
@@ -63,14 +65,36 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->output = $output;
     }
 
+    private function cleanupTempTables()
+    {
+        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->flagTable}");
+        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->tmpTable}");
+        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->finalRulesTable}");
+    }
+
     private function createTempTable()
     {
-        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->tmpTable}");
+        $this->cleanupTempTables();
+        $this->getConnection()->query("SET SESSION group_concat_max_len = 102400");
+        $this->getConnection()->query(
+            "CREATE TABLE {$this->flagTable} (
+                product_id int(11) unsigned NOT NULL PRIMARY KEY COMMENT 'Sinch Product ID',
+                whitelist tinyint(1) NOT NULL COMMENT 'Is Whitelisted product',
+                INDEX (whitelist)
+            )"
+        );
         $this->getConnection()->query(
             "CREATE TABLE {$this->tmpTable} (
-                product_id int(10) unsigned NOT NULL PRIMARY KEY COMMENT 'Magento Product ID',
-                value varchar(255) NOT NULL COMMENT 'Rules',
-                FOREIGN KEY (product_id) REFERENCES {$this->cpeTable} (entity_id) ON DELETE CASCADE ON UPDATE CASCADE
+                rule_id int(11) unsigned NOT NULL PRIMARY KEY AUTO_INCREMENT,
+                product_id int(11) unsigned NOT NULL COMMENT 'Sinch Product ID',
+                group_id int(11) unsigned NOT NULL COMMENT 'Group ID',
+                INDEX (product_id)
+            )"
+        );
+        $this->getConnection()->query(
+            "CREATE TABLE {$this->finalRulesTable} (
+                product_id int(11) unsigned NOT NULL PRIMARY KEY COMMENT 'Product Entity ID',
+                rule varchar(255) NOT NULL
             )"
         );
     }
@@ -80,166 +104,150 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $parseStart = $this->microtime_float();
 
         $this->createTempTable();
-        //Build inverse rules first as forward rules are more restrictive (and can safely replace inverse rules if applicable)
-        $this->buildInverseRules($customerGroupPriceFile); 
-        $this->buildForwardRules($stockPriceFile, $customerGroupPriceFile);
-        $this->setAttributeValues();
+        $this->checkProductModes($stockPriceFile);
+        $this->processGroupPrices($customerGroupPriceFile);
+        $this->buildFinalRules();
+        //$this->cleanupTempTables();
 
         $elapsed = number_format($this->microtime_float() - $parseStart, 2);
         $this->log("Imported {$this->restrictCount} restrictions in {$elapsed} seconds");
     }
 
-    private function buildForwardRules($stockPriceFile, $customerGroupPriceFile)
+    /**
+     * @param string $stockPriceFile The path to StockAndPrices.csv
+     */
+    private function checkProductModes($stockPriceFile)
     {
-        $this->log("Processing forward rules");
+        $this->log("Checking product modes");
         $this->stockPriceCsv->openIter($stockPriceFile);
         $this->stockPriceCsv->take(1); //Discard first row
 
-        $restricted = [];
         //ProductID|Stock|Price|Cost|DistributorID
         while($toProcess = $this->stockPriceCsv->take(self::CHUNK_SIZE)) {
-            foreach($toProcess as $row){
+            $flagsInsert = [];
+            foreach($toProcess as $row) {
                 //Check if Price and Cost columns are empty
-                if(empty($row[2]) && empty($row[3])){
-                    //Store the Product ID
-                    $this->logger->info("Found restricted product: {$row[0]}");
-                    $restricted[] = $row[0];
-                }
+                $flagsInsert[] = [
+                    "product_id" => $row[0],
+                    "whitelist" => $this->isEmptyOrWhitespace($row[2]) && $this->isEmptyOrWhitespace($row[3])
+                ];
             }
-            if(count($restricted) >= self::RESTRICTED_THRESHOLD){
-                $this->findAccountRestrictions($customerGroupPriceFile, $restricted);
-                $restricted = [];
-            }
+            $this->getConnection()->insertOnDuplicate($this->flagTable, $flagsInsert);
         }
-        $this->findAccountRestrictions($customerGroupPriceFile, $restricted);
         $this->stockPriceCsv->closeIter();
+
+        $numWhitelist = $this->getConnection()->fetchOne(
+            "SELECT COUNT(*) FROM {$this->flagTable} WHERE whitelist = 1"
+        );
+        $numBlacklist = $this->getConnection()->fetchOne(
+            "SELECT COUNT(*) FROM {$this->flagTable} WHERE whitelist = 0"
+        );
+        $this->log("{$numWhitelist} products in whitelist mode");
+        $this->log("{$numBlacklist} products in blacklist mode");
     }
 
-    private function buildInverseRules($customerGroupPriceFile)
+    /**
+     * @var string $customerGroupPriceFile The path to CustomerGroupPrices.csv
+     */
+    private function processGroupPrices($customerGroupPriceFile)
     {
-        $this->log("Processing inverse rules");
+        $this->log("Processing group prices");
         $this->groupPriceCsv->openIter($customerGroupPriceFile);
-        $this->groupPriceCsv->take(1);
+        $this->groupPriceCsv->take(1); //Discard first row
 
-        $inverse = [];
         //CustomerGroupID|ProductID|PriceTypeID|Price
         while($toProcess = $this->groupPriceCsv->take(self::CHUNK_SIZE)) {
-            foreach($toProcess as $row){
-                if(!isset($row[3]) || empty(trim($row[3]))) {
-                    $inverse[$row[1]][] = "!" . $row[0];
+            $rulesForInsertion = [];
+            foreach($toProcess as $row) {
+                //Whitelist/blacklist logic
+                $whitelist = $this->isWhitelisted($row[1]);
+                $noPrice = $this->isEmptyOrWhitespace($row[3]);
+                //Whitelist mode (Non-empty group price means visible) || Blacklist mode (Empty group price means not visible)
+                if(($whitelist & !$noPrice) || (!$whitelist && $noPrice)) {
+                    $rulesForInsertion[] = [
+                        "product_id" => $row[1],
+                        "group_id" => $row[0]
+                    ];
                 }
             }
-            if(count($inverse) >= self::RESTRICTED_THRESHOLD){
-                $this->applyAccountRestrictions($inverse);
-                $inverse = [];
-            }
+            $this->getConnection()->insertOnDuplicate($this->tmpTable, $rulesForInsertion);
         }
-        $this->applyAccountRestrictions($inverse);
-
         $this->groupPriceCsv->closeIter();
     }
 
-    private function findAccountRestrictions($customerGroupPriceFile, $restricted)
+    private function buildFinalRules()
     {
-        $this->log("Finding matching account groups for " . count($restricted) . " products");
-        //Holds a mapping of Sinch product ID -> [Account Group ID]
-        $mapping = [];
+        $this->log("Building final ruleset");
 
-        $this->groupPriceCsv->openIter($customerGroupPriceFile);
-        $this->groupPriceCsv->take(1);
+        //Prepare the final rules ready for attributes
+        $this->getConnection()->query(
+        "INSERT INTO {$this->finalRulesTable} (product_id, rule)
+            SELECT spm.entity_id, CONCAT(IF(sft.whitelist, '', '!'), GROUP_CONCAT(group_id ORDER BY group_id ASC)) FROM {$this->tmpTable} cct
+                INNER JOIN {$this->productMappingTable} spm
+                    ON cct.product_id = spm.sinch_product_id
+                INNER JOIN {$this->flagTable} sft
+                    ON cct.product_id = sft.product_id
+                GROUP BY spm.entity_id"
+        );
 
-        while($groupPriceChunk = $this->groupPriceCsv->take(self::CHUNK_SIZE)){
-            //CustomerGroupID|ProductID|PriceTypeID|Price
-            foreach($groupPriceChunk as $groupPrice){
-                if(in_array($groupPrice[1], $restricted)){
-                    //Group price matches a restricted product
-                    $prefix = empty(trim($groupPrice[3])) ? "!" : "";
-                    $mapping[$groupPrice[1]][] = $prefix . $groupPrice[0];
-                }
-            }
-        }
-        $this->groupPriceCsv->closeIter();
-        $this->applyAccountRestrictions($mapping);
-    }
+        $distinctRules = $this->getConnection()->fetchCol("SELECT DISTINCT rule FROM {$this->finalRulesTable}");
+        $ruleCount = count($distinctRules);
+        $this->log("{$ruleCount} distinct rules");
 
-    private function applyAccountRestrictions($mapping)
-    {
-        $this->logger->info("Processing restrictions for " . count($mapping) . " products");
-        $sinchEntityPairs = $this->sinchToEntityIds(array_keys($mapping));
+        foreach($distinctRules as $rule) {
+            $products = $this->getConnection()->fetchCol(
+                "SELECT product_id FROM {$this->finalRulesTable} WHERE rule = :value",
+                [":value" => $rule]
+            );
 
-        $prepared = [];
-        foreach($sinchEntityPairs as $pair){
-            //Check for existing record in the temp table with value for this product and merge if yes
-            $existing = $this->getConnection()->fetchOne("SELECT value FROM {$this->tmpTable} WHERE product_id = ?", $pair['entity_id']);
-            if(!empty($existing)) {
-                $restrictArr = array_merge(
-                    explode(",", $existing),
-                    $mapping[$pair['sinch_product_id']]
+            if(!empty($products)) {
+                $this->massProdValues->updateAttributes(
+                    $products,
+                    [self::ATTRIBUTE_NAME => $rule],
+                    0 //store id (dummy value as they're global attributes)
                 );
-            } else {
-                $restrictArr = $mapping[$pair['sinch_product_id']];
+                $this->restrictCount += count($products);
             }
-
-            $prepared[] = [
-                'product_id' => $pair['entity_id'],
-                'value' => implode(",", $restrictArr)
-            ];
-            $this->restrictCount += 1;
         }
-
-        if(count($prepared) > 0){
-            $this->getConnection()->insertOnDuplicate(
-                $this->tmpTable,
-                $prepared,
-                ["value"]
-            );
-        }
-    }
-
-    private function setAttributeValues()
-    {
-        $this->log("Updating attributes");
-        $values = $this->getConnection()->fetchCol("SELECT DISTINCT value FROM {$this->tmpTable}");
-        $numValues = count($values);
-        $this->log("{$numValues} distinct values to update attributes for");
-        $i = 1;
-        foreach($values as $value){
-            $productIds = $this->getConnection()->fetchCol("SELECT product_id FROM {$this->tmpTable} WHERE value = ?", $value);
-            $numProds = count($productIds);
-            $this->log("({$i}/{$numValues}) Updating attribute for {$numProds} products to: {$value}");
-            $this->massProdValues->updateAttributes(
-                $productIds,
-                [self::ATTRIBUTE_NAME => $value],
-                0 //store id (dummy value as they're global attributes)
-            );
-            $i += 1;
-        }
+        $this->log("Rule attribute values have been applied");
 
         //Clear the sinch_restrict value for products that no longer have a rule (but not non-sinch products)
         $noValueSinchProds = $this->getConnection()->fetchCol(
             "SELECT entity_id FROM {$this->cpeTable}
-                WHERE entity_id NOT IN (SELECT product_id FROM {$this->tmpTable})
+                WHERE entity_id NOT IN (SELECT product_id FROM {$this->finalRulesTable})
                 AND store_product_id IS NOT NULL"
         );
 
         $numProds = count($noValueSinchProds);
-        $this->log("Clearing attribute value for {$numProds} products");
-        $this->massProdValues->updateAttributes(
-            $noValueSinchProds,
-            [self::ATTRIBUTE_NAME => ""],
-            0
-        );
+        if($numProds > 0) {
+            $this->log("Clearing attribute value for {$numProds} products");
+            $this->massProdValues->updateAttributes(
+                $noValueSinchProds,
+                [self::ATTRIBUTE_NAME => ""],
+                0
+            );
+        }
     }
 
-    private function sinchToEntityIds($sinch_prod_ids)
+    /**
+     * @param string $value String to check for emptiness/whitespace
+     * @return bool True if empty or whitespace
+     */
+    private function isEmptyOrWhitespace($value)
     {
-        if(empty($sinch_prod_ids)) return [];
-        $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
-        $entIdQuery = $this->getConnection()->prepare(
-            "SELECT sinch_product_id, entity_id FROM {$this->cpeTable} WHERE sinch_product_id IN ($placeholders)"
+        return empty($value) || empty(trim($value));
+    }
+
+    /**
+     * @param int $product_id the Sinch product ID
+     * @return bool
+     */
+    private function isWhitelisted($product_id)
+    {
+        return $this->getConnection()->fetchOne(
+            "SELECT whitelist FROM {$this->flagTable} WHERE product_id = :product_id",
+            [":product_id" => $product_id]
         );
-        $entIdQuery->execute($sinch_prod_ids);
-        return $entIdQuery->fetchAll(\PDO::FETCH_ASSOC, 0);
     }
 
     private function log($message)
