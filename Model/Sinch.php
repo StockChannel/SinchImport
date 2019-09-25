@@ -8852,16 +8852,6 @@ class Sinch
     private function runIndexer()
     {
         $this->_indexProcessor->reindexAll();
-
-        $configTonerFinder = $this->scopeConfig->getValue(
-            'sinchimport/general/index_tonerfinder',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
-
-        if ($configTonerFinder == 1 ){
-            $this->insertCategoryIdForFinder();
-        } else {
-            $this->_logImportInfo("Configuration ignores indexing tonerfinder");
-        }
     }
 
     private function _reindexProductUrlKey()
@@ -9361,40 +9351,6 @@ class Sinch
                 $logString = "[ERROR] " . $logString;
             }
             $this->_sinchLogger->info($logString);
-        }
-    }
-
-    /**
-     * @insertCategoryIdForFinder
-     */
-    public function insertCategoryIdForFinder()
-    {
-        $tbl_store  = $this->_getTableName('store');
-        $tbl_cat    = $this->_getTableName( 'catalog_category_product' );
-
-        $this->_doQuery(" 
-                INSERT INTO ". $this->_getTableName('catalog_category_product_index') ." (
-                category_id, product_id, position, is_parent, store_id, visibility) (
-                    SELECT a.category_id, a.product_id, a.position, 1, b.store_id, 4
-                    FROM ". $tbl_cat ." a
-                        JOIN ". $tbl_store ." b )
-                ON DUPLICATE KEY UPDATE visibility = 4"
-        );
-
-        foreach ($this->_storeManager->getStores() as $store) {
-            $storeId = $store->getId();
-
-            $table = $this->_getTableName('catalog_category_product_index_store' . $storeId);
-
-            if ($this->_connection->isTableExists($table)) {
-                $this->_doQuery(" 
-                  INSERT INTO ". $table ." (category_id, product_id, position, is_parent, store_id, visibility) (
-                      SELECT  a.category_id, a.product_id, a.position, 1, b.store_id, 4
-                      FROM ". $tbl_cat ." a
-                        JOIN ". $tbl_store ." b )
-                  ON DUPLICATE KEY UPDATE visibility = 4"
-                );
-            }
         }
     }
 

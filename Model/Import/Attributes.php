@@ -71,8 +71,7 @@ class Attributes extends AbstractImportSection {
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
         \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-    )
-    {
+    ) {
         parent::__construct($resourceConn);
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->attributeRepository = $attributeRepository;
