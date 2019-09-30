@@ -39,8 +39,7 @@ class Coverage26 {
 
         foreach($filters as $filter){
             try {
-                $attribute = $filter->getAttributeModel();
-                if(strpos($attribute->getAttributeCode(), \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) === 0 &&
+                if(strpos($filter->getRequestVar(), \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) === 0 &&
                     !in_array($filter, $result)) {
                     $result[] = $filter;
                 }
