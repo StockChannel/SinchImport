@@ -3,19 +3,26 @@ namespace SITC\Sinchimport\Helper;
 
 class Data extends \Magento\Framework\App\Helper\AbstractHelper
 {
+    /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
     private $resourceConn;
+    /** @var \Magento\Customer\Model\Session $customerSession */
     private $customerSession;
+    /** @var \Magento\Framework\Filesystem\DirectoryList\Proxy $dir */
+    private $dir;
 
+    /** @var string $accountTable */
     private $accountTable;
 
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Customer\Model\Session $customerSession
+        \Magento\Customer\Model\Session $customerSession,
+        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
         $this->customerSession = $customerSession;
+        $this->dir = $dir;
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
     }
 
@@ -91,5 +98,29 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
             )",
             [":import_type" => $importType]
         );
+    }
+
+    /**
+     * Returns whether the index lock is currently held
+     * (indicating a running import, or an intentional indexing pause)
+     * @return bool Whether the lock is currently held
+     */
+    public function isIndexLockHeld()
+    {
+        //Manual lock indexing flag (for testing/holding the indexers for other reasons)
+        if (file_exists($this->dir->getPath("var") . "/sinch_lock_indexers.flag")) {
+            return true;
+        }
+
+        //Import lock
+        $current_vhost = $this->scopeConfig->getValue(
+            'web/unsecure/base_url',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+        );
+        $is_lock_free = $this->resourceConn->getConnection()->fetchOne("SELECT IS_FREE_LOCK('sinchimport_{$current_vhost}')");
+        if ($is_lock_free === '0') {
+            return true;
+        }
+        return false;
     }
 }

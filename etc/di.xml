@@ -52,9 +52,12 @@
     <type name="Magento\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder">
         <plugin name="add_data_reindex_product_flat_mode" type="SITC\Sinchimport\Plugin\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder" sortOrder="0" />
     </type>
+    <!-- This section makes sure the indexers don't run during imports -->
     <type name="Magento\Cron\Model\Schedule">
         <plugin name="sinchimport_lock_indexers" type="SITC\Sinchimport\Plugin\CronSchedule" sortOrder="0" />
     </type>
+    <preference for="Magento\Indexer\Console\Command\IndexerReindexCommand" type="SITC\Sinchimport\Console\Command\IndexerReindexCommand" />
+    <!-- End section -->
     <type name="Magento\Framework\View\Layout">
         <plugin name="sinchimport_save_account_id" type="SITC\Sinchimport\Plugin\DontDepersonaliseAccount" sortOrder="0" />
     </type>
