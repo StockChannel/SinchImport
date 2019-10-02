@@ -94,6 +94,7 @@ class Sinch
     private $customerGroupPrice;
     private $unspscImport;
     private $customCatalogImport;
+    private $sitcIndexMgmt;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -114,7 +115,8 @@ class Sinch
         \SITC\Sinchimport\Model\Import\CustomerGroupCategories $customerGroupCatsImport,
         \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupPrice,
         \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport,
-        \SITC\Sinchimport\Model\Import\CustomCatalogVisibility $customCatalogImport
+        \SITC\Sinchimport\Model\Import\CustomCatalogVisibility $customCatalogImport,
+        \SITC\Sinchimport\Model\Import\IndexManagement $sitcIndexMgmt
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
@@ -122,6 +124,7 @@ class Sinch
         $this->customerGroupPrice = $customerGroupPrice;
         $this->unspscImport = $unspscImport;
         $this->customCatalogImport = $customCatalogImport;
+        $this->sitcIndexMgmt = $sitcIndexMgmt;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -267,6 +270,15 @@ class Sinch
                     \Magento\Store\Model\ScopeInterface::SCOPE_STORE
                 );
                 $this->_doQuery("SELECT GET_LOCK('sinchimport_{$current_vhost}', 30)");
+
+                //Once we hold the import lock, check/await indexer completion
+                $this->print("Making sure no indexers are currently running");
+                if(!$this->sitcIndexMgmt->ensureIndexersNotRunning()){
+                    $this->print("There are indexers currently running, abandoning import");
+                    $this->_setErrorMessage("There are indexers currently running, abandoning import");
+                    throw new \Magento\Framework\Exception\LocalizedException("There are indexers currently running, abandoning import");
+                }
+
                 $this->addImportStatus('Start Import');
 
                 $this->print("========IMPORTING DATA IN $imType MODE========");
@@ -8564,7 +8576,6 @@ class Sinch
     private function replaceMagentoProductsStockPrice()
     {
         $catalogInvStockItem = $this->_getTableName('cataloginventory_stock_item');
-        $catalogInvStockStatus = $this->_getTableName('cataloginventory_stock_status');
         $catalogProductEntity = $this->_getTableName('catalog_product_entity');
         $catalogProductEntityDecimal = $this->_getTableName('catalog_product_entity_decimal');
         $stockPriceTemp = $this->_getTableName('stock_and_prices_temp');
@@ -8625,41 +8636,7 @@ class Sinch
                     manage_stock = 1"
         );
 
-        //Delete records for sinch products (and non-existent) from cataloginventory_stock_status
-        $this->_doQuery(
-            "DELETE css FROM {$catalogInvStockStatus} css
-                LEFT JOIN {$catalogProductEntity} cpe
-                    ON cpe.entity_id = css.product_id
-                WHERE cpe.store_product_id IS NOT NULL
-                    OR cpe.entity_id IS NULL"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO {$catalogInvStockStatus}
-            (
-                product_id,
-                website_id,
-                stock_id,
-                qty,
-                stock_status
-            )
-            (
-                SELECT
-                a.product_id,
-                w.website_id,
-                1,
-                a.qty,
-                IF(qty > 0, 1, 0)
-                FROM {$catalogInvStockItem} a
-                INNER JOIN {$catalogProductEntity} b
-                    ON a.product_id = b.entity_id
-                INNER JOIN {$prodWebTemp} w
-                    ON b.store_product_id = w.store_product_id
-            )
-                ON DUPLICATE KEY UPDATE
-                    qty = a.qty,
-                    stock_status = IF(a.qty > 0, 1, 0)"
-        );
+        //TODO: Make sure to invalidate the cataloginventory_stock indexer so cataloginventory_stock_status is built
 
         //Delete prices for non-existent products
         $this->_doQuery(
@@ -8918,6 +8895,15 @@ class Sinch
                     \Magento\Store\Model\ScopeInterface::SCOPE_STORE
                 );
                 $this->_doQuery("SELECT GET_LOCK('sinchimport_{$current_vhost}', 30)");
+
+                //Once we hold the import lock, check/await indexer completion
+                $this->print("Making sure no indexers are currently running");
+                if(!$this->sitcIndexMgmt->ensureIndexersNotRunning()){
+                    $this->print("There are indexers currently running, abandoning import");
+                    $this->_setErrorMessage("There are indexers currently running, abandoning import");
+                    throw new \Magento\Framework\Exception\LocalizedException("There are indexers currently running, abandoning import");
+                }
+
                 $this->addImportStatus('Stock Price Start Import');
 
                 $this->print("========IMPORTING STOCK AND PRICE========");

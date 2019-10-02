@@ -2,60 +2,29 @@
 namespace SITC\Sinchimport\Plugin;
 
 class CronSchedule {
-    /**
-     * @var \Magento\Cron\Model\ConfigInterface
-     */
+    /** @var \Magento\Cron\Model\ConfigInterface */
     private $cronConfig;
-
-    /**
-     * @var \Magento\Framework\Filesystem\DirectoryList
-     */
-    private $dir;
-
-    /**
-     * @var \Magento\Framework\App\ResourceConnection
-     */
-    private $resourceConn;
-
-    /**
-     * @var \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-     */
-    private $scopeConfig;
+    /** @var \SITC\Sinchimport\Logger\Logger $logger */
+    private $logger;
+    /** @var \SITC\Sinchimport\Helper\Data $helper */
+    private $helper;
 
     public function __construct(
         \Magento\Cron\Model\ConfigInterface $cronConfig,
-        \Magento\Framework\Filesystem\DirectoryList $dir,
-        \Magento\Framework\App\ResourceConnection $resourceConn,
         \SITC\Sinchimport\Logger\Logger $logger,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+        \SITC\Sinchimport\Helper\Data $helper
     ){
         $this->cronConfig = $cronConfig;
-        $this->dir = $dir;
-        $this->resourceConn = $resourceConn;
         $this->logger = $logger;
-        $this->scopeConfig = $scopeConfig;
+        $this->helper = $helper;
     }
 
     public function aroundTryLockJob(\Magento\Cron\Model\Schedule $subject, $proceed){
         $cronjob = $this->getJobConfig($subject->getJobCode());
 
-        if (isset($cronjob['group']) AND $cronjob['group'] === 'index') {
-            //Manual lock indexing flag (for testing/holding the indexers for other reasons)
-            if (file_exists($this->dir->getPath("var") . "/sinch_lock_indexers.flag")) {
-                $this->logger->info("Preventing task {$cronjob['name']} from running as the lock indexing flag exists");
-                return false;
-            }
-
-            //Import lock
-            $current_vhost = $this->scopeConfig->getValue(
-                'web/unsecure/base_url',
-                \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-            );
-            $is_lock_free = $this->resourceConn->getConnection()->fetchOne("SELECT IS_FREE_LOCK('sinchimport_{$current_vhost}')");
-            if ($is_lock_free === '0') {
-                $this->logger->info("Preventing task {$cronjob['name']} from running as the sinchimport lock is currently held");
-                return false;
-            }
+        if (isset($cronjob['group']) && $cronjob['group'] === 'index' && $this->helper->isIndexLockHeld()) {
+            $this->logger->info("Preventing task {$cronjob['name']} from running as the sinchimport index lock is currently held");
+            return false;
         }
 
         return $proceed();
