@@ -5,7 +5,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
 {
     /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
     private $resourceConn;
-    /** @var \Magento\Customer\Model\Session $customerSession */
+    /** @var \Magento\Customer\Model\Session\Proxy $customerSession */
     private $customerSession;
     /** @var \Magento\Framework\Filesystem\DirectoryList\Proxy $dir */
     private $dir;
@@ -16,7 +16,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Customer\Model\Session $customerSession,
+        \Magento\Customer\Model\Session\Proxy $customerSession,
         \Magento\Framework\Filesystem\DirectoryList\Proxy $dir
     ) {
         parent::__construct($context);
