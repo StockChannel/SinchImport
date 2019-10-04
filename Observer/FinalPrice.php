@@ -60,8 +60,9 @@ class FinalPrice implements ObserverInterface
         if(!$this->helper->isModuleEnabled('Tigren_CompanyAccount')) {
             return;
         }
-        //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
-        $accountGroup = $this->registry->registry('sitc_account_group_id');
+
+        //We use the direct method now as catalog_controller_product_init_after runs before depersonalise
+        $accountGroup = $this->helper->getCurrentAccountGroupId();
 
         if(!empty($accountGroup)) {
             $product = $observer->getEvent()->getProduct();
