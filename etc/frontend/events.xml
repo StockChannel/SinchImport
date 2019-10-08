@@ -9,7 +9,11 @@
     <event name="catalog_block_product_list_collection">
         <observer name="sitc_sinchimport_change_list_final_price" instance="SITC\Sinchimport\Observer\FinalPriceList" />
     </event>
-    <!-- Use catalog_controller_product_init_after instead of catalog_product_get_final_price as Magento doesn't seem to reliably call the latter -->
+    <!-- Use a custom event so requisitionlists can call it to get correct pricing during render -->
+    <event name="sitc_sinchimport_custom_pricing_apply">
+        <observer name="sitc_sinchimport_get_final_price" instance="SITC\Sinchimport\Observer\FinalPrice" />
+    </event>
+    <!-- Use catalog_controller_product_init_after to make sure the modified price is loaded on product detail pages -->
     <event name="catalog_controller_product_init_after">
         <observer name="sitc_sinchimport_change_final_price" instance="SITC\Sinchimport\Observer\FinalPrice" />
     </event>
