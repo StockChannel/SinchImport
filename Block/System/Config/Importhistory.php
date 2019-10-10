@@ -38,7 +38,8 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
         $cssArr = [
             'Failed'     => 'sinch-error',
             'Run'        => 'sinch-run',
-            'Successful' => 'sinch-success'
+            'Successful' => 'sinch-success',
+            'Scheduled'  => 'sinch-scheduled'
         ];
         
         $html
