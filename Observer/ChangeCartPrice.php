@@ -10,45 +10,17 @@ use Magento\Framework\Event\ObserverInterface;
  */
 class ChangeCartPrice implements ObserverInterface
 {
-    /**
-     * @var \Magento\Framework\App\ResourceConnection $resourceConn
-     */
-    private $resourceConn;
-    /**
-     * @var \Magento\Framework\Registry $registry
-     */
-    private $registry;
-    /**
-     * @var \SITC\Sinchimport\Helper\Data $helper
-     */
+    /** @var \SITC\Sinchimport\Helper\Data $helper */
     private $helper;
+    /** @var \SITC\Sinchimport\Helper\CustomPricing $customPricingHelper */
+    private $customPricingHelper;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Framework\Registry $registry,
-        \SITC\Sinchimport\Helper\Data $helper
+        \SITC\Sinchimport\Helper\Data $helper,
+        \SITC\Sinchimport\Helper\CustomPricing $customPricingHelper
     ){
-        $this->resourceConn = $resourceConn;
-        $this->registry = $registry;
         $this->helper = $helper;
-    }
-
-    /**
-     * Get Price rules matching a given account group and product
-     * 
-     * @param int $accountGroup Account Group ID
-     * @param int $productId Product ID
-     * @return array
-     */
-    private function getAccountGroupPrice($accountGroup, $productId)
-    {
-        $select = $this->resourceConn->getConnection()->select()
-            ->from($this->resourceConn->getTableName('sinch_customer_group_price'))
-            ->where('group_id = ?', $accountGroup)
-            ->where('product_id = ?', $productId)
-            ->where('customer_group_price > 0');
-        
-        return $this->resourceConn->getConnection()->fetchAll($select);
+        $this->customPricingHelper = $customPricingHelper;
     }
 
     public function execute(\Magento\Framework\Event\Observer $observer)
@@ -56,20 +28,18 @@ class ChangeCartPrice implements ObserverInterface
         if(!$this->helper->isModuleEnabled('Tigren_CompanyAccount')) {
             return;
         }
-        //This observer runs prior to the depersonalise routine and thus doesn't need the registry hack
+
         $accountGroup = $this->helper->getCurrentAccountGroupId();
-
         if(!empty($accountGroup)) {
+            //TODO: Make sure to deal with the correct (i.e. selected) items when a bundle is involved
             $item = $observer->getEvent()->getQuoteItem();
-            $item = ( $item->getParentItem() ? $item->getParentItem() : $item );
+            $item = $item->getParentItem() ? $item->getParentItem() : $item;
 
-            $rules = $this->getAccountGroupPrice($accountGroup, $item->getProduct()->getId());
-            foreach($rules as $rule){
-                if($rule['price_type_id'] == 1 && isset($rule['customer_group_price'])){
-                    $item->setCustomPrice($rule['customer_group_price']);
-                    $item->setOriginalCustomPrice($rule['customer_group_price']);
-                    $item->getProduct()->setIsSuperMode(true);
-                }
+            $customPrice = $this->customPricingHelper->getAccountGroupPrice($accountGroup, $item->getProduct());
+            if(!is_null($customPrice)){
+                $item->setCustomPrice($customPrice);
+                $item->setOriginalCustomPrice($customPrice);
+                $item->getProduct()->setIsSuperMode(true);
             }
         }
 

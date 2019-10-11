@@ -23,11 +23,11 @@ class CustomPricing extends \Magento\Framework\App\Helper\AbstractHelper {
     }
 
     /**
-     * Get Price rules matching a given account group and product
+     * Get Price rule matching a given account group and product
      * 
      * @param int $accountGroup Account Group ID
      * @param \Magento\Catalog\Model\Product $product Product
-     * @return array
+     * @return float
      */
     public function getAccountGroupPrice($accountGroup, $product)
     {
@@ -59,6 +59,7 @@ class CustomPricing extends \Magento\Framework\App\Helper\AbstractHelper {
             ->from($this->cgpTable, ['customer_group_price'])
             ->where('group_id = ?', $accountGroup)
             ->where('product_id = ?', $product->getId())
+            ->where('price_type_id = ?', 1)
             ->where('customer_group_price > 0');
         
         return $this->resourceConn->getConnection()->fetchOne($select);
@@ -74,9 +75,10 @@ class CustomPricing extends \Magento\Framework\App\Helper\AbstractHelper {
     public function getAccountGroupPrices($accountGroup, $products)
     {
         $select = $this->resourceConn->getConnection()->select()
-            ->from($this->cgpTable)
+            ->from($this->cgpTable, ['product_id', 'customer_group_price'])
             ->where('group_id = ?', $accountGroup)
             ->where('product_id IN (?)', $products)
+            ->where('price_type_id = ?', 1)
             ->where('customer_group_price > 0');
         
         return $this->resourceConn->getConnection()->fetchAll($select);

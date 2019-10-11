@@ -9,6 +9,8 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     private $customerSession;
     /** @var \Magento\Framework\Filesystem\DirectoryList\Proxy $dir */
     private $dir;
+    /** @var \Magento\Framework\Registry\Proxy $registry */
+    private $registry;
 
     /** @var string $accountTable */
     private $accountTable;
@@ -17,12 +19,15 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\App\Helper\Context $context,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Customer\Model\Session\Proxy $customerSession,
-        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir
+        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir,
+        \Magento\Framework\Registry\Proxy $registry
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
         $this->customerSession = $customerSession;
         $this->dir = $dir;
+        $this->registry = $registry;
+
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
     }
 
@@ -53,17 +58,24 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
 
     public function getCurrentAccountGroupId()
     {
-        $account_group_id = false;
+        //Use the value from the registry if we've saved it already
+        //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
+        $registryAccountGroup = $this->registry->registry('sitc_account_group_id');
+        if(!empty($registryAccountGroup)) {
+            return $registryAccountGroup;
+        }
+
+        $accountGroup = false;
         if ($this->isModuleEnabled('Tigren_CompanyAccount') && $this->customerSession->isLoggedIn()) {
-            $account_id = $this->customerSession->getCustomer()->getAccountId();
+            $accountId = $this->customerSession->getCustomer()->getAccountId();
             //TODO: Change this to use customer groups once account_group_id actually refers to Magento customer groups
             //For now, just query the data we need directly from SQL
-            $account_group_id = $this->resourceConn->getConnection()->fetchOne(
+            $accountGroup = $this->resourceConn->getConnection()->fetchOne(
                 "SELECT account_group_id FROM {$this->accountTable} WHERE account_id = :account_id",
-                [":account_id" => $account_id]
+                [":account_id" => $accountId]
             );
         }
-        return $account_group_id;
+        return $accountGroup;
     }
 
     /**
