@@ -4,7 +4,6 @@ namespace SITC\Sinchimport\Plugin;
 class FilterList
 {
     private $moduleManager;
-    private $layerResolver;
     private $resourceConn;
     private $helper;
 
@@ -12,20 +11,17 @@ class FilterList
 
     public function __construct(
         \Magento\Framework\Module\Manager $moduleManager,
-        \Magento\Catalog\Model\Layer\Resolver $layerResolver,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \SITC\Sinchimport\Helper\Data $helper
-    )
-    {
+    ){
         $this->moduleManager = $moduleManager;
-        $this->layerResolver = $layerResolver;
         $this->resourceConn = $resourceConn;
         $this->helper = $helper;
 
         $this->filterCategoryTable = $resourceConn->getTableName('sinch_filter_categories');
     }
 
-    public function afterGetFilters(\Magento\Catalog\Model\Layer\FilterList $subject, $result)
+    public function afterGetFilters(\Magento\Catalog\Model\Layer\FilterList $subject, $result, \Magento\Catalog\Model\Layer $layer)
     {
         //If smile/elasticsuite is installed and enabled, only touch the filters if "Override ElasticSuite" is on
         if ($this->moduleManager->isEnabled('Smile_ElasticsuiteCatalog') &&
@@ -33,15 +29,25 @@ class FilterList
             return $result;
         }
 
-        $currentCategory = $this->layerResolver->get()->getCurrentCategory();
+        $currentCategory = $layer->getCurrentCategory();
         if(empty($currentCategory) || empty($currentCategory->getId())){
             //Not a category, ignore
             return $result;
         }
 
+        $sinch_cat_id = $currentCategory->getStoreCategoryId(); //The sinch id (badly named)
+        if(empty($sinch_cat_id)) {
+            //We're being called from ElasticSuite's AJAX filter list route (we can tell because normally the Sinch ID would already be populated)
+            $catalog_category_entity = $this->resourceConn->getTableName('catalog_category_entity');
+            $sinch_cat_id = $this->getConnection()->fetchOne(
+                "SELECT store_category_id FROM {$catalog_category_entity} WHERE entity_id = :catId",
+                [":catId" => $currentCategory->getId()]
+            );
+        }
+
         $sinch_feature_ids = $this->getConnection()->fetchCol(
             "SELECT feature_id FROM {$this->filterCategoryTable} WHERE category_id = :category_id",
-            [":category_id" => $currentCategory->getStoreCategoryId()] //The sinch id (badly named)
+            [":category_id" => $sinch_cat_id]
         );
 
         foreach($result as $idx => $abstractFilter) {
