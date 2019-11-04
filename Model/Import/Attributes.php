@@ -55,6 +55,7 @@ class Attributes extends AbstractImportSection {
     private $mappingInsert = null;
     private $mappingQuery = null;
     private $filterMappingInsert = null;
+    private $attributeCollectionFactory;
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
@@ -70,9 +71,9 @@ class Attributes extends AbstractImportSection {
         \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
         \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
-    )
-    {
+        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
+        \Magento\Eav\Model\ResourceModel\Entity\Attribute\CollectionFactory $attributeCollectionFactory
+    ) {
         parent::__construct($resourceConn);
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->attributeRepository = $attributeRepository;
@@ -87,6 +88,7 @@ class Attributes extends AbstractImportSection {
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
         $this->scopeConfig = $scopeConfig;
+        $this->attributeCollectionFactory = $attributeCollectionFactory;
 
         $this->mappingTable = $this->getTableName('sinch_restrictedvalue_mapping');
         $this->cpeTable = $this->getTableName('catalog_product_entity');
@@ -109,6 +111,7 @@ class Attributes extends AbstractImportSection {
         $this->product_features = $this->csv->getData($productFeaturesFile);
         unset($this->product_features[0]);
 
+        $this->clearAllAttributeCode();
         $this->createAttributeGroups();
 
         //Parse features
@@ -427,5 +430,29 @@ class Attributes extends AbstractImportSection {
         $this->filterMappingInsert->bindValue(":category_id", $sinch_category_id, \PDO::PARAM_INT);
         $this->filterMappingInsert->execute();
         $this->filterMappingInsert->closeCursor();
+    }
+
+    private function clearAllAttributeCode()
+    {
+        $isClearAttr = $this->scopeConfig->getValue(
+            'sinchimport/general/clear_attribute_code',
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+        );
+        if ($isClearAttr){
+            $this->logger->info("--- Clear Attribute filter---");
+            $attributeCollection = $this->attributeCollectionFactory->create()
+                ->addFieldToFilter('attribute_code', ['like' => '%'.self::ATTRIBUTE_PREFIX.'%']);
+
+            if (!empty($attributeCollection) || is_array($attributeCollection)){
+                $attrVal = 0;
+                $attrCount = count($attributeCollection);
+                foreach ($attributeCollection as $attribute){
+                    $attrVal += 1;
+                    $this->logger->info("({$attrVal}/{$attrCount}) Remove {$attribute->getAttributeCode()} for {$attrCount} atrribute_code");
+                    $this->attributeRepository->deleteById($attribute->getAttributeCode());
+                }
+            }
+        }
+        return true;
     }
 }

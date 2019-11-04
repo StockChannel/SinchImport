@@ -8,6 +8,7 @@
                 <meta_title>1</meta_title>
                 <index_tonerfinder>1</index_tonerfinder>
                 <wait_for_index_completion>1</wait_for_index_completion>
+                <clear_attribute_code>0</clear_attribute_code>
             </general>
             <sinch_ftp>
                 <replace_category>REWRITE</replace_category>
