@@ -27,33 +27,33 @@ class CustomPricing extends \Magento\Framework\App\Helper\AbstractHelper {
      * 
      * @param int $accountGroup Account Group ID
      * @param \Magento\Catalog\Model\Product $product Product
-     * @return float
+     * @return float|null
      */
     public function getAccountGroupPrice($accountGroup, $product)
     {
-        $adjustedPrice = 0.0;
+        // $adjustedPrice = 0.0;
 
-        if($product->getTypeId() === 'bundle') {
-            $childIds = $product->getTypeInstance(true)->getChildrenIds($product->getId(), true); //True indicates to get "required" children
-            foreach ($childIds as $id) {
-                $childProd = $this->productFactory->create();
-                $childProd->load($id);
-                $res = $this->getAccountGroupPrice($accountGroup, $childProd);
-                $adjustedPrice += !empty($res) ? $res : $child->getFinalPrice();
-            }
-            return $adjustedPrice;
-        }
+        // if($product->getTypeId() === 'bundle') {
+        //     $childIds = $product->getTypeInstance(true)->getChildrenIds($product->getId(), true); //True indicates to get "required" children
+        //     foreach ($childIds as $id) {
+        //         $childProd = $this->productFactory->create();
+        //         $childProd->load($id);
+        //         $res = $this->getAccountGroupPrice($accountGroup, $childProd);
+        //         $adjustedPrice += !empty($res) ? $res : $child->getFinalPrice();
+        //     }
+        //     return $adjustedPrice;
+        // }
 
-        if($product->getTypeId() === 'grouped') {
-            $usedProds = $product->getTypeInstance(true)->getAssociatedProducts($product);
-            foreach ($usedProds as $child) {
-                if ($child->getId() != $product->getId()) {
-                    $res = $this->getAccountGroupPrice($accountGroup, $child);
-                    $adjustedPrice += !empty($res) ? $res : $child->getFinalPrice();
-                }
-            }
-            return $adjustedPrice;
-        }
+        // if($product->getTypeId() === 'grouped') {
+        //     $usedProds = $product->getTypeInstance(true)->getAssociatedProducts($product);
+        //     foreach ($usedProds as $child) {
+        //         if ($child->getId() != $product->getId()) {
+        //             $res = $this->getAccountGroupPrice($accountGroup, $child);
+        //             $adjustedPrice += !empty($res) ? $res : $child->getFinalPrice();
+        //         }
+        //     }
+        //     return $adjustedPrice;
+        // }
 
         $select = $this->resourceConn->getConnection()->select()
             ->from($this->cgpTable, ['customer_group_price'])
