@@ -18,7 +18,7 @@ class AccountGroupFilter implements QueryInterface
     /**
      * @var int
      */
-    private $account_group;
+    private $account_group = 0;
     /**
      * @var boolean
      */
@@ -28,16 +28,18 @@ class AccountGroupFilter implements QueryInterface
      *
      * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      *
-     * @param int       $account_group   The current users account group
+     * @param int|null       $account_group   The current users account group
      * @param string    $name            Query name.
      * @param boolean   $cached          Should the query be cached or not.
      */
     public function __construct(
-        int $account_group = 0,
+        $account_group = 0,
         $name = null,
         $cached = false
     ) {
-        $this->account_group = $account_group;
+        if(is_numeric($account_group)) {
+            $this->account_group = (int)$account_group;
+        }
         $this->name = $name;
         $this->cached = $cached;
     }
