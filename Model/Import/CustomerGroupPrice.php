@@ -7,27 +7,18 @@ namespace SITC\Sinchimport\Model\Import;
  * @package SITC\Sinchimport\Model\Import
  */
 class CustomerGroupPrice extends AbstractImportSection {
+    const LOG_PREFIX = "CustomerGroupPrice: ";
+    const LOG_FILENAME = "customer_groups_price";
 
     const CUSTOMER_GROUPS = 'group_name';
     const PRICE_COLUMN = 'customer_group_price';
     const CHUNK_SIZE = 10000;
-    const LOG_PREFIX = "CustomerGroupPrice: ";
 
     /**
      * CSV parser
      * @var \SITC\Sinchimport\Util\CsvIterator
      */
     private $csv;
-
-    /**
-     * @var \Zend\Log\Logger
-     */
-    private $logger;
-
-    /**
-     * @var \Symfony\Component\Console\Output\ConsoleOutput
-     */
-    private $output;
 
     private $customerGroupCount = 0;
     private $customerGroupPriceCount = 0;
@@ -57,22 +48,16 @@ class CustomerGroupPrice extends AbstractImportSection {
      */
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
+        \Symfony\Component\Console\Output\ConsoleOutput $output,
         \SITC\Sinchimport\Util\CsvIterator $csv,
-        \Symfony\Component\Console\Output\ConsoleOutput $output
     ){
-        parent::__construct($resourceConn);
+        parent::__construct($resourceConn, $output);
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
 
         $this->customerGroup = $this->getTableName('sinch_customer_group');
         $this->customerGroupPrice = $this->getTableName('sinch_customer_group_price');
         $this->tmpTable = $this->getTableName('sinch_customer_group_price_tmp');
         $this->sinchProductsMapping = $this->getTableName('sinch_products_mapping');
-
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_customer_groups_price.log');
-        $logger = new \Zend\Log\Logger();
-        $logger->addWriter($writer);
-        $this->logger = $logger;
-        $this->output = $output;
     }
 
 
@@ -181,11 +166,5 @@ class CustomerGroupPrice extends AbstractImportSection {
 
         $elapsed = $this->microtime_float() - $parseStart;
         $this->log("Processed {$this->customerGroupPriceCount} group prices in {$elapsed} seconds");
-    }
-
-    private function log($msg)
-    {
-        $this->output->writeln(self::LOG_PREFIX . $msg);
-        $this->logger->info(self::LOG_PREFIX . $msg);
     }
 }

@@ -3,9 +3,11 @@
 namespace SITC\Sinchimport\Model\Import;
 
 class CustomCatalogVisibility extends AbstractImportSection {
+    const LOG_PREFIX = "CustomCatalog: ";
+    const LOG_FILENAME = "custom_catalog";
+
     const CHUNK_SIZE = 1000;
     const ATTRIBUTE_NAME = "sinch_restrict";
-    const LOG_PREFIX = "CustomCatalog: ";
 
     private $tmpTable = "sinch_custom_catalog_tmp";
     private $finalRulesTable = "sinch_custom_catalog_final_tmp";
@@ -31,38 +33,23 @@ class CustomCatalogVisibility extends AbstractImportSection {
     private $productMappingTable;
 
     /**
-     * @var \Zend\Log\Logger $logger
-     */
-    private $logger;
-    /**
-     * @var \Symfony\Component\Console\Output\ConsoleOutput $output
-     */
-    private $output;
-
-    /**
      * @var int
      */
     private $restrictCount = 0;
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
+        \Symfony\Component\Console\Output\ConsoleOutput $output,
         \SITC\Sinchimport\Util\CsvIterator $csv,
         \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
-        \Symfony\Component\Console\Output\ConsoleOutput $output
     ){
-        parent::__construct($resourceConn);
+        parent::__construct($resourceConn, $output);
         $this->stockPriceCsv = $csv->setLineLength(256)->setDelimiter("|");
         $this->groupPriceCsv = clone $this->stockPriceCsv;
         $this->massProdValues = $massProdValues;
 
         $this->cpeTable = $this->getTableName('catalog_product_entity');
         $this->productMappingTable = $this->getTableName('sinch_products_mapping');
-
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_custom_catalog.log');
-        $logger = new \Zend\Log\Logger();
-        $logger->addWriter($writer);
-        $this->logger = $logger;
-        $this->output = $output;
     }
 
     private function cleanupTempTables()
@@ -248,11 +235,5 @@ class CustomCatalogVisibility extends AbstractImportSection {
             "SELECT whitelist FROM {$this->flagTable} WHERE product_id = :product_id",
             [":product_id" => $product_id]
         );
-    }
-
-    private function log($message)
-    {
-        $this->logger->info(self::LOG_PREFIX . $message);
-        $this->output->writeln(self::LOG_PREFIX . $message);
     }
 }

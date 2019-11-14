@@ -3,6 +3,8 @@
 namespace SITC\Sinchimport\Model\Import;
 
 class Attributes extends AbstractImportSection {
+    const LOG_PREFIX = "Attributes: ";
+    const LOG_FILENAME = "attributes";
 
     const ATTRIBUTE_GROUP_NAME = "Sinch features";
     const ATTRIBUTE_GROUP_SORT = 50;
@@ -46,8 +48,6 @@ class Attributes extends AbstractImportSection {
     private $attributeSetCache = null;
     private $attributeGroupIds = [];
 
-    private $logger;
-
     private $mappingTable;
     private $cpeTable;
     private $filterCategoriesTable;
@@ -58,6 +58,7 @@ class Attributes extends AbstractImportSection {
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
+        \Symfony\Component\Console\Output\ConsoleOutput $output,
         \Magento\Framework\File\Csv $csv,
         \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository,
         \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
@@ -73,7 +74,7 @@ class Attributes extends AbstractImportSection {
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     )
     {
-        parent::__construct($resourceConn);
+        parent::__construct($resourceConn, $output);
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->attributeRepository = $attributeRepository;
         $this->attributeGroupRepository = $attributeGroupRepository;
@@ -91,16 +92,11 @@ class Attributes extends AbstractImportSection {
         $this->mappingTable = $this->getTableName('sinch_restrictedvalue_mapping');
         $this->cpeTable = $this->getTableName('catalog_product_entity');
         $this->filterCategoriesTable = $this->getTableName('sinch_filter_categories');
-
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_attributes.log');
-        $logger = new \Zend\Log\Logger();
-        $logger->addWriter($writer);
-        $this->logger = $logger;
     }
 
     public function parse($categoryFeaturesFile, $restrictedValuesFile, $productFeaturesFile)
     {
-        $this->logger->info("--- Begin Attribute Parse ---");
+        $this->log("--- Begin Attribute Parse ---");
         $parseStart = $this->microtime_float();
         $this->category_features = $this->csv->getData($categoryFeaturesFile);
         unset($this->category_features[0]); //Unset the first entry as the sinch export files have a header row
@@ -112,7 +108,7 @@ class Attributes extends AbstractImportSection {
         $this->createAttributeGroups();
 
         //Parse features
-        $this->logger->info("Parsing category features file");
+        $this->log("Parsing category features file");
         foreach($this->category_features as $feature_row){
             if(count($feature_row) != 4) {
                 $this->logger->warn("Feature row not 4 columns");
@@ -128,7 +124,7 @@ class Attributes extends AbstractImportSection {
         }
 
         //Parse values
-        $this->logger->info("Parsing attribute values file");
+        $this->log("Parsing attribute values file");
         foreach($this->attribute_values as $rv_row){
             $this->attributes[$rv_row[1]]["values"][$rv_row[0]] = [
                 "text" => $rv_row[2],
@@ -142,15 +138,15 @@ class Attributes extends AbstractImportSection {
         }
         
         //Delete old mapping entries
-        $this->logger->info("Deleting old restricted value mapping");
+        $this->log("Deleting old restricted value mapping");
         $this->getConnection()->query("DELETE FROM {$this->mappingTable}");
 
         //Delete old filter-category mapping
-        $this->logger->info("Deleting old filter-category mapping");
+        $this->log("Deleting old filter-category mapping");
         $this->getConnection()->query("DELETE FROM {$this->filterCategoriesTable}");
 
         //Create or update Magento attributes
-        $this->logger->info("Creating or updating Magento attributes");
+        $this->log("Creating or updating Magento attributes");
         foreach($this->attributes as $sinch_id => $data){
             $this->attributeCount += 1;
             try {
@@ -170,8 +166,8 @@ class Attributes extends AbstractImportSection {
         $this->cacheType->cleanType('eav');
 
         $elapsed = number_format($this->microtime_float() - $parseStart, 2);
-        $this->logger->info("--- Completed Attribute parse ---");
-        $this->logger->info("Processed a total of {$this->attributeCount} attributes and {$this->optionCount} options in {$elapsed} seconds");
+        $this->log("--- Completed Attribute parse ---");
+        $this->log("Processed a total of {$this->attributeCount} attributes and {$this->optionCount} options in {$elapsed} seconds");
     }
 
     private function createAttribute($sinch_id, $data)

@@ -3,6 +3,8 @@
 namespace SITC\Sinchimport\Model\Import;
 
 class UNSPSC extends AbstractImportSection {
+    const LOG_PREFIX = "UNSPSC: ";
+    const LOG_FILENAME = "unspsc";
 
     const ATTRIBUTE_NAME = "unspsc";
     const PRODUCT_PAGE_SIZE = 50;
@@ -25,20 +27,16 @@ class UNSPSC extends AbstractImportSection {
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
+        \Symfony\Component\Console\Output\ConsoleOutput $output,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
         \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
     ){
-        parent::__construct($resourceConn);
+        parent::__construct($resourceConn, $output);
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
 
         $this->productTempTable = $this->getTableName('products_temp');
         $this->cpeTable = $this->getTableName('catalog_product_entity');
-
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/sinch_unspsc.log');
-        $logger = new \Zend\Log\Logger();
-        $logger->addWriter($writer);
-        $this->logger = $logger;
     }
 
     public function parse()
@@ -120,10 +118,10 @@ class UNSPSC extends AbstractImportSection {
         return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
     }
 
-    private function log($msg)
+    protected function log($msg)
     {
         if($this->enableLogging){
-            $this->logger->info($msg);
+            parent::log($msg);
         }
     }
 }
