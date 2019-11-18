@@ -1,9 +1,11 @@
 <?php
-
 namespace SITC\Sinchimport\Model\Import;
 
 /**
  * Class CustomerGroupPrice
+ * 
+ * NOTE: ScopedProductTierPriceManagementInterface is avoided because its too slow
+ * 
  * @package SITC\Sinchimport\Model\Import
  */
 class CustomerGroupPrice extends AbstractImportSection {
@@ -12,33 +14,52 @@ class CustomerGroupPrice extends AbstractImportSection {
 
     const CUSTOMER_GROUPS = 'group_name';
     const PRICE_COLUMN = 'customer_group_price';
-    const CHUNK_SIZE = 10000;
+    const CHUNK_SIZE = 1000;
+    const INSERT_THRESHOLD = 500; //Inserts are most efficient around batches of 500 (possibly related to TierPricePersistence inserting in batches of 500?)
+
+    const GROUP_SUFFIX = " (SITC)";
+
+    private $customerGroupCount = 0;
+    private $customerGroupPriceCount = 0;
 
     /**
      * CSV parser
      * @var \SITC\Sinchimport\Util\CsvIterator
      */
     private $csv;
+    /**
+     * @var \Magento\Customer\Api\Data\GroupInterfaceFactory
+     */
+    private $groupFactory;
+    /**
+     * @var \Magento\Customer\Api\GroupRepositoryInterface
+     */
+    private $groupRepository;
+    /**
+     * @var \Magento\Catalog\Api\TierPriceStorageInterface
+     */
+    private $tierPriceStorage;
+    /**
+     * @var \Magento\Catalog\Api\Data\TierPriceInterface
+     */
+    private $tierPriceFactory;
+    /**
+     * @var \Magento\Framework\Api\SearchCriteriaBuilder
+     */
+    private $searchCriteriaBuilder;
 
-    private $customerGroupCount = 0;
-    private $customerGroupPriceCount = 0;
-
     /**
-     * @var string Customer Group table
+     * @var string customer_group table
      */
-    private $customerGroup;
+    private $customerGroupTable;
     /**
-     * @var string Customer Group Price table
+     * @var string sinch_products_mapping table
      */
-    private $customerGroupPrice;
+    private $sinchProductsMappingTable;
     /**
-     * @var string Customer Group Price temporary table
+     * @var string sinch_group_mapping table
      */
-    private $tmpTable;
-    /**
-     * @var string Sinch_products_mapping table
-     */
-    private $sinchProductsMapping;
+    private $mappingTable;
 
     /**
      * CustomerGroupPrice constructor.
@@ -50,14 +71,33 @@ class CustomerGroupPrice extends AbstractImportSection {
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Symfony\Component\Console\Output\ConsoleOutput $output,
         \SITC\Sinchimport\Util\CsvIterator $csv,
+        \Magento\Customer\Api\Data\GroupInterfaceFactory $groupFactory,
+        \Magento\Customer\Api\GroupRepositoryInterface $groupRepository,
+        \Magento\Catalog\Api\TierPriceStorageInterface $tierPriceStorage,
+        \Magento\Catalog\Api\Data\TierPriceInterfaceFactory $tierPriceFactory,
+        \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
     ){
         parent::__construct($resourceConn, $output);
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
+        $this->groupFactory = $groupFactory;
+        $this->groupRepository = $groupRepository;
+        $this->tierPriceStorage = $tierPriceStorage;
+        $this->tierPriceFactory = $tierPriceFactory;
+        $this->searchCriteriaBuilder = $searchCriteriaBuilder;
+        
+        $this->customerGroupTable = $this->getTableName('customer_group');
+        $this->sinchProductsMappingTable = $this->getTableName('sinch_products_mapping');
+        $this->mappingTable = $this->getTableName('sinch_group_mapping');
+    }
 
-        $this->customerGroup = $this->getTableName('sinch_customer_group');
-        $this->customerGroupPrice = $this->getTableName('sinch_customer_group_price');
-        $this->tmpTable = $this->getTableName('sinch_customer_group_price_tmp');
-        $this->sinchProductsMapping = $this->getTableName('sinch_products_mapping');
+    private function createMappingTable()
+    {
+        $groupTable = $this->getTableName('customer_group');
+        $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->mappingTable} (
+            sinch_id int(10) unsigned NOT NULL UNIQUE KEY PRIMARY KEY,
+            magento_id int(10) unsigned NOT NULL UNIQUE KEY,
+            FOREIGN KEY (magento_id) REFERENCES {$groupTable} (customer_group_id) ON UPDATE CASCADE ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
     }
 
 
@@ -69,6 +109,7 @@ class CustomerGroupPrice extends AbstractImportSection {
     public function parse($customerGroupFile, $customerGroupPriceFile)
     {
         $this->log("Starting CustomerGroupPrice parse");
+        $this->createMappingTable();
         $parseStart = $this->microtime_float();
 
         $customerGroupCsv = $this->csv->getData($customerGroupFile);
@@ -77,94 +118,183 @@ class CustomerGroupPrice extends AbstractImportSection {
         $this->csv->openIter($customerGroupPriceFile);
         $this->csv->take(1); //Discard first row
 
-
-        //Prepare customer group data for insertion
-        $customerGroupData = [];
         foreach($customerGroupCsv as $groupData){
-            $this->customerGroupCount += 1;
-            $customerGroupData[] = [
-                'group_id'   => $groupData[0],
-                'group_name' => $groupData[1],
-            ];
-        }
-
-        //Delete existing customer groups
-        $this->getConnection()->query("DELETE FROM {$this->customerGroup}");
-
-        if(count($customerGroupData) > 0) {
-            //Insert new customer groups
-            $this->getConnection()->insertOnDuplicate(
-                $this->customerGroup,
-                $customerGroupData,
-                [self::CUSTOMER_GROUPS]
-            );
+            //Sinch Group ID, Group Name
+            $this->createOrUpdateGroup($groupData[0], $groupData[1]);
         }
 
         $elapsed = number_format($this->microtime_float() - $parseStart, 2);
         $this->log("Processed {$this->customerGroupCount} customer groups in {$elapsed} seconds");
         $parseStart = $this->microtime_float();
 
-        //Drop (if necessary) and recreate tmp table
-        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->tmpTable}");
-        $this->getConnection()->query(
-            "CREATE TABLE `{$this->tmpTable}` (
-                `group_id` int(10) UNSIGNED NOT NULL COMMENT 'Group Id',
-                `sinch_product_id` int(10) UNSIGNED NOT NULL COMMENT 'Sinch Product Id',
-                `price_type_id` int(10) UNSIGNED NOT NULL COMMENT 'Price Type Id',
-                `customer_group_price` decimal(12,4) NOT NULL DEFAULT '0.0000' COMMENT 'Customer Group Price',
-                UNIQUE KEY (`group_id`, `sinch_product_id`, `price_type_id`)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Sinch Customer Group Price Temp';"
-        );
+        
 
+        $this->clearSinchTierPrices();
+        $customerGroupPriceData = [];
         while($toProcess = $this->csv->take(self::CHUNK_SIZE)) {
-            //Process price records ready for insertion
-            $customerGroupPriceData = [];
+            //Process price records
             foreach($toProcess as $priceData){
-                $this->customerGroupPriceCount += 1;
-                $customerGroupPriceData[] = [
-                    'group_id'             => $priceData[0],
-                    'sinch_product_id'     => $priceData[1],
-                    'price_type_id'        => $priceData[2],
-                    'customer_group_price' => $priceData[3],
-                ];
-            }
+                if(!is_numeric($priceData[3]) || ((float)$priceData[3]) <= 0.0) {
+                    //Ignore invalid rules
+                    continue;
+                }
+                if($priceData[2] != 1) {
+                    $this->log("Unknown price type ID: " . $priceData[2]);
+                    continue;
+                }
 
-            //Insert the price records into the temp table ready for mapping
-            $this->getConnection()->insertOnDuplicate(
-                $this->tmpTable,
-                $customerGroupPriceData,
-                [self::PRICE_COLUMN]
-            );
+                $sku = $this->getSkuBySinchProduct($priceData[1]);
+                if(empty($sku)) {
+                    $this->log("Warning: No SKU found for Sinch product ID " . $priceData[1], false);
+                    continue;
+                }
+                $groupCode = $this->getGroupCodeBySinchGroup($priceData[0]);
+                if(empty($groupCode)){
+                    $this->log("Warning: No Magento group ID found for Account group: " . $priceData[0]);
+                    continue;
+                }
+
+                $this->customerGroupPriceCount += 1;
+                $customerGroupPriceData[] = $this->tierPriceFactory->create()
+                    ->setPriceType(\Magento\Catalog\Api\Data\TierPriceInterface::PRICE_TYPE_FIXED)
+                    ->setQuantity(1.0)
+                    ->setWebsiteId(0) //Admin website ID (all sites)
+                    ->setSku($sku)
+                    ->setCustomerGroup($groupCode)
+                    ->setPrice((float)$priceData[3]);
+            }
+            if(count($customerGroupPriceData) >= self::INSERT_THRESHOLD){
+                $this->updateTierPrices($customerGroupPriceData);
+                $customerGroupPriceData = [];
+            }
+        }
+        if(count($customerGroupPriceData) > 0){
+            $this->updateTierPrices($customerGroupPriceData);
         }
         $this->csv->closeIter();
 
-        //Delete existing price records from the live table
-        $this->getConnection()->query("DELETE FROM {$this->customerGroupPrice}");
-
-        //Perform the mapping into the live table
-        $this->getConnection()->query(
-            "INSERT INTO {$this->customerGroupPrice} (
-                group_id,
-                product_id,
-                price_type_id,
-                customer_group_price
-            )
-            SELECT 
-                tmp.group_id,
-                spm.entity_id,
-                tmp.price_type_id,
-                tmp.customer_group_price
-            FROM {$this->tmpTable} tmp
-            INNER JOIN {$this->sinchProductsMapping} spm
-                ON tmp.sinch_product_id = spm.sinch_product_id
-            ON DUPLICATE KEY UPDATE
-                customer_group_price = tmp.customer_group_price"
-        );
-
-        //Drop the tmp table as its no longer needed
-        $this->getConnection()->query("DROP TABLE {$this->tmpTable}");
+        //Cleanup the old format data, if present
+        $tmpTable = $this->getTableName('sinch_customer_group_price_tmp');
+        $this->getConnection()->query("DROP TABLE IF EXISTS {$tmpTable}");
+        $cgpTable = $this->getTableName('sinch_customer_group_price');
+        $this->getConnection()->query("DELETE FROM {$cgpTable}");
 
         $elapsed = $this->microtime_float() - $parseStart;
         $this->log("Processed {$this->customerGroupPriceCount} group prices in {$elapsed} seconds");
+    }
+
+    /**
+     * Clears all Sinch customer groups
+     * @return void
+     */
+    private function clearSinchGroups()
+    {
+        $magentoGroupIds = $this->getConnection()->fetchCol("SELECT magento_id FROM {$this->mappingTable}");
+        foreach($magentoGroupIds as $groupId){
+            $this->groupRepository->deleteById($groupId);
+        }
+    }
+
+    /**
+     * Creates the specified group if it doesn't exist, then adds a mapping entry linking the sinch ID to the Magento ID
+     * @param int $sinchGroupId The Sinch Group ID
+     * @param string $groupName The Sinch Group Name
+     * @return void
+     */
+    private function createOrUpdateGroup($sinchGroupId, $groupName)
+    {
+        $fullGroupName = $groupName . self::GROUP_SUFFIX;
+        $this->customerGroupCount += 1;
+        $magentoGroupId = $this->getConnection()->fetchOne(
+            "SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id",
+            [":sinch_id" => $sinchGroupId]
+        );
+        if(!empty($magentoGroupId)){
+            $group = $this->groupRepository->getById($magentoGroupId);
+            if($group->getCode() != $fullGroupName) {
+                $group->setCode($fullGroupName);
+                $this->groupRepository->save($group);
+            }
+            return;
+        }
+
+        //Group doesn't exist, create it
+        $group = $this->groupFactory->create();
+        $group->setCode($fullGroupName)
+            ->setTaxClassId(3); //"Retail Customer" magic number (set to 3 on all default customer groups)
+        try {
+            $group = $this->groupRepository->save($group);
+            $this->insertMapping($sinchGroupId, $group->getId());
+        } catch(\Magento\Framework\Exception\State\InvalidTransitionException $e){
+            $this->log("Group unexpectedly exists, trying to remap it: {$groupName} ({$sinchGroupId})");
+            $criteria = $this->searchCriteriaBuilder
+                ->addFilter('code', $fullGroupName, 'eq')
+                ->create();
+            $matchingGroups = $this->groupRepository->getList($criteria)->getItems();
+            if(count($matchingGroups) > 0) {
+                $this->insertMapping($sinchGroupId, $matchingGroups[0]->getId());
+                return;
+            }
+            $this->log("FATAL: Unable to determine why we got InvalidTransitionException, rethrowing");
+            throw $e;
+        }
+    }
+
+    private function insertMapping($sinchId, $magentoId)
+    {
+        $this->getConnection()->query(
+            "INSERT INTO {$this->mappingTable} (sinch_id, magento_id) VALUES(:sinch_id, :magento_id) ON DUPLICATE KEY UPDATE magento_id = VALUES(magento_id)",
+            [
+                ":sinch_id" => $sinchId,
+                ":magento_id" => $magentoId
+            ]
+        );
+    }
+
+    private function clearSinchTierPrices()
+    {
+        $tierPriceTable = $this->getTableName('catalog_product_entity_tier_price');
+        $this->getConnection()->query(
+            "DELETE FROM {$tierPriceTable} WHERE all_groups = 0 AND qty = 1 AND entity_id IN (SELECT entity_id FROM {$this->sinchProductsMappingTable})"
+        );
+    }
+
+    /**
+     * Returns the SKU for a given Sinch Product ID, or null (if the product could not be matched)
+     * @param int $sinchProdId
+     * @return string|null
+     */
+    private function getSkuBySinchProduct($sinchProdId)
+    {
+        return $this->getConnection()->fetchOne(
+            "SELECT sku FROM {$this->sinchProductsMappingTable} WHERE sinch_product_id = :sinch_product_id",
+            [":sinch_product_id" => $sinchProdId]
+        );
+    }
+
+    /**
+     * Returns the Magento group code for a given Sinch Group ID, or null (if the group could not be matched)
+     * @param int $sinchGroupId
+     * @return string|null
+     */
+    private function getGroupCodeBySinchGroup($sinchGroupId)
+    {
+        return $this->getConnection()->fetchOne(
+            "SELECT customer_group_code FROM {$this->customerGroupTable} WHERE customer_group_id IN (SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id)",
+            [":sinch_id" => $sinchGroupId]
+        );
+    }
+
+    private function updateTierPrices($prices)
+    {
+        $this->log("Inserting " . count($prices) . " group prices");
+        $result = $this->tierPriceStorage->update($prices);
+        foreach($result as $updateResult){
+            $message = $updateResult->getMessage();
+            foreach($updateResult->getParameters() as $k => $v) {
+                $message = str_replace('%'.$k, $v, $message);
+            }
+            $this->log($message);
+        }
     }
 }
