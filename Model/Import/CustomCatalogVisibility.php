@@ -41,7 +41,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Symfony\Component\Console\Output\ConsoleOutput $output,
         \SITC\Sinchimport\Util\CsvIterator $csv,
-        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
+        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
     ){
         parent::__construct($resourceConn, $output);
         $this->stockPriceCsv = $csv->setLineLength(256)->setDelimiter("|");

@@ -25,7 +25,7 @@ abstract class AbstractImportSection {
     ){
         $this->resourceConn = $resourceConn;
 
-        $writer = new \Zend\Log\Writer\Stream(BP . "/var/log/sinch_" . self::LOG_FILENAME . ".log");
+        $writer = new \Zend\Log\Writer\Stream(BP . "/var/log/sinch_" . static::LOG_FILENAME . ".log");
         $logger = new \Zend\Log\Logger();
         $logger->addWriter($writer);
         $this->logger = $logger;
@@ -58,9 +58,11 @@ abstract class AbstractImportSection {
         return $this->resourceConn->getTableName($table);
     }
 
-    protected function log($msg)
+    protected function log($msg, $print = true)
     {
-        $this->output->writeln(self::LOG_PREFIX . $msg);
-        $this->logger->info(self::LOG_PREFIX . $msg);
+        if($print){
+            $this->output->writeln(static::LOG_PREFIX . $msg);
+        }
+        $this->logger->info(static::LOG_PREFIX . $msg);
     }
 }

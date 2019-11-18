@@ -15,8 +15,6 @@ class UNSPSC extends AbstractImportSection {
     private $cacheType;
     private $massProdValues;
 
-    private $logger;
-
     private $productTempTable;
     private $cpeTable;
 
@@ -118,10 +116,10 @@ class UNSPSC extends AbstractImportSection {
         return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
     }
 
-    protected function log($msg)
+    protected function log($msg, $print = true)
     {
         if($this->enableLogging){
-            parent::log($msg);
+            parent::log($msg, $print);
         }
     }
 }
