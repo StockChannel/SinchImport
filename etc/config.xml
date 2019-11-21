@@ -29,6 +29,9 @@
                 <enable>0</enable>
                 <disable_import>0</disable_import>
             </product_visibility>
+            <group_pricing>
+                <unsafe_optimizations>0</unsafe_optimizations>
+            </group_pricing>
         </sinchimport>
     </default>
 </config>

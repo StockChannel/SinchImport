@@ -152,6 +152,14 @@
                     <comment>If you have no intention of using the Product visibility functionality in the near future, enable this option to skip this section of the import</comment>
                 </field>
             </group>
+            <group id="group_pricing" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Group Pricing</label>
+                <field id="unsafe_optimizations" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Unsafe optimizations</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Speeds up the import of Group prices by avoiding the slow validation layer (and thus is recommended only where time constrainsts require it)</comment>
+                </field>
+            </group>
         </section>
     </system>
 </config>

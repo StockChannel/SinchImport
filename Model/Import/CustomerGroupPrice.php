@@ -23,6 +23,10 @@ class CustomerGroupPrice extends AbstractImportSection {
     private $customerGroupPriceCount = 0;
 
     /**
+     * @var \SITC\Sinchimport\Helper\Data
+     */
+    private $helper;
+    /**
      * CSV parser
      * @var \SITC\Sinchimport\Util\CsvIterator
      */
@@ -60,6 +64,10 @@ class CustomerGroupPrice extends AbstractImportSection {
      * @var string sinch_group_mapping table
      */
     private $mappingTable;
+    /**
+     * @var string catalog_product_entity_tier_price table
+     */
+    private $tierPriceTable;
 
     /**
      * CustomerGroupPrice constructor.
@@ -70,6 +78,7 @@ class CustomerGroupPrice extends AbstractImportSection {
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Symfony\Component\Console\Output\ConsoleOutput $output,
+        \SITC\Sinchimport\Helper\Data $helper,
         \SITC\Sinchimport\Util\CsvIterator $csv,
         \Magento\Customer\Api\Data\GroupInterfaceFactory $groupFactory,
         \Magento\Customer\Api\GroupRepositoryInterface $groupRepository,
@@ -88,6 +97,9 @@ class CustomerGroupPrice extends AbstractImportSection {
         $this->customerGroupTable = $this->getTableName('customer_group');
         $this->sinchProductsMappingTable = $this->getTableName('sinch_products_mapping');
         $this->mappingTable = $this->getTableName('sinch_group_mapping');
+        $this->tierPriceTable = $this->getTableName('catalog_product_entity_tier_price');
+
+        $this->enableUnsafeOptimizations = $helper->getStoreConfig('sinchimport/group_pricing/unsafe_optimizations');
     }
 
     private function createMappingTable()
@@ -143,25 +155,12 @@ class CustomerGroupPrice extends AbstractImportSection {
                     continue;
                 }
 
-                $sku = $this->getSkuBySinchProduct($priceData[1]);
-                if(empty($sku)) {
-                    $this->log("Warning: No SKU found for Sinch product ID " . $priceData[1], false);
+                $data = $this->prepareTierPrice($priceData[0], $priceData[1], $priceData[3]);
+                if(empty($data)){
                     continue;
                 }
-                $groupCode = $this->getGroupCodeBySinchGroup($priceData[0]);
-                if(empty($groupCode)){
-                    $this->log("Warning: No Magento group ID found for Account group: " . $priceData[0]);
-                    continue;
-                }
-
+                $customerGroupPriceData[] = $data;
                 $this->customerGroupPriceCount += 1;
-                $customerGroupPriceData[] = $this->tierPriceFactory->create()
-                    ->setPriceType(\Magento\Catalog\Api\Data\TierPriceInterface::PRICE_TYPE_FIXED)
-                    ->setQuantity(1.0)
-                    ->setWebsiteId(0) //Admin website ID (all sites)
-                    ->setSku($sku)
-                    ->setCustomerGroup($groupCode)
-                    ->setPrice((float)$priceData[3]);
             }
             if(count($customerGroupPriceData) >= self::INSERT_THRESHOLD){
                 $this->updateTierPrices($customerGroupPriceData);
@@ -253,9 +252,8 @@ class CustomerGroupPrice extends AbstractImportSection {
 
     private function clearSinchTierPrices()
     {
-        $tierPriceTable = $this->getTableName('catalog_product_entity_tier_price');
         $this->getConnection()->query(
-            "DELETE FROM {$tierPriceTable} WHERE all_groups = 0 AND qty = 1 AND entity_id IN (SELECT entity_id FROM {$this->sinchProductsMappingTable})"
+            "DELETE FROM {$this->tierPriceTable} WHERE all_groups = 0 AND qty = 1 AND entity_id IN (SELECT entity_id FROM {$this->sinchProductsMappingTable})"
         );
     }
 
@@ -285,9 +283,75 @@ class CustomerGroupPrice extends AbstractImportSection {
         );
     }
 
+    /**
+     * Prepare a tier price for batched insertion. Returns null on match failure
+     * @param int $grpId Sinch Group ID
+     * @param int $prodId Sinch Product ID
+     * @param float $price Price
+     * @return mixed|null
+     */
+    private function prepareTierPrice($grpId, $prodId, $price)
+    {
+        if($this->enableUnsafeOptimizations){
+            $conn = $this->getConnection();
+            $magProdId = $conn->fetchOne(
+                "SELECT entity_id FROM {$this->sinchProductsMappingTable} WHERE sinch_product_id = :sinch_product_id",
+                [":sinch_product_id" => $prodId]
+            );
+            if(empty($magProdId)){
+                $this->log("Warning: No entity ID found for Sinch product ID " . $prodId, false);
+                return null;
+            }
+            $magGrpId = $conn->fetchOne(
+                "SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id",
+                [":sinch_id" => $grpId]
+            );
+            if(empty($magGrpId)){
+                $this->log("Warning: No Magento group ID found for Account group: " . $grpId);
+            }
+            return [
+                "all_groups" => 0,
+                "qty" => 1.0,
+                "website_id" => 0,
+                "customer_group_id" => $magGrpId,
+                "entity_id" => $magProdId,
+                "value" => $price
+            ];
+        }
+
+        $sku = $this->getSkuBySinchProduct($prodId);
+        if(empty($sku)) {
+            $this->log("Warning: No SKU found for Sinch product ID " . $prodId, false);
+            return null;
+        }
+        $groupCode = $this->getGroupCodeBySinchGroup($grpId);
+        if(empty($groupCode)){
+            $this->log("Warning: No Magento group code found for Account group: " . $grpId);
+            return null;
+        }
+
+        return $this->tierPriceFactory->create()
+            ->setPriceType(\Magento\Catalog\Api\Data\TierPriceInterface::PRICE_TYPE_FIXED)
+            ->setQuantity(1.0)
+            ->setWebsiteId(0) //Admin website ID (all sites)
+            ->setSku($sku)
+            ->setCustomerGroup($groupCode)
+            ->setPrice((float)$priceData[3]);
+    }
+
     private function updateTierPrices($prices)
     {
         $this->log("Inserting " . count($prices) . " group prices");
+
+        if($this->enableUnsafeOptimizations){
+            $this->getConnection()->insertOnDuplicate(
+                $this->tierPriceTable,
+                $prices,
+                ['value']
+            );
+            return;
+        }
+
         $result = $this->tierPriceStorage->update($prices);
         foreach($result as $updateResult){
             $message = $updateResult->getMessage();
