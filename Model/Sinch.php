@@ -6417,7 +6417,7 @@ class Sinch
         $this->_doQuery(
             "
                                 INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_varchar'
+                'catalog_product_entity_text'
             ) . " (
                                     attribute_id,
                                     store_id,
@@ -6451,7 +6451,7 @@ class Sinch
         $this->_doQuery(
             "
                                 INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_varchar'
+                'catalog_product_entity_text'
             ) . " (
                                     attribute_id,
                                     store_id,
