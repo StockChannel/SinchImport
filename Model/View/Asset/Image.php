@@ -214,9 +214,14 @@ class Image implements LocalInterface
         $miscParams['keep_frame'] = (isset($miscParams['keep_frame']) ? '' : 'no') . 'frame';
         $miscParams['keep_transparency'] = (isset($miscParams['keep_transparency']) ? '' : 'no') . 'transparency';
         $miscParams['constrain_only'] = (isset($miscParams['constrain_only']) ? 'do' : 'not') . 'constrainonly';
-        $miscParams['background'] = isset($miscParams['background'])
-            ? 'rgb' . implode(',', $miscParams['background'])
-            : 'nobackground';
+        if (isset($miscParams['background'])
+            && is_array($miscParams['background'])
+        ){
+            $miscParams['background'] = $miscParams['background']
+                ? 'rgb' . implode(',', $miscParams['background'])
+                : 'nobackground';
+        }
+
         return $miscParams;
     }
 }
