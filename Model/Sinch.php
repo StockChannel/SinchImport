@@ -964,6 +964,9 @@ class Sinch
             $catalog_category_entity = $this->_getTableName(
                 'catalog_category_entity'
             );
+            $catalog_category_entity_text = $this->_getTableName(
+                'catalog_category_entity_text'
+            );
             $catalog_category_entity_varchar = $this->_getTableName(
                 'catalog_category_entity_varchar'
             );
@@ -1052,6 +1055,7 @@ class Sinch
                     $sinch_categories_mapping,
                     $sinch_categories,
                     $catalog_category_entity,
+                    $catalog_category_entity_text,
                     $catalog_category_entity_varchar,
                     $catalog_category_entity_int,
                     $_categoryDefault_attribute_set_id,
@@ -1071,6 +1075,7 @@ class Sinch
                         $this->rewriteMultistoreCategories(
                             $coincidence,
                             $catalog_category_entity,
+                            $catalog_category_entity_text,
                             $catalog_category_entity_varchar,
                             $catalog_category_entity_int,
                             $_categoryDefault_attribute_set_id,
@@ -1092,6 +1097,7 @@ class Sinch
                         $this->mergeMultistoreCategories(
                             $coincidence,
                             $catalog_category_entity,
+                            $catalog_category_entity_text,
                             $catalog_category_entity_varchar,
                             $catalog_category_entity_int,
                             $_categoryDefault_attribute_set_id,
@@ -1705,6 +1711,7 @@ class Sinch
         $sinch_categories_mapping,
         $sinch_categories,
         $catalog_category_entity,
+        $catalog_category_entity_text,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
@@ -2174,7 +2181,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -2194,7 +2201,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -2290,6 +2297,7 @@ class Sinch
     private function rewriteMultistoreCategories(
         $coincidence,
         $catalog_category_entity,
+        $catalog_category_entity_text,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
@@ -2351,6 +2359,7 @@ class Sinch
             $sinch_categories_mapping,
             $sinch_categories,
             $catalog_category_entity,
+            $catalog_category_entity_text,
             $catalog_category_entity_varchar,
             $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
@@ -2767,6 +2776,7 @@ class Sinch
         $sinch_categories_mapping,
         $sinch_categories,
         $catalog_category_entity,
+        $catalog_category_entity_text,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
@@ -3219,7 +3229,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -3239,7 +3249,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -3310,6 +3320,7 @@ class Sinch
     private function mergeMultistoreCategories(
         $coincidence,
         $catalog_category_entity,
+        $catalog_category_entity_text,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
@@ -3357,6 +3368,7 @@ class Sinch
             $sinch_categories_mapping,
             $sinch_categories,
             $catalog_category_entity,
+            $catalog_category_entity_text,
             $catalog_category_entity_varchar,
             $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
@@ -3569,6 +3581,7 @@ class Sinch
         $sinch_categories_mapping,
         $sinch_categories,
         $catalog_category_entity,
+        $catalog_category_entity_text,
         $catalog_category_entity_varchar,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
@@ -4028,7 +4041,7 @@ class Sinch
 
             $q
                 = "
-                INSERT IGNORE INTO $catalog_category_entity_varchar
+                INSERT IGNORE INTO $catalog_category_entity_text
                     (
                      attribute_id,
                      store_id,
@@ -4049,7 +4062,7 @@ class Sinch
 
             $q
                 = "
-                INSERT IGNORE INTO $catalog_category_entity_varchar
+                INSERT IGNORE INTO $catalog_category_entity_text
                     (
                      attribute_id,
                      store_id,
