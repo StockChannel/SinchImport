@@ -2059,6 +2059,51 @@ class Sinch
                 ON DUPLICATE KEY UPDATE
                     value = c.Description"
             );
+
+            $this->_doQuery(
+                "INSERT INTO $catalog_category_entity_text
+                (
+                    attribute_id,
+                    store_id,
+                    entity_id,
+                    value
+                )
+                (
+                    SELECT
+                    $this->_categoryMetadescriptionAttrId,
+                    0,
+                    scm.shop_entity_id,
+                    c.MetaDescription
+                    FROM $categories_temp c
+                    JOIN $sinch_categories_mapping scm
+                        ON c.store_category_id = scm.store_category_id
+                )
+                ON DUPLICATE KEY UPDATE
+                    value = c.MetaDescription"
+            );
+
+            $this->_doQuery(
+                "INSERT INTO $catalog_category_entity_text
+                (
+                    attribute_id,
+                    store_id,
+                    entity_id,
+                    value
+                )
+                (
+                    SELECT
+                    $this->_categoryDescriptionAttrId,
+                    0,
+                    scm.shop_entity_id,
+                    c.Description
+                    FROM $categories_temp c
+                    JOIN $sinch_categories_mapping scm
+                        ON c.store_category_id = scm.store_category_id
+                )
+                ON DUPLICATE KEY UPDATE
+                    value = c.Description"
+            );
+
         } else {
             $this->_doQuery(
                 "INSERT IGNORE INTO $catalog_category_entity_varchar
@@ -2174,6 +2219,46 @@ class Sinch
                     0,
                     scm.shop_entity_id,
                     c.MetaTitle
+                    FROM $categories_temp c
+                    JOIN $sinch_categories_mapping scm
+                        ON c.store_category_id = scm.store_category_id
+                )"
+            );
+
+            $this->_doQuery(
+                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                (
+                    attribute_id,
+                    store_id,
+                    entity_id,
+                    value
+                )
+                (
+                    SELECT
+                    $this->_categoryMetadescriptionAttrId,
+                    0,
+                    scm.shop_entity_id,
+                    c.MetaDescription
+                    FROM $categories_temp c
+                    JOIN $sinch_categories_mapping scm
+                        ON c.store_category_id = scm.store_category_id
+                )"
+            );
+
+            $this->_doQuery(
+                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                (
+                    attribute_id,
+                    store_id,
+                    entity_id,
+                    value
+                )
+                (
+                    SELECT
+                    $this->_categoryDescriptionAttrId,
+                    0,
+                    scm.shop_entity_id,
+                    c.Description
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
@@ -3107,6 +3192,51 @@ class Sinch
                 ON DUPLICATE KEY UPDATE
                     value = c.Description"
             );
+
+            $this->_doQuery(
+                "INSERT INTO $catalog_category_entity_text
+                (
+                    attribute_id,
+                    store_id,
+                    entity_id,
+                    value
+                )
+                (
+                    SELECT
+                    $this->_categoryMetadescriptionAttrId,
+                    0,
+                    scm.shop_entity_id,
+                    c.MetaDescription
+                    FROM $categories_temp c
+                    JOIN $sinch_categories_mapping scm
+                        ON c.store_category_id = scm.store_category_id
+                )
+                ON DUPLICATE KEY UPDATE
+                     value = c.MetaDescription"
+            );
+
+            $this->_doQuery(
+                "INSERT INTO $catalog_category_entity_text
+                (
+                    attribute_id,
+                    store_id,
+                    entity_id,
+                    value
+                )
+                (
+                    SELECT
+                    $this->_categoryDescriptionAttrId,
+                    0,
+                    scm.shop_entity_id,
+                    c.Description
+                    FROM $categories_temp c
+                    JOIN $sinch_categories_mapping scm
+                        ON c.store_category_id = scm.store_category_id
+                )
+                ON DUPLICATE KEY UPDATE
+                    value = c.Description"
+            );
+
         } else {
             $this->_doQuery(
                 "INSERT IGNORE INTO $catalog_category_entity_varchar
@@ -3917,6 +4047,51 @@ class Sinch
                 ON DUPLICATE KEY UPDATE
                      value = c.Description";
             $this->_doQuery($q);
+
+            $q
+                = "
+                INSERT INTO $catalog_category_entity_text
+                    (
+                     attribute_id,
+                     store_id,
+                     entity_id,
+                     value
+                    )
+                (SELECT
+                     $this->_categoryMetadescriptionAttrId,
+                     0,
+                     scm.shop_entity_id,
+                     c.MetaDescription
+                 FROM $categories_temp c
+                 JOIN $sinch_categories_mapping scm
+                     ON c.store_category_id = scm.store_category_id
+                )
+                ON DUPLICATE KEY UPDATE
+                     value = c.MetaDescription";
+            $this->_doQuery($q);
+
+            $q
+                = "
+                INSERT INTO $catalog_category_entity_text
+                    (
+                     attribute_id,
+                     store_id,
+                     entity_id,
+                     value
+                    )
+                (SELECT
+                     $this->_categoryDescriptionAttrId,
+                     0,
+                     scm.shop_entity_id,
+                     c.Description
+                 FROM $categories_temp c
+                 JOIN $sinch_categories_mapping scm
+                     ON c.store_category_id = scm.store_category_id
+                )
+                ON DUPLICATE KEY UPDATE
+                     value = c.Description";
+            $this->_doQuery($q);
+
         } else {
             $q
                 = "
@@ -4037,6 +4212,48 @@ class Sinch
                      ON c.store_category_id = scm.store_category_id
                 )
                ";
+            $this->_doQuery($q);
+
+            $q
+                = "
+                INSERT IGNORE INTO $catalog_category_entity_varchar
+                    (
+                     attribute_id,
+                     store_id,
+                     entity_id,
+                     value
+                    )
+                (SELECT
+                     $this->_categoryMetadescriptionAttrId,
+                     0,
+                     scm.shop_entity_id,
+                     c.MetaDescription
+                 FROM $categories_temp c
+                 JOIN $sinch_categories_mapping scm
+                     ON c.store_category_id = scm.store_category_id
+                )
+            ";
+            $this->_doQuery($q);
+
+            $q
+                = "
+                INSERT IGNORE INTO $catalog_category_entity_varchar
+                    (
+                     attribute_id,
+                     store_id,
+                     entity_id,
+                     value
+                    )
+                (SELECT
+                     $this->_categoryDescriptionAttrId,
+                     0,
+                     scm.shop_entity_id,
+                     c.Description
+                 FROM $categories_temp c
+                 JOIN $sinch_categories_mapping scm
+                     ON c.store_category_id = scm.store_category_id
+                )
+            ";
             $this->_doQuery($q);
 
             $q
