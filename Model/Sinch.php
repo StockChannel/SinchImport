@@ -9209,6 +9209,9 @@ class Sinch
     public function getImportStatuses()
     {
         $messages = [];
+        if(!$this->_connection->isTableExists($this->import_status_table)) {
+            return $messages;
+        }
 
         $res = $this->_doQuery(
             "SELECT id, message, finished

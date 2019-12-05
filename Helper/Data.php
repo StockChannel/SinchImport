@@ -74,9 +74,11 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     public function scheduleImport($importType) {
         $importStatus = $this->resourceConn->getTableName('sinch_import_status');
         //Clear the status table so the admin panel doesn't immediately mark it as complete
-        $this->resourceConn->getConnection()->query(
-            "DELETE FROM {$importStatus}"
-        );
+        if($this->resourceConn->getConnection()->isTableExists($importStatus)) {
+            $this->resourceConn->getConnection()->query(
+                "DELETE FROM {$importStatus}"
+            );
+        }
 
         $importStatusStat = $this->resourceConn->getTableName('sinch_import_status_statistic');
         $this->resourceConn->getConnection()->query(
