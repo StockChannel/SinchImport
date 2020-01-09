@@ -95,6 +95,7 @@ class Sinch
     private $unspscImport;
     private $customCatalogImport;
     private $sitcIndexMgmt;
+    private $dlHelper;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -116,7 +117,8 @@ class Sinch
         \SITC\Sinchimport\Model\Import\CustomerGroupPrice $customerGroupPrice,
         \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport,
         \SITC\Sinchimport\Model\Import\CustomCatalogVisibility $customCatalogImport,
-        \SITC\Sinchimport\Model\Import\IndexManagement $sitcIndexMgmt
+        \SITC\Sinchimport\Model\Import\IndexManagement $sitcIndexMgmt,
+        \SITC\Sinchimport\Helper\Download $dlHelper
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
@@ -125,6 +127,7 @@ class Sinch
         $this->unspscImport = $unspscImport;
         $this->customCatalogImport = $customCatalogImport;
         $this->sitcIndexMgmt = $sitcIndexMgmt;
+        $this->dlHelper = $dlHelper;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -732,169 +735,58 @@ class Sinch
     {
         $this->_log("Start upload files");
 
-        $username = $this->_dataConf['username'];
-        $passw = $this->_dataConf['password'];
-        $server = $this->_dataConf['ftp_server'];
+        $connRes = $this->dlHelper->connect();
+        if($connRes !== true){
+            $this->_setErrorMessage($connRes);
+            throw new \Magento\Framework\Exception\LocalizedException($connRes);
+        }
 
-        if (!$username || !$passw) {
-            $this->_setErrorMessage(
-                'FTP login or password has not been defined'
-            );
-            throw new \Magento\Framework\Exception\LocalizedException("FTP username or password not set");
-        }
-        $file_url_and_dir = $this->replPh(
-            FILE_URL_AND_DIR,
-            [
-                'server' => $server,
-                'login' => $username,
-                'password' => $passw
-            ]
-        );
-        foreach ($this->files as $file) {
-            $this->_log(
-                "Copy " . $file_url_and_dir . $file . " to  " . $this->varDir
-                . $file
-            );
-            if (strstr($file_url_and_dir, 'ftp://')) {
-                preg_match(
-                    "/ftp:\/\/(.*?):(.*?)@(.*?)(\/.*)/i",
-                    $file_url_and_dir,
-                    $match
-                );
-                if ($conn = ftp_connect($match[3])) {
-                    if (!ftp_login($conn, $username, $passw)) {
-                        $this->_setErrorMessage(
-                            'Incorrect username or password for the Stock In The Channel server'
-                        );
-                        throw new \Magento\Framework\Exception\LocalizedException("Invalid username or password for FTP");
+        try {
+            foreach ($this->files as $file) {
+                $dlRes = $this->dlHelper->downloadFile($file);
+                if (!$dlRes || !file_exists($this->varDir . $file) || @filesize($this->varDir . $file) < 1) {
+                    //Allow failures of optional files
+                    switch($file){
+                        case FILE_CATEGORIES_FEATURES:
+                            $this->_ignore_category_features = true;
+                            break;
+                        case FILE_PRODUCT_FEATURES:
+                            $this->_ignore_product_features = true;
+                            break;
+                        case FILE_RELATED_PRODUCTS:
+                            $this->_ignore_product_related = true;
+                            break;
+                        case FILE_RESTRICTED_VALUES:
+                            $this->_ignore_restricted_values = true;
+                            break;
+                        case FILE_PRODUCT_CATEGORIES:
+                            $this->product_file_format = "OLD";
+                            break;
+                        case FILE_CATEGORY_TYPES:
+                            $this->_ignore_category_types = true;
+                            break;
+                        case FILE_DISTRIBUTORS_STOCK_AND_PRICES:
+                            $this->_ignore_category_types = true;
+                            break;
+                        case FILE_PRODUCT_CONTRACTS:
+                            $this->_ignore_product_contracts = true;
+                            break;
+                        case FILE_PRICE_RULES:
+                            $this->_ignore_price_rules = true;
+                            break;
+                        case FILE_CUSTOMER_GROUP_CATEGORIES:
+                            break;
+                        default:
+                            $this->_setErrorMessage("$file is empty, cannot continue");
+                            throw new \Magento\Framework\Exception\LocalizedException("$file is empty, cannot continue");
                     }
-                } else {
-                    $this->_setErrorMessage(
-                        'FTP connection failed. Unable to connect to the Stock In The Channel server'
-                    );
-                    throw new \Magento\Framework\Exception\LocalizedException("FTP connection failed");
-                }
-                if (!$this->wget(
-                    $file_url_and_dir . $file,
-                    $this->varDir . $file
-                )
-                ) {
-                    $this->print("Can't wget " . $file . ", will use old one");
-                }
-            } else {
-                if (!copy($file_url_and_dir . $file, $this->varDir . $file)) {
-                    $this->print("Can't copy " . $file . ", will use old one");
+                    $this->print("Failed to download optional file $file, skipping");
                 }
             }
-            exec("chmod a+rw " . $this->varDir . $file);
-            if (!filesize($this->varDir . $file)) {
-                if ($file != FILE_CATEGORIES_FEATURES
-                    && $file != FILE_PRODUCT_FEATURES
-                    && $file != FILE_RELATED_PRODUCTS
-                    && $file != FILE_RESTRICTED_VALUES
-                    && $file != FILE_PRODUCT_CATEGORIES
-                    && $file != FILE_CATEGORY_TYPES
-                    && $file != FILE_DISTRIBUTORS_STOCK_AND_PRICES
-                    && $file != FILE_PRODUCT_CONTRACTS
-                    && $file != FILE_PRICE_RULES
-                    && $file != FILE_CUSTOMER_GROUP_CATEGORIES
-                ) {
-                    $this->_setErrorMessage($file . " is empty");
-                    throw new \Magento\Framework\Exception\LocalizedException("Import files empty, cannot continue");
-                } else {
-                    if ($file == FILE_CATEGORIES_FEATURES) {
-                        $this->_log(
-                            "Can't copy " . FILE_CATEGORIES_FEATURES
-                            . " file ignored"
-                        );
-                        $this->_ignore_category_features = true;
-                    } elseif ($file == FILE_PRODUCT_FEATURES) {
-                        $this->_log(
-                            "Can't copy " . FILE_PRODUCT_FEATURES
-                            . " file ignored"
-                        );
-                        $this->_ignore_product_features = true;
-                    } elseif ($file == FILE_RELATED_PRODUCTS) {
-                        $this->_log(
-                            "Can't copy " . FILE_RELATED_PRODUCTS
-                            . " file ignored"
-                        );
-                        $this->_ignore_product_related = true;
-                    } elseif ($file == FILE_RESTRICTED_VALUES) {
-                        $this->_log(
-                            "Can't copy " . FILE_RESTRICTED_VALUES
-                            . " file ignored"
-                        );
-                        $this->_ignore_restricted_values = true;
-                    } elseif ($file == FILE_PRODUCT_CATEGORIES) {
-                        $this->_log(
-                            "Can't copy " . FILE_PRODUCT_CATEGORIES
-                            . " file ignored"
-                        );
-                        $this->product_file_format = "OLD";
-                    } elseif ($file == FILE_CATEGORY_TYPES) {
-                        $this->_log(
-                            "Can't copy " . FILE_CATEGORY_TYPES
-                            . " file ignored"
-                        );
-                        $this->_ignore_category_types = true;
-                    } elseif ($file == FILE_DISTRIBUTORS_STOCK_AND_PRICES) {
-                        $this->_log(
-                            "Can't copy " . FILE_DISTRIBUTORS_STOCK_AND_PRICES
-                            . " file ignored"
-                        );
-                        $this->_ignore_category_types = true;
-                    } elseif ($file == FILE_PRODUCT_CONTRACTS) {
-                        $this->_log(
-                            "Can't copy " . FILE_PRODUCT_CONTRACTS
-                            . " file ignored"
-                        );
-                        $this->_ignore_product_contracts = true;
-                    } elseif ($file == FILE_PRICE_RULES) {
-                        $this->_log(
-                            "Can't copy " . FILE_PRICE_RULES . " file ignored"
-                        );
-                        $this->_ignore_price_rules = true;
-                    }
-                }
-            }
-        }
-        if (file_exists($file_url_and_dir . FILE_PRODUCT_CATEGORIES)) {
-            $this->product_file_format = "NEW";
-            $this->_log(
-                "File " . $file_url_and_dir . FILE_PRODUCT_CATEGORIES
-                . " exist. Will used parser for NEW format product.csv"
-            );
-        } else {
-            $this->product_file_format = "OLD";
-            $this->_log(
-                "File " . $file_url_and_dir . FILE_PRODUCT_CATEGORIES
-                . " dosen't exist. Will used parser for OLD format product.csv"
-            );
+        } finally {
+            $this->dlHelper->disconnect();
         }
         $this->_log("Finish upload files");
-    }
-
-    private function replPh($content, $hash)
-    {
-        if ($hash) {
-            foreach ($hash as $key => $val) {
-                if ($key == "category_name") {
-                    if (strlen($val) > 25) {
-                        $val = substr($val, 0, 24) . "...";
-                    }
-                }
-                $content = preg_replace("/%%%$key%%%/", $val, $content);
-            }
-        }
-
-        return $content;
-    }
-
-    private function wget(string $url, string $file)
-    {
-        exec("wget -O$file $url");
-        return true;
     }
 
     private function parseCategoryTypes()
