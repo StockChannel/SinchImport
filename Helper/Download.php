@@ -118,10 +118,10 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
             FTP_BINARY
         );
 
-        $lastPrint = \microtime(true);
+        $lastPrint = \time();
         while($state === FTP_MOREDATA) {
-            $now = \microtime(true);
-            if($now - $lastPrint >= 1000000) { //Print every second
+            $now = \time();
+            if($now - $lastPrint >= 2) { //Print every other second
                 $this->print(".", false);
                 $lastPrint = $now;
             }
@@ -167,11 +167,11 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
     {
         if($newline){
             $this->output->writeln($message);
-            $this->logger->info($message);
+            $this->logger->info($this->pendingLog . $message);
             $this->pendingLog = "";
         } else {
             $this->pendingLog .= $message;
-            $this->output->write($message);
+            $this->output->write($message, false); //No newline, raw output
         }
     }
 

@@ -10,15 +10,23 @@ class IndexManagement {
 
     /** @var \SITC\Sinchimport\Helper\Data $helper */
     private $helper;
+    /** @var \Symfony\Component\Console\Output\ConsoleOutput $output */
+    private $output;
+    /** @var \SITC\Sinchimport\Logger\Logger $logger */
+    private $logger;
 
     public function __construct(
         \Magento\Framework\Indexer\StateInterfaceFactory $stateFactory,
         \Magento\Framework\Indexer\ConfigInterface $indexerConfig,
-        \SITC\Sinchimport\Helper\Data $helper
+        \SITC\Sinchimport\Helper\Data $helper,
+        \Symfony\Component\Console\Output\ConsoleOutput $output,
+        \SITC\Sinchimport\Logger\Logger $logger
     ){
         $this->stateFactory = $stateFactory;
         $this->indexerConfig = $indexerConfig;
         $this->helper = $helper;
+        $this->output = $output;
+        $this->logger = $logger;
     }
 
     /**
@@ -55,14 +63,26 @@ class IndexManagement {
     }
 
     /**
-     * Doesn't return until the none of the indexers are in the "working" state
+     * Doesn't return until the none of the indexers are in the "working" state, or 30 minutes has passed
      * 
      * @return void
      */
     private function waitForIndexCompletion()
     {
+        $waitStart = \time();
         while(!$this->noIndexersRunning()) {
             sleep(5);
+            $now = \time();
+            if($now - $waitStart > 1800) {
+                $this->print("Waited 30 minutes for index completion, abandoning...");
+                break;
+            }
         }
+    }
+
+    private function print($message)
+    {
+        $this->output->writeln($message);
+        $this->logger->info($message);
     }
 }

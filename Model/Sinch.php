@@ -733,7 +733,7 @@ class Sinch
 
     private function uploadFiles()
     {
-        $this->_log("Start upload files");
+        $this->_log("--- Start downloading files ---");
 
         $connRes = $this->dlHelper->connect();
         if($connRes !== true){
@@ -786,7 +786,7 @@ class Sinch
         } finally {
             $this->dlHelper->disconnect();
         }
-        $this->_log("Finish upload files");
+        $this->_log("--- Finished downloading files ---");
     }
 
     private function parseCategoryTypes()
