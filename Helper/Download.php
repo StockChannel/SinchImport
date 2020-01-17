@@ -38,9 +38,9 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
             'sinchimport/sinch_ftp',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
         );
-        $this->username = $ftp_data['username'];
-        $this->password = $ftp_data['password'];
-        $this->server = $ftp_data['ftp_server'];
+        $this->username = isset($ftp_data['username']) ? $ftp_data['username'] : "";
+        $this->password = isset($ftp_data['password']) ? $ftp_data['password'] : "";
+        $this->server = isset($ftp_data['server']) ? $ftp_data['ftp_server'] : "";
     }
 
     /**

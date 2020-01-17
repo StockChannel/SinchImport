@@ -738,7 +738,7 @@ class Sinch
         $connRes = $this->dlHelper->connect();
         if($connRes !== true){
             $this->_setErrorMessage($connRes);
-            throw new \Magento\Framework\Exception\LocalizedException($connRes);
+            throw new \Magento\Framework\Exception\LocalizedException(__($connRes));
         }
 
         try {
@@ -778,7 +778,7 @@ class Sinch
                             break;
                         default:
                             $this->_setErrorMessage("$file is empty, cannot continue");
-                            throw new \Magento\Framework\Exception\LocalizedException("$file is empty, cannot continue");
+                            throw new \Magento\Framework\Exception\LocalizedException(__("$file is empty, cannot continue"));
                     }
                     $this->print("Failed to download optional file $file, skipping");
                 }
