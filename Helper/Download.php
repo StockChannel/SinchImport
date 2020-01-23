@@ -40,7 +40,7 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
         );
         $this->username = isset($ftp_data['username']) ? $ftp_data['username'] : "";
         $this->password = isset($ftp_data['password']) ? $ftp_data['password'] : "";
-        $this->server = isset($ftp_data['server']) ? $ftp_data['ftp_server'] : "";
+        $this->server = isset($ftp_data['ftp_server']) ? $ftp_data['ftp_server'] : "";
     }
 
     /**
