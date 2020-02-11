@@ -170,24 +170,27 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
      */
     public function formatUrlKey(\Magento\Catalog\Model\Product $product)
     {
-        $additionalSuffix = '';
-        
-        $additionalSuffixConf = $this->scopeConfig->getValue(
-            'sinchimport/general/additional_suffix',
+        $productNameTemplate = \strtolower($this->scopeConfig->getValue(
+            'sinchimport/seo/product_name_template',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-        );
-        
-        switch ($additionalSuffixConf) {
-        case \SITC\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_ID:
-            $additionalSuffix = '-' . $product->getId();
-            break;
-        case \SITC\Sinchimport\Model\Config\Source\AdditionalSuffix::ADDITIONAL_SUFFIX_CONFIG_PRODUCT_SKU:
-            $additionalSuffix = '-' . $product->getSku();
-            break;
+        ));
+
+        $validReplacements = [
+            '{name}' => $product->getName(),
+            '{sku}' => $product->getSku(),
+            '{id}' => $product->getId(),
+            '{ean}' => $product->getEan(),
+            '{unspsc}' => $product->getUnspsc(),
+            '{' => '', //These last 2 just ensure that no spare braces are left in the output
+            '}' => ''
+        ];
+
+        foreach($validReplacements as $k => $v) {
+            $productNameTemplate = str_replace($k, $v, $productNameTemplate);
         }
         
         return $this->filter->translitUrl(
-            $product->getName() . $additionalSuffix
+            $productNameTemplate
         );
     }
     

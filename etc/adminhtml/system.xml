@@ -10,14 +10,10 @@
             <label>Sinch Import</label>
             <tab>sitc</tab>
             <resource>SITC_Sinchimport::system_config</resource>
+
             <group id="general" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1"
                    showInStore="1">
                 <label>General Settings</label>
-                <field id="additional_suffix" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1"
-                       showInStore="1">
-                    <label>Addition Suffix for Product Url Rewrite</label>
-                    <source_model>SITC\Sinchimport\Model\Config\Source\AdditionalSuffix</source_model>
-                </field>
                 <field id="meta_title" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1"
                        showInStore="1">
                     <label>Use the product name as the meta title for the product detail</label>
@@ -35,6 +31,7 @@
                     <comment>If enabled, the import will wait for any running indexers to complete before starting the import process. With this setting off, the import will fail/cancel if any indexers are running when it starts. (Waits a maximum of 30 minutes for indexers to complete)</comment>
                 </field>
             </group>
+
             <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1"
                    showInStore="1">
                 <label>FTP Login Details</label>
@@ -72,6 +69,7 @@
                     </comment>
                 </field>
             </group>
+
             <group id="sinch_import_fullstatus" translate="label" type="text" sortOrder="20" showInDefault="1"
                    showInWebsite="1" showInStore="1">
                 <label>Import Full Catalogue</label>
@@ -95,6 +93,7 @@
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Importbutton</frontend_model>
                 </field>
             </group>
+
             <group id="sinch_import_stockpricestatus" translate="label" type="text" sortOrder="30" showInDefault="1"
                    showInWebsite="1" showInStore="1">
                 <label>Import Stock &amp; Prices</label>
@@ -113,6 +112,21 @@
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Importhistory</frontend_model>
                 </field>
             </group>
+
+            <group id="seo" translate="label" type="text" sortOrder="45" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>SEO</label>
+                <field id="product_name_template" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Product URL Template</label>
+                    <comment><![CDATA[Provides the template that URL rewrite generation uses for products. The following markers are replaced during generation:<br>
+                    {name} - Replaced with product Name<br>
+                    {sku} - Replaced with product SKU<br>
+                    {id} - Replaced with product ID<br>
+                    {ean} - Replaced with product EAN<br>
+                    {unspsc} - Replaced with product UNSPSC<br>
+                    ]]></comment>
+                </field>
+            </group>
+
             <group id="attributes" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Attributes</label>
                 <field id="visible_in_admin" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -126,6 +140,7 @@
                     <comment>When enabled, overrides Elasticsuite's "Facet Min Coverage" functionality for Stockinthechannel Filterable Attributes, reverting them to default behaviour</comment>
                 </field>
             </group>
+
             <group id="category_visibility" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Category Visibility Functionality</label>
                 <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -139,6 +154,7 @@
                     <comment>If you have no intention of using the Category visibility functionality in the near future, enable this option to skip this section of the import</comment>
                 </field>
             </group>
+
             <group id="product_visibility" translate="label" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Product Visibility Functionality</label>
                 <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -152,6 +168,7 @@
                     <comment>If you have no intention of using the Product visibility functionality in the near future, enable this option to skip this section of the import</comment>
                 </field>
             </group>
+
         </section>
     </system>
 </config>
