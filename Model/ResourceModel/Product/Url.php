@@ -41,7 +41,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         \Magento\Framework\Filter\FilterManager $filter,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         $connectionName = null
-    ) {
+    ){
         parent::__construct(
             $context,
             $storeManager,
@@ -52,8 +52,8 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             $connectionName
         );
         $this->_catalogProduct = $catalogProduct;
-        $this->filter          = $filter;
-        $this->scopeConfig     = $scopeConfig;
+        $this->filter = $filter;
+        $this->scopeConfig = $scopeConfig;
     }
     
     /**
@@ -111,7 +111,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             $product->setCategoryIds([]);
             $product->setStoreId($storeId);
             $products[$product->getId()] = $product;
-            $lastEntityId                = $product->getId();
+            $lastEntityId = $product->getId();
         }
         
         unset($rowSet);
@@ -179,8 +179,9 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             '{name}' => $product->getName(),
             '{sku}' => $product->getSku(),
             '{id}' => $product->getId(),
-            '{ean}' => $product->getEan(),
-            '{unspsc}' => $product->getUnspsc(),
+            '{ean}' => $this->getProductAttributeText($product->getId(), 'ean'),
+            '{unspsc}' => $this->getProductAttributeText($product->getId(), 'unspsc'),
+            '{brand}' => $this->getProductAttributeText($product->getId(), 'manufacturer'),
             '{' => '', //These last 2 just ensure that no spare braces are left in the output
             '}' => ''
         ];
@@ -272,5 +273,38 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         unset($attributeData);
         
         return $this;
+    }
+
+
+    private function getProductAttributeText($productId, $attribute_code)
+    {
+        $eavAttrTable = $this->getTable('eav_attribute');
+        $conn = $this->getConnection();
+        $attr = $conn->fetchRow(
+            "SELECT attribute_id, backend_type, frontend_input FROM {$eavAttrTable} WHERE entity_type_id = 4 AND attribute_code = :attrCode",
+            [':attrCode' => $attribute_code]
+        );
+
+        $valueTable = $this->getTable("catalog_product_entity_{$attr['backend_type']}");
+        $value = $conn->fetchRow(
+            "SELECT value, store_id FROM {$valueTable} WHERE attribute_id = :attrId AND entity_id = :prodId",
+            [
+                ':attrId' => $attr['attribute_id'],
+                ':prodId' => $productId
+            ]
+        );
+
+        if($attr['frontend_input'] == 'select') { //Attribute is actually eav_attribute_option_value
+            $eaovTable = $this->getTable('eav_attribute_option_value');
+            return $conn->fetchOne(
+                "SELECT value FROM {$eaovTable} WHERE value_id = :valId AND store_id = :store",
+                [
+                    ':valId' => $value['value'],
+                    ':store' => $value['store_id']
+                ]
+            );
+        }
+
+        return $value['value'];
     }
 }

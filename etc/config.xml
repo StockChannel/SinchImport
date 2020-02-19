@@ -31,6 +31,9 @@
                 <enable>0</enable>
                 <disable_import>0</disable_import>
             </product_visibility>
+            <misc>
+                <quotes_fix_verify_name>1</quotes_fix_verify_name>
+            </misc>
         </sinchimport>
     </default>
 </config>

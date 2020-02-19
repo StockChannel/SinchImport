@@ -195,7 +195,7 @@ class Sinch
         $dir = $directoryList->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/SITC/Sinchimport/';
         if (!is_dir($dir)) {
             if (!mkdir($dir, 0777, true)) {
-                throw new \Magento\Framework\Exception\LocalizedException("Failed to create import directory. Check filesystem permissions");
+                throw new \Magento\Framework\Exception\LocalizedException(__("Failed to create import directory. Check filesystem permissions"));
             }
         }
         $this->varDir = $dir;
@@ -253,7 +253,7 @@ class Sinch
             $this->_setErrorMessage(
                 "LOAD DATA option not set"
             );
-            throw new \Magento\Framework\Exception\LocalizedException("LOAD DATA option not enabled in database");
+            throw new \Magento\Framework\Exception\LocalizedException(__("LOAD DATA option not enabled in database"));
         }
 
         $local_infile = $this->checkLocalInFile();
@@ -261,7 +261,7 @@ class Sinch
             $this->_setErrorMessage(
                 "LOCAL INFILE is not enabled in the database"
             );
-            throw new \Magento\Framework\Exception\LocalizedException("LOCAL INFILE is not enabled in the database");
+            throw new \Magento\Framework\Exception\LocalizedException(__("LOCAL INFILE is not enabled in the database"));
         }
 
         if ($this->isImportNotRun()) {
@@ -279,7 +279,7 @@ class Sinch
                 if(!$this->sitcIndexMgmt->ensureIndexersNotRunning()){
                     $this->print("There are indexers currently running, abandoning import");
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
-                    throw new \Magento\Framework\Exception\LocalizedException("There are indexers currently running, abandoning import");
+                    throw new \Magento\Framework\Exception\LocalizedException(__("There are indexers currently running, abandoning import"));
                 }
 
                 $this->addImportStatus('Start Import');
@@ -428,13 +428,21 @@ class Sinch
                 $this->runCleanCache();
                 $this->print("Finish cleaning Sinch cache...");
 
-                $this->addImportStatus('Finish import', 1);
-                $this->_doQuery("SELECT RELEASE_LOCK('sinchimport')");
+                try {
+                    $this->print("Running post import hooks");
+                    $this->_eventManager->dispatch(
+                        'sinchimport_post_import',
+                        [
+                            'import_type' => 'FULL'
+                        ]
+                    );
+                    $this->print("Post import hooks complete");
+                } catch(\Exception $e) {
+                    $this->print("Caught exception while running post import hooks: " . $e->getMessage());
+                }
 
-                $this->_eventManager->dispatch(
-                    'sinch_import_after_finish',
-                    [ 'data' => $this ]
-                );
+                $this->addImportStatus('Finish import', 1);
+                $this->_doQuery("SELECT RELEASE_LOCK('sinchimport_{$current_vhost}')");
 
                 $this->print("========>FINISH SINCH IMPORT...");
             } catch (\Exception $e) {
@@ -904,7 +912,7 @@ class Sinch
                     'The Stock In The Channel data files do not appear to be in the correct format. Check file'
                     . $parseFile
                 );
-                throw new \Magento\Framework\Exception\LocalizedException("Import files in invalid format");
+                throw new \Magento\Framework\Exception\LocalizedException(__("Import files in invalid format"));
             }
 
             if (count($coincidence) == 1) { // one store logic
@@ -8771,13 +8779,13 @@ class Sinch
         $file_privileg = $this->checkDbPrivileges();
         if (!$file_privileg) {
             $this->_setErrorMessage("LOAD DATA option not set");
-            throw new \Magento\Framework\Exception\LocalizedException("LOAD DATA option not set in the database");
+            throw new \Magento\Framework\Exception\LocalizedException(__("LOAD DATA option not set in the database"));
         }
 
         $local_infile = $this->checkLocalInFile();
         if (!$local_infile) {
             $this->_setErrorMessage("LOCAL INFILE is not enabled");
-            throw new \Magento\Framework\Exception\LocalizedException("LOCAL INFILE not enabled in the database");
+            throw new \Magento\Framework\Exception\LocalizedException(__("LOCAL INFILE not enabled in the database"));
         }
 
         if ($this->isImportNotRun() && $this->isFullImportHaveBeenRun()) {
@@ -8793,7 +8801,7 @@ class Sinch
                 if(!$this->sitcIndexMgmt->ensureIndexersNotRunning()){
                     $this->print("There are indexers currently running, abandoning import");
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
-                    throw new \Magento\Framework\Exception\LocalizedException("There are indexers currently running, abandoning import");
+                    throw new \Magento\Framework\Exception\LocalizedException(__("There are indexers currently running, abandoning import"));
                 }
 
                 $this->addImportStatus('Stock Price Start Import');
@@ -8878,11 +8886,24 @@ class Sinch
                 $this->runCleanCache();
                 $this->print("Finish cleaning Sinch cache...");
 
+                try {
+                    $this->print("Running post import hooks");
+                    $this->_eventManager->dispatch(
+                        'sinchimport_post_import',
+                        [
+                            'import_type' => 'PRICE STOCK'
+                        ]
+                    );
+                    $this->print("Post import hooks complete");
+                } catch(\Exception $e) {
+                    $this->print("Caught exception while running post import hooks: " . $e->getMessage());
+                }
+
                 $this->addImportStatus('Stock Price Finish import', 1);
 
                 $this->print("========>FINISH STOCK & PRICE SINCH IMPORT");
 
-                $this->_doQuery("SELECT RELEASE_LOCK('sinchimport')");
+                $this->_doQuery("SELECT RELEASE_LOCK('sinchimport_{$current_vhost}')");
             } catch (\Exception $e) {
                 $this->_setErrorMessage($e);
             }

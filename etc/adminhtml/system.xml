@@ -123,6 +123,7 @@
                     {id} - Replaced with product ID<br>
                     {ean} - Replaced with product EAN<br>
                     {unspsc} - Replaced with product UNSPSC<br>
+                    {brand} - Replaced with the product Manufacturer name<br>
                     ]]></comment>
                 </field>
             </group>
@@ -169,6 +170,15 @@
                 </field>
             </group>
 
+            <group id="misc" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Miscellaneous</label>
+                <field id="quotes_fix_verify_name" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Verify name match when fixing quote items</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When disabled, SKU is assumed to be GLOBALLY UNIQUE (i.e. a product with a given SKU always represents the same product, even if the names differ)<br>
+                    When enabled (the default), checks that the item name and the replacement candidate name identically match before updating quote item records (the replacement candidate is still matched based on SKU)]]></comment>
+                </field>
+            </group>
         </section>
     </system>
 </config>
