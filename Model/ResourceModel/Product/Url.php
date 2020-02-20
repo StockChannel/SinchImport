@@ -297,9 +297,9 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         if($attr['frontend_input'] == 'select') { //Attribute is actually eav_attribute_option_value
             $eaovTable = $this->getTable('eav_attribute_option_value');
             return $conn->fetchOne(
-                "SELECT value FROM {$eaovTable} WHERE value_id = :valId AND store_id = :store",
+                "SELECT value FROM {$eaovTable} WHERE option_id = :optId AND store_id = :store",
                 [
-                    ':valId' => $value['value'],
+                    ':optId' => $value['value'],
                     ':store' => $value['store_id']
                 ]
             );
