@@ -87,6 +87,7 @@ class CustomerGroupPrice extends AbstractImportSection {
         \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
     ){
         parent::__construct($resourceConn, $output);
+        $this->helper = $helper;
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->groupFactory = $groupFactory;
         $this->groupRepository = $groupRepository;
@@ -140,37 +141,56 @@ class CustomerGroupPrice extends AbstractImportSection {
         $parseStart = $this->microtime_float();
 
         
+        //Begin transaction (to speed up the inserts?)
+        if($this->enableUnsafeOptimizations) {
+            $this->getConnection()->beginTransaction();
+        }
+        try {
+            $this->log("Clearing old tier prices");
+            $this->clearSinchTierPrices();
+            $customerGroupPriceData = [];
+            $this->log("Begin processing tier prices");
+            while($toProcess = $this->csv->take(self::CHUNK_SIZE)) {
+                //Process price records
+                foreach($toProcess as $priceData){
+                    if(!is_numeric($priceData[3]) || ((float)$priceData[3]) <= 0.0) {
+                        //Ignore invalid rules
+                        continue;
+                    }
+                    if($priceData[2] != 1) {
+                        $this->log("Unknown price type ID: " . $priceData[2]);
+                        continue;
+                    }
 
-        $this->clearSinchTierPrices();
-        $customerGroupPriceData = [];
-        while($toProcess = $this->csv->take(self::CHUNK_SIZE)) {
-            //Process price records
-            foreach($toProcess as $priceData){
-                if(!is_numeric($priceData[3]) || ((float)$priceData[3]) <= 0.0) {
-                    //Ignore invalid rules
-                    continue;
+                    $data = $this->prepareTierPrice($priceData[0], $priceData[1], $priceData[3]);
+                    if(empty($data)){
+                        continue;
+                    }
+                    $customerGroupPriceData[] = $data;
+                    $this->customerGroupPriceCount += 1;
                 }
-                if($priceData[2] != 1) {
-                    $this->log("Unknown price type ID: " . $priceData[2]);
-                    continue;
+                if(count($customerGroupPriceData) >= self::INSERT_THRESHOLD){
+                    $this->updateTierPrices($customerGroupPriceData);
+                    $customerGroupPriceData = [];
                 }
-
-                $data = $this->prepareTierPrice($priceData[0], $priceData[1], $priceData[3]);
-                if(empty($data)){
-                    continue;
-                }
-                $customerGroupPriceData[] = $data;
-                $this->customerGroupPriceCount += 1;
             }
-            if(count($customerGroupPriceData) >= self::INSERT_THRESHOLD){
+            if(count($customerGroupPriceData) > 0){
                 $this->updateTierPrices($customerGroupPriceData);
-                $customerGroupPriceData = [];
             }
+            $this->csv->closeIter();
+
+            //No error, commit
+            if($this->enableUnsafeOptimizations) {
+                $this->getConnection()->commit();
+            }
+        } catch (\Exception $e) {
+            //Got an error, rollback
+            if($this->enableUnsafeOptimizations) {
+                $this->getConnection()->rollBack();
+            }
+            throw $e;
         }
-        if(count($customerGroupPriceData) > 0){
-            $this->updateTierPrices($customerGroupPriceData);
-        }
-        $this->csv->closeIter();
+        
 
         //Cleanup the old format data, if present
         $tmpTable = $this->getTableName('sinch_customer_group_price_tmp');
@@ -302,12 +322,10 @@ class CustomerGroupPrice extends AbstractImportSection {
                 $this->log("Warning: No entity ID found for Sinch product ID " . $prodId, false);
                 return null;
             }
-            $magGrpId = $conn->fetchOne(
-                "SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id",
-                [":sinch_id" => $grpId]
-            );
+            $magGrpId = $this->helper->getCustomerGroupForAccountGroup($grpId);
             if(empty($magGrpId)){
                 $this->log("Warning: No Magento group ID found for Account group: " . $grpId);
+                return null;
             }
             return [
                 "all_groups" => 0,
@@ -341,8 +359,6 @@ class CustomerGroupPrice extends AbstractImportSection {
 
     private function updateTierPrices($prices)
     {
-        $this->log("Inserting " . count($prices) . " group prices");
-
         if($this->enableUnsafeOptimizations){
             $this->getConnection()->insertOnDuplicate(
                 $this->tierPriceTable,

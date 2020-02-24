@@ -12,6 +12,8 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
 
     /** @var string $accountTable */
     private $accountTable;
+    /** @var string $groupMappingTable */
+    private $groupMappingTable;
 
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
@@ -24,6 +26,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         $this->customerSession = $customerSession;
         $this->dir = $dir;
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
+        $this->groupMappingTable = $this->resourceConn->getTableName('sinch_group_mapping');
     }
 
     public function getStoreConfig($configPath)
@@ -56,14 +59,17 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         $account_group_id = false;
         if ($this->isModuleEnabled('Tigren_CompanyAccount') && $this->customerSession->isLoggedIn()) {
             $account_id = $this->customerSession->getCustomer()->getAccountId();
-            //TODO: Change this to use customer groups once account_group_id actually refers to Magento customer groups
-            //For now, just query the data we need directly from SQL
-            $account_group_id = $this->resourceConn->getConnection()->fetchOne(
-                "SELECT account_group_id FROM {$this->accountTable} WHERE account_id = :account_id",
-                [":account_id" => $account_id]
-            );
+            $account_group_id = $this->getAccountGroupForAccount($account_id);
         }
         return $account_group_id;
+    }
+
+    public function getAccountGroupForAccount($accountId)
+    {
+        return $this->resourceConn->getConnection()->fetchOne(
+            "SELECT account_group_id FROM {$this->accountTable} WHERE account_id = :account_id",
+            [":account_id" => $accountId]
+        );
     }
 
     /**
@@ -124,5 +130,32 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
             return true;
         }
         return false;
+    }
+
+    /**
+     * Returns the customer group ID for the given account group ID. 
+     * Returns null if there is no corresponding group
+     * @param int $accountGroupId
+     * @return int|null
+     */
+    public function getCustomerGroupForAccountGroup($accountGroupId)
+    {
+        $res = $this->resourceConn->getConnection()->fetchOne(
+            "SELECT magento_id FROM {$this->groupMappingTable} WHERE sinch_id = :accountGroupId",
+            [':accountGroupId' => $accountGroupId]
+        );
+        if(empty($res)){
+            return null;
+        }
+        return (int)$res;
+    }
+
+    public function getCustomerGroupForAccount($accountId)
+    {
+        $accountGroup = $this->getAccountGroupForAccount($accountId);
+        if(empty($accountGroup)) {
+            return null;
+        }
+        return $this->getCustomerGroupForAccountGroup($accountGroup);
     }
 }
