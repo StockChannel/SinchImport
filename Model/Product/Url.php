@@ -182,9 +182,9 @@ class Url extends \Magento\Catalog\Model\Product\Url
          * @var $urls \Magento\UrlRewrite\Service\V1\Data\UrlRewrite[]
          */
         $urls = array_merge(
-            $this->canonicalUrlRewriteGenerate($storeId),
-            $this->categoriesUrlRewriteGenerate($storeId),
-            $this->currentUrlRewritesRegenerate($storeId)
+            $this->canonicalUrlRewriteGenerate($storeId), //Regular product URLs with target /catalog/product/view/id/{ID}
+            $this->categoriesUrlRewriteGenerate($storeId), //Regular product URLs but with target /catalog/product/view/id/{ID}/category/{CAT}
+            $this->currentUrlRewritesRegenerate($storeId) //Used to not update existing rewrites, if they exist
         );
 
         /* Reduce duplicates. Last wins */
@@ -208,7 +208,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
         $urls = [];
         foreach ($this->products as $product) {
             if ($this->productUrlPathGenerator->getUrlPath($product)) {
-                $urlTargetPath = $this->productUrlPathGenerator->getCanonicalUrlPath($product);
+                $urlTargetPath = $this->productUrlPathGenerator->getCanonicalUrlPath($product); //Get the unrewritten url (i.e. /catalog/product/view/id/) as the target
                 $urlRequestPath = $this->productUrlPathGenerator->getUrlPathWithSuffix($product, $storeId);
                 $urls[] = $this->urlRewriteFactory->create()
                     ->setEntityType(ProductUrlRewriteGenerator::ENTITY_TYPE)

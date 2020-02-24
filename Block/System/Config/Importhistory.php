@@ -38,16 +38,14 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
         $cssArr = [
             'Failed'     => 'sinch-error',
             'Run'        => 'sinch-run',
-            'Successful' => 'sinch-success'
+            'Successful' => 'sinch-success',
+            'Scheduled'  => 'sinch-scheduled'
         ];
         
         $html
             .= '
 <!--Table for import history-->
-<div class="comment last-import-info">' . ($lastSuccessImport
-                ? "Your last successful feed import was at "
-                . $lastSuccessImport
-                : "Your import never finished with success") . '</div>
+<div class="comment last-import-info">' . ($lastSuccessImport ? "Your last successful feed import was at ".$lastSuccessImport : "Your import has never finished successfully") . '</div>
 <table class="data-table history mb-sinch-history">
     <thead>
         <tr>

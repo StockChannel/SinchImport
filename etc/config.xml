@@ -4,7 +4,6 @@
     <default>
         <sinchimport>
             <general>
-                <additional_suffix>2</additional_suffix>
                 <meta_title>1</meta_title>
                 <index_tonerfinder>1</index_tonerfinder>
                 <wait_for_index_completion>1</wait_for_index_completion>
@@ -17,6 +16,9 @@
             <sinch_import_fullstatus>
                 <indexing_separately>0</indexing_separately>
             </sinch_import_fullstatus>
+            <seo>
+                <product_name_template>{name}-{sku}</product_name_template>
+            </seo>
             <attributes>
                 <visible_in_admin>0</visible_in_admin>
                 <override_elasticsuite>0</override_elasticsuite>
@@ -32,6 +34,9 @@
             <group_pricing>
                 <unsafe_optimizations>0</unsafe_optimizations>
             </group_pricing>
+            <misc>
+                <quotes_fix_verify_name>1</quotes_fix_verify_name>
+            </misc>
         </sinchimport>
     </default>
 </config>

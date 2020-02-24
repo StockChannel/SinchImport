@@ -202,7 +202,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $noValueSinchProds = $this->getConnection()->fetchCol(
             "SELECT entity_id FROM {$this->cpeTable}
                 WHERE entity_id NOT IN (SELECT product_id FROM {$this->finalRulesTable})
-                AND store_product_id IS NOT NULL"
+                AND store_product_id IN (SELECT product_id FROM {$this->flagTable})"
         );
 
         $numProds = count($noValueSinchProds);
