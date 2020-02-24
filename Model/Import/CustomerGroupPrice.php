@@ -354,7 +354,7 @@ class CustomerGroupPrice extends AbstractImportSection {
             ->setWebsiteId(0) //Admin website ID (all sites)
             ->setSku($sku)
             ->setCustomerGroup($groupCode)
-            ->setPrice((float)$priceData[3]);
+            ->setPrice((float)$price);
     }
 
     private function updateTierPrices($prices)
