@@ -52,6 +52,7 @@ class CustomerGroupPrice extends AbstractImportSection {
      */
     private $searchCriteriaBuilder;
 
+
     /**
      * @var string customer_group table
      */
@@ -68,6 +69,18 @@ class CustomerGroupPrice extends AbstractImportSection {
      * @var string catalog_product_entity_tier_price table
      */
     private $tierPriceTable;
+
+
+    /**
+     * @var array Holds a cache of sinchGroup -> magentoGroupId conversions
+     * 
+     */
+    private $groupIdCache = [];
+    /**
+     * @var array Holds a cache of sinchGroup -> magentoGroupCode conversions
+     */
+    private $groupCodeCache = [];
+
 
     /**
      * CustomerGroupPrice constructor.
@@ -273,7 +286,7 @@ class CustomerGroupPrice extends AbstractImportSection {
     private function clearSinchTierPrices()
     {
         $this->getConnection()->query(
-            "DELETE FROM {$this->tierPriceTable} WHERE all_groups = 0 AND qty = 1 AND entity_id IN (SELECT entity_id FROM {$this->sinchProductsMappingTable})"
+            "DELETE FROM {$this->tierPriceTable} WHERE all_groups = 0 AND qty = 1 AND customer_group_id IN (SELECT magento_id FROM {$this->mappingTable})"
         );
     }
 
@@ -297,10 +310,21 @@ class CustomerGroupPrice extends AbstractImportSection {
      */
     private function getGroupCodeBySinchGroup($sinchGroupId)
     {
-        return $this->getConnection()->fetchOne(
-            "SELECT customer_group_code FROM {$this->customerGroupTable} WHERE customer_group_id IN (SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id)",
-            [":sinch_id" => $sinchGroupId]
-        );
+        if(empty($this->groupCodeCache[$sinchGroupId])) {
+            $this->groupCodeCache[$sinchGroupId] = $this->getConnection()->fetchOne(
+                "SELECT customer_group_code FROM {$this->customerGroupTable} WHERE customer_group_id IN (SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id)",
+                [":sinch_id" => $sinchGroupId]
+            );
+        }
+        return $this->groupCodeCache[$sinchGroupId];
+    }
+
+    private function getGroupIdBySinchGroup($sinchGroupId)
+    {
+        if(empty($this->groupIdCache[$sinchGroupId])) {
+            $this->groupIdCache[$sinchGroupId] = $this->helper->getCustomerGroupForAccountGroup($sinchGroupId);
+        }
+        return $this->groupIdCache[$sinchGroupId];
     }
 
     /**
@@ -322,19 +346,12 @@ class CustomerGroupPrice extends AbstractImportSection {
                 $this->log("Warning: No entity ID found for Sinch product ID " . $prodId, false);
                 return null;
             }
-            $magGrpId = $this->helper->getCustomerGroupForAccountGroup($grpId);
+            $magGrpId = $this->getGroupIdBySinchGroup($grpId);
             if(empty($magGrpId)){
                 $this->log("Warning: No Magento group ID found for Account group: " . $grpId);
                 return null;
             }
-            return [
-                "all_groups" => 0,
-                "qty" => 1.0,
-                "website_id" => 0,
-                "customer_group_id" => $magGrpId,
-                "entity_id" => $magProdId,
-                "value" => $price
-            ];
+            return [0, 1.0, 0, $magGrpId, $magProdId, $price]; //Ordered: all_groups, qty, website_id, customer_group_id, entity_id (product), value (price)
         }
 
         $sku = $this->getSkuBySinchProduct($prodId);
@@ -360,10 +377,10 @@ class CustomerGroupPrice extends AbstractImportSection {
     private function updateTierPrices($prices)
     {
         if($this->enableUnsafeOptimizations){
-            $this->getConnection()->insertOnDuplicate(
+            $this->getConnection()->insertArray(
                 $this->tierPriceTable,
-                $prices,
-                ['value']
+                ['all_groups', 'qty', 'website_id', 'customer_group_id', 'entity_id', 'value'], //Specify which columns we set (and in which order)
+                $prices
             );
             return;
         }
