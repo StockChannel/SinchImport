@@ -7,7 +7,7 @@ use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-class FixQuotesCommand extends Command
+class DebugPostImportCommand extends Command
 {
     /**
      * @var AppState
@@ -34,8 +34,8 @@ class FixQuotesCommand extends Command
      */
     protected function configure()
     {
-        $this->setName('sinch:fix-quotes');
-        $this->setDescription('Fixes quote items so they correspond to existing products again after having changed ID');
+        $this->setName('sinch:debug:post-import');
+        $this->setDescription('Runs post import handlers');
     }
     
     /**
@@ -44,10 +44,15 @@ class FixQuotesCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         try {
-            $output->writeln("Fixing quote items");
+            $output->writeln("Dispatching post-import event");
             $this->_appState->setAreaCode('adminhtml');
-            $this->eventManager->dispatch('sinchimport_fix_quote_items');
-            $output->writeln("Ran fix without error, see log for more details");
+            $this->eventManager->dispatch(
+                'sinchimport_post_import',
+                [
+                    'import_type' => 'PRICE STOCK'
+                ]
+            );
+            $output->writeln("Ran post import hooks without error, see log for more details");
             return \Magento\Framework\Console\Cli::RETURN_SUCCESS;
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");

@@ -2,6 +2,7 @@
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
     <event name="sinchimport_post_import">
         <observer name="sitc_fix_quote_items" instance="SITC\Sinchimport\Observer\PostImport\FixQuoteItems" />
+        <observer name="sitc_fix_private_tier_pricing" instance="SITC\Sinchimport\Observer\PostImport\FixPrivateTierPricing" />
     </event>
     <!-- Allow us to manually call the quote item fix without the potential future implications of calling sinchimport_post_import -->
     <event name="sinchimport_fix_quote_items">

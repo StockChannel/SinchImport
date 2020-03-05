@@ -14,7 +14,7 @@
                 <item name="import" xsi:type="object">SITC\Sinchimport\Console\Command\ImportCommand</item>
                 <item name="generateUrl" xsi:type="object">SITC\Sinchimport\Console\Command\GenerateCommand</item>
                 <item name="productPartsfinder" xsi:type="object">SITC\Sinchimport\Console\Command\TonerFinderCommand</item>
-                <item name="fixQuotes" xsi:type="object">SITC\Sinchimport\Console\Command\FixQuotesCommand</item>
+                <item name="postImportDebug" xsi:type="object">SITC\Sinchimport\Console\Command\DebugPostImportCommand</item>
             </argument>
         </arguments>
     </type>
