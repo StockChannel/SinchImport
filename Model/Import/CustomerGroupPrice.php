@@ -166,7 +166,7 @@ class CustomerGroupPrice extends AbstractImportSection {
             while($toProcess = $this->csv->take(self::CHUNK_SIZE)) {
                 //Process price records
                 foreach($toProcess as $priceData){
-                    if(!is_numeric($priceData[3]) || ((float)$priceData[3]) <= 0.0) {
+                    if(!is_numeric($priceData[3]) || ((float)$priceData[3]) < 0.0) {
                         //Ignore invalid rules
                         continue;
                     }
