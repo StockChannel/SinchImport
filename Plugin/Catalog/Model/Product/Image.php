@@ -49,7 +49,9 @@ class Image
 
         if (substr($file, 0, 4) == 'http') {
             $this->_isBaseFilePlaceholderTmp = false;
-            $this->_baseFileTmp              = $file;
+            $this->_baseFileTmp = $file;
+        } else {
+            $this->_baseFileTmp = false;
         }
 
         return $result;
