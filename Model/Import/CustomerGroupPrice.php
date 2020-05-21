@@ -243,10 +243,16 @@ class CustomerGroupPrice extends AbstractImportSection {
         );
         if(!empty($magentoGroupId)){
             $group = $this->groupRepository->getById($magentoGroupId);
-            if($group->getCode() != $fullGroupName) {
+            if($group->getCode() != $fullGroupName && $groupName != "NOT LOGGED IN") {
                 $group->setCode($fullGroupName);
                 $this->groupRepository->save($group);
             }
+            return;
+        }
+        
+        //Special case, map a group named "NOT LOGGED IN" to the default Magento group with the same name
+        if($groupName == "NOT LOGGED IN") {
+            $this->insertMapping($sinchGroupId, 0); //0 is the Magento ID for "NOT LOGGED IN"
             return;
         }
 
@@ -321,7 +327,7 @@ class CustomerGroupPrice extends AbstractImportSection {
 
     private function getGroupIdBySinchGroup($sinchGroupId)
     {
-        if(empty($this->groupIdCache[$sinchGroupId])) {
+        if(!isset($this->groupIdCache[$sinchGroupId])) {
             $this->groupIdCache[$sinchGroupId] = $this->helper->getCustomerGroupForAccountGroup($sinchGroupId);
         }
         return $this->groupIdCache[$sinchGroupId];
@@ -347,7 +353,7 @@ class CustomerGroupPrice extends AbstractImportSection {
                 return null;
             }
             $magGrpId = $this->getGroupIdBySinchGroup($grpId);
-            if(empty($magGrpId)){
+            if(is_null($magGrpId)){
                 $this->log("Warning: No Magento group ID found for Account group: " . $grpId);
                 return null;
             }

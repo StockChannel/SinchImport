@@ -144,7 +144,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
             "SELECT magento_id FROM {$this->groupMappingTable} WHERE sinch_id = :accountGroupId",
             [':accountGroupId' => $accountGroupId]
         );
-        if(empty($res)){
+        if(!is_numeric($res)){
             return null;
         }
         return (int)$res;
