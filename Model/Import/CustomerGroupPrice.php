@@ -153,7 +153,10 @@ class CustomerGroupPrice extends AbstractImportSection {
         $this->log("Processed {$this->customerGroupCount} customer groups in {$elapsed} seconds");
         $parseStart = $this->microtime_float();
 
-        
+        //Reset autoincrement on tier pricing
+        if ($this->helper->getStoreConfig('sinchimport/group_pricing/clear_autoincrement')) {
+            $this->getConnection()->query("TRUNCATE {$this->tierPriceTable}");
+        }
         //Begin transaction (to speed up the inserts?)
         if($this->enableUnsafeOptimizations) {
             $this->getConnection()->beginTransaction();
