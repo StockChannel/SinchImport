@@ -8480,7 +8480,6 @@ class Sinch
         $catalogProductEntityDecimal = $this->_getTableName('catalog_product_entity_decimal');
         $stockPriceTemp = $this->_getTableName('stock_and_prices_temp');
         $prodWebTemp = $this->_getTableName('products_website_temp');
-        $catalogProductIndexPrice = $this->_getTableName('catalog_product_index_price');
 
         //Delete stock entries for non-existent products
         $this->_doQuery(
@@ -8642,58 +8641,6 @@ class Sinch
             ON DUPLICATE KEY UPDATE
                 value = b.cost"
         );
-
-        //make products enable in FO
-        //^dunno what thats supposed to mean, but this deletes orphaned entries
-        $this->_doQuery(
-            "DELETE cpip
-                FROM {$catalogProductIndexPrice} cpip
-                LEFT JOIN {$catalogProductEntity} cpe
-                    ON cpip.entity_id = cpe.entity_id
-                WHERE cpe.entity_id IS NULL"
-        );
-
-        $customergroups = $this->_doQuery(
-            "SELECT customer_group_id FROM " . $this->_getTableName('customer_group')
-        )->fetchAll();
-
-        foreach ($customergroups as $customerGroup) {
-            $this->_doQuery(
-                "INSERT INTO {$catalogProductIndexPrice}
-                (
-                    entity_id,
-                    customer_group_id,
-                    website_id,
-                    tax_class_id,
-                    price,
-                    final_price,
-                    min_price,
-                    max_price
-                )
-                (
-                    SELECT
-                    a.entity_id,
-                    {$customerGroup['customer_group_id']},
-                    w.website_id,
-                    2,
-                    b.price,
-                    b.price,
-                    b.price,
-                    b.price
-                    FROM {$catalogProductEntity}  a
-                    INNER JOIN {$stockPriceTemp} b
-                        ON a.store_product_id = b.store_product_id
-                    INNER JOIN {$prodWebTemp} w
-                        ON a.store_product_id = w.store_product_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    tax_class_id = 2,
-                    price = b.price,
-                    final_price = b.price,
-                    min_price = b.price,
-                    max_price = b.price"
-            );
-        }
     }
 
     private function _cleanCateoryProductFlatTable()

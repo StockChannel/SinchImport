@@ -170,20 +170,6 @@
                 </field>
             </group>
 
-            <group id="group_pricing" translate="label" type="text" sortOrder="75" showInDefault="1" showInWebsite="1" showInStore="1">
-                <label>Group Pricing</label>
-                <field id="unsafe_optimizations" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Enable Unsafe optimizations</label>
-                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment>Speeds up the import of Group prices by avoiding the slow validation layer (and thus is recommended only where time constraints require it)</comment>
-                </field>
-                <field id="clear_autoincrement" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Clear autoincrement during group pricing import</label>
-                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment>Enable if you have a large number of group prices to prevent issues with tier pricing overflowing its primary key. Note that it prevents use of group pricing rules managed outside Stockinthechannel</comment>
-                </field>
-            </group>
-
             <group id="misc" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Miscellaneous</label>
                 <field id="quotes_fix_verify_name" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">

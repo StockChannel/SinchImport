@@ -19,6 +19,9 @@ abstract class AbstractImportSection {
      */
     protected $output;
 
+    /** @var mixed */
+    protected $timingStep = [];
+
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Symfony\Component\Console\Output\ConsoleOutput $output
@@ -64,5 +67,49 @@ abstract class AbstractImportSection {
             $this->output->writeln(static::LOG_PREFIX . $msg);
         }
         $this->logger->info(static::LOG_PREFIX . $msg);
+    }
+
+    /**
+     * Start timing execution time (not intended for nested timing)
+     * @param string $name A name to describe what occurs in the step
+     * @return void
+     */
+    protected function startTimingStep($name)
+    {
+        $now = $this->microtime_float();
+        $this->timingStep[] = [
+            'start' => $now,
+            'name' => $name,
+            'end' => null
+        ];
+    }
+
+    /**
+     * Ends timing execution for the most recent step
+     * @return void
+     */
+    protected function endTimingStep()
+    {
+        $now = $this->microtime_float();
+        $this->timingStep[count($this->timingStep) - 1]['end'] = $now;
+    }
+
+    /**
+     * 
+     */
+    protected function timingPrint()
+    {
+        $last = count($this->timingStep) - 1;
+        if (!empty($this->timingStep[$last]['end']) && !empty($this->timingStep[0]['start'])) {
+            $elapsed = number_format($this->timingStep[$last]['end'] - $this->timingStep[0]['start'], 2);
+            $this->log("Took {$elapsed} seconds total");
+        }
+        foreach ($this->timingStep as $timeStep) {
+            if (empty($timeStep['end'])) {
+                continue;
+            }
+            $elapsed = number_format($timeStep['end'] - $timeStep['start'], 2);
+            $this->log("{$timeStep['name']} => {$elapsed} seconds");
+        }
     }
 }
