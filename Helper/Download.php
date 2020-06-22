@@ -99,7 +99,7 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
                 }
                 if($fileEntry == $file) {
                     $fileExists = true;
-                    break;
+                    //Don't break if we detect the regular file, as the gzipped version may exist (and it should be preferred)
                 }
             }
         }
@@ -109,6 +109,10 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
         }
         $filePath = $file . ($fileGzipped ? ".gz" : "");
         $expectedSize = \ftp_size($this->ftpConn, $filePath);
+
+        //Ensure the files are removed prior to fresh download
+        @unlink($this->saveDir . $file);
+        @unlink($this->saveDir . $file . ".gz");
 
         $this->print("Downloading $filePath (" . ($expectedSize != -1 ? "$expectedSize bytes" : "unknown size") . ")...", false);
         $state = @\ftp_nb_get(

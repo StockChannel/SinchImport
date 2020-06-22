@@ -19,6 +19,9 @@ class CustomerGroupPrice extends AbstractImportSection {
 
     const GROUP_SUFFIX = " (SITC)";
 
+    const PRICE_TABLE_CURRENT = "sinch_customer_group_price_cur";
+    const PRICE_TABLE_NEXT = "sinch_customer_group_price_nxt";
+
     private $customerGroupCount = 0;
     private $customerGroupPriceCount = 0;
 
@@ -70,6 +73,11 @@ class CustomerGroupPrice extends AbstractImportSection {
      */
     private $tierPriceTable;
 
+    /** @var string */
+    private $groupPriceTableCurrent;
+    /** @var string */
+    private $groupPriceTableNext;
+
 
     /**
      * @var array Holds a cache of sinchGroup -> magentoGroupId conversions
@@ -113,7 +121,8 @@ class CustomerGroupPrice extends AbstractImportSection {
         $this->mappingTable = $this->getTableName('sinch_group_mapping');
         $this->tierPriceTable = $this->getTableName('catalog_product_entity_tier_price');
 
-        $this->enableUnsafeOptimizations = $helper->getStoreConfig('sinchimport/group_pricing/unsafe_optimizations');
+        $this->groupPriceTableCurrent = $this->getTableName(self::PRICE_TABLE_CURRENT);
+        $this->groupPriceTableNext = $this->getTableName(self::PRICE_TABLE_NEXT);
     }
 
     private function createMappingTable()
@@ -126,6 +135,35 @@ class CustomerGroupPrice extends AbstractImportSection {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
     }
 
+    private function initDeltaPricing()
+    {
+        $conn = $this->getConnection();
+        if (!$conn->isTableExists($this->groupPriceTableCurrent) && !$conn->isTableExists($this->groupPriceTableNext)) {
+            $this->log("Detected first import of delta pricing, clearing tier prices");
+            $this->getConnection()->query("DELETE FROM {$this->tierPriceTable}");
+            $this->getConnection()->query("ALTER TABLE {$this->tierPriceTable} AUTO_INCREMENT=1");
+        }
+
+        $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->groupPriceTableCurrent} (
+            sinch_group_id int(10) unsigned NOT NULL,
+            sinch_product_id int(10) unsigned NOT NULL,
+            price_type int(10) unsigned NOT NULL DEFAULT 1,
+            price decimal(12,4) NOT NULL,
+            magento_value_id int(11) DEFAULT NULL UNIQUE KEY,
+            PRIMARY KEY (sinch_group_id, sinch_product_id, price_type),
+            FOREIGN KEY (magento_value_id) REFERENCES {$this->tierPriceTable} (value_id) ON UPDATE CASCADE ON DELETE SET NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
+
+        $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->groupPriceTableNext} (
+            sinch_group_id int(10) unsigned NOT NULL,
+            sinch_product_id int(10) unsigned NOT NULL,
+            price_type int(10) unsigned NOT NULL DEFAULT 1,
+            price decimal(12,4) NOT NULL,
+            PRIMARY KEY (sinch_group_id, sinch_product_id, price_type)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
+        $this->getConnection()->query("TRUNCATE TABLE {$this->groupPriceTableNext}");
+    }
+
 
     /**
      * @param string $customerGroupFile
@@ -136,98 +174,181 @@ class CustomerGroupPrice extends AbstractImportSection {
     {
         $this->log("Starting CustomerGroupPrice parse");
         $this->createMappingTable();
-        $parseStart = $this->microtime_float();
+        $this->initDeltaPricing();
 
+        $this->startTimingStep('Group parsing');
         $customerGroupCsv = $this->csv->getData($customerGroupFile);
         unset($customerGroupCsv[0]);
-
-        $this->csv->openIter($customerGroupPriceFile);
-        $this->csv->take(1); //Discard first row
 
         foreach($customerGroupCsv as $groupData){
             //Sinch Group ID, Group Name
             $this->createOrUpdateGroup($groupData[0], $groupData[1]);
         }
+        $this->endTimingStep();
 
-        $elapsed = number_format($this->microtime_float() - $parseStart, 2);
-        $this->log("Processed {$this->customerGroupCount} customer groups in {$elapsed} seconds");
+        $this->log("Processed {$this->customerGroupCount} customer groups");
         $parseStart = $this->microtime_float();
+        
+        $this->startTimingStep('Group prices - LOAD DATA');
+        $this->log("Loading new values into database for processing");
+        $this->getConnection()->query(
+            "LOAD DATA LOCAL INFILE '{$customerGroupPriceFile}'
+                INTO TABLE {$this->groupPriceTableNext}
+                FIELDS TERMINATED BY '|'
+                OPTIONALLY ENCLOSED BY '\"'
+                LINES TERMINATED BY \"\r\n\"
+                IGNORE 1 LINES
+                (sinch_group_id, sinch_product_id, price_type, price)"
+        );
+        $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext} WHERE price <= 0 OR price_type != 1");
+        $this->endTimingStep();
+        
+        $this->log("New rules loaded, calculating delta");
+        $this->customerGroupPriceCount = $this->getConnection()->fetchOne("SELECT COUNT(*) FROM {$this->groupPriceTableNext}");
+        $deletedCount = 0;
+        $updatedCount = 0;
+        $createdCount = 0;
 
-        //Reset autoincrement on tier pricing
-        if ($this->helper->getStoreConfig('sinchimport/group_pricing/clear_autoincrement')) {
-            $this->getConnection()->query("TRUNCATE {$this->tierPriceTable}");
-        }
-        //Begin transaction (to speed up the inserts?)
-        if($this->enableUnsafeOptimizations) {
-            $this->getConnection()->beginTransaction();
-        }
+        //Calculate delta rules
+        //Deleted rules
+        $this->startTimingStep('Group prices - Deletions');
+        $this->getConnection()->beginTransaction();
         try {
-            $this->log("Clearing old tier prices");
-            $this->clearSinchTierPrices();
-            $customerGroupPriceData = [];
-            $this->log("Begin processing tier prices");
-            while($toProcess = $this->csv->take(self::CHUNK_SIZE)) {
-                //Process price records
-                foreach($toProcess as $priceData){
-                    if(!is_numeric($priceData[3]) || ((float)$priceData[3]) < 0.0) {
-                        //Ignore invalid rules
-                        continue;
-                    }
-                    if($priceData[2] != 1) {
-                        $this->log("Unknown price type ID: " . $priceData[2]);
-                        continue;
-                    }
-
-                    $data = $this->prepareTierPrice($priceData[0], $priceData[1], $priceData[3]);
-                    if(empty($data)){
-                        continue;
-                    }
-                    $customerGroupPriceData[] = $data;
-                    $this->customerGroupPriceCount += 1;
+            $toDelete = $this->getConnection()->fetchAll(
+                "SELECT current.sinch_group_id, current.sinch_product_id, current.price_type, current.magento_value_id FROM {$this->groupPriceTableCurrent} current
+                    LEFT JOIN {$this->groupPriceTableNext} next
+                        ON current.sinch_group_id = next.sinch_group_id
+                        AND current.sinch_product_id = next.sinch_product_id
+                        AND current.price_type = next.price_type
+                    WHERE next.price IS NULL"
+            );
+            $deletedCount = count($toDelete);
+            $this->log("{$deletedCount} rules to be deleted");
+            foreach($toDelete as $rule) {
+                if(!empty($rule['magento_value_id'])) {
+                    $this->getConnection()->query(
+                        "DELETE FROM {$this->tierPriceTable} WHERE value_id = :value_id",
+                        [':value_id' => $rule['magento_value_id']]
+                    );
                 }
-                if(count($customerGroupPriceData) >= self::INSERT_THRESHOLD){
-                    $this->updateTierPrices($customerGroupPriceData);
-                    $customerGroupPriceData = [];
-                }
+                $this->getConnection()->query(
+                    "DELETE FROM {$this->groupPriceTableCurrent}
+                        WHERE sinch_group_id = :sinch_group_id
+                        AND sinch_product_id = :sinch_product_id
+                        AND price_type = :price_type",
+                    [
+                        ":sinch_group_id" => $rule['sinch_group_id'],
+                        ":sinch_product_id" => $rule['sinch_product_id'],
+                        ":price_type" => $rule['price_type']
+                    ]
+                );
             }
-            if(count($customerGroupPriceData) > 0){
-                $this->updateTierPrices($customerGroupPriceData);
-            }
-            $this->csv->closeIter();
-
-            //No error, commit
-            if($this->enableUnsafeOptimizations) {
-                $this->getConnection()->commit();
-            }
+            $toDelete = null;
+            $this->getConnection()->commit();
         } catch (\Exception $e) {
-            //Got an error, rollback
-            if($this->enableUnsafeOptimizations) {
-                $this->getConnection()->rollBack();
-            }
+            $this->getConnection()->rollBack();
             throw $e;
+        } finally {
+            $this->endTimingStep();
+        }
+
+        //Check auto-increment on tierPriceTable and shift its values if it gains us at least 1000 back
+        $this->startTimingStep('Group prices - Reclaim auto_increment values');
+        //MySQL refuses to set auto_increment to a value <= MAX(autoincrement_column) and auto adjusts it to MAX(autoincrement_column) + 1
+        $this->getConnection()->query("ALTER TABLE {$this->tierPriceTable} AUTO_INCREMENT=1");
+        $autoIncMax = $this->getConnection()->fetchOne("SELECT MAX(value_id) FROM {$this->tierPriceTable}");
+        $autoIncMin = $this->getConnection()->fetchOne("SELECT MIN(value_id) FROM {$this->tierPriceTable}");
+        $autoIncRange = $autoIncMax - $autoIncMin;
+        $numEntries = $this->getConnection()->fetchOne("SELECT COUNT(*) FROM {$this->tierPriceTable}");
+
+        //There are some entries, and we gain at least 1000 auto_increment values from this operation
+        if ($numEntries > 0 && $autoIncMin > 1000 && $autoIncMin > $autoIncRange) {
+            $change = $autoIncMin - 1;
+            $this->log("Altering tier price table to reclaim {$change} auto_increment values");
+            $this->getConnection()->query(
+                "UPDATE {$this->tierPriceTable} SET value_id = value_id - :change ORDER BY value_id ASC",
+                [":change" => $change]
+            );
+            $this->getConnection()->query("ALTER TABLE {$this->tierPriceTable} AUTO_INCREMENT=1");
+        }
+        $this->endTimingStep();
+
+        
+
+        //Updated rules
+        $this->startTimingStep('Group prices - Updates');
+        //Map unmapped (so the update section hits as many rules as possible)
+        $this->mapUnmappedRules();
+        $this->getConnection()->beginTransaction();
+        try {
+            $toUpdate = $this->getConnection()->fetchAll(
+                "SELECT current.magento_value_id, next.price FROM {$this->groupPriceTableNext} next
+                INNER JOIN {$this->groupPriceTableCurrent} current
+                    ON next.sinch_group_id = current.sinch_group_id
+                    AND next.sinch_product_id = current.sinch_product_id
+                    AND next.price_type = current.price_type
+                WHERE next.price != current.price AND current.magento_value_id IS NOT NULL"
+            );
+            $updatedCount = count($toUpdate);
+            $this->log("{$updatedCount} rules to be updated");
+            foreach($toUpdate as $updatedRule) {
+                $this->getConnection()->query(
+                    "UPDATE {$this->tierPriceTable} tp SET value = :price WHERE value_id = :value_id",
+                    [
+                        ":value_id" => $updatedRule['magento_value_id'],
+                        ":price" => $updatedRule['price']
+                    ]
+                );
+            }
+            $toUpdate = null;
+            $this->getConnection()->commit();
+        } catch (\Exception $e) {
+            $this->getConnection()->rollBack();
+            throw $e;
+        } finally {
+            $this->endTimingStep();
         }
         
 
-        //Cleanup the old format data, if present
-        $tmpTable = $this->getTableName('sinch_customer_group_price_tmp');
-        $this->getConnection()->query("DROP TABLE IF EXISTS {$tmpTable}");
-        $cgpTable = $this->getTableName('sinch_customer_group_price');
-        $this->getConnection()->query("DELETE FROM {$cgpTable}");
+        //Otherwise missing rules
+        $this->startTimingStep('Group prices - Creations');
+        $this->getConnection()->beginTransaction();
+        try {
+            //Pull all updated data into current from next (this includes changed prices which were updated by the previous step)
+            $this->getConnection()->query(
+                "INSERT INTO {$this->groupPriceTableCurrent} (sinch_group_id, sinch_product_id, price_type, price)
+                    SELECT sinch_group_id, sinch_product_id, price_type, price FROM {$this->groupPriceTableNext} next
+                ON DUPLICATE KEY UPDATE price = next.price"
+            );
 
-        $elapsed = $this->microtime_float() - $parseStart;
-        $this->log("Processed {$this->customerGroupPriceCount} group prices in {$elapsed} seconds");
-    }
+            $remainingRules = $this->getConnection()->fetchOne("SELECT COUNT(*) FROM {$this->groupPriceTableCurrent} WHERE magento_value_id IS NULL");
+            $this->log("{$remainingRules} rules remaining to be added");
 
-    /**
-     * Clears all Sinch customer groups
-     * @return void
-     */
-    private function clearSinchGroups()
-    {
-        $magentoGroupIds = $this->getConnection()->fetchCol("SELECT magento_id FROM {$this->mappingTable}");
-        foreach($magentoGroupIds as $groupId){
-            $this->groupRepository->deleteById($groupId);
+            //Insert missing rules into tier pricing, then immediately attempt to map them in PRICE_TABLE_CURRENT
+            $this->insertMissingRules();
+            $this->mapUnmappedRules();
+
+            $nowRemaining = $this->getConnection()->fetchOne("SELECT COUNT(*) FROM {$this->groupPriceTableCurrent} WHERE magento_value_id IS NULL");
+            $createdCount = $remainingRules - $nowRemaining;
+            if ($createdCount > 0) {
+                $this->log("Inserted and mapped {$createdCount} rules");
+            }
+            if ($nowRemaining > 0) {
+                $this->log("The remaining {$nowRemaining} rules could not be created as their product or group doesn't exist in Magento");
+            }
+
+            $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext}");
+            $this->getConnection()->commit();
+        } catch (\Exception $e) {
+            $this->getConnection()->rollBack();
+            throw $e;
+        } finally {
+            $this->endTimingStep();
         }
+
+        $rulesChanged = $deletedCount + $updatedCount + $createdCount;
+        $this->log("Processed {$this->customerGroupPriceCount} group prices (changed {$rulesChanged})");
+        $this->timingPrint();
     }
 
     /**
@@ -292,115 +413,39 @@ class CustomerGroupPrice extends AbstractImportSection {
         );
     }
 
-    private function clearSinchTierPrices()
+    /**
+     * Maps tier price entries to equivalent PRICE_TABLE_CURRENT entries that have no mapping, where possible
+     * Functionally idempotent, makes no changes where mappings exist or where no mapping is possible (e.g. due to the group or product not existing in the store)
+     * @return void
+     */
+    private function mapUnmappedRules()
     {
         $this->getConnection()->query(
-            "DELETE FROM {$this->tierPriceTable} WHERE all_groups = 0 AND qty = 1 AND customer_group_id IN (SELECT magento_id FROM {$this->mappingTable})"
+            "UPDATE {$this->groupPriceTableCurrent} current 
+                INNER JOIN {$this->mappingTable} groupmap ON current.sinch_group_id = groupmap.sinch_id
+                INNER JOIN {$this->sinchProductsMappingTable} productmap ON current.sinch_product_id = productmap.sinch_product_id
+                INNER JOIN {$this->tierPriceTable} tp ON tp.all_groups = 0 AND tp.qty = 1.0 AND tp.website_id = 0 AND tp.customer_group_id = groupmap.magento_id AND tp.entity_id = productmap.entity_id
+            SET magento_value_id = tp.value_id
+            WHERE magento_value_id IS NULL"
         );
     }
 
     /**
-     * Returns the SKU for a given Sinch Product ID, or null (if the product could not be matched)
-     * @param int $sinchProdId
-     * @return string|null
+     * Takes rules from PRICE_TABLE_CURRENT which have no mapping, and creates a functionally identical tier price entry where possible
+     * While this function is idempotent, its cost is not, so it is recommended to call mapUnmappedRules both before and after
+     * @return void
      */
-    private function getSkuBySinchProduct($sinchProdId)
+    private function insertMissingRules()
     {
-        return $this->getConnection()->fetchOne(
-            "SELECT sku FROM {$this->sinchProductsMappingTable} WHERE sinch_product_id = :sinch_product_id",
-            [":sinch_product_id" => $sinchProdId]
+        $this->getConnection()->query(
+            "INSERT INTO catalog_product_entity_tier_price
+                (entity_id, all_groups, customer_group_id, qty, value, website_id)
+                SELECT productmap.entity_id, 0, groupmap.magento_id, 1.0, current.price, 0
+                FROM sinch_customer_group_price_cur current
+                    INNER JOIN sinch_group_mapping groupmap ON current.sinch_group_id = groupmap.sinch_id
+                    INNER JOIN sinch_products_mapping productmap ON current.sinch_product_id = productmap.sinch_product_id
+                WHERE magento_value_id IS NULL
+                ON DUPLICATE KEY UPDATE value = current.price"
         );
-    }
-
-    /**
-     * Returns the Magento group code for a given Sinch Group ID, or null (if the group could not be matched)
-     * @param int $sinchGroupId
-     * @return string|null
-     */
-    private function getGroupCodeBySinchGroup($sinchGroupId)
-    {
-        if(empty($this->groupCodeCache[$sinchGroupId])) {
-            $this->groupCodeCache[$sinchGroupId] = $this->getConnection()->fetchOne(
-                "SELECT customer_group_code FROM {$this->customerGroupTable} WHERE customer_group_id IN (SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id)",
-                [":sinch_id" => $sinchGroupId]
-            );
-        }
-        return $this->groupCodeCache[$sinchGroupId];
-    }
-
-    private function getGroupIdBySinchGroup($sinchGroupId)
-    {
-        if(!isset($this->groupIdCache[$sinchGroupId])) {
-            $this->groupIdCache[$sinchGroupId] = $this->helper->getCustomerGroupForAccountGroup($sinchGroupId);
-        }
-        return $this->groupIdCache[$sinchGroupId];
-    }
-
-    /**
-     * Prepare a tier price for batched insertion. Returns null on match failure
-     * @param int $grpId Sinch Group ID
-     * @param int $prodId Sinch Product ID
-     * @param float $price Price
-     * @return mixed|null
-     */
-    private function prepareTierPrice($grpId, $prodId, $price)
-    {
-        if($this->enableUnsafeOptimizations){
-            $conn = $this->getConnection();
-            $magProdId = $conn->fetchOne(
-                "SELECT entity_id FROM {$this->sinchProductsMappingTable} WHERE sinch_product_id = :sinch_product_id",
-                [":sinch_product_id" => $prodId]
-            );
-            if(empty($magProdId)){
-                $this->log("Warning: No entity ID found for Sinch product ID " . $prodId, false);
-                return null;
-            }
-            $magGrpId = $this->getGroupIdBySinchGroup($grpId);
-            if(is_null($magGrpId)){
-                $this->log("Warning: No Magento group ID found for Account group: " . $grpId);
-                return null;
-            }
-            return [0, 1.0, 0, $magGrpId, $magProdId, $price]; //Ordered: all_groups, qty, website_id, customer_group_id, entity_id (product), value (price)
-        }
-
-        $sku = $this->getSkuBySinchProduct($prodId);
-        if(empty($sku)) {
-            $this->log("Warning: No SKU found for Sinch product ID " . $prodId, false);
-            return null;
-        }
-        $groupCode = $this->getGroupCodeBySinchGroup($grpId);
-        if(empty($groupCode)){
-            $this->log("Warning: No Magento group code found for Account group: " . $grpId);
-            return null;
-        }
-
-        return $this->tierPriceFactory->create()
-            ->setPriceType(\Magento\Catalog\Api\Data\TierPriceInterface::PRICE_TYPE_FIXED)
-            ->setQuantity(1.0)
-            ->setWebsiteId(0) //Admin website ID (all sites)
-            ->setSku($sku)
-            ->setCustomerGroup($groupCode)
-            ->setPrice((float)$price);
-    }
-
-    private function updateTierPrices($prices)
-    {
-        if($this->enableUnsafeOptimizations){
-            $this->getConnection()->insertArray(
-                $this->tierPriceTable,
-                ['all_groups', 'qty', 'website_id', 'customer_group_id', 'entity_id', 'value'], //Specify which columns we set (and in which order)
-                $prices
-            );
-            return;
-        }
-
-        $result = $this->tierPriceStorage->update($prices);
-        foreach($result as $updateResult){
-            $message = $updateResult->getMessage();
-            foreach($updateResult->getParameters() as $k => $v) {
-                $message = str_replace('%'.$k, $v, $message);
-            }
-            $this->log($message);
-        }
     }
 }
