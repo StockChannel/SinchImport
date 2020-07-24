@@ -3,14 +3,11 @@ namespace SITC\Sinchimport\Observer;
 
 class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInterface
 {
-    private $registry;
     private $helper;
 
     public function __construct(
-        \Magento\Framework\Registry $registry,
         \SITC\Sinchimport\Helper\Data $helper
     ) {
-        $this->registry = $registry;
         $this->helper = $helper;
     }
 
@@ -21,8 +18,7 @@ class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInt
             return; //No filtering if the feature isn't enabled or with Elasticsuite enabled (as thats handled by Plugin\Elasticsuite\ContainerConfiguration)
         }
 
-        //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
-        $account_group_id = $this->registry->registry('sitc_account_group_id');
+        $account_group_id = $this->helper->getCurrentAccountGroupId();
 
         /** @var \Magento\Catalog\Model\ResourceModel\Product\Collection $filteredProductCollection */
         $filteredProductCollection = $observer->getCollection();

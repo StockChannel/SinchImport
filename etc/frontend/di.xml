@@ -12,4 +12,7 @@
     <type name="Magento\Catalog\Model\Product">
         <plugin name="sitc_customcatalog_product" type="SITC\Sinchimport\Plugin\Product" />
     </type>
+    <type name="Magento\Framework\App\Action\AbstractAction">
+        <plugin name="sitc_customcatalog_vary_context_accgrp" type="SITC\Sinchimport\Plugin\VaryContext" sortOrder="11"/>
+    </type>
 </config>

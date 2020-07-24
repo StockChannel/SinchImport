@@ -4,7 +4,6 @@ namespace SITC\Sinchimport\Observer;
 class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverInterface
 {
     private $resourceConn;
-    private $registry;
     private $helper;
 
     /** 
@@ -15,11 +14,9 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Framework\Registry $registry,
         \SITC\Sinchimport\Helper\Data $helper
     ) {
         $this->resourceConn = $resourceConn;
-        $this->registry = $registry;
         $this->helper = $helper;
         $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE);
     }
@@ -31,9 +28,7 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
             return; //No filtering if the feature isn't enabled
         }
 
-        //the DontDepersonaliseAccount interceptor saves account group id prior to depersonalise
-        $account_group_id = $this->registry->registry('sitc_account_group_id');
-
+        $account_group_id = $this->helper->getCurrentAccountGroupId();
         if($account_group_id === false) {
             return; //this is a guest (don't filter)
         }

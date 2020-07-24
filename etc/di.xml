@@ -60,9 +60,6 @@
     </type>
     <preference for="Magento\Indexer\Console\Command\IndexerReindexCommand" type="SITC\Sinchimport\Console\Command\IndexerReindexCommand" />
     <!-- End section -->
-    <type name="Magento\Framework\View\Layout">
-        <plugin name="sinchimport_save_account_id" type="SITC\Sinchimport\Plugin\DontDepersonaliseAccount" sortOrder="0" />
-    </type>
     <!-- The following plugin is for ElasticSuite 2.6.x and 2.7.x -->
     <type name="Smile\ElasticsuiteCatalog\Model\Layer\RelevantFilterList">
         <plugin name="sinchimport_override_elasticsuite_filters_26_27" type="SITC\Sinchimport\Plugin\Elasticsuite\Coverage26" sortOrder="0" />

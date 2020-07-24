@@ -9,6 +9,8 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     private $customerSession;
     /** @var \Magento\Framework\Filesystem\DirectoryList\Proxy $dir */
     private $dir;
+    /** @var \Magento\Framework\App\Http\Context $httpContext */
+    private $httpContext;
 
     /** @var string $accountTable */
     private $accountTable;
@@ -19,12 +21,14 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         \Magento\Framework\App\Helper\Context $context,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Customer\Model\Session\Proxy $customerSession,
-        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir
+        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir,
+        \Magento\Framework\App\Http\Context $httpContext
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
         $this->customerSession = $customerSession;
         $this->dir = $dir;
+        $this->httpContext = $httpContext;
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
         $this->groupMappingTable = $this->resourceConn->getTableName('sinch_group_mapping');
     }
@@ -54,14 +58,13 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
             $this->getStoreConfig('sinchimport/product_visibility/enable') == 1;
     }
 
+    /**
+     * Return the current account group ID, or false if not logged in
+     * @return int|bool
+     */
     public function getCurrentAccountGroupId()
     {
-        $account_group_id = false;
-        if ($this->isModuleEnabled('Tigren_CompanyAccount') && $this->customerSession->isLoggedIn()) {
-            $account_id = $this->customerSession->getCustomer()->getAccountId();
-            $account_group_id = $this->getAccountGroupForAccount($account_id);
-        }
-        return $account_group_id;
+        return $this->httpContext->getValue(\SITC\Sinchimport\Plugin\VaryContext::CONTEXT_ACCOUNT_GROUP);
     }
 
     public function getAccountGroupForAccount($accountId)

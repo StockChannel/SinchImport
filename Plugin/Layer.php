@@ -5,7 +5,6 @@ class Layer {
      * @var \SITC\Sinchimport\Helper\Data
      */
     private $helper;
-    private $registry;
 
     public function __construct(
         \SITC\Sinchimport\Helper\Data $helper
@@ -22,7 +21,7 @@ class Layer {
      */
     public function beforePrepareProductCollection($subject, $collection)
     {
-        $account_group_id = $this->helper->getCurrentAccountGroupId(); //$this->registry->registry('sitc_account_group_id');
+        $account_group_id = $this->helper->getCurrentAccountGroupId();
         if($account_group_id == false) {
             $account_group_id = 0;
         }
