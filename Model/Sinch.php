@@ -4589,7 +4589,7 @@ class Sinch
             $this->print("--Parse Products 8");
 
             $this->mapSinchProducts($replace_merge_product, true);
-            $this->addManufacturer_attribute();
+            $this->manufacturersImport->apply();
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName('sinch_products')
             );
