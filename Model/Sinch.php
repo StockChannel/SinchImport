@@ -95,6 +95,7 @@ class Sinch
     private $unspscImport;
     private $customCatalogImport;
     private $sitcIndexMgmt;
+    private $manufacturersImport;
     private $dlHelper;
 
     public function __construct(
@@ -118,6 +119,7 @@ class Sinch
         \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport,
         \SITC\Sinchimport\Model\Import\CustomCatalogVisibility $customCatalogImport,
         \SITC\Sinchimport\Model\Import\IndexManagement $sitcIndexMgmt,
+        \SITC\Sinchimport\Model\Import\Manufacturer $manufacturersImport,
         \SITC\Sinchimport\Helper\Download $dlHelper
     ) {
         $this->attributesImport = $attributesImport;
@@ -127,6 +129,7 @@ class Sinch
         $this->unspscImport = $unspscImport;
         $this->customCatalogImport = $customCatalogImport;
         $this->sitcIndexMgmt = $sitcIndexMgmt;
+        $this->manufacturersImport = $manufacturersImport;
         $this->dlHelper = $dlHelper;
 
         $this->output = $output;
@@ -314,7 +317,7 @@ class Sinch
                 $this->addImportStatus('Parse EAN Codes');
 
                 $this->print("Parse Manufacturers...");
-                $this->parseManufacturers();
+                $this->manufacturersImport->parse($this->varDir . FILE_MANUFACTURERS);
                 $this->addImportStatus('Parse Manufacturers');
 
                 $this->print("Parse Related Products...");
@@ -4285,133 +4288,6 @@ class Sinch
         }
     }
 
-    private function parseManufacturers()
-    {
-        $parseFile = $this->varDir . FILE_MANUFACTURERS;
-        if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_MANUFACTURERS);
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'manufacturers_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->_getTableName('manufacturers_temp') . "(
-                                      sinch_manufacturer_id int(11),
-                                      manufacturer_name varchar(255),
-                                      manufacturers_image varchar(255),
-                                      shop_option_id int(11),
-                                      KEY(sinch_manufacturer_id),
-                                      KEY(shop_option_id),
-                                      KEY(manufacturer_name)
-                          )"
-            );
-
-            $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->_getTableName(
-                    'manufacturers_temp'
-                ) . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
-                          OPTIONALLY ENCLOSED BY '\"'
-                          LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
-            );
-
-            $q
-                = "DELETE aov
-                FROM " . $this->_getTableName('eav_attribute_option') . " ao
-                JOIN " . $this->_getTableName('eav_attribute_option_value') . " aov
-                    ON ao.option_id=aov.option_id left
-                JOIN " . $this->_getTableName('manufacturers_temp') . " mt
-                    ON aov.value=mt.manufacturer_name
-                WHERE
-                    ao.attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                ) . " AND
-                    mt.manufacturer_name is null";
-            $this->_doQuery($q);
-
-            $q
-                = "DELETE ao
-                FROM " . $this->_getTableName('eav_attribute_option') . " ao
-                LEFT JOIN " . $this->_getTableName('eav_attribute_option_value')
-                . " aov
-                    ON ao.option_id=aov.option_id
-                WHERE
-                    attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                ) . " AND
-                    aov.option_id is null";
-            $this->_doQuery($q);
-
-            $q
-                = "SELECT
-                    m.sinch_manufacturer_id,
-                    m.manufacturer_name,
-                    m.manufacturers_image
-                FROM " . $this->_getTableName('manufacturers_temp') . " m
-                LEFT JOIN " . $this->_getTableName('eav_attribute_option_value')
-                . " aov
-                    ON m.manufacturer_name=aov.value
-                WHERE aov.value  IS NULL";
-            $res = $this->_doQuery($q)->fetchAll();
-
-            foreach ($res as $row) {
-                $q0 = "INSERT INTO " . $this->_getTableName(
-                        'eav_attribute_option'
-                    ) . "
-                        (attribute_id)
-                     VALUES(" . $this->_getProductAttributeId('manufacturer')
-                    . ")";
-                $this->_doQuery($q0);
-
-                $q2 = "INSERT INTO " . $this->_getTableName(
-                        'eav_attribute_option_value'
-                    ) . "(
-                        option_id,
-                        value
-                     )(
-                       SELECT
-                        max(option_id) as option_id,
-                        " . $this->_connection->quote($row['manufacturer_name'])
-                    . "
-                       FROM " . $this->_getTableName('eav_attribute_option') . "
-                       WHERE attribute_id=" . $this->_getProductAttributeId(
-                        'manufacturer'
-                    ) . "
-                     )
-                    ";
-                $this->_doQuery($q2);
-            }
-
-            $q = "UPDATE " . $this->_getTableName('manufacturers_temp') . " mt
-                JOIN  " . $this->_getTableName('eav_attribute_option_value') . " aov
-                    ON mt.manufacturer_name=aov.value
-                JOIN " . $this->_getTableName('eav_attribute_option') . " ao
-                    ON ao.option_id=aov.option_id
-                SET mt.shop_option_id=aov.option_id
-                WHERE ao.attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                );
-            $this->_doQuery($q);
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'sinch_manufacturers'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->_getTableName('manufacturers_temp') . "
-                          TO " . $this->_getTableName('sinch_manufacturers')
-            );
-            $this->_log("Finish parse " . FILE_MANUFACTURERS);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
     private function _getProductAttributeId($attributeCode)
     {
         return $this->_getAttributeId($attributeCode, 'catalog_product');
@@ -4668,14 +4544,6 @@ class Sinch
             );
 
             $this->print("--Parse Products 4");
-
-            $this->_doQuery(
-                "UPDATE " . $this->_getTableName('products_temp') . " p
-                          JOIN " . $this->_getTableName('sinch_manufacturers') . " m
-                            ON p.sinch_manufacturer_id=m.sinch_manufacturer_id
-                          SET p.manufacturer_name=m.manufacturer_name"
-            );
-
             $this->print("--Parse Products 5");
 
             if ($this->current_import_status_statistic_id) {
@@ -4790,37 +4658,24 @@ class Sinch
     private function mapSinchProducts($mode = 'MERGE', $mapping_again = false)
     {
         $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $this->_getTableName(
-                'sinch_products_mapping_temp'
-            )
+            "DROP TABLE IF EXISTS " . $this->_getTableName('sinch_products_mapping_temp')
         );
         $this->_doQuery(
-            "CREATE TABLE " . $this->_getTableName(
-                'sinch_products_mapping_temp'
-            ) . " (
-                      entity_id int(11) unsigned NOT NULL,
-                      manufacturer_option_id int(11),
-                      manufacturer_name varchar(255),
-                      shop_store_product_id int(11),
-                      shop_sinch_product_id int(11),
-                      sku varchar(64) default NULL,
-                      store_product_id int(11),
-                      sinch_product_id int(11),
-                      product_sku varchar(255),
-                      sinch_manufacturer_id int(11),
-                      sinch_manufacturer_name varchar(255),
-                      KEY entity_id (entity_id),
-                      KEY manufacturer_option_id (manufacturer_option_id),
-                      KEY manufacturer_name (manufacturer_name),
-                      KEY sinch_manufacturer_id (sinch_manufacturer_id),
-                      KEY sinch_manufacturer_name (sinch_manufacturer_name),
-                      KEY store_product_id (store_product_id),
-                      KEY sinch_product_id (sinch_product_id),
-                      KEY sku (sku),
-                      KEY product_sku (product_sku),
-                      UNIQUE KEY(entity_id)
-                          )
-                          "
+            "CREATE TABLE " . $this->_getTableName('sinch_products_mapping_temp') . " (
+                entity_id int(11) unsigned NOT NULL,
+                shop_store_product_id int(11),
+                shop_sinch_product_id int(11),
+                sku varchar(64) default NULL,
+                store_product_id int(11),
+                sinch_product_id int(11),
+                product_sku varchar(255),
+                KEY entity_id (entity_id),
+                KEY store_product_id (store_product_id),
+                KEY sinch_product_id (sinch_product_id),
+                KEY sku (sku),
+                KEY product_sku (product_sku),
+                UNIQUE KEY(entity_id)
+            )"
         );
 
         $productEntityTable = $this->_getTableName('catalog_product_entity');
@@ -4837,50 +4692,21 @@ class Sinch
         // (end) backup Product ID in REWRITE mode
 
         $this->_doQuery(
-            "
-                                INSERT ignore INTO " . $this->_getTableName(
-                'sinch_products_mapping_temp'
-            ) . " (
-                                    entity_id,
-                                    sku,
-                                    shop_store_product_id,
-                                    shop_sinch_product_id
-                                )(SELECT
-                                    entity_id,
-                                    sku,
-                                    store_product_id,
-                                    sinch_product_id
-                                  FROM " . $productEntityTable . "
-                                 )
-                              "
+            "INSERT IGNORE INTO " . $this->_getTableName('sinch_products_mapping_temp') . " (
+                entity_id,
+                sku,
+                shop_store_product_id,
+                shop_sinch_product_id
+            )
+            SELECT
+                entity_id,
+                sku,
+                store_product_id,
+                sinch_product_id
+                FROM " . $productEntityTable
         );
 
-        $this->addManufacturers(1);
-
-        $q = "UPDATE " . $this->_getTableName('sinch_products_mapping_temp') . " pmt
-            JOIN " . $this->_getTableName('catalog_product_index_eav') . " cpie
-                ON pmt.entity_id=cpie.entity_id
-            JOIN " . $this->_getTableName('eav_attribute_option_value') . " aov
-                ON cpie.value=aov.option_id
-            SET
-                manufacturer_option_id=cpie.value,
-                manufacturer_name=aov.value
-            WHERE cpie.attribute_id=" . $this->_getProductAttributeId(
-                'manufacturer'
-            );
-        $this->_doQuery($q);
-
-        $q = "UPDATE " . $this->_getTableName('sinch_products_mapping_temp') . " pmt
-            JOIN " . $this->_getTableName('products_temp') . " p
-                ON pmt.sku=p.product_sku
-            SET
-                pmt.store_product_id=p.store_product_id,
-                pmt.sinch_product_id=p.sinch_product_id,
-                pmt.product_sku=p.product_sku,
-                pmt.sinch_manufacturer_id=p.sinch_manufacturer_id,
-                pmt.sinch_manufacturer_name=p.manufacturer_name";
-
-        $this->_doQuery($q);
+        $this->manufacturersImport->apply();
 
         $q = "UPDATE " . $this->_getTableName('catalog_product_entity') . " cpe
             JOIN " . $this->_getTableName('sinch_products_mapping_temp') . " pmt
@@ -4904,135 +4730,6 @@ class Sinch
                 'sinch_products_mapping_temp'
             ) . "
                       TO " . $this->_getTableName('sinch_products_mapping')
-        );
-    }
-
-    private function addManufacturers($delete_eav = null)
-    {
-        // this cleanup is not needed due to foreign keys
-        if (!$delete_eav) {
-            $this->_doQuery(
-                "
-                                    DELETE FROM " . $this->_getTableName(
-                    'catalog_product_index_eav'
-                ) . "
-                                    WHERE attribute_id = "
-                . $this->_getProductAttributeId(
-                    'manufacturer'
-                )//." AND store_id = ".$websiteId
-            );
-        }
-        $this->addManufacturer_attribute();
-
-        $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_index_eav'
-            ) . " (
-                                    entity_id,
-                                    attribute_id,
-                                    store_id,
-                                    value
-                                )(
-                                  SELECT
-                                    a.entity_id,
-                                    " . $this->_getProductAttributeId(
-                'manufacturer'
-            ) . ",
-                                    w.website,
-                                    mn.shop_option_id
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                'products_temp'
-            ) . " b
-                                    ON a.store_product_id = b.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'products_website_temp'
-            ) . " w
-                                    ON a.store_product_id=w.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'sinch_manufacturers'
-            ) . " mn
-                                    ON b.sinch_manufacturer_id=mn.sinch_manufacturer_id
-                                  WHERE mn.shop_option_id IS NOT NULL
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = mn.shop_option_id
-                              "
-        );
-
-        $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_index_eav'
-            ) . " (
-                                    entity_id,
-                                    attribute_id,
-                                    store_id,
-                                    value
-                                )(
-                                  SELECT
-                                    a.entity_id,
-                                    " . $this->_getProductAttributeId(
-                'manufacturer'
-            ) . ",
-                                    0,
-                                    mn.shop_option_id
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                'products_temp'
-            ) . " b
-                                    ON a.store_product_id = b.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'products_website_temp'
-            ) . " w
-                                    ON a.store_product_id=w.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'sinch_manufacturers'
-            ) . " mn
-                                    ON b.sinch_manufacturer_id=mn.sinch_manufacturer_id
-                                  WHERE mn.shop_option_id IS NOT NULL
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = mn.shop_option_id
-                              "
-        );
-    }
-
-    private function addManufacturer_attribute()
-    {
-        $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_int'
-            ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(
-                                  SELECT
-                                    " . $this->_getProductAttributeId(
-                'manufacturer'
-            ) . ",
-                                    0,
-                                    a.entity_id,
-                                    pm.manufacturer_option_id
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                'sinch_products_mapping'
-            ) . " pm
-                                    ON a.entity_id = pm.entity_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = pm.manufacturer_option_id
-                              "
         );
     }
 
@@ -5535,7 +5232,7 @@ class Sinch
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
-        $this->addManufacturers();
+        $this->manufacturersImport->apply();
 
         $this->_doQuery(
             "
@@ -7491,7 +7188,7 @@ class Sinch
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
-        $this->addManufacturers();
+        $this->manufacturersImport->apply();
 
         $this->print("--Replace Magento Multistore 23...");
 
@@ -8125,7 +7822,7 @@ class Sinch
         $this->addMetaDescriptions();
         $this->addEAN();
         $this->addSpecification();
-        $this->addManufacturers();
+        $this->manufacturersImport->apply();
 
         $this->print("--Replace Magento Multistore 18...");
 
