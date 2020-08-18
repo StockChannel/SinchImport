@@ -408,6 +408,19 @@ class Sinch
                 $this->addImportStatus('Generate category filters');
                 $this->print("Finish generating category filters...");
 
+                try {
+                    $this->print("Running post import hooks");
+                    $this->_eventManager->dispatch(
+                        'sinchimport_post_import',
+                        [
+                            'import_type' => 'FULL'
+                        ]
+                    );
+                    $this->print("Post import hooks complete");
+                } catch(\Exception $e) {
+                    $this->print("Caught exception while running post import hooks: " . $e->getMessage());
+                }
+
                 if (!$indexingSeparately) {
                     $this->print("Start indexing data...");
                     $this->_cleanCateoryProductFlatTable();
@@ -427,19 +440,6 @@ class Sinch
                 $this->print("Start cleaning Sinch cache...");
                 $this->runCleanCache();
                 $this->print("Finish cleaning Sinch cache...");
-
-                try {
-                    $this->print("Running post import hooks");
-                    $this->_eventManager->dispatch(
-                        'sinchimport_post_import',
-                        [
-                            'import_type' => 'FULL'
-                        ]
-                    );
-                    $this->print("Post import hooks complete");
-                } catch(\Exception $e) {
-                    $this->print("Caught exception while running post import hooks: " . $e->getMessage());
-                }
 
                 $this->addImportStatus('Finish import', 1);
                 $this->_doQuery("SELECT RELEASE_LOCK('sinchimport_{$current_vhost}')");
@@ -8824,15 +8824,6 @@ class Sinch
                     $this->print("Skipping custom catalog restrictions as 'sinchimport/product_visibility/disable_import' is enabled");
                 }
 
-                $this->print("Start indexing  Stock & Price...");
-                $this->runStockPriceIndexer();
-                $this->addImportStatus('Stock Price Indexing data');
-                $this->print("Finish indexing  Stock & Price...");
-
-                $this->print("Start cleaning Sinch cache...");
-                $this->runCleanCache();
-                $this->print("Finish cleaning Sinch cache...");
-
                 try {
                     $this->print("Running post import hooks");
                     $this->_eventManager->dispatch(
@@ -8845,6 +8836,15 @@ class Sinch
                 } catch(\Exception $e) {
                     $this->print("Caught exception while running post import hooks: " . $e->getMessage());
                 }
+
+                $this->print("Start indexing  Stock & Price...");
+                $this->runStockPriceIndexer();
+                $this->addImportStatus('Stock Price Indexing data');
+                $this->print("Finish indexing  Stock & Price...");
+
+                $this->print("Start cleaning Sinch cache...");
+                $this->runCleanCache();
+                $this->print("Finish cleaning Sinch cache...");
 
                 $this->addImportStatus('Stock Price Finish import', 1);
 
