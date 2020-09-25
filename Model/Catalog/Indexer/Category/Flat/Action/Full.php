@@ -19,6 +19,7 @@ class Full extends \Magento\Catalog\Model\Indexer\Category\Flat\Action\Full
                     (string)$rootId
                 );
 
+                //This is the only change made by this code (just the selection of root categories)
                 $selectRootCats = $this->connection->select()->from(
                     $this->connection->getTableName($this->getTableName('catalog_category_entity')),
                     'entity_id'
