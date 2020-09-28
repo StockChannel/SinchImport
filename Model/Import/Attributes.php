@@ -51,6 +51,7 @@ class Attributes extends AbstractImportSection {
     private $mappingTable;
     private $cpeTable;
     private $filterCategoriesTable;
+    private $eavAttrTable;
 
     private $mappingInsert = null;
     private $mappingQuery = null;
@@ -92,22 +93,26 @@ class Attributes extends AbstractImportSection {
         $this->mappingTable = $this->getTableName('sinch_restrictedvalue_mapping');
         $this->cpeTable = $this->getTableName('catalog_product_entity');
         $this->filterCategoriesTable = $this->getTableName('sinch_filter_categories');
+        $this->eavAttrTable = $this->getTableName("eav_attribute");
     }
 
     public function parse($categoryFeaturesFile, $restrictedValuesFile, $productFeaturesFile)
     {
         $this->log("--- Begin Attribute Parse ---");
         $parseStart = $this->microtime_float();
+
+        $this->startTimingStep("Parse raw files");
         $this->category_features = $this->csv->getData($categoryFeaturesFile);
         unset($this->category_features[0]); //Unset the first entry as the sinch export files have a header row
         $this->attribute_values = $this->csv->getData($restrictedValuesFile);
         unset($this->attribute_values[0]);
         $this->product_features = $this->csv->getData($productFeaturesFile);
         unset($this->product_features[0]);
+        $this->endTimingStep();
 
         $this->createAttributeGroups();
 
-        //Parse features
+        $this->startTimingStep("Parsing category features");
         $this->log("Parsing category features file");
         foreach($this->category_features as $feature_row){
             if(count($feature_row) != 4) {
@@ -122,8 +127,9 @@ class Attributes extends AbstractImportSection {
                 "values" => []
             ];
         }
+        $this->endTimingStep();
 
-        //Parse values
+        $this->startTimingStep("Parse restricted values");
         $this->log("Parsing attribute values file");
         foreach($this->attribute_values as $rv_row){
             $this->attributes[$rv_row[1]]["values"][$rv_row[0]] = [
@@ -131,12 +137,16 @@ class Attributes extends AbstractImportSection {
                 "order" => $rv_row[3]
             ];
         }
+        $this->endTimingStep();
 
+        $this->startTimingStep("Parse product features");
         //RV -> [Product]
         foreach($this->product_features as $pf_row){
             $this->rvProds[$pf_row[2]][] = $pf_row[1];
         }
-        
+        $this->endTimingStep();
+
+        $this->startTimingStep("Delete old records");
         //Delete old mapping entries
         $this->log("Deleting old restricted value mapping");
         $this->getConnection()->query("DELETE FROM {$this->mappingTable}");
@@ -144,28 +154,80 @@ class Attributes extends AbstractImportSection {
         //Delete old filter-category mapping
         $this->log("Deleting old filter-category mapping");
         $this->getConnection()->query("DELETE FROM {$this->filterCategoriesTable}");
+        $this->endTimingStep();
 
-        //Create or update Magento attributes
-        $this->log("Creating or updating Magento attributes");
-        foreach($this->attributes as $sinch_id => $data){
-            $this->attributeCount += 1;
-            try {
-                $attribute = $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
-                $this->logger->info("Attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " exists, updating");
-                $attribute = $this->setAttributeConfig($attribute, $data);
-                $this->attributeRepository->save($attribute);
-            } catch(\Magento\Framework\Exception\NoSuchEntityException $e){
-                $this->logger->info("Failed to get " . self::ATTRIBUTE_PREFIX . $sinch_id . ", creating it");
-                $this->createAttribute($sinch_id, $data);
+        //Establish attribute names
+        $attrNames = [];
+        foreach (\array_keys($this->attributes) as $sinchAttrId) {
+            $attrNames[] = self::ATTRIBUTE_PREFIX . $sinchAttrId;
+        }
+
+
+        $this->log("Figuring out which attributes have been removed");
+        $this->startTimingStep("Removals");
+        $replacement = \implode(",", \array_fill(0, \count($attrNames), '?'));
+        $removedAttributes = $this->getConnection()->fetchCol(
+            "SELECT attribute_code FROM {$this->eavAttrTable} WHERE attribute_code LIKE '" . self::ATTRIBUTE_PREFIX . "%' AND attribute_code NOT IN ({$replacement})",
+            $attrNames
+        );
+
+        if (count($removedAttributes) > 0) {
+            $this->log("Removing " . count($removedAttributes) . " old filterable attributes");
+            $replacement = \implode(",", \array_fill(0, \count($removedAttributes), '?'));
+            $this->getConnection()->query("DELETE FROM {$this->eavAttrTable} WHERE attribute_code IN ({$replacement})", $removedAttributes);
+        }
+        $this->endTimingStep();
+
+        $this->log("Figuring out which attributes need to be created");
+        $this->startTimingStep("Creations");
+        $existingAttributes = $this->getConnection()->fetchCol("SELECT attribute_code FROM {$this->eavAttrTable} WHERE attribute_code LIKE '". self::ATTRIBUTE_PREFIX ."%'");
+        $missingAttributes = [];
+        foreach ($attrNames as $attrName) {
+            if (!\in_array($attrName, $existingAttributes)) {
+                $missingAttributes[] = $attrName;
             }
+        }
+
+        $this->log("Creating missing attributes");
+        foreach ($this->attributes as $sinch_id => $data) {
+            if (!\in_array(self::ATTRIBUTE_PREFIX . $sinch_id, $missingAttributes)) {
+                continue;
+            }
+            $this->createAttribute($sinch_id, $data);
+        }
+        $this->endTimingStep();
+
+        $this->startTimingStep("Updates");
+        foreach ($this->attributes as $sinch_id => $data) {
+            $this->attributeCount += 1;
             $this->updateAttributeOptions($sinch_id, $data);
             $this->updateFilterCategoryMapping($sinch_id, $data["catId"]);
         }
+        $this->endTimingStep();
 
-        //Flush EAV cache
+        //Create or update Magento attributes
+        $this->log("Creating or updating Magento attributes");
+//        foreach($this->attributes as $sinch_id => $data){
+//            $this->attributeCount += 1;
+//            try {
+//                $attribute = $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
+//                $this->logger->info("Attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " exists, updating");
+//                $attribute = $this->setAttributeConfig($attribute, $data);
+//                $this->attributeRepository->save($attribute);
+//            } catch(\Magento\Framework\Exception\NoSuchEntityException $e){
+//                $this->logger->info("Failed to get " . self::ATTRIBUTE_PREFIX . $sinch_id . ", creating it");
+//                $this->createAttribute($sinch_id, $data);
+//            }
+//            $this->updateAttributeOptions($sinch_id, $data);
+//            $this->updateFilterCategoryMapping($sinch_id, $data["catId"]);
+//        }
+
+        $this->startTimingStep("Flush EAV cache");
         $this->cacheType->cleanType('eav');
+        $this->endTimingStep();
 
         $elapsed = number_format($this->microtime_float() - $parseStart, 2);
+        $this->timingPrint();
         $this->log("--- Completed Attribute parse ---");
         $this->log("Processed a total of {$this->attributeCount} attributes and {$this->optionCount} options in {$elapsed} seconds");
     }

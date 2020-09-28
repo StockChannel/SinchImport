@@ -53,7 +53,7 @@ class CustomerGroupsPrice extends \Magento\Backend\App\Action
         $this->resultJsonFactory = $resultJsonFactory;
         $this->_jsonEncoder = $jsonEncoder;
         $this->sinch = $sinch;
-        $this->_logger = $logger;
+        $this->_logger = $logger->withName("CustomerGroupPrice");
         $this->_directory = $directoryList;
     }
 

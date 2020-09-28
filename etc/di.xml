@@ -27,7 +27,7 @@
     </type>
     <type name="SITC\Sinchimport\Logger\Logger">
         <arguments>
-            <argument name="name" xsi:type="string">sinchImportLogger</argument>
+            <argument name="name" xsi:type="string">SinchImportGeneric</argument>
             <argument name="handlers" xsi:type="array">
                 <item name="system" xsi:type="object">SITC\Sinchimport\Logger\Handler</item>
             </argument>

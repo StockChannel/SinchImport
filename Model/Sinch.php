@@ -132,7 +132,7 @@ class Sinch
         $this->output = $output;
         $this->_storeManager = $storeManager;
         $this->scopeConfig = $scopeConfig;
-        $this->_sinchLogger = $sinchLogger;
+        $this->_sinchLogger = $sinchLogger->withName("SinchImport");
         $this->_resourceConnection = $resourceConnection;
         $this->_indexProcessor = $indexProcessor;
         $this->_cacheFrontendPool = $cacheFrontendPool;

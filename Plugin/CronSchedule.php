@@ -20,7 +20,7 @@ class CronSchedule {
         Data $helper
     ){
         $this->cronConfig = $cronConfig;
-        $this->logger = $logger;
+        $this->logger = $logger->withName("CronSchedule");
         $this->helper = $helper;
     }
 

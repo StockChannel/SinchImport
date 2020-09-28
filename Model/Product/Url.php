@@ -80,7 +80,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
             $urlFactory, $storeManager, $filter, $sidResolver, $urlFinder, $data
         );
         $this->categoryProcessor = $categoryProcessor;
-        $this->sinchLogger = $sinchLogger;
+        $this->sinchLogger = $sinchLogger->withName("ProductUrl");
         $this->urlPersist = $urlPersist;
         $this->productUrlPathGenerator = $productUrlPathGenerator;
         $this->urlRewriteFactory = $urlRewriteFactory;

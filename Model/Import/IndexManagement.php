@@ -26,7 +26,7 @@ class IndexManagement {
         $this->indexerConfig = $indexerConfig;
         $this->helper = $helper;
         $this->output = $output;
-        $this->logger = $logger;
+        $this->logger = $logger->withName("IndexManagement");
     }
 
     /**
