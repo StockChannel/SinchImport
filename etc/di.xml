@@ -77,6 +77,8 @@
             </argument>
         </arguments>
     </type>
+    <!-- The following override is to prevent DI compilation errors on sites without ES -->
+    <preference for="Magento\Framework\Code\Generator" type="SITC\Sinchimport\Override\Generator" />
 
     <virtualType name="sitcAccountGroupQueryFactory" type="SITC\Sinchimport\Search\Request\Query\AccountGroupFilterFactory" />
 
