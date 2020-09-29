@@ -147,11 +147,11 @@ class Attributes extends AbstractImportSection {
         $this->endTimingStep();
 
         $this->startTimingStep("Delete old records");
-        //Delete old mapping entries
-        $this->log("Deleting old restricted value mapping");
-        $this->getConnection()->query("DELETE FROM {$this->mappingTable}");
+//        //Delete old mapping entries
+//        $this->log("Deleting old restricted value mapping");
+//        $this->getConnection()->query("DELETE FROM {$this->mappingTable}");
 
-        //Delete old filter-category mapping
+        //Delete old filter-category mapping (ok as it just tells the import which categories to display the filter on)
         $this->log("Deleting old filter-category mapping");
         $this->getConnection()->query("DELETE FROM {$this->filterCategoriesTable}");
         $this->endTimingStep();
@@ -197,7 +197,7 @@ class Attributes extends AbstractImportSection {
         }
         $this->endTimingStep();
 
-        $this->startTimingStep("Updates");
+        $this->startTimingStep("Update attribute values");
         foreach ($this->attributes as $sinch_id => $data) {
             $this->attributeCount += 1;
             $this->updateAttributeOptions($sinch_id, $data);
@@ -205,8 +205,8 @@ class Attributes extends AbstractImportSection {
         }
         $this->endTimingStep();
 
-        //Create or update Magento attributes
-        $this->log("Creating or updating Magento attributes");
+//        //Create or update Magento attributes
+//        $this->log("Creating or updating Magento attributes");
 //        foreach($this->attributes as $sinch_id => $data){
 //            $this->attributeCount += 1;
 //            try {
@@ -308,6 +308,11 @@ class Attributes extends AbstractImportSection {
         $this->logger->info("Create new options (" . count($data["values"]) . ") for attribute " . $attribute_code);
         foreach($data["values"] as $sinch_value_id => $option_data){
             $this->optionCount += 1;
+
+            if (!empty($this->queryMapping($sinch_value_id))) {
+                //Mapping exists, skip
+                continue;
+            }
 
             //Skip adding the option but still map it if it exists
             $existingOptId = $attribute->getSource()->getOptionId($option_data["text"]);

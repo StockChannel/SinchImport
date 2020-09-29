@@ -88,6 +88,31 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $this->fixCustomerGroupPriceTable($setup);
         }
 
+        if (version_compare($context->getVersion(), '2.2.2', '<')) {
+            $mappingTable = $installer->getTable('sinch_restrictedvalue_mapping');
+            //Make rvmapping's option_id nullable
+//            $connection->changeColumn(
+//                $mappingTable,
+//                'option_id',
+//                'option_id',
+//                [
+//                    'type' => Table::TYPE_INTEGER,
+//                    'default' => null,
+//                    'nullable' => true,
+//                    'after'   => 'sinch_feature_id'
+//                ]
+//            );
+            //Add a foreign key between rvmapping and eaov so removed values are automatically dropped
+            $installer->getConnection()->addForeignKey(
+                $installer->getFkName($mappingTable, 'option_id', 'eav_attribute_option_value', 'option_id'),
+                $mappingTable,
+                'option_id',
+                'eav_attribute_option_value',
+                'option_id',
+                $connection::FK_ACTION_CASCADE
+            );
+        }
+
         $installer->endSetup();
     }
 
