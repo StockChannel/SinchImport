@@ -26,7 +26,7 @@ class PickupImport
     ) {
         $this->resourceConn = $resourceConn;
         $this->sinch = $sinch;
-        $this->logger = $logger;
+        $this->logger = $logger->withName("PickupImport");
 
         //Get the table names
         $this->importStatusTable = $this->resourceConn->getTableName('sinch_import_status_statistic');

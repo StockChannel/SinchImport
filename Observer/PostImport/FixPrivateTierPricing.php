@@ -25,7 +25,7 @@ class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterfac
         \SITC\Sinchimport\Helper\Data $helper
     ) {
         $this->resourceConn = $resourceConn;
-        $this->logger = $logger;
+        $this->logger = $logger->withName("FixPrivateTierPricing");
         $this->helper = $helper;
 
         $this->cpeTable = $this->resourceConn->getTableName('catalog_product_entity');

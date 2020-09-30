@@ -132,7 +132,7 @@ class Sinch
         $this->output = $output;
         $this->_storeManager = $storeManager;
         $this->scopeConfig = $scopeConfig;
-        $this->_sinchLogger = $sinchLogger;
+        $this->_sinchLogger = $sinchLogger->withName("SinchImport");
         $this->_resourceConnection = $resourceConnection;
         $this->_indexProcessor = $indexProcessor;
         $this->_cacheFrontendPool = $cacheFrontendPool;
@@ -265,13 +265,13 @@ class Sinch
         }
 
         if ($this->isImportNotRun()) {
+            $current_vhost = $this->scopeConfig->getValue(
+                'web/unsecure/base_url',
+                \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            );
             try {
                 $imType = $this->_dataConf['replace_category'];
 
-                $current_vhost = $this->scopeConfig->getValue(
-                    'web/unsecure/base_url',
-                    \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-                );
                 $this->_doQuery("SELECT GET_LOCK('sinchimport_{$current_vhost}', 30)");
 
                 //Once we hold the import lock, check/await indexer completion
@@ -442,12 +442,14 @@ class Sinch
                 $this->print("Finish cleaning Sinch cache...");
 
                 $this->addImportStatus('Finish import', 1);
-                $this->_doQuery("SELECT RELEASE_LOCK('sinchimport_{$current_vhost}')");
+
 
                 $this->print("========>FINISH SINCH IMPORT...");
             } catch (\Exception $e) {
                 $this->_setErrorMessage($e);
-                $this->print("Error: " . $e->getMessage());
+                $this->print("Error (" . gettype($e) . "):" . $e->getMessage());
+            } finally {
+                $this->_doQuery("SELECT RELEASE_LOCK('sinchimport_{$current_vhost}')");
             }
         } else {
             $this->print("--------SINCHIMPORT ALREADY RUN--------");
@@ -4695,7 +4697,8 @@ class Sinch
 
             if ($replace_merge_product == "REWRITE") {
                 $catalog_product_entity = $this->_getTableName('catalog_product_entity');
-                $this->_doQuery("DELETE FROM $catalog_product_entity WHERE type_id = 'simple'");
+                //Allow retrying, as this is particularly likely to deadlock if the site is being used
+                $this->retriableQuery("DELETE FROM $catalog_product_entity WHERE type_id = 'simple'");
             }
 
             $this->print("--Parse Products 6");
@@ -8711,6 +8714,10 @@ class Sinch
     private function runIndexer()
     {
         $this->_indexProcessor->reindexAll();
+        //Clear changelogs explicitly after finishing a full reindex
+        $this->_indexProcessor->clearChangelog();
+        //Then make sure all materialized views reflect actual state
+        $this->_indexProcessor->updateMview();
 
         $configTonerFinder = $this->scopeConfig->getValue(
             'sinchimport/general/index_tonerfinder',

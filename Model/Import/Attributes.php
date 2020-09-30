@@ -2,6 +2,10 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Magento\Framework\Exception\InputException;
+use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Exception\StateException;
+
 class Attributes extends AbstractImportSection {
     const LOG_PREFIX = "Attributes: ";
     const LOG_FILENAME = "attributes";
@@ -14,17 +18,16 @@ class Attributes extends AbstractImportSection {
 
     //Stats
     private $attributeCount = 0;
+    private $attributesCreated = 0;
+    private $attributesUpdated = 0;
+    private $attributesDeleted = 0;
     private $optionCount = 0;
+    private $optionsCreated = 0;
+    private $optionsUpdated = 0;
+    private $optionsDeleted = 0;
 
     //CSV parser
     private $csv;
-
-    //ID, CategoryID, Name, Order
-    private $category_features;
-    //ID, CategoryFeatureID, Text, Order
-    private $attribute_values;
-    //ID, ProductID, RestrictedValueID
-    private $product_features;
 
     //Attributes to produce
     private $attributes = [];
@@ -51,6 +54,7 @@ class Attributes extends AbstractImportSection {
     private $mappingTable;
     private $cpeTable;
     private $filterCategoriesTable;
+    private $eavAttrTable;
 
     private $mappingInsert = null;
     private $mappingQuery = null;
@@ -92,24 +96,40 @@ class Attributes extends AbstractImportSection {
         $this->mappingTable = $this->getTableName('sinch_restrictedvalue_mapping');
         $this->cpeTable = $this->getTableName('catalog_product_entity');
         $this->filterCategoriesTable = $this->getTableName('sinch_filter_categories');
+        $this->eavAttrTable = $this->getTableName("eav_attribute");
+        $this->eavOptionValueTable = $this->getTableName("eav_attribute_option_value");
     }
 
-    public function parse($categoryFeaturesFile, $restrictedValuesFile, $productFeaturesFile)
+    /**
+     * @param string $categoryFeaturesFile CategoryFeatures.csv
+     * @param string $restrictedValuesFile RestrictedValues.csv
+     * @param string $productFeaturesFile ProductFeatures.csv
+     * @throws InputException
+     * @throws NoSuchEntityException
+     * @throws StateException
+     * @throws \Exception
+     */
+    public function parse(string $categoryFeaturesFile, string $restrictedValuesFile, string $productFeaturesFile)
     {
         $this->log("--- Begin Attribute Parse ---");
-        $parseStart = $this->microtime_float();
-        $this->category_features = $this->csv->getData($categoryFeaturesFile);
-        unset($this->category_features[0]); //Unset the first entry as the sinch export files have a header row
-        $this->attribute_values = $this->csv->getData($restrictedValuesFile);
-        unset($this->attribute_values[0]);
-        $this->product_features = $this->csv->getData($productFeaturesFile);
-        unset($this->product_features[0]);
+
+        $this->startTimingStep("Parse raw files");
+        //ID, CategoryID, Name, Order
+        $category_features = $this->csv->getData($categoryFeaturesFile);
+        unset($category_features[0]); //Unset the first entry as the sinch export files have a header row
+        //ID, CategoryFeatureID, Text, Order
+        $attribute_values = $this->csv->getData($restrictedValuesFile);
+        unset($attribute_values[0]);
+        //ID, ProductID, RestrictedValueID
+        $product_features = $this->csv->getData($productFeaturesFile);
+        unset($product_features[0]);
+        $this->endTimingStep();
 
         $this->createAttributeGroups();
 
-        //Parse features
+        $this->startTimingStep("Parsing category features");
         $this->log("Parsing category features file");
-        foreach($this->category_features as $feature_row){
+        foreach($category_features as $feature_row){
             if(count($feature_row) != 4) {
                 $this->logger->warn("Feature row not 4 columns");
                 $this->logger->debug(print_r($feature_row, true));
@@ -122,54 +142,100 @@ class Attributes extends AbstractImportSection {
                 "values" => []
             ];
         }
+        $this->endTimingStep();
 
-        //Parse values
+        $this->startTimingStep("Parse restricted values");
         $this->log("Parsing attribute values file");
-        foreach($this->attribute_values as $rv_row){
+        foreach($attribute_values as $rv_row){
             $this->attributes[$rv_row[1]]["values"][$rv_row[0]] = [
                 "text" => $rv_row[2],
                 "order" => $rv_row[3]
             ];
         }
+        $this->endTimingStep();
 
+        $this->startTimingStep("Parse product features");
         //RV -> [Product]
-        foreach($this->product_features as $pf_row){
+        foreach($product_features as $pf_row){
             $this->rvProds[$pf_row[2]][] = $pf_row[1];
         }
-        
-        //Delete old mapping entries
-        $this->log("Deleting old restricted value mapping");
-        $this->getConnection()->query("DELETE FROM {$this->mappingTable}");
+        $this->endTimingStep();
 
-        //Delete old filter-category mapping
+        $this->startTimingStep("Delete old filter-category mapping");
+        //Delete old filter-category mapping (ok as it just tells the import which categories to display the filter on)
         $this->log("Deleting old filter-category mapping");
         $this->getConnection()->query("DELETE FROM {$this->filterCategoriesTable}");
+        $this->endTimingStep();
 
-        //Create or update Magento attributes
-        $this->log("Creating or updating Magento attributes");
-        foreach($this->attributes as $sinch_id => $data){
-            $this->attributeCount += 1;
-            try {
-                $attribute = $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_id);
-                $this->logger->info("Attribute " . self::ATTRIBUTE_PREFIX . $sinch_id . " exists, updating");
-                $attribute = $this->setAttributeConfig($attribute, $data);
-                $this->attributeRepository->save($attribute);
-            } catch(\Magento\Framework\Exception\NoSuchEntityException $e){
-                $this->logger->info("Failed to get " . self::ATTRIBUTE_PREFIX . $sinch_id . ", creating it");
-                $this->createAttribute($sinch_id, $data);
-            }
-            $this->updateAttributeOptions($sinch_id, $data);
-            $this->updateFilterCategoryMapping($sinch_id, $data["catId"]);
+        //Establish attribute names
+        $attrNames = [];
+        foreach (\array_keys($this->attributes) as $sinchAttrId) {
+            $attrNames[] = self::ATTRIBUTE_PREFIX . $sinchAttrId;
         }
 
-        //Flush EAV cache
-        $this->cacheType->cleanType('eav');
 
-        $elapsed = number_format($this->microtime_float() - $parseStart, 2);
+        $this->log("Figuring out which attributes have been removed");
+        $this->startTimingStep("Removals");
+        $replacement = \implode(",", \array_fill(0, \count($attrNames), '?'));
+        $removedAttributes = $this->getConnection()->fetchCol(
+            "SELECT attribute_code FROM {$this->eavAttrTable} WHERE attribute_code LIKE '" . self::ATTRIBUTE_PREFIX . "%' AND attribute_code NOT IN ({$replacement})",
+            $attrNames
+        );
+
+        if (count($removedAttributes) > 0) {
+            $this->log("Removing " . count($removedAttributes) . " old filterable attributes");
+            $replacement = \implode(",", \array_fill(0, \count($removedAttributes), '?'));
+            $this->getConnection()->query("DELETE FROM {$this->eavAttrTable} WHERE attribute_code IN ({$replacement})", $removedAttributes);
+            $this->attributesDeleted = count($removedAttributes);
+        }
+        $this->endTimingStep();
+
+        $this->log("Figuring out which attributes need to be created");
+        $this->startTimingStep("Creations");
+        $existingAttributes = $this->getConnection()->fetchCol("SELECT attribute_code FROM {$this->eavAttrTable} WHERE attribute_code LIKE '". self::ATTRIBUTE_PREFIX ."%'");
+        $missingAttributes = [];
+        foreach ($attrNames as $attrName) {
+            if (!\in_array($attrName, $existingAttributes)) {
+                $missingAttributes[] = $attrName;
+            }
+        }
+
+        $this->log("Creating missing attributes");
+        foreach ($this->attributes as $sinch_id => $data) {
+            if (!\in_array(self::ATTRIBUTE_PREFIX . $sinch_id, $missingAttributes)) {
+                continue;
+            }
+            $this->createAttribute($sinch_id, $data);
+            $this->attributesCreated += 1;
+        }
+        $this->endTimingStep();
+
+        $this->startTimingStep("Update attribute values");
+        foreach ($this->attributes as $sinch_id => $data) {
+            $this->attributeCount += 1;
+            $this->updateAttributeOptions($sinch_id, $data);
+            $this->updateFilterCategoryMapping($sinch_id, $data["catId"]);
+            $this->attributesUpdated += 1;
+        }
+        $this->endTimingStep();
+
+        $this->startTimingStep("Flush EAV cache");
+        $this->cacheType->cleanType('eav');
+        $this->endTimingStep();
+
         $this->log("--- Completed Attribute parse ---");
-        $this->log("Processed a total of {$this->attributeCount} attributes and {$this->optionCount} options in {$elapsed} seconds");
+        $this->log("Processed {$this->attributeCount} attributes ({$this->attributesCreated} created, {$this->attributesUpdated} updated, {$this->attributesDeleted} deleted).");
+        $this->log("Processed {$this->optionCount} options ({$this->optionsCreated} created, {$this->optionsUpdated} updated, {$this->optionsDeleted} deleted).");
+        $this->timingPrint();
     }
 
+    /**
+     * @param $sinch_id
+     * @param $data
+     * @throws InputException
+     * @throws NoSuchEntityException
+     * @throws StateException
+     */
     private function createAttribute($sinch_id, $data)
     {
         $this->logger->info("Creating attribute " . self::ATTRIBUTE_PREFIX . $sinch_id);
@@ -217,6 +283,13 @@ class Attributes extends AbstractImportSection {
             ->setPosition($data["order"]);
     }
 
+    /**
+     * @param $sinch_feature_id
+     * @param $data
+     * @throws InputException
+     * @throws NoSuchEntityException
+     * @throws StateException
+     */
     private function updateAttributeOptions($sinch_feature_id, $data)
     {
         $attribute_code = self::ATTRIBUTE_PREFIX . $sinch_feature_id;
@@ -224,7 +297,7 @@ class Attributes extends AbstractImportSection {
 
         //Delete old options
         $items = $this->optionManagement->getItems($attribute_code);
-        $this->logger->info("Deleting old options (" . count($items) . ") for attribute " . $attribute_code);
+        $this->logger->info("Deleting old options for attribute " . $attribute_code);
         foreach($items as $option){
             $id = $option->getValue();
             if($id == '') continue; //Magento seems to add an empty option to the array, ignore it
@@ -240,6 +313,7 @@ class Attributes extends AbstractImportSection {
             }
 
             $this->optionManagement->delete($attribute_code, $id);
+            $this->optionsDeleted += 1;
         }
         
         //Create new options
@@ -247,10 +321,32 @@ class Attributes extends AbstractImportSection {
         foreach($data["values"] as $sinch_value_id => $option_data){
             $this->optionCount += 1;
 
+            $existing = $this->queryMapping($sinch_value_id);
+            if (!empty($existing)) {
+                $text = $this->getConnection()->fetchOne(
+                    "SELECT value FROM {$this->eavOptionValueTable} WHERE option_id = :option_id",
+                    [":option_id" => $existing['option_id']]
+                );
+                if (!empty($option_data['text']) && $text != $option_data['text']) {
+                    //Update the value to match its new content
+                    $this->getConnection()->query(
+                        "UPDATE {$this->eavOptionValueTable} SET value = :val WHERE option_id = :option_id",
+                        [
+                            ":option_id" => $existing['option_id'],
+                            ":val" => $option_data['text']
+                        ]
+                    );
+                    $this->optionsUpdated += 1;
+                }
+                //Mapping exists, skip
+                continue;
+            }
+
             //Skip adding the option but still map it if it exists
             $existingOptId = $attribute->getSource()->getOptionId($option_data["text"]);
             if(is_numeric($existingOptId)){
                 $this->addMapping($sinch_value_id, $sinch_feature_id, $existingOptId);
+                $this->optionsUpdated += 1;
                 continue;
             }
 
@@ -262,6 +358,7 @@ class Attributes extends AbstractImportSection {
                 $this->logger->warn("Failed to add option: " . $sinch_value_id . " - " . $option_data["text"]);
                 //throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
             } else { //Add succeeded
+                $this->optionsCreated += 1;
                 //Get option id
                 $option_id = $attribute->getSource()->getOptionId($option_data["text"]);
                 if(!is_numeric($option_id)){
@@ -278,6 +375,10 @@ class Attributes extends AbstractImportSection {
         }
     }
 
+    /**
+     * @throws NoSuchEntityException
+     * @throws StateException
+     */
     private function createAttributeGroups()
     {
         $criteria = $this->searchCriteriaBuilder->addFilter(\Magento\Eav\Api\Data\AttributeGroupInterface::GROUP_NAME, self::ATTRIBUTE_GROUP_NAME, "eq")->create();
@@ -313,11 +414,15 @@ class Attributes extends AbstractImportSection {
             if(count($groups) != count($this->attributeGroupIds)){
                 //Missing a group
                 //TODO: Add
-                throw new \Magento\Framework\Exception\StateException(__("An attribute group is missing"));
+                throw new StateException(__("An attribute group is missing"));
             }
         }
     }
 
+    /**
+     * @return array
+     * @throws StateException
+     */
     private function getAttributeSetIds()
     {
         if($this->attributeSetCache == null){
@@ -326,7 +431,7 @@ class Attributes extends AbstractImportSection {
             )->getItems();
 
             if(count($attributeSets) < 1){
-                throw new \Magento\Framework\Exception\StateException(__("Retrieved no attribute sets"));
+                throw new StateException(__("Retrieved no attribute sets"));
             }
 
             $this->attributeSetCache = [];
@@ -377,6 +482,10 @@ class Attributes extends AbstractImportSection {
         return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
     }
 
+    /**
+     * @throws StateException
+     * @throws \Exception
+     */
     public function applyAttributeValues()
     {
         $applyStart = $this->microtime_float();
@@ -394,7 +503,7 @@ class Attributes extends AbstractImportSection {
             $entityIds = $this->sinchToEntityIds($products);
             if($entityIds === false){
                 $this->logger->err("Failed to retreive entity ids");
-                throw new \Magento\Framework\Exception\StateException(__("Failed to retrieve entity ids"));
+                throw new StateException(__("Failed to retrieve entity ids"));
             }
             $prodCount = count($entityIds);
             $this->logger->info("({$currVal}/{$valueCount}) Setting option id {$attrData['option_id']} for {$prodCount} products");

@@ -31,7 +31,7 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
     ){
         parent::__construct($context);
         $this->output = $output;
-        $this->logger = $logger;
+        $this->logger = $logger->withName("Download");
 
         $this->saveDir = $dir->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/SITC/Sinchimport/';
         $ftp_data = $this->scopeConfig->getValue(
@@ -183,7 +183,8 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
     {
         $url = \escapeshellarg("ftp://{$this->username}:{$this->password}@{$this->server}/{$file}");
         $outputLoc = \escapeshellarg($this->saveDir . $file);
-        exec("wget -O{$outputLoc} {$url}", null, $result = -1);
+        $result = -1;
+        exec("wget -O{$outputLoc} {$url}", null, $result);
         return $result == 0;
     }
 }

@@ -25,7 +25,7 @@ class FixQuoteItems implements \Magento\Framework\Event\ObserverInterface
         \SITC\Sinchimport\Helper\Data $helper
     ) {
         $this->resourceConn = $resourceConn;
-        $this->logger = $logger;
+        $this->logger = $logger->withName("FixQuoteItems");
         $this->helper = $helper;
         $this->cpeTable = $this->resourceConn->getTableName('catalog_product_entity');
         $this->cpevTable = $this->resourceConn->getTableName('catalog_product_entity_varchar');

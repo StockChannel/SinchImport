@@ -1,25 +1,30 @@
 <?php
 namespace SITC\Sinchimport\Plugin;
 
+use Magento\Cron\Model\ConfigInterface;
+use Magento\Cron\Model\Schedule;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Logger\Logger;
+
 class CronSchedule {
-    /** @var \Magento\Cron\Model\ConfigInterface */
+    /** @var ConfigInterface */
     private $cronConfig;
-    /** @var \SITC\Sinchimport\Logger\Logger $logger */
+    /** @var Logger $logger */
     private $logger;
-    /** @var \SITC\Sinchimport\Helper\Data $helper */
+    /** @var Data $helper */
     private $helper;
 
     public function __construct(
-        \Magento\Cron\Model\ConfigInterface $cronConfig,
-        \SITC\Sinchimport\Logger\Logger $logger,
-        \SITC\Sinchimport\Helper\Data $helper
+        ConfigInterface $cronConfig,
+        Logger $logger,
+        Data $helper
     ){
         $this->cronConfig = $cronConfig;
-        $this->logger = $logger;
+        $this->logger = $logger->withName("CronSchedule");
         $this->helper = $helper;
     }
 
-    public function aroundTryLockJob(\Magento\Cron\Model\Schedule $subject, $proceed){
+    public function aroundTryLockJob(Schedule $subject, $proceed){
         $cronjob = $this->getJobConfig($subject->getJobCode());
 
         if (isset($cronjob['group']) && $cronjob['group'] === 'index' && $this->helper->isIndexLockHeld()) {
