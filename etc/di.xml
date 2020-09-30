@@ -17,6 +17,7 @@
                 <item name="postImportDebug" xsi:type="object">SITC\Sinchimport\Console\Command\DebugPostImportCommand</item>
                 <item name="deltaPricingReset" xsi:type="object">SITC\Sinchimport\Console\Command\DeltaPricingResetCommand</item>
                 <item name="cronCleanup" xsi:type="object">SITC\Sinchimport\Console\Command\CronCleanupCommand</item>
+                <item name="attributesReset" xsi:type="object">SITC\Sinchimport\Console\Command\AttributesResetCommand</item>
             </argument>
         </arguments>
     </type>
