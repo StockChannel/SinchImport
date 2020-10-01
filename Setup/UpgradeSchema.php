@@ -91,7 +91,8 @@ class UpgradeSchema implements UpgradeSchemaInterface
         if (version_compare($context->getVersion(), '2.2.2', '<')) {
             $mappingTable = $installer->getTable('sinch_restrictedvalue_mapping');
             //Add a foreign key between rvmapping and eaov so removed values are automatically dropped
-            $installer->getConnection()->addForeignKey(
+            $connection = $installer->getConnection();
+            $connection->addForeignKey(
                 $installer->getFkName($mappingTable, 'option_id', 'eav_attribute_option_value', 'option_id'),
                 $mappingTable,
                 'option_id',
