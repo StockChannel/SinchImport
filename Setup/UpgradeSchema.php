@@ -10,6 +10,7 @@ use Magento\Framework\Setup\UpgradeSchemaInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\SchemaSetupInterface;
 use Magento\Framework\DB\Ddl\Table;
+use SITC\Sinchimport\Model\Import\StockPrice;
 
 /**
  * @codeCoverageIgnore
@@ -100,6 +101,40 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 'option_id',
                 $connection::FK_ACTION_CASCADE
             );
+        }
+
+        if (version_compare($context->getVersion(), '2.3.0', '<')) {
+            $connection = $installer->getConnection();
+            //Cleanup old unused tables
+            $sdspt = $installer->getTable('sinch_distributors_stock_and_price_temporary');
+            $sdspts = $installer->getTable('sinch_distributors_stock_and_price_temporary_supplier');
+            $connection->query("DROP TABLE IF EXISTS {$sdspt}");
+            $connection->query("DROP TABLE IF EXISTS {$sdspts}");
+            $sinch_features_list = $installer->getTable('sinch_features_list');
+            $connection->query("DROP TABLE IF EXISTS {$sinch_features_list}");
+
+            //Now make sure the stock price import table has the layout we want
+            $stockPriceImportTable = $installer->getTable(StockPrice::STOCK_IMPORT_TABLE);
+            $connection->query("DROP TABLE IF EXISTS {$stockPriceImportTable}");
+            $connection->query("CREATE TABLE IF NOT EXISTS {$stockPriceImportTable} (
+                product_id int(11) NOT NULL PRIMARY KEY,
+                stock int(11) NOT NULL,
+                price decimal(15,4) NOT NULL,
+                cost decimal(15,4),
+                distributor_id int(11),
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+
+            //Now make sure the distributor stock price import table has the layout we want
+            $distiTable = $installer->getTable(StockPrice::DISTI_TABLE);
+            $distiStockImportTable = $installer->getTable(StockPrice::DISTI_STOCK_IMPORT_TABLE);
+            $connection->query("DROP TABLE IF EXISTS {$distiStockImportTable}");
+            $connection->query("CREATE TABLE IF NOT EXISTS {$distiStockImportTable} (
+                product_id int(11) NOT NULL,
+                distributor_id int(11) NOT NULL,
+                stock int(11) NOT NULL,
+                PRIMARY KEY (distributor_id, product_id),
+                FOREIGN KEY (distributor_id) REFERENCES {$distiTable} (distributor_id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
         }
 
         $installer->endSetup();
