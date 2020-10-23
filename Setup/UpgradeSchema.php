@@ -121,7 +121,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 stock int(11) NOT NULL,
                 price decimal(15,4) NOT NULL,
                 cost decimal(15,4),
-                distributor_id int(11),
+                distributor_id int(11)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
 
             //Now make sure the distributor stock price import table has the layout we want

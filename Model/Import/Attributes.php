@@ -55,6 +55,7 @@ class Attributes extends AbstractImportSection {
     private $cpeTable;
     private $filterCategoriesTable;
     private $eavAttrTable;
+    private $eavOptionValueTable;
 
     private $mappingInsert = null;
     private $mappingQuery = null;
@@ -354,10 +355,9 @@ class Attributes extends AbstractImportSection {
                 ->setLabel($option_data["text"])
                 ->setSortOrder($option_data["order"]);
 
-            if(!$this->optionManagement->add($attribute_code, $option)){ //Seems to only return false if the Label exactly matches an existing option
-                $this->logger->warn("Failed to add option: " . $sinch_value_id . " - " . $option_data["text"]);
-                //throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
-            } else { //Add succeeded
+            try {
+                $this->optionManagement->add($attribute_code, $option);
+                //Add succeeded
                 $this->optionsCreated += 1;
                 //Get option id
                 $option_id = $attribute->getSource()->getOptionId($option_data["text"]);
@@ -371,6 +371,12 @@ class Attributes extends AbstractImportSection {
                     //Insert a mapping record for the option
                     $this->addMapping($sinch_value_id, $sinch_feature_id, $option_id);
                 }
+            } catch (InputException $e) {
+                $this->logger->warn("Failed to add option: " . $sinch_value_id . " - " . $option_data["text"] . "(InputException: " . $e->getMessage() . ")");
+                //throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
+            } catch (StateException $e) {
+                $this->logger->warn("Failed to add option: " . $sinch_value_id . " - " . $option_data["text"] . "(StateException: " . $e->getMessage() . ")");
+                //throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
             }
         }
     }
@@ -502,7 +508,7 @@ class Attributes extends AbstractImportSection {
             }
             $entityIds = $this->sinchToEntityIds($products);
             if($entityIds === false){
-                $this->logger->err("Failed to retreive entity ids");
+                $this->logger->err("Failed to retrieve entity ids");
                 throw new StateException(__("Failed to retrieve entity ids"));
             }
             $prodCount = count($entityIds);

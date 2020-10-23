@@ -96,6 +96,7 @@ class Sinch
     private $customCatalogImport;
     private $sitcIndexMgmt;
     private $dlHelper;
+    private $stockPriceImport;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -118,7 +119,8 @@ class Sinch
         \SITC\Sinchimport\Model\Import\UNSPSC $unspscImport,
         \SITC\Sinchimport\Model\Import\CustomCatalogVisibility $customCatalogImport,
         \SITC\Sinchimport\Model\Import\IndexManagement $sitcIndexMgmt,
-        \SITC\Sinchimport\Helper\Download $dlHelper
+        \SITC\Sinchimport\Helper\Download $dlHelper,
+        \SITC\Sinchimport\Model\Import\StockPrice $stockPriceImport
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
@@ -128,6 +130,7 @@ class Sinch
         $this->customCatalogImport = $customCatalogImport;
         $this->sitcIndexMgmt = $sitcIndexMgmt;
         $this->dlHelper = $dlHelper;
+        $this->stockPriceImport = $stockPriceImport;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -302,9 +305,16 @@ class Sinch
                 $this->addImportStatus('Parse Category Features');
 
                 $this->print("Parse Distributors...");
-                $this->parseDistributors();
+                //TODO: Replaced with StockPrice->parse
+                //$this->parseDistributors();
+                $this->stockPriceImport->parse(
+                    $this->varDir . FILE_STOCK_AND_PRICES,
+                    $this->varDir . FILE_DISTRIBUTORS,
+                    $this->varDir . FILE_DISTRIBUTORS_STOCK_AND_PRICES
+                );
                 if ($this->product_file_format == "NEW") {
-                    $this->parseDistributorsStockAndPrice();
+                    //TODO: Replaced with StockPrice->parse
+                    //$this->parseDistributorsStockAndPrice();
                     $this->parseProductContracts();
                 }
                 $this->addImportStatus('Parse Distributors');
@@ -345,7 +355,8 @@ class Sinch
                 $this->addImportStatus('Parse Restricted Values');
 
                 $this->print("Parse Stock And Prices...");
-                $this->parseStockAndPrices();
+                //TODO: Replaced parseStockAndPrices
+                $this->stockPriceImport->apply();
                 $this->addImportStatus('Parse Stock And Prices');
 
                 $this->print("Apply Customer Group Price...");
@@ -4079,116 +4090,6 @@ class Sinch
             );
 
             $this->_log("Finish parse " . FILE_CATEGORIES_FEATURES);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
-    private function parseDistributors()
-    {
-        $parseFile = $this->varDir . FILE_DISTRIBUTORS;
-        if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_DISTRIBUTORS);
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'distributors_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->_getTableName('distributors_temp') . "(
-                              distributor_id int(11),
-                              distributor_name varchar(255),
-                              website varchar(255),
-                              KEY(distributor_id)
-                          )
-                        "
-            );
-
-            $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->_getTableName(
-                    'distributors_temp'
-                ) . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
-                          OPTIONALLY ENCLOSED BY '\"'
-                          LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
-            );
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'sinch_distributors'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->_getTableName('distributors_temp') . "
-                          TO " . $this->_getTableName('sinch_distributors')
-            );
-
-            $this->_log("Finish parse " . FILE_DISTRIBUTORS);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
-    private function parseDistributorsStockAndPrice()
-    {
-        $parseFile = $this->varDir . FILE_DISTRIBUTORS_STOCK_AND_PRICES;
-        if (filesize($parseFile)) {
-            $this->_log(
-                "Start parse " . FILE_DISTRIBUTORS_STOCK_AND_PRICES
-            );
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'distributors_stock_and_price_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->_getTableName(
-                    'distributors_stock_and_price_temp'
-                ) . "(
-                          `store_product_id` int(11) DEFAULT NULL,
-                          `distributor_id` int(11) DEFAULT NULL,
-                          `stock` int(11) DEFAULT NULL,
-                          `cost` decimal(15,4) DEFAULT NULL,
-                          `distributor_sku` varchar(255) DEFAULT NULL,
-                          `distributor_category` varchar(50) DEFAULT NULL,
-                          `eta` varchar(50) DEFAULT NULL,
-                          UNIQUE KEY `product_distri` (store_product_id, distributor_id)
-                          )"
-            );
-
-            $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->_getTableName(
-                    'distributors_stock_and_price_temp'
-                ) . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
-                          OPTIONALLY ENCLOSED BY '\"'
-                          LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
-            );
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->_getTableName(
-                    'distributors_stock_and_price_temp'
-                ) . "
-                          TO " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price'
-                )
-            );
-
-            $this->_log(
-                "Finish parse " . FILE_DISTRIBUTORS_STOCK_AND_PRICES
-            );
         } else {
             $this->_log("Wrong file " . $parseFile);
         }
@@ -8463,232 +8364,6 @@ class Sinch
         }
     }
 
-    private function parseStockAndPrices()
-    {
-        $parseFile = $this->varDir . FILE_STOCK_AND_PRICES;
-        $stockPriceTemp = $this->_getTableName('stock_and_prices_temp');
-        $stockPriceFinal = $this->_getTableName('sinch_stock_and_prices');
-        $catalogProductEntity = $this->_getTableName('catalog_product_entity');
-
-        $size = filesize($parseFile);
-        if ($size == 0 || $size == false) {
-            $this->_log("Wrong file" . $parseFile);
-            return;
-        }
-    
-        $this->_doQuery(
-            "CREATE TABLE IF NOT EXISTS {$stockPriceTemp} (
-                store_product_id int(11),
-                stock int(11),
-                price decimal(15,4),
-                cost decimal(15,4),
-                distributor_id int(11),
-                KEY(store_product_id),
-                KEY(distributor_id)
-            )"
-        );
-
-        $this->_doQuery(
-            "LOAD DATA LOCAL INFILE '{$parseFile}'
-                INTO TABLE {$stockPriceTemp}
-                FIELDS TERMINATED BY '{$this->field_terminated_char}'
-                OPTIONALLY ENCLOSED BY '\"'
-                LINES TERMINATED BY \"\r\n\"
-                IGNORE 1 LINES
-                (store_product_id, stock, @price, @cost, distributor_id)
-                SET price = REPLACE(@price, ',', '.'),
-                    cost = REPLACE(@cost, ',', '.')"
-        );
-
-        $this->replaceMagentoProductsStockPrice();
-
-        $this->_doQuery(
-            "UPDATE {$this->import_status_statistic_table}
-                SET number_of_products = (
-                    SELECT count(*) FROM {$catalogProductEntity} cpe
-                        INNER JOIN {$stockPriceTemp} spt
-                        ON cpe.store_product_id = spt.store_product_id
-                )
-                WHERE id = {$this->current_import_status_statistic_id}"
-        );
-
-        $this->_doQuery("DROP TABLE IF EXISTS {$stockPriceFinal}");
-        $this->_doQuery("RENAME TABLE {$stockPriceTemp} TO {$stockPriceFinal}");
-
-        $this->_log("Finish parse " . FILE_RELATED_PRODUCTS);
-    }
-
-    private function replaceMagentoProductsStockPrice()
-    {
-        $catalogInvStockItem = $this->_getTableName('cataloginventory_stock_item');
-        $catalogProductEntity = $this->_getTableName('catalog_product_entity');
-        $catalogProductEntityDecimal = $this->_getTableName('catalog_product_entity_decimal');
-        $stockPriceTemp = $this->_getTableName('stock_and_prices_temp');
-        $prodWebTemp = $this->_getTableName('products_website_temp');
-
-        //Delete stock entries for non-existent products
-        $this->_doQuery(
-            "DELETE csi FROM {$catalogInvStockItem} csi
-                LEFT JOIN {$catalogProductEntity} cpe
-                ON csi.product_id = cpe.entity_id
-                WHERE cpe.entity_id IS NULL"
-        );
-
-        //Set stock to 0 for sinch products not present in the new data
-        $this->_doQuery(
-            "UPDATE {$catalogInvStockItem} csi
-                JOIN {$catalogProductEntity} cpe
-                    ON cpe.entity_id = csi.product_id
-                LEFT JOIN {$stockPriceTemp} spt
-                    ON spt.store_product_id = cpe.store_product_id
-                SET csi.qty = 0,
-                    csi.is_in_stock = 0
-                WHERE cpe.store_product_id IS NOT NULL
-                AND spt.stock IS NULL"
-        );
-
-        /* The website_id used in cataloginventory_stock_item serves no purpose and setting it to anything but
-            the value of \Magento\CatalogInventory\Api\StockConfigurationInterface->getDefaultScopeId() only serves to break the checkout process */
-        $stockItemScope = $this->stockConfig->getDefaultScopeId();
-
-        //Insert new sinch stock levels
-        $this->_doQuery(
-            "INSERT INTO {$catalogInvStockItem}
-            (
-                product_id,
-                stock_id,
-                qty,
-                is_in_stock,
-                manage_stock,
-                website_id
-            )
-            (
-                SELECT
-                a.entity_id,
-                1,
-                b.stock,
-                IF(b.stock > 0, 1, 0),
-                0,
-                {$stockItemScope}
-                FROM {$catalogProductEntity} a
-                INNER JOIN {$stockPriceTemp} b
-                    ON a.store_product_id = b.store_product_id
-            )
-                ON DUPLICATE KEY UPDATE
-                    qty = b.stock,
-                    is_in_stock = IF(b.stock > 0, 1, 0),
-                    manage_stock = 1"
-        );
-
-        //TODO: Make sure to invalidate the cataloginventory_stock indexer so cataloginventory_stock_status is built
-
-        //Delete prices for non-existent products
-        //TODO: foreign key checks should remove these records
-//        $this->_doQuery(
-//            "DELETE cped FROM {$catalogProductEntityDecimal} cped
-//                LEFT JOIN {$catalogProductEntity} cpe
-//                    ON cped.entity_id = cpe.entity_id
-//                WHERE cpe.entity_id IS NULL"
-//        );
-
-        $priceAttrId = $this->_getProductAttributeId('price');
-
-        $this->_doQuery(
-            "INSERT INTO {$catalogProductEntityDecimal}
-            (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )
-            (
-                SELECT
-                {$priceAttrId},
-                w.website,
-                a.entity_id,
-                b.price
-                FROM {$catalogProductEntity} a
-                INNER JOIN {$stockPriceTemp} b
-                    ON a.store_product_id = b.store_product_id
-                INNER JOIN {$prodWebTemp} w
-                    ON a.store_product_id = w.store_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.price"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO {$catalogProductEntityDecimal}
-            (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )
-            (
-                SELECT
-                {$priceAttrId},
-                0,
-                a.entity_id,
-                b.price
-                FROM {$catalogProductEntity}  a
-                INNER JOIN {$stockPriceTemp} b
-                    ON a.store_product_id = b.store_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.price"
-        );
-
-        $costAttrId = $this->_getProductAttributeId('cost');
-
-        //Add cost
-        $this->_doQuery(
-            "INSERT INTO {$catalogProductEntityDecimal}
-            (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )
-            (
-                SELECT
-                {$costAttrId},
-                w.website,
-                a.entity_id,
-                b.cost
-                FROM {$catalogProductEntity}   a
-                INNER JOIN {$stockPriceTemp} b
-                    ON a.store_product_id = b.store_product_id
-                INNER JOIN {$prodWebTemp} w
-                    ON a.store_product_id = w.store_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.cost"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO {$catalogProductEntityDecimal}
-            (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )
-            (
-                SELECT
-                {$costAttrId},
-                0,
-                a.entity_id,
-                b.cost
-                FROM {$catalogProductEntity} a
-                INNER JOIN {$stockPriceTemp} b
-                    ON a.store_product_id = b.store_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.cost"
-        );
-    }
-
     private function _cleanCateoryProductFlatTable()
     {
         $q = 'SHOW TABLES LIKE "' . $this->_getTableName('catalog_product_flat_') . '%"';
@@ -8805,15 +8480,22 @@ class Sinch
                     FILE_PRICE_RULES,
                     FILE_CUSTOMER_GROUPS,
                     FILE_CUSTOMER_GROUP_CATEGORIES,
-                    FILE_CUSTOMER_GROUP_PRICE
+                    FILE_CUSTOMER_GROUP_PRICE,
+                    FILE_DISTRIBUTORS,
+                    FILE_DISTRIBUTORS_STOCK_AND_PRICES
                 ];
 
                 $this->uploadFiles();
                 $this->addImportStatus('Stock Price Upload Files');
 
                 $this->print("Parse Stock And Prices...");
-
-                $this->parseStockAndPrices();
+                //TODO: Replace parseStockAndPrices
+                $this->stockPriceImport->parse(
+                    $this->varDir . FILE_STOCK_AND_PRICES,
+                    $this->varDir . FILE_DISTRIBUTORS,
+                    $this->varDir . FILE_DISTRIBUTORS_STOCK_AND_PRICES
+                );
+                $this->stockPriceImport->apply();
                 $this->addImportStatus('Stock Price Parse Products');
 
                 $this->print("Apply Customer Group Price...");
