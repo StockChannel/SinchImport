@@ -92,6 +92,90 @@ class StockPrice extends AbstractImportSection
     }
 
     /**
+     * Uses the distributor stock and price information to populate the supplier_{1,2,3,4,5} attributes
+     * @return void
+     */
+    public function applyDistributors()
+    {
+        $conn = $this->getConnection();
+        $catalogProductEntityVarchar = $this->getTableName('catalog_product_entity_varchar');
+        $catalogProductEntity = $this->getTableName('catalog_product_entity');
+        $productsWebsiteTemp = $this->getTableName('products_website_temp');
+
+        //Holds copy of the data (so we can delete entries as we use them for each supplier attribute)
+        $tempTable = $this->getTableName('sinch_distributors_stock_supplier_temp');
+        //Holds a single entry per product (this becomes the entry we insert on each loop iteration)
+        $tempSingle = $this->getTableName('sinch_distributors_stock_supplier_processing');
+
+        //Drop and recreate the temp table
+        $conn->query("DROP TABLE IF EXISTS {$tempTable}");
+        $conn->query(
+            "CREATE TABLE IF NOT EXISTS {$tempTable} (
+                `product_id` int(11) NOT NULL,
+                `distributor_id` int(11) NOT NULL,
+                PRIMARY KEY (`distributor_id`,`product_id`),
+                FOREIGN KEY (`distributor_id`) REFERENCES `sinch_distributors` (`distributor_id`) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+        );
+
+        //Copy the content into the temp table
+        $conn->query("INSERT INTO {$tempTable} SELECT product_id, distributor_id FROM {$this->distiStockImportTable}");
+
+        //Create the single table
+        $conn->query("DROP TABLE IF EXISTS {$tempSingle}");
+        $conn->query("CREATE TABLE IF NOT EXISTS {$tempSingle} LIKE {$tempTable}");
+
+        for ($i = 1; $i <= 5; $i++) {
+            $conn->query("DELETE FROM {$tempSingle}");
+            //The group by causes only a single row to be emitted per product (it picks any value for distributor, so supplier order is undefined behaviour)
+            $conn->query("INSERT INTO {$tempSingle} SELECT product_id, ANY_VALUE(distributor_id) FROM {$tempTable} GROUP BY product_id");
+
+            $supplierAttrId = $this->getProductAttributeId('supplier_' . $i);
+            //Try to clear the attribute value (in case there are less than 5 suppliers for each product, but there was previously more)
+            $conn->query(
+                "DELETE FROM {$catalogProductEntityVarchar} WHERE attribute_id = :supplierAttrId",
+                [":supplierAttrId" => $supplierAttrId]
+            );
+
+            // Product Distributors (global scope)
+            $conn->query(
+                "INSERT INTO {$catalogProductEntityVarchar} (attribute_id, store_id, entity_id, value) (
+                    SELECT {$supplierAttrId}, 0, cpe.entity_id, distributors.distributor_name FROM {$catalogProductEntity} cpe
+                        INNER JOIN {$tempSingle} supplier
+                            ON cpe.store_product_id = supplier.product_id
+                        INNER JOIN {$this->distiTable} distributors
+                            ON supplier.distributor_id = distributors.distributor_id
+                ) ON DUPLICATE KEY UPDATE value = distributors.distributor_name"
+            );
+
+            // Product Distributors (website scope)
+            $conn->query(
+                "INSERT INTO {$catalogProductEntityVarchar} (attribute_id, store_id, entity_id, value) (
+                    SELECT {$supplierAttrId}, w.website, cpe.entity_id, distributors.distributor_name FROM {$catalogProductEntity} cpe
+                        INNER JOIN {$tempSingle} supplier
+                            ON cpe.store_product_id = supplier.product_id
+                        INNER JOIN {$this->distiTable} distributors
+                            ON supplier.distributor_id = distributors.distributor_id
+                        INNER JOIN {$productsWebsiteTemp} w
+                            ON cpe.store_product_id = w.store_product_id
+                ) ON DUPLICATE KEY UPDATE value = distributors.distributor_name"
+            );
+
+            //Remove the supplier we just added the attribute for from the temp table
+            $conn->query(
+                "DELETE temp FROM {$tempTable} temp
+                    INNER JOIN {$tempSingle} single
+                        ON temp.product_id = single.product_id
+                        AND temp.distributor_id = single.distributor_id"
+            );
+        }
+
+        //Clean up the temp tables
+        $conn->query("DROP TABLE IF EXISTS {$tempSingle}");
+        $conn->query("DROP TABLE IF EXISTS {$tempTable}");
+    }
+
+    /**
      * Apply the new stock and price information to the Magento tables
      * @return void
      */
@@ -142,14 +226,14 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, 0, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.store_product_id = st.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
 
         //Add price (website)
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, w.website, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.store_product_id = st.store_product_id
                 INNER JOIN {$prodWebTemp} w
                     ON cpe.store_product_id = w.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
@@ -157,14 +241,15 @@ class StockPrice extends AbstractImportSection
         //Add cost (global)
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$costAttrId}, 0, cpe.entity_id, st.cost FROM {$catalogProductEntity} cpe
-                INNER JOIN {$this->stockImportTable} st ON cpe.store_product_id = st.product_id
+                INNER JOIN {$this->stockImportTable} st
+                    ON cpe.store_product_id = st.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.cost");
 
         //Add cost (website)
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$costAttrId}, w.website, cpe.entity_id, st.cost FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.store_product_id = st.store_product_id
                 INNER JOIN {$prodWebTemp} w
                     ON cpe.store_product_id = w.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.cost");
@@ -175,7 +260,7 @@ class StockPrice extends AbstractImportSection
             SET number_of_products = (
                 SELECT COUNT(*) FROM {$catalogProductEntity} cpe
                     INNER JOIN {$this->stockImportTable} st
-                        ON cpe.store_product_id = st.product_id
+                        ON cpe.store_product_id = st.store_product_id
             )
             WHERE id = (SELECT MAX(id) FROM {$this->importStatsTable})"
         );

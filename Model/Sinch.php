@@ -5441,7 +5441,7 @@ class Sinch
             $this->addSearchCache();
             $this->addPdfUrl();
             $this->addShortDescriptions();
-            $this->addProductDistributors();
+            $this->stockPriceImport->applyDistributors();
             if (!$this->_ignore_product_contracts) {
                 $this->addProductContracts();
             }
@@ -6292,134 +6292,6 @@ class Sinch
                                     value = b.product_short_description
                               "
         );
-    }
-
-    private function addProductDistributors()
-    {
-        $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $this->_getTableName(
-                'sinch_distributors_stock_and_price_temporary'
-            )
-        );
-        $this->_doQuery(
-            "CREATE TABLE IF NOT EXISTS " . $this->_getTableName(
-                'sinch_distributors_stock_and_price_temporary'
-            ) . "
-                      LIKE " . $this->_getTableName(
-                'sinch_distributors_stock_and_price'
-            )
-        );
-        $this->_doQuery(
-            "INSERT INTO " . $this->_getTableName(
-                'sinch_distributors_stock_and_price_temporary'
-            ) . " SELECT * FROM " . $this->_getTableName(
-                'sinch_distributors_stock_and_price'
-            )
-        );
-        for ($i = 1; $i <= 5; $i++) {
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price_temporary_supplier'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE IF NOT EXISTS " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price_temporary_supplier'
-                ) . "
-                      LIKE " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price'
-                )
-            );
-            $this->_doQuery(
-                "INSERT INTO " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price_temporary_supplier'
-                ) . " SELECT * FROM " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price_temporary'
-                ) . " GROUP BY store_product_id"
-            );
-
-            // product Distributors for all web sites
-            $this->_doQuery(
-                "
-                                INSERT INTO " . $this->_getTableName(
-                    'catalog_product_entity_varchar'
-                ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(
-                                  SELECT
-                                    " . $this->_getProductAttributeId(
-                    'supplier_' . $i
-                ) . ",
-                                    w.website,
-                                    a.entity_id,
-                                    d.distributor_name
-                                  FROM " . $this->_getTableName(
-                    'catalog_product_entity'
-                ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price_temporary_supplier'
-                ) . " b
-                                    ON a.store_product_id = b.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                    'sinch_distributors'
-                ) . " d
-                                    ON b.distributor_id = d.distributor_id
-                                  INNER JOIN " . $this->_getTableName(
-                    'products_website_temp'
-                ) . " w
-                                    ON a.store_product_id=w.store_product_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = d.distributor_name
-                              "
-            );
-            // product Distributors for all web sites
-            $this->_doQuery(
-                "
-                                INSERT INTO " . $this->_getTableName(
-                    'catalog_product_entity_varchar'
-                ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(
-                                  SELECT
-                                    " . $this->_getProductAttributeId(
-                    'supplier_' . $i
-                ) . ",
-                                    0,
-                                    a.entity_id,
-                                    d.distributor_name
-                                  FROM " . $this->_getTableName(
-                    'catalog_product_entity'
-                ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price_temporary_supplier'
-                ) . " b
-                                    ON a.store_product_id = b.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                    'sinch_distributors'
-                ) . " d
-                                    ON b.distributor_id = d.distributor_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = d.distributor_name
-                              "
-            );
-
-            $this->_doQuery(
-                "DELETE sdsapt FROM " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price_temporary'
-                ) . " sdsapt JOIN " . $this->_getTableName(
-                    'sinch_distributors_stock_and_price_temporary_supplier'
-                )
-                . " sdsapts ON sdsapt.store_product_id = sdsapts.store_product_id AND sdsapt.distributor_id = sdsapts.distributor_id"
-            );
-        }
     }
 
     private function addProductContracts()
@@ -7417,7 +7289,7 @@ class Sinch
             $this->addSearchCache();
             $this->addPdfUrl();
             $this->addShortDescriptions();
-            $this->addProductDistributors();
+            $this->stockPriceImport->applyDistributors();
         }
         $this->addMetaTitle();
         $this->addMetaDescriptions();
@@ -8062,7 +7934,7 @@ class Sinch
             $this->addSearchCache();
             $this->addPdfUrl();
             $this->addShortDescriptions();
-            $this->addProductDistributors();
+            $this->stockPriceImport->applyDistributors();
             if (!$this->_ignore_product_contracts) {
                 $this->addProductContracts();
             }
