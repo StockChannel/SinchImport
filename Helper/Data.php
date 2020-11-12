@@ -161,4 +161,13 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         }
         return $this->getCustomerGroupForAccountGroup($accountGroup);
     }
+
+    /**
+     * Return whether Multi-source inventory is enabled (both the MSI modules, and the setting within the import)
+     * @return bool
+     */
+    public function isMSIEnabled()
+    {
+        return $this->isModuleEnabled('Magento_Inventory') && $this->getStoreConfig('sinchimport/general/multisource_stock');
+    }
 }

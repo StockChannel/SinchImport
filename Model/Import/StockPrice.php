@@ -10,6 +10,9 @@ namespace SITC\Sinchimport\Model\Import;
  */
 class StockPrice extends AbstractImportSection
 {
+    const LOG_PREFIX = "StockPrice: ";
+    const LOG_FILENAME = "stockprice";
+
     const STOCK_IMPORT_TABLE = 'sinch_stock_and_prices';
     const DISTI_TABLE = 'sinch_distributors';
     const DISTI_STOCK_IMPORT_TABLE = 'sinch_distributors_stock_and_price';
@@ -50,7 +53,7 @@ class StockPrice extends AbstractImportSection
     {
         $conn = $this->getConnection();
 
-        //Load distributors
+        $this->startTimingStep('Load distributors');
         $conn->query("DELETE FROM {$this->distiTable}");
         $conn->query(
             "LOAD DATA LOCAL INFILE '{$distributorsCsv}'
@@ -61,8 +64,9 @@ class StockPrice extends AbstractImportSection
                 IGNORE 1 LINES
                 (distributor_id, distributor_name, website)"
         );
+        $this->endTimingStep();
 
-        //Load stock and price data
+        $this->startTimingStep('Load stock and price data');
         $conn->query("DELETE FROM {$this->stockImportTable}");
         $conn->query(
             "LOAD DATA LOCAL INFILE '{$stockAndPricesCsv}'
@@ -75,8 +79,9 @@ class StockPrice extends AbstractImportSection
                 SET price = REPLACE(@price, ',', '.'),
                     cost = REPLACE(@cost, ',', '.')"
         );
+        $this->endTimingStep();
 
-        //Load distributor stock data
+        $this->startTimingStep('Load distributor stock data');
         $conn->query("DELETE FROM {$this->distiStockImportTable}");
         $conn->query(
             "LOAD DATA LOCAL INFILE '{$distiStockAndPricesCsv}'
@@ -87,7 +92,7 @@ class StockPrice extends AbstractImportSection
                 IGNORE 1 LINES
                 (product_id, distributor_id, stock, @cost, @distributor_sku, @distributor_category, @eta, @brand_sku)"
         );
-
+        $this->endTimingStep();
 
     }
 
@@ -97,6 +102,7 @@ class StockPrice extends AbstractImportSection
      */
     public function applyDistributors()
     {
+        $this->startTimingStep('Apply distributors prep');
         $conn = $this->getConnection();
         $catalogProductEntityVarchar = $this->getTableName('catalog_product_entity_varchar');
         $catalogProductEntity = $this->getTableName('catalog_product_entity');
@@ -124,16 +130,19 @@ class StockPrice extends AbstractImportSection
         //Create the single table
         $conn->query("DROP TABLE IF EXISTS {$tempSingle}");
         $conn->query("CREATE TABLE IF NOT EXISTS {$tempSingle} LIKE {$tempTable}");
+        $this->endTimingStep();
 
         for ($i = 1; $i <= 5; $i++) {
+            $this->startTimingStep('Product supplier ' . $i);
             $conn->query("DELETE FROM {$tempSingle}");
             //The group by causes only a single row to be emitted per product (it picks any value for distributor, so supplier order is undefined behaviour)
             $conn->query("INSERT INTO {$tempSingle} SELECT product_id, ANY_VALUE(distributor_id) FROM {$tempTable} GROUP BY product_id");
 
             $supplierAttrId = $this->getProductAttributeId('supplier_' . $i);
             //Try to clear the attribute value (in case there are less than 5 suppliers for each product, but there was previously more)
+            //We just update the value to an empty string, as UPDATE should be faster than DELETE + INSERT, especially with triggers
             $conn->query(
-                "DELETE FROM {$catalogProductEntityVarchar} WHERE attribute_id = :supplierAttrId",
+                "UPDATE {$catalogProductEntityVarchar} SET value = '' WHERE attribute_id = :supplierAttrId",
                 [":supplierAttrId" => $supplierAttrId]
             );
 
@@ -168,11 +177,14 @@ class StockPrice extends AbstractImportSection
                         ON temp.product_id = single.product_id
                         AND temp.distributor_id = single.distributor_id"
             );
+            $this->endTimingStep();
         }
 
         //Clean up the temp tables
+        $this->startTimingStep('Apply distributors cleanup');
         $conn->query("DROP TABLE IF EXISTS {$tempSingle}");
         $conn->query("DROP TABLE IF EXISTS {$tempTable}");
+        $this->endTimingStep();
     }
 
     /**
@@ -182,54 +194,22 @@ class StockPrice extends AbstractImportSection
     public function apply()
     {
         $conn = $this->getConnection();
-        $catalogInvStockItem = $this->getTableName('cataloginventory_stock_item');
         $catalogProductEntity = $this->getTableName('catalog_product_entity');
         $catalogProductEntityDecimal = $this->getTableName('catalog_product_entity_decimal');
         $prodWebTemp = $this->getTableName('products_website_temp');
 
-        //Delete stock entries for non-existent products
-        $conn->query("DELETE csi FROM {$catalogInvStockItem} csi
-            LEFT JOIN {$catalogProductEntity} cpe
-                ON csi.product_id = cpe.entity_id
-            WHERE cpe.entity_id IS NULL"
-        );
-
-        //Set stock to 0 for sinch products not present in the new data
-        $conn->query("UPDATE {$catalogInvStockItem} csi
-            INNER JOIN {$catalogProductEntity} cpe
-                ON cpe.entity_id = csi.product_id
-            LEFT JOIN {$this->stockImportTable} st
-                ON st.store_product_id = cpe.store_product_id
-            SET csi.qty = 0,
-                csi.is_in_stock = 0
-            WHERE cpe.store_product_id IS NOT NULL
-                AND st.stock IS NULL"
-        );
-
-        /* The website_id used in cataloginventory_stock_item serves no purpose and setting it to anything but
-            the value of \Magento\CatalogInventory\Api\StockConfigurationInterface->getDefaultScopeId() only serves to break the checkout process */
-        $stockItemScope = $this->stockConfiguration->getDefaultScopeId();
-
-        //Insert new sinch stock levels
-        $conn->query("INSERT INTO {$catalogInvStockItem} (product_id, stock_id, qty, is_in_stock, manage_stock, website_id) (
-            SELECT a.entity_id, 1, b.stock, IF(b.stock > 0, 1, 0), 0, {$stockItemScope} FROM {$catalogProductEntity} a
-                INNER JOIN {$this->stockImportTable} b
-                    ON a.store_product_id = b.store_product_id
-        ) ON DUPLICATE KEY UPDATE qty = b.stock, is_in_stock = IF(b.stock > 0, 1, 0), manage_stock = 1");
-
-        //TODO: Make sure to invalidate the cataloginventory_stock indexer so cataloginventory_stock_status is built
-
         $priceAttrId = $this->getProductAttributeId('price');
         $costAttrId = $this->getProductAttributeId('cost');
 
-        //Add price (global)
+        $this->startTimingStep('Add price (global)');
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, 0, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
                     ON cpe.store_product_id = st.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
+        $this->endTimingStep();
 
-        //Add price (website)
+        $this->startTimingStep('Add price (website)');
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, w.website, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
@@ -237,15 +217,17 @@ class StockPrice extends AbstractImportSection
                 INNER JOIN {$prodWebTemp} w
                     ON cpe.store_product_id = w.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
+        $this->endTimingStep();
 
-        //Add cost (global)
+        $this->startTimingStep('Add cost (global)');
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$costAttrId}, 0, cpe.entity_id, st.cost FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
                     ON cpe.store_product_id = st.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.cost");
+        $this->endTimingStep();
 
-        //Add cost (website)
+        $this->startTimingStep('Add cost (website)');
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$costAttrId}, w.website, cpe.entity_id, st.cost FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
@@ -253,7 +235,10 @@ class StockPrice extends AbstractImportSection
                 INNER JOIN {$prodWebTemp} w
                     ON cpe.store_product_id = w.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.cost");
+        $this->endTimingStep();
 
+        //Apply stock changes
+        $this->applyStock();
 
         //Update import statistics with product count
         $conn->query("UPDATE {$this->importStatsTable}
@@ -262,8 +247,110 @@ class StockPrice extends AbstractImportSection
                     INNER JOIN {$this->stockImportTable} st
                         ON cpe.store_product_id = st.store_product_id
             )
-            WHERE id = (SELECT MAX(id) FROM {$this->importStatsTable})"
+            ORDER BY id DESC LIMIT 1"
         );
+
+        //Print timing info
+        $this->timingPrint();
+    }
+
+    /**
+     * Apply multi-source stock, if enabled
+     */
+    private function applyStock()
+    {
+        $conn = $this->getConnection();
+        //Tables common to both implementations
+        $catalogProductEntity = $this->getTableName('catalog_product_entity');
+
+        if ($this->helper->isMSIEnabled()) {
+            //MSI (or the multi-source setting for the import) enabled, process multi-source
+            //Tables
+            $inventory_source = $this->getTableName('inventory_source');
+            $inventory_source_item = $this->getTableName('inventory_source_item');
+            $sinch_distributors = $this->getTableName('sinch_distributors');
+            $sinch_distributors_stock_and_price = $this->getTableName('sinch_distributors_stock_and_price');
+
+            //Ensure that the distributor sources exist
+            $this->startTimingStep('Add inventory sources');
+            $conn->query(
+                "INSERT INTO {$inventory_source} (source_code, name, country_id, postcode) (
+                    SELECT CONCAT('sinch_', distributor_id), distributor_name, 'GB', '?' FROM {$sinch_distributors}
+                ) ON DUPLICATE KEY UPDATE name = distributor_name"
+            );
+            $this->endTimingStep();
+
+            $this->startTimingStep('Delete stock entries for non-existent products (MSI)');
+            $conn->query("DELETE isi FROM {$inventory_source_item} isi
+                LEFT JOIN {$catalogProductEntity} cpe
+                    ON isi.sku = cpe.sku
+                WHERE cpe.entity_id IS NULL"
+            );
+            $this->endTimingStep();
+
+            $this->startTimingStep('Set stock to 0 for sinch products not present in the new data (MSI)');
+            //TODO: Is ISI.status the same as CSI.is_in_stock?
+            $conn->query("UPDATE {$inventory_source_item} isi
+                INNER JOIN {$catalogProductEntity} cpe
+                    ON cpe.sku = isi.sku
+                LEFT JOIN {$sinch_distributors_stock_and_price} sdsp
+                    ON sdsp.store_product_id = cpe.store_product_id
+                SET isi.quantity = 0,
+                    isi.status = 0
+                WHERE cpe.store_product_id IS NOT NULL
+                    AND sdsp.stock IS NULL"
+            );
+            $this->endTimingStep();
+
+            //Create stock records per distributor
+            $this->startTimingStep('Insert new stock levels (MSI)');
+            $conn->query(
+                "INSERT INTO {$inventory_source_item} (source_code, sku, quantity, status) (
+                    SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock > 0, 1, 0) FROM {$sinch_distributors_stock_and_price} sdsp  
+                        INNER JOIN catalog_product_entity cpe ON sdsp.store_product_id = cpe.store_product_id
+                ) ON DUPLICATE KEY UPDATE quantity = sdsp.stock, status = IF(sdsp.stock > 0, 1, 0)"
+            );
+            $this->endTimingStep();
+        } else {
+            //Single source (default)
+
+            /* The website_id used in cataloginventory_stock_item serves no purpose and setting it to anything but
+            the value of \Magento\CatalogInventory\Api\StockConfigurationInterface->getDefaultScopeId() only serves to break the checkout process */
+            $stockItemScope = $this->stockConfiguration->getDefaultScopeId();
+            //Tables
+            $catalogInvStockItem = $this->getTableName('cataloginventory_stock_item');
+
+            $this->startTimingStep('Delete stock entries for non-existent products');
+            $conn->query("DELETE csi FROM {$catalogInvStockItem} csi
+            LEFT JOIN {$catalogProductEntity} cpe
+                ON csi.product_id = cpe.entity_id
+            WHERE cpe.entity_id IS NULL"
+            );
+            $this->endTimingStep();
+
+            $this->startTimingStep('Set stock to 0 for sinch products not present in the new data');
+            $conn->query("UPDATE {$catalogInvStockItem} csi
+            INNER JOIN {$catalogProductEntity} cpe
+                ON cpe.entity_id = csi.product_id
+            LEFT JOIN {$this->stockImportTable} st
+                ON st.store_product_id = cpe.store_product_id
+            SET csi.qty = 0,
+                csi.is_in_stock = 0
+            WHERE cpe.store_product_id IS NOT NULL
+                AND st.stock IS NULL"
+            );
+            $this->endTimingStep();
+
+            $this->startTimingStep('Insert new stock levels');
+            $conn->query("INSERT INTO {$catalogInvStockItem} (product_id, stock_id, qty, is_in_stock, manage_stock, website_id) (
+                    SELECT a.entity_id, 1, b.stock, IF(b.stock > 0, 1, 0), 0, {$stockItemScope} FROM {$catalogProductEntity} a
+                        INNER JOIN {$this->stockImportTable} b
+                            ON a.store_product_id = b.store_product_id
+                ) ON DUPLICATE KEY UPDATE qty = b.stock, is_in_stock = IF(b.stock > 0, 1, 0), manage_stock = 1"
+            );
+            $this->endTimingStep();
+            //TODO: Make sure to invalidate the cataloginventory_stock indexer so cataloginventory_stock_status is built
+        }
     }
 
     /**
