@@ -95,21 +95,21 @@ abstract class AbstractImportSection {
     }
 
     /**
-     * 
+     * Print timing information created by startTimingStep and endTimingStep
+     * @return void
      */
     protected function timingPrint()
     {
-        $last = count($this->timingStep) - 1;
-        if (!empty($this->timingStep[$last]['end']) && !empty($this->timingStep[0]['start'])) {
-            $elapsed = number_format($this->timingStep[$last]['end'] - $this->timingStep[0]['start'], 2);
-            $this->log("Took {$elapsed} seconds total");
-        }
+        $totalElapsed = 0.0;
         foreach ($this->timingStep as $timeStep) {
             if (empty($timeStep['end'])) {
                 continue;
             }
+            $totalElapsed += $timeStep['end'] - $timeStep['start'];
             $elapsed = number_format($timeStep['end'] - $timeStep['start'], 2);
             $this->log("{$timeStep['name']} => {$elapsed} seconds");
         }
+        $elapsed = number_format($totalElapsed, 2);
+        $this->log("Took {$elapsed} seconds total");
     }
 }
