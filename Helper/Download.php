@@ -59,7 +59,8 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
             $this->ftpConn = null;
             return "Failed to connect to {$this->server}";
         }
-        
+
+        \ftp_set_option($this->ftpConn, FTP_TIMEOUT_SEC, 30);
         if (!@\ftp_login($this->ftpConn, $this->username, $this->password)) {
             $this->disconnect();
             return 'Incorrect username or password';
@@ -88,23 +89,35 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
         $fileGzipped = false;
         $dirListing = \ftp_nlist($this->ftpConn, ".");
         if($dirListing === false) {
-            $this->print("Warning: Directory listing failed, assuming file to exist (and not be gzipped)");
-            $fileExists = true;
-        } else {
-            foreach($dirListing as $fileEntry){
-                if($fileEntry == $file . ".gz") { //Detect whether the files seem to be gzipped
+            $this->print("Warning: Directory listing failed, attempting to reauthenticate");
+            $this->disconnect();
+            $conRes = $this->connect();
+            if ($conRes !== true) {
+                $this->print("FTP Reauthentication failed, abandoning");
+                return false;
+            }
+            $dirListing = \ftp_nlist($this->ftpConn, ".");
+            if ($dirListing === false) {
+                $this->print("Warning: Secondary directory listing failed, assuming file to exist (and not be gzipped)");
+                $fileExists = true;
+            }
+        }
+        if (\is_array($dirListing)) {
+            foreach ($dirListing as $fileEntry) {
+                if ($fileEntry == $file . ".gz") { //Detect whether the files seem to be gzipped
                     $fileGzipped = true;
                     $fileExists = true;
                     break;
                 }
-                if($fileEntry == $file) {
+                if ($fileEntry == $file) {
                     $fileExists = true;
                     //Don't break if we detect the regular file, as the gzipped version may exist (and it should be preferred)
                 }
             }
         }
-        
+
         if(!$fileExists){
+            $this->print("$file doesn't exist");
             return false;
         }
         $filePath = $file . ($fileGzipped ? ".gz" : "");
@@ -129,7 +142,7 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
                 $this->print(".", false);
                 $lastPrint = $now;
             }
-            $state = ftp_nb_continue($this->ftpConn);
+            $state = @\ftp_nb_continue($this->ftpConn);
         }
 
         if($state != FTP_FINISHED) {
@@ -149,8 +162,9 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
         }
 
         if($fileGzipped) {
-            $this->print("Attempting to gunzip CSV file");
-            exec("gunzip " . $this->saveDir . $file . ".gz");
+            $this->print("Attempting to gunzip {$filePath}");
+            $outputLoc = \escapeshellarg($this->saveDir . $file . ".gz");
+            \exec("gunzip {$outputLoc}");
         }
         return true;
     }
@@ -181,10 +195,13 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
 
     private function wget($file)
     {
-        $url = \escapeshellarg("ftp://{$this->username}:{$this->password}@{$this->server}/{$file}");
+        $url = \escapeshellarg("ftp://{$this->server}/{$file}");
         $outputLoc = \escapeshellarg($this->saveDir . $file);
+        $user = \escapeshellarg($this->username);
+        $password = \escapeshellarg($this->password);
         $result = -1;
-        exec("wget -O{$outputLoc} {$url}", null, $result);
+        $shellOut = "";
+        \exec("wget -q -t 3 -T 30 --show-progress -O{$outputLoc} --user={$user} --password={$password} {$url}", $shellOut, $result);
         return $result == 0;
     }
 }
