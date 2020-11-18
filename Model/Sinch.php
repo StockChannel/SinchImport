@@ -8434,10 +8434,8 @@ class Sinch
                     $this->print("Caught exception while running post import hooks: " . $e->getMessage());
                 }
 
-                $this->print("Start indexing  Stock & Price...");
-                $this->runStockPriceIndexer();
+                //Dead status (actually handled by StockPrice and IndexManagement now)
                 $this->addImportStatus('Stock Price Indexing data');
-                $this->print("Finish indexing  Stock & Price...");
 
                 $this->print("Start cleaning Sinch cache...");
                 $this->runCleanCache();
@@ -8473,26 +8471,6 @@ class Sinch
         } else {
             return false;
         }
-    }
-
-    private function runStockPriceIndexer()
-    {
-        $priceIndexers = [
-            'catalog_product_price',
-            'cataloginventory_stock'
-        ];
-
-        /**
-         * @var IndexerInterface[] $indexers
-         */
-        $indexers = $this->indexersFactory->create()->getItems();
-        foreach ($indexers as $indexer) {
-            if (in_array($indexer->getIndexerId(), $priceIndexers)) {
-                $indexer->reindexAll();
-            }
-        }
-
-        return true;
     }
 
     private function invalidateIndexers()

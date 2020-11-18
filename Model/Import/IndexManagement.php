@@ -2,28 +2,45 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
-class IndexManagement {
-    /** @var \Magento\Framework\Indexer\StateInterfaceFactory $stateFactory */
-    private $stateFactory;
-    /** @var \Magento\Framework\Indexer\ConfigInterface $indexerConfig */
-    private $indexerConfig;
+use Magento\Framework\Indexer\ActionFactory;
+use Magento\Framework\Indexer\ConfigInterface;
+use Magento\Framework\Indexer\IndexerRegistry;
+use Magento\Framework\Indexer\StateInterface;
+use Magento\Framework\Indexer\StateInterfaceFactory;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Logger\Logger;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
-    /** @var \SITC\Sinchimport\Helper\Data $helper */
+class IndexManagement {
+    /** @var StateInterfaceFactory $stateFactory */
+    private $stateFactory;
+    /** @var ConfigInterface $indexerConfig */
+    private $indexerConfig;
+    /** @var IndexerRegistry $indexerRegistry */
+    private $indexerRegistry;
+    /** @var ActionFactory $indexActionFactory */
+    private $indexActionFactory;
+
+    /** @var Data $helper */
     private $helper;
-    /** @var \Symfony\Component\Console\Output\ConsoleOutput $output */
+    /** @var ConsoleOutput $output */
     private $output;
-    /** @var \SITC\Sinchimport\Logger\Logger $logger */
+    /** @var Logger $logger */
     private $logger;
 
     public function __construct(
-        \Magento\Framework\Indexer\StateInterfaceFactory $stateFactory,
-        \Magento\Framework\Indexer\ConfigInterface $indexerConfig,
-        \SITC\Sinchimport\Helper\Data $helper,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \SITC\Sinchimport\Logger\Logger $logger
+        StateInterfaceFactory $stateFactory,
+        ConfigInterface $indexerConfig,
+        IndexerRegistry $indexerRegistry,
+        ActionFactory $indexActionFactory,
+        Data $helper,
+        ConsoleOutput $output,
+        Logger $logger
     ){
         $this->stateFactory = $stateFactory;
         $this->indexerConfig = $indexerConfig;
+        $this->indexerRegistry = $indexerRegistry;
+        $this->indexActionFactory = $indexActionFactory;
         $this->helper = $helper;
         $this->output = $output;
         $this->logger = $logger->withName("IndexManagement");
@@ -55,7 +72,7 @@ class IndexManagement {
         foreach(array_keys($this->indexerConfig->getIndexers()) as $indexerId) {
             $indexerState = $this->stateFactory->create();
             $indexerState->loadByIndexer($indexerId);
-            if ($indexerState->getStatus() == \Magento\Framework\Indexer\StateInterface::STATUS_WORKING) {
+            if ($indexerState->getStatus() == StateInterface::STATUS_WORKING) {
                 return false;
             }
         }
@@ -84,5 +101,28 @@ class IndexManagement {
     {
         $this->output->writeln($message);
         $this->logger->info($message);
+    }
+
+    /**
+     * Invalidate the index with the given name
+     * @param string $indexerName
+     * @return void
+     */
+    public function invalidateIndex(string $indexerName)
+    {
+        $indexer = $this->indexerRegistry->get($indexerName);
+        $indexer->invalidate();
+    }
+
+    /**
+     * Run a full reindex of the index with the given name
+     * @param string $indexerName
+     * @return void
+     */
+    public function runIndex(string $indexerName)
+    {
+        $indexer = $this->indexerRegistry->get($indexerName);
+        $indexActions = $this->indexActionFactory->create($indexer->getActionClass());
+        $indexActions->executeFull();
     }
 }
