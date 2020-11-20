@@ -23,6 +23,10 @@ class StockPrice extends AbstractImportSection
     private $stockConfiguration;
     /** @var IndexManagement */
     private $indexManagement;
+    /** @var \Magento\InventoryApi\Api\StockRepositoryInterface */
+    private $stockRepo;
+    /** @var \Magento\InventoryApi\Api\Data\StockInterfaceFactory */
+    private $stockFactory;
 
     private $stockImportTable;
     private $distiTable;
@@ -34,12 +38,16 @@ class StockPrice extends AbstractImportSection
         \Symfony\Component\Console\Output\ConsoleOutput $output,
         \SITC\Sinchimport\Helper\Data $helper,
         \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfiguration,
-        IndexManagement $indexManagement
+        IndexManagement $indexManagement,
+        \Magento\InventoryApi\Api\StockRepositoryInterface $stockRepo,
+        \Magento\InventoryApi\Api\Data\StockInterfaceFactory $stockFactory
     ){
         parent::__construct($resourceConn, $output);
         $this->helper = $helper;
         $this->stockConfiguration = $stockConfiguration;
         $this->indexManagement = $indexManagement;
+        $this->stockRepo = $stockRepo;
+        $this->stockFactory = $stockFactory;
 
         $this->stockImportTable = $this->getTableName(self::STOCK_IMPORT_TABLE);
         $this->distiTable = $this->getTableName(self::DISTI_TABLE);
@@ -194,6 +202,8 @@ class StockPrice extends AbstractImportSection
     /**
      * Apply the new stock and price information to the Magento tables
      * @return void
+     * @throws \Magento\Framework\Exception\CouldNotSaveException
+     * @throws \Magento\Framework\Validation\ValidationException
      */
     public function apply()
     {
@@ -241,8 +251,7 @@ class StockPrice extends AbstractImportSection
         ) ON DUPLICATE KEY UPDATE value = st.cost");
         $this->endTimingStep();
 
-        $this->startTimingStep('Invalidate and Reindex catalog_product_price');
-        $this->indexManagement->invalidateIndex("catalog_product_price");
+        $this->startTimingStep('Reindex catalog_product_price');
         $this->indexManagement->runIndex("catalog_product_price");
         $this->endTimingStep();
 
@@ -263,9 +272,11 @@ class StockPrice extends AbstractImportSection
         $this->timingPrint();
     }
 
+
     /**
-     * Apply stock
-     * @throws \Exception
+     * Apply Stock
+     * @throws \Magento\Framework\Exception\CouldNotSaveException
+     * @throws \Magento\Framework\Validation\ValidationException
      */
     private function applyStock()
     {
@@ -289,14 +300,13 @@ class StockPrice extends AbstractImportSection
             $inventory_stock = $this->getTableName('inventory_stock');
             $inventory_source_stock_link = $this->getTableName('inventory_source_stock_link');
 
-            $stockId = $conn->query("SELECT stock_id FROM {$inventory_stock} WHERE name = 'Sinch'");
+            $stockId = $conn->fetchOne("SELECT stock_id FROM {$inventory_stock} WHERE name = 'Sinch'");
             if (!\is_numeric($stockId)) {
-                $conn->query("INSERT INTO {$inventory_stock} (name) VALUES('Sinch')");
-                $stockId = $conn->query("SELECT stock_id FROM {$inventory_stock} WHERE name = 'Sinch'");
-                if(!is_numeric($stockId)) {
-                    $this->log("Unable to add Sinch inventory_stock entry");
-                    throw new \Exception("Unable to add Sinch inventory_stock entry");
-                }
+                $stockId = $this->createStockSource();
+            }
+            if (!\is_numeric($stockId)) {
+                $this->log("Failed to create sinch stock source");
+                throw new \Exception("Failed to create sinch stock source");
             }
 
             //Ensure that the distributor sources exist
@@ -309,7 +319,8 @@ class StockPrice extends AbstractImportSection
             $conn->query(
                 "INSERT INTO {$inventory_source_stock_link} (stock_id, source_code, priority) (
                     SELECT :stockId, CONCAT('sinch_', distributor_id), 1 FROM {$sinch_distributors}
-                ) ON DUPLICATE KEY UPDATE priority = VALUES(priority)"
+                ) ON DUPLICATE KEY UPDATE priority = VALUES(priority)",
+                [":stockId" => $stockId]
             );
             $this->endTimingStep();
 
@@ -367,6 +378,7 @@ class StockPrice extends AbstractImportSection
             $this->endTimingStep();
 
             $this->startTimingStep('Insert marker records in single-source stock tables');
+            //We associate the record into stock_id = 1 to mark the "default source" as containing no stock
             $conn->query("INSERT INTO {$cataloginventory_stock_item} (product_id, stock_id, qty, is_in_stock, manage_stock, website_id) (
                     SELECT cpe.entity_id, 1, NULL, 0, 1, {$stockItemScope} FROM {$catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
@@ -430,12 +442,10 @@ class StockPrice extends AbstractImportSection
 
         }
         //Make sure to invalidate the cataloginventory_stock indexer so cataloginventory_stock_status is built
-        $this->startTimingStep('Invalidate and reindex cataloginventory_stock');
-        $this->indexManagement->invalidateIndex("cataloginventory_stock");
+        $this->startTimingStep('Reindex cataloginventory_stock');
         $this->indexManagement->runIndex("cataloginventory_stock");
         $this->endTimingStep();
-        $this->startTimingStep('Invalidate and reindex the inventory index');
-        $this->indexManagement->invalidateIndex("inventory");
+        $this->startTimingStep('Reindex inventory');
         $this->indexManagement->runIndex("inventory");
         $this->endTimingStep();
     }
@@ -461,5 +471,19 @@ class StockPrice extends AbstractImportSection
                 ":attrCode" => $attribute_code
             ]
         );
+    }
+
+    /**
+     * Creates the sinch stock source, ready for MSI functionality, returning the stock_id
+     * @return int Stock ID
+     * @throws \Magento\Framework\Exception\CouldNotSaveException
+     * @throws \Magento\Framework\Validation\ValidationException
+     */
+    private function createStockSource()
+    {
+        //We use the repository methods to create the source as a view is created with it
+        $source = $this->stockFactory->create();
+        $source->setName('Sinch');
+        return $this->stockRepo->save($source);
     }
 }
