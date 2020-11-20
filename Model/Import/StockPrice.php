@@ -39,8 +39,8 @@ class StockPrice extends AbstractImportSection
         \SITC\Sinchimport\Helper\Data $helper,
         \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfiguration,
         IndexManagement $indexManagement,
-        \Magento\InventoryApi\Api\StockRepositoryInterface $stockRepo,
-        \Magento\InventoryApi\Api\Data\StockInterfaceFactory $stockFactory
+        \Magento\InventoryApi\Api\StockRepositoryInterface\Proxy $stockRepo,
+        \Magento\InventoryApi\Api\Data\StockInterfaceFactory\Proxy $stockFactory
     ){
         parent::__construct($resourceConn, $output);
         $this->helper = $helper;
