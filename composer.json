@@ -2,17 +2,18 @@
   "name": "stockinthechannel/import",
   "description": "Stockinthechannel Import",
   "type": "magento2-module",
-  "version": "2.9.9",
+  "version": "3.0.0",
   "require": {
-    "php": ">=7.0.0",
-    "magento/framework": ">=101.0.0",
-    "magento/module-store": ">=100.2.2",
-    "magento/module-indexer": ">=100.2.0",
+    "ext-ftp": "*",
+    "ext-json": "*",
+    "ext-pdo": "*",
+    "magento/framework": ">=103.0.0",
     "magento/module-catalog": ">=102.0.0",
     "magento/module-eav": ">=100.0.2",
-    "ext-pdo": "*",
-    "ext-json": "*",
-    "ext-ftp": "*"
+    "magento/module-indexer": ">=100.2.0",
+    "magento/module-inventory-api": ">=1.0.0",
+    "magento/module-store": ">=100.2.2",
+    "php": ">=7.0.0"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "^2.6",

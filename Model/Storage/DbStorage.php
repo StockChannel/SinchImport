@@ -16,21 +16,15 @@ class DbStorage extends \Magento\UrlRewrite\Model\Storage\DbStorage
         /** @var UrlRewrite $url */
         foreach ($urls as $url) {
             $oldUrlsSelect->orWhere(
-                $this->connection->quoteIdentifier(
-                    UrlRewrite::ENTITY_TYPE
-                ) . ' = ?',
+                $this->connection->quoteIdentifier(UrlRewrite::ENTITY_TYPE) . ' = ?',
                 $url->getEntityType()
             );
             $oldUrlsSelect->where(
-                $this->connection->quoteIdentifier(
-                    UrlRewrite::ENTITY_ID
-                ) . ' = ?',
+                $this->connection->quoteIdentifier(UrlRewrite::ENTITY_ID) . ' = ?',
                 $url->getEntityId()
             );
             $oldUrlsSelect->where(
-                $this->connection->quoteIdentifier(
-                    UrlRewrite::STORE_ID
-                ) . ' = ?',
+                $this->connection->quoteIdentifier(UrlRewrite::STORE_ID) . ' = ?',
                 $url->getStoreId()
             );
         }
@@ -49,7 +43,9 @@ class DbStorage extends \Magento\UrlRewrite\Model\Storage\DbStorage
             );
         }
     }
-    protected function doReplace(array $urls)
+
+
+    protected function doReplace(array $urls) : array
     {
         try {
             $this->deleteOldUrls($urls);
@@ -95,7 +91,6 @@ class DbStorage extends \Magento\UrlRewrite\Model\Storage\DbStorage
 
             // create links
             if( count($data) > 0 ){
-//                file_put_contents('var/log/url_rewite.log', print_r($data, TRUE), FILE_APPEND);
                 $this->insertMultiple($data);
             }
         } catch (\Exception $e) {
