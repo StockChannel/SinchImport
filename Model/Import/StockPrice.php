@@ -445,9 +445,11 @@ class StockPrice extends AbstractImportSection
         $this->startTimingStep('Reindex cataloginventory_stock');
         $this->indexManagement->runIndex("cataloginventory_stock");
         $this->endTimingStep();
-        $this->startTimingStep('Reindex inventory');
-        $this->indexManagement->runIndex("inventory");
-        $this->endTimingStep();
+        if ($this->helper->isMSIEnabled()) {
+            $this->startTimingStep('Reindex inventory');
+            $this->indexManagement->runIndex("inventory");
+            $this->endTimingStep();
+        }
     }
 
     /**
