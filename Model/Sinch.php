@@ -3183,28 +3183,24 @@ class Sinch
         $catalog_category_entity
     ) {
         $path = '';
-
         $cat_id = $parent_id;
+        $conn = $this->_resourceConnection->getConnection();
 
-        $q
-            = "
-            SELECT
-                parent_id
-            FROM $catalog_category_entity
-            WHERE entity_id = $cat_id";
+        $res = $conn->fetchOne(
+            "SELECT parent_id FROM $catalog_category_entity WHERE entity_id = :cat_id",
+            [":cat_id" => $cat_id]
+        );
 
-        $res = $this->_doQuery($q)->fetch();
-        while ($res['parent_id']) {
-            $path = $res['parent_id'] . '/' . $path;
-            $parent_id = $res['parent_id'];
+        //Must avoid 0 otherwise we get a completely fucked category tree
+        //If that happens categories only turn up as search filters
+        while (is_numeric($res) && $res != 0) {
+            $path = $res . '/' . $path;
+            $parent_id = $res;
 
-            $q
-                = "
-                SELECT
-                    parent_id
-                FROM $catalog_category_entity
-                WHERE entity_id = $parent_id";
-            $res = $this->_doQuery($q)->fetch();
+            $res = $conn->fetchOne(
+                "SELECT parent_id FROM $catalog_category_entity WHERE entity_id = :parent_id",
+                [":parent_id" => $parent_id]
+            );
         }
 
         if ($cat_id) {

@@ -285,6 +285,10 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
             [':attrCode' => $attribute_code]
         );
 
+        if (!is_array($attr)) {
+            return null;
+        }
+
         $valueTable = $this->getTable("catalog_product_entity_{$attr['backend_type']}");
         $value = $conn->fetchRow(
             "SELECT value, store_id FROM {$valueTable} WHERE attribute_id = :attrId AND entity_id = :prodId",
@@ -293,6 +297,10 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
                 ':prodId' => $productId
             ]
         );
+
+        if (!is_array($value)) {
+            return null;
+        }
 
         if($attr['frontend_input'] == 'select') { //Attribute is actually eav_attribute_option_value
             $eaovTable = $this->getTable('eav_attribute_option_value');
