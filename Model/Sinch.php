@@ -8631,7 +8631,7 @@ class Sinch
             true
         )->fetch();
 
-        return $imp_date['start_import'];
+        return is_array($imp_date) ? $imp_date['start_import'] : "N/A";
     }
 
     public function getImportStatuses()
