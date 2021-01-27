@@ -21,6 +21,10 @@ class Image
         $imageId,
         $attributes = []
     ) {
+        if ($product == null) {
+            return $proceed($product, $imageId, $attributes);
+        }
+        
         if ($product->getSinchProductId()) {
             $attributes = array_merge(
                 $attributes,
