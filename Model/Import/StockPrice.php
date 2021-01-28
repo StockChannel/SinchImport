@@ -124,6 +124,7 @@ class StockPrice extends AbstractImportSection
         $tempTable = $this->getTableName('sinch_distributors_stock_supplier_temp');
         //Holds a single entry per product (this becomes the entry we insert on each loop iteration)
         $tempSingle = $this->getTableName('sinch_distributors_stock_supplier_processing');
+        $distiTable = $this->getTableName('sinch_distributors');
 
         //Drop and recreate the temp table
         $conn->query("DROP TABLE IF EXISTS {$tempTable}");
@@ -132,7 +133,7 @@ class StockPrice extends AbstractImportSection
                 `product_id` int(11) NOT NULL,
                 `distributor_id` int(11) NOT NULL,
                 PRIMARY KEY (`distributor_id`,`product_id`),
-                FOREIGN KEY (`distributor_id`) REFERENCES `sinch_distributors` (`distributor_id`) ON DELETE CASCADE ON UPDATE CASCADE
+                FOREIGN KEY (`distributor_id`) REFERENCES {$distiTable}` (`distributor_id`) ON DELETE CASCADE ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
         );
 
