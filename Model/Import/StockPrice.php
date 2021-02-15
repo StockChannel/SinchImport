@@ -133,7 +133,7 @@ class StockPrice extends AbstractImportSection
                 `product_id` int(11) NOT NULL,
                 `distributor_id` int(11) NOT NULL,
                 PRIMARY KEY (`distributor_id`,`product_id`),
-                FOREIGN KEY (`distributor_id`) REFERENCES {$distiTable}` (`distributor_id`) ON DELETE CASCADE ON UPDATE CASCADE
+                FOREIGN KEY (`distributor_id`) REFERENCES `{$distiTable}` (`distributor_id`) ON DELETE CASCADE ON UPDATE CASCADE
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
         );
 
