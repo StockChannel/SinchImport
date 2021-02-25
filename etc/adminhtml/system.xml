@@ -183,6 +183,11 @@
                     <comment><![CDATA[When disabled, SKU is assumed to be GLOBALLY UNIQUE (i.e. a product with a given SKU always represents the same product, even if the names differ)<br>
                     When enabled (the default), checks that the item name and the replacement candidate name identically match before updating quote item records (the replacement candidate is still matched based on SKU)]]></comment>
                 </field>
+                <field id="experimental_search_features" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Experimental search features</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, boosts results where the category name matches the search query]]></comment>
+                </field>
             </group>
 
         </section>

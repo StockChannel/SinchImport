@@ -3,53 +3,48 @@ namespace SITC\Sinchimport\Search\Request\Query;
 
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 /**
- * Account group filtering implementation.
+ * Match on category name and boost results accordingly
  *
  * @category SITC
  * @package  SITC\Sinchimport
  * @author   Nick Anstee <nick.anstee@stockinthechannel.com>
  */
-class AccountGroupFilter implements QueryInterface
+class CategoryBoostFilter implements QueryInterface
 {
-    /**
-     * @var string
-     */
+    /** @var string Query Name */
     private $name;
-    /**
-     * @var int
-     */
-    private $account_group = 0;
-    /**
-     * @var boolean
-     */
+    /** @var string Query to match Category Name */
+    private $category;
+    /** @var boolean */
     private $cached;
+
     /**
      * Constructor.
      *
      * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      *
-     * @param int|null       $account_group   The current users account group
-     * @param string    $name            Query name.
-     * @param boolean   $cached          Should the query be cached or not.
+     * @param string $query The category name to match
+     * @param null $name Query name.
+     * @param boolean $cached Should the query be cached or not.
      */
     public function __construct(
-        $account_group = 0,
+        string $query,
         $name = null,
         $cached = false
     ) {
-        if(is_numeric($account_group)) {
-            $this->account_group = (int)$account_group;
-        }
+        $this->category = $query;
         $this->name = $name;
         $this->cached = $cached;
     }
+
     /**
      * {@inheritDoc}
      */
     public function getType()
     {
-        return 'sitcAccountGroupQuery';
+        return 'sitcCategoryBoostQuery';
     }
+
     /**
      * {@inheritDoc}
      */
@@ -57,6 +52,7 @@ class AccountGroupFilter implements QueryInterface
     {
         return $this->name;
     }
+
     /**
      * {@inheritDoc}
      */
@@ -66,13 +62,13 @@ class AccountGroupFilter implements QueryInterface
     }
 
     /**
-     * Account group
+     * Category name to match
      *
-     * @return int
+     * @return string
      */
-    public function getAccountGroup()
+    public function getCategory()
     {
-        return $this->account_group;
+        return $this->category;
     }
 
     /**

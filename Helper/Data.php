@@ -41,18 +41,18 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         );
     }
 
-    public function isModuleEnabled($moduleName)
+    public function isModuleEnabled($moduleName): bool
     {
         return $this->_moduleManager->isEnabled($moduleName);
     }
 
-    public function isCategoryVisibilityEnabled()
+    public function isCategoryVisibilityEnabled(): bool
     {
         return $this->isModuleEnabled("Tigren_CompanyAccount") &&
             $this->getStoreConfig('sinchimport/category_visibility/enable') == 1;
     }
 
-    public function isProductVisibilityEnabled()
+    public function isProductVisibilityEnabled(): bool
     {
         return $this->isModuleEnabled("Tigren_CompanyAccount") &&
             $this->getStoreConfig('sinchimport/product_visibility/enable') == 1;
@@ -67,7 +67,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->httpContext->getValue(\SITC\Sinchimport\Plugin\VaryContext::CONTEXT_ACCOUNT_GROUP);
     }
 
-    public function getAccountGroupForAccount($accountId)
+    public function getAccountGroupForAccount($accountId): ?int
     {
         return $this->resourceConn->getConnection()->fetchOne(
             "SELECT account_group_id FROM {$this->accountTable} WHERE account_id = :account_id",
@@ -80,7 +80,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
      * @param string $importType The type of import, one of "PRICE STOCK" and "FULL"
      * @return void
      */
-    public function scheduleImport($importType) {
+    public function scheduleImport(string $importType) {
         $importStatus = $this->resourceConn->getTableName('sinch_import_status');
         //Clear the status table so the admin panel doesn't immediately mark it as complete
         if($this->resourceConn->getConnection()->isTableExists($importStatus)) {
@@ -116,7 +116,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
      * (indicating a running import, or an intentional indexing pause)
      * @return bool Whether the lock is currently held
      */
-    public function isIndexLockHeld()
+    public function isIndexLockHeld(): bool
     {
         //Manual lock indexing flag (for testing/holding the indexers for other reasons)
         if (file_exists($this->dir->getPath("var") . "/sinch_lock_indexers.flag")) {
@@ -136,12 +136,12 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
-     * Returns the customer group ID for the given account group ID. 
+     * Returns the customer group ID for the given account group ID.
      * Returns null if there is no corresponding group
      * @param int $accountGroupId
      * @return int|null
      */
-    public function getCustomerGroupForAccountGroup($accountGroupId)
+    public function getCustomerGroupForAccountGroup(int $accountGroupId): ?int
     {
         $res = $this->resourceConn->getConnection()->fetchOne(
             "SELECT magento_id FROM {$this->groupMappingTable} WHERE sinch_id = :accountGroupId",
@@ -153,7 +153,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         return (int)$res;
     }
 
-    public function getCustomerGroupForAccount($accountId)
+    public function getCustomerGroupForAccount($accountId): ?int
     {
         $accountGroup = $this->getAccountGroupForAccount($accountId);
         if(empty($accountGroup)) {
@@ -166,8 +166,13 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
      * Return whether Multi-source inventory is enabled (both the MSI modules, and the setting within the import)
      * @return bool
      */
-    public function isMSIEnabled()
+    public function isMSIEnabled(): bool
     {
         return $this->isModuleEnabled('Magento_Inventory') && $this->getStoreConfig('sinchimport/general/multisource_stock');
+    }
+
+    public function experimentalSearchEnabled(): bool
+    {
+        return $this->getStoreConfig('sinchimport/misc/experimental_search_features') == 1;
     }
 }
