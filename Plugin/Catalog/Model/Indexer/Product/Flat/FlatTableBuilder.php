@@ -50,7 +50,7 @@ class FlatTableBuilder
         $connection = $this->_resource->getConnection();
         $flatTable = $this->_productIndexerHelper->getFlatTableName($storeId);
         $catalog_product_entity = $this->_resource->getTableName('catalog_product_entity');
-        $sql = "UPDATE {$flatTable} as t2 INNER JOIN {$catalog_product_entity} AS e SET t2.store_product_id = e.store_product_id, t2.sinch_product_id = e.sinch_product_id where t2.entity_id = e.entity_id";
+        $sql = "UPDATE {$flatTable} as t2 INNER JOIN {$catalog_product_entity} AS e SET t2.sinch_product_id = e.sinch_product_id where t2.entity_id = e.entity_id";
         $connection->query($sql);
         return $this;
     }

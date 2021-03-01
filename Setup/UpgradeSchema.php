@@ -138,6 +138,22 @@ class UpgradeSchema implements UpgradeSchemaInterface
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
         }
 
+        if (version_compare($context->getVersion(), '2.4.0', '<')) {
+            //Remove store_product_id (duplicate of sinch_product_id) on some tables
+            $affectedTables = [
+                'catalog_product_entity',
+                'products_website_temp',
+                'sinch_product_backup',
+                'sinch_products',
+                'sinch_products_mapping',
+                'sinch_products_pictures_gallery',
+                'sinch_related_products'
+            ];
+            foreach ($affectedTables as $table) {
+                $this->removeStoreProductId($installer, $table);
+            }
+        }
+
         $installer->endSetup();
     }
 
@@ -332,5 +348,31 @@ class UpgradeSchema implements UpgradeSchemaInterface
             ['group_id', 'product_id','price_type_id'],
             \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
         );
+    }
+
+    private function removeStoreProductId(SchemaSetupInterface $setup, string $table) {
+        $conn = $setup->getConnection();
+        $actualTable = $conn->getTableName($table);
+        //Check that both store_product_id and sinch_product_id exist as columns (otherwise what we want to do wont work)
+        if ($conn->tableColumnExists($actualTable, 'store_product_id') && $conn->tableColumnExists($actualTable, 'sinch_product_id')) {
+            //Drop the sinch_product_id column (as its specified second in important tables like catalog_product_entity)
+            // and then rename store_product_id to sinch_product_id (its a better name)
+            $conn->dropColumn($actualTable, 'sinch_product_id');
+            $conn->changeColumn(
+                $actualTable,
+                'store_product_id',
+                'sinch_product_id',
+                [
+                    'unsigned' => true,
+                    'default' => null,
+                    'extra' => null,
+                    'type' => 'integer',
+                    'length' => 11,
+                    'nullable' => false,
+                    'comment' => 'Sinch Product Id'
+                ],
+                false
+            );
+        }
     }
 }

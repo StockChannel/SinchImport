@@ -45,7 +45,7 @@ class UNSPSC extends AbstractImportSection {
         foreach($unspsc_values as $unspsc){
             //List of Sinch products with the specified UNSPSC value
             $sinch_ids = $this->getConnection()->fetchCol(
-                "SELECT store_product_id FROM {$this->productTempTable} WHERE unspsc = :unspsc",
+                "SELECT sinch_product_id FROM {$this->productTempTable} WHERE unspsc = :unspsc",
                 [":unspsc" => $unspsc]
             );
 

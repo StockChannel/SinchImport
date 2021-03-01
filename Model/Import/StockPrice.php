@@ -164,7 +164,7 @@ class StockPrice extends AbstractImportSection
                 "INSERT INTO {$catalogProductEntityVarchar} (attribute_id, store_id, entity_id, value) (
                     SELECT {$supplierAttrId}, 0, cpe.entity_id, distributors.distributor_name FROM {$catalogProductEntity} cpe
                         INNER JOIN {$tempSingle} supplier
-                            ON cpe.store_product_id = supplier.product_id
+                            ON cpe.sinch_product_id = supplier.product_id
                         INNER JOIN {$this->distiTable} distributors
                             ON supplier.distributor_id = distributors.distributor_id
                 ) ON DUPLICATE KEY UPDATE value = distributors.distributor_name"
@@ -175,11 +175,11 @@ class StockPrice extends AbstractImportSection
                 "INSERT INTO {$catalogProductEntityVarchar} (attribute_id, store_id, entity_id, value) (
                     SELECT {$supplierAttrId}, w.website, cpe.entity_id, distributors.distributor_name FROM {$catalogProductEntity} cpe
                         INNER JOIN {$tempSingle} supplier
-                            ON cpe.store_product_id = supplier.product_id
+                            ON cpe.sinch_product_id = supplier.product_id
                         INNER JOIN {$this->distiTable} distributors
                             ON supplier.distributor_id = distributors.distributor_id
                         INNER JOIN {$productsWebsiteTemp} w
-                            ON cpe.store_product_id = w.store_product_id
+                            ON cpe.sinch_product_id = w.sinch_product_id
                 ) ON DUPLICATE KEY UPDATE value = distributors.distributor_name"
             );
 
@@ -220,7 +220,7 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, 0, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.sinch_product_id = st.product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
         $this->endTimingStep();
 
@@ -228,9 +228,9 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, w.website, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.sinch_product_id = st.product_id
                 INNER JOIN {$prodWebTemp} w
-                    ON cpe.store_product_id = w.store_product_id
+                    ON cpe.sinch_product_id = w.sinch_product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
         $this->endTimingStep();
 
@@ -238,7 +238,7 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$costAttrId}, 0, cpe.entity_id, st.cost FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.sinch_product_id = st.product_id
         ) ON DUPLICATE KEY UPDATE value = st.cost");
         $this->endTimingStep();
 
@@ -246,9 +246,9 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$costAttrId}, w.website, cpe.entity_id, st.cost FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.sinch_product_id = st.product_id
                 INNER JOIN {$prodWebTemp} w
-                    ON cpe.store_product_id = w.store_product_id
+                    ON cpe.sinch_product_id = w.sinch_product_id
         ) ON DUPLICATE KEY UPDATE value = st.cost");
         $this->endTimingStep();
 
@@ -264,7 +264,7 @@ class StockPrice extends AbstractImportSection
             SET number_of_products = (
                 SELECT COUNT(*) FROM {$catalogProductEntity} cpe
                     INNER JOIN {$this->stockImportTable} st
-                        ON cpe.store_product_id = st.product_id
+                        ON cpe.sinch_product_id = st.product_id
             )
             ORDER BY id DESC LIMIT 1"
         );
@@ -337,7 +337,7 @@ class StockPrice extends AbstractImportSection
             $conn->query(
                 "DELETE FROM {$inventory_source_item}
                     WHERE source_code = 'default'
-                      AND sku IN (SELECT sku FROM {$catalog_product_entity} WHERE store_product_id IS NOT NULL)"
+                      AND sku IN (SELECT sku FROM {$catalog_product_entity} WHERE sinch_product_id IS NOT NULL)"
             );
             $this->endTimingStep();
 
@@ -347,22 +347,22 @@ class StockPrice extends AbstractImportSection
 //                INNER JOIN {$catalog_product_entity} cpe
 //                    ON isi.sku = cpe.sku
 //                LEFT JOIN {$sinch_distributors_stock_and_price} sdsp
-//                    ON cpe.store_product_id = sdsp.product_id
+//                    ON cpe.sinch_product_id = sdsp.product_id
 //                SET isi.quantity = 0,
 //                    isi.status = 0
-//                WHERE cpe.store_product_id IS NOT NULL
+//                WHERE cpe.sinch_product_id IS NOT NULL
 //                    AND sdsp.stock IS NULL"
 //            );
             //Much faster than the above query (for roughly the same job)
-            //$conn->query("UPDATE {$inventory_source_item} SET quantity = 0, status = 0 WHERE sku IN (SELECT sku FROM {$catalog_product_entity} WHERE store_product_id IS NOT NULL)");
+            //$conn->query("UPDATE {$inventory_source_item} SET quantity = 0, status = 0 WHERE sku IN (SELECT sku FROM {$catalog_product_entity} WHERE sinch_product_id IS NOT NULL)");
             $conn->query(
                 "UPDATE {$inventory_source_item}
                     SET quantity = 0, status = 0
                     WHERE sku IN (
                         SELECT cpe.sku FROM {$catalog_product_entity} cpe
                         LEFT JOIN {$this->stockImportTable} ssp
-                            ON cpe.store_product_id = ssp.product_id
-                        WHERE cpe.store_product_id IS NOT NULL
+                            ON cpe.sinch_product_id = ssp.product_id
+                        WHERE cpe.sinch_product_id IS NOT NULL
                           AND (ssp.stock IS NULL OR ssp.stock < 1)
                 )"
             );
@@ -373,7 +373,7 @@ class StockPrice extends AbstractImportSection
             $conn->query(
                 "INSERT INTO {$inventory_source_item} (source_code, sku, quantity, status) (
                     SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock > 0, 1, 0) FROM {$sinch_distributors_stock_and_price} sdsp  
-                        INNER JOIN {$catalog_product_entity} cpe ON sdsp.product_id = cpe.store_product_id
+                        INNER JOIN {$catalog_product_entity} cpe ON sdsp.product_id = cpe.sinch_product_id
                 ) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), status = VALUES(status)"
             );
             $this->endTimingStep();
@@ -383,7 +383,7 @@ class StockPrice extends AbstractImportSection
             $conn->query("INSERT INTO {$cataloginventory_stock_item} (product_id, stock_id, qty, is_in_stock, manage_stock, website_id) (
                     SELECT cpe.entity_id, 1, NULL, 0, 1, {$stockItemScope} FROM {$catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
-                            ON cpe.store_product_id = ssp.product_id
+                            ON cpe.sinch_product_id = ssp.product_id
                 ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = VALUES(manage_stock)"
             );
             $this->endTimingStep();
@@ -415,10 +415,10 @@ class StockPrice extends AbstractImportSection
                 INNER JOIN {$catalog_product_entity} cpe
                     ON cpe.entity_id = csi.product_id
                 LEFT JOIN {$this->stockImportTable} st
-                    ON st.product_id = cpe.store_product_id
+                    ON st.product_id = cpe.sinch_product_id
                 SET csi.qty = 0,
                     csi.is_in_stock = 0
-                WHERE cpe.store_product_id IS NOT NULL
+                WHERE cpe.sinch_product_id IS NOT NULL
                     AND st.stock IS NULL"
             );
             $this->endTimingStep();
@@ -427,7 +427,7 @@ class StockPrice extends AbstractImportSection
             $conn->query("INSERT INTO {$cataloginventory_stock_item} (product_id, stock_id, qty, is_in_stock, manage_stock, website_id) (
                     SELECT cpe.entity_id, 1, ssp.stock, IF(ssp.stock > 0, 1, 0), 1, {$stockItemScope} FROM {$catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
-                            ON cpe.store_product_id = ssp.product_id
+                            ON cpe.sinch_product_id = ssp.product_id
                 ) ON DUPLICATE KEY UPDATE qty = ssp.stock, is_in_stock = IF(ssp.stock > 0, 1, 0), manage_stock = 1"
             );
             $this->endTimingStep();
@@ -437,7 +437,7 @@ class StockPrice extends AbstractImportSection
                 $conn->query("DELETE isi FROM {$inventory_source_item} isi
                     INNER JOIN {$catalog_product_entity} cpe
                         ON isi.sku = cpe.sku
-                    WHERE cpe.store_product_id IS NOT NULL");
+                    WHERE cpe.sinch_product_id IS NOT NULL");
                 $this->endTimingStep();
             }
 

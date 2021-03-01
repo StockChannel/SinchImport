@@ -62,6 +62,12 @@ class UpgradeData implements UpgradeDataInterface
             $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'is_used_for_promo_rules', 1);
         }
 
+        if (version_compare($context->getVersion(), '2.4.0', '<')) {
+            //Remove sinch_search_cache as it gains us nothing with ES
+            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $eavSetup->removeAttribute($entityTypeId, 'sinch_search_cache');
+        }
+
         $installer->endSetup();
     }
 
