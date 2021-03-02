@@ -1332,23 +1332,21 @@ class Sinch
 
     private function get_category_level($id)
     {
-        $q
-            = "SELECT parent_store_category_id
-            FROM " . $this->_getTableName('categories_temp') . "
-            WHERE store_category_id=" . $id;
+        $conn = $this->_resourceConnection->getConnection();
 
-        $parentCate = $this->_doQuery($q)->fetch();
+        $catTemp = $this->_getTableName('categories_temp');
+        $parentCat = $conn->fetchOne(
+            "SELECT parent_store_category_id FROM {$catTemp} WHERE store_category_id = :storeCategoryId",
+            [":storeCategoryId" => $id]
+        );
 
         $level = 1;
 
-        while ($parentCate['parent_store_category_id'] != 0) {
-            $q
-                = "SELECT parent_store_category_id
-                FROM " . $this->_getTableName('categories_temp') . "
-                WHERE store_category_id="
-                . $parentCate['parent_store_category_id'];
-
-            $parentCate = $this->_doQuery($q)->fetch();
+        while (is_numeric($parentCat) && $parentCat != 0) {
+            $parentCat = $conn->fetchOne(
+                "SELECT parent_store_category_id FROM {$catTemp} WHERE store_category_id = :storeCategoryId",
+                [":storeCategoryId" => $parentCat]
+            );
 
             $level++;
 
@@ -2137,22 +2135,21 @@ class Sinch
     {
         $path = '';
         $cat_id = $parent_id;
-        $q
-            = "SELECT
-                parent_id
-            FROM " . $this->_getTableName('catalog_category_entity') . "
-            WHERE entity_id=" . $cat_id;
 
-        $parentCate = $this->_doQuery($q)->fetch();
-        while ($parentCate['parent_id']) {
-            $path = $parentCate['parent_id'] . '/' . $path;
-            $q
-                = "SELECT
-                    parent_id
-                FROM " . $this->_getTableName('catalog_category_entity') . "
-                WHERE entity_id=" . $parentCate['parent_id'];
+        $conn = $this->_resourceConnection->getConnection();
+        $catalog_category_entity = $this->_getTableName('catalog_category_entity');
 
-            $parentCate = $this->_doQuery($q)->fetch();
+        $parentCat = $conn->fetchOne(
+            "SELECT parent_id FROM {$catalog_category_entity} WHERE entity_id = :catId",
+            [":catId" => $cat_id]
+        );
+
+        while (is_numeric($parentCat) && $parentCat != 0) {
+            $path = $parentCat . '/' . $path;
+            $parentCat = $conn->fetchOne(
+                "SELECT parent_id FROM {$catalog_category_entity} WHERE entity_id = :catId",
+                [":catId" => $parentCat]
+            );
         }
         if ($cat_id) {
             $path .= $cat_id . "/";
@@ -3183,28 +3180,24 @@ class Sinch
         $catalog_category_entity
     ) {
         $path = '';
-
         $cat_id = $parent_id;
+        $conn = $this->_resourceConnection->getConnection();
 
-        $q
-            = "
-            SELECT
-                parent_id
-            FROM $catalog_category_entity
-            WHERE entity_id = $cat_id";
+        $res = $conn->fetchOne(
+            "SELECT parent_id FROM $catalog_category_entity WHERE entity_id = :cat_id",
+            [":cat_id" => $cat_id]
+        );
 
-        $res = $this->_doQuery($q)->fetch();
-        while ($res['parent_id']) {
-            $path = $res['parent_id'] . '/' . $path;
-            $parent_id = $res['parent_id'];
+        //Must avoid 0 otherwise we get a completely fucked category tree
+        //If that happens categories only turn up as search filters
+        while (is_numeric($res) && $res != 0) {
+            $path = $res . '/' . $path;
+            $parent_id = $res;
 
-            $q
-                = "
-                SELECT
-                    parent_id
-                FROM $catalog_category_entity
-                WHERE entity_id = $parent_id";
-            $res = $this->_doQuery($q)->fetch();
+            $res = $conn->fetchOne(
+                "SELECT parent_id FROM $catalog_category_entity WHERE entity_id = :parent_id",
+                [":parent_id" => $parent_id]
+            );
         }
 
         if ($cat_id) {
@@ -6232,7 +6225,7 @@ class Sinch
         $this->_doQuery(
             "
                                 INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_varchar'
+                'catalog_product_entity_text'
             ) . " (
                                     attribute_id,
                                     store_id,
@@ -6266,7 +6259,7 @@ class Sinch
         $this->_doQuery(
             "
                                 INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_varchar'
+                'catalog_product_entity_text'
             ) . " (
                                     attribute_id,
                                     store_id,
@@ -8638,7 +8631,7 @@ class Sinch
             true
         )->fetch();
 
-        return $imp_date['start_import'];
+        return is_array($imp_date) ? $imp_date['start_import'] : "N/A";
     }
 
     public function getImportStatuses()

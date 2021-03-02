@@ -46,7 +46,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
         )->toHtml();
 
         $lastImportData   = $this->sinch->getDataOfLatestImport();
-        $lastImportStatus = $lastImportData['global_status_import'];
+        $lastImportStatus = is_array($lastImportData) ? $lastImportData['global_status_import'] : 'None';
 
         $html .= '<div id="sinchimport_current_status_message" name="sinchimport_current_status_message" style="display:true">';
         if ($lastImportStatus == 'Failed') {
@@ -60,6 +60,9 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 . ' products imported succesfully!</p>';
         } elseif ($lastImportStatus == 'Run') {
             $html .= '<p>Import is running now</p>';
+        }
+        elseif ($lastImportStatus == 'None') {
+            $html .= '<p>No import has run yet</p>';
         }
         $html .= '</div>';
 

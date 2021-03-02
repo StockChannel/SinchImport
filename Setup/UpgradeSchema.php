@@ -91,13 +91,14 @@ class UpgradeSchema implements UpgradeSchemaInterface
 
         if (version_compare($context->getVersion(), '2.2.2', '<')) {
             $mappingTable = $installer->getTable('sinch_restrictedvalue_mapping');
+            $eavAttributeOptionValueTable = $installer->getTable('eav_attribute_option_value');
             //Add a foreign key between rvmapping and eaov so removed values are automatically dropped
             $connection = $installer->getConnection();
             $connection->addForeignKey(
-                $installer->getFkName($mappingTable, 'option_id', 'eav_attribute_option_value', 'option_id'),
+                $installer->getFkName($mappingTable, 'option_id', $eavAttributeOptionValueTable, 'option_id'),
                 $mappingTable,
                 'option_id',
-                'eav_attribute_option_value',
+                $eavAttributeOptionValueTable,
                 'option_id',
                 $connection::FK_ACTION_CASCADE
             );
