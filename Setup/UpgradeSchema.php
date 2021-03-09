@@ -141,13 +141,13 @@ class UpgradeSchema implements UpgradeSchemaInterface
         if (version_compare($context->getVersion(), '2.4.0', '<')) {
             //Remove store_product_id (duplicate of sinch_product_id) on some tables
             $affectedTables = [
-                'catalog_product_entity',
-                'products_website_temp',
-                'sinch_product_backup',
-                'sinch_products',
-                'sinch_products_mapping',
-                'sinch_products_pictures_gallery',
-                'sinch_related_products'
+                'catalog_product_entity', //int(11) unsigned DEFAULT NULL
+                'products_website_temp', //int(11) DEFAULT NULL
+                'sinch_product_backup', //int(11) unsigned NOT NULL
+                'sinch_products', //int(11) DEFAULT NULL
+                'sinch_products_mapping', //int(11) DEFAULT NULL
+                'sinch_products_pictures_gallery', //int(11) DEFAULT NULL
+                'sinch_related_products' //int(11) DEFAULT NULL
             ];
             foreach ($affectedTables as $table) {
                 $this->removeStoreProductId($installer, $table);
@@ -365,10 +365,9 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 [
                     'unsigned' => true,
                     'default' => null,
-                    'extra' => null,
-                    'type' => 'integer',
-                    'length' => 11,
-                    'nullable' => false,
+                    'type' => Table::TYPE_INTEGER,
+                    'scale' => 11,
+                    'nullable' => true,
                     'comment' => 'Sinch Product Id'
                 ],
                 false

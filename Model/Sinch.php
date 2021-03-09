@@ -5767,7 +5767,7 @@ class Sinch
             "CREATE TEMPORARY TABLE " . $this->_getTableName('EANs_temp') . " (
                 sinch_product_id int(11),
                 EANs text,
-                KEY `sinch_product_id` (`sinch_product_id`),
+                KEY `sinch_product_id` (`sinch_product_id`)
             )"
         );
         $this->_doQuery(
@@ -6872,7 +6872,7 @@ class Sinch
                 2
             FROM $catalog_product_entity cpe
             JOIN $products_website_temp pwt
-                ON cpe.store_product_id = pwt.store_product_id
+                ON cpe.sinch_product_id = pwt.sinch_product_id
             )
             ON DUPLICATE KEY UPDATE
                 value = 2"
@@ -6963,7 +6963,7 @@ class Sinch
                 pt.medium_image_url
             FROM $catalog_product_entity cpe
             JOIN $products_temp pt
-                ON cpe.store_product_id = pt.store_product_id
+                ON cpe.sinch_product_id = pt.sinch_product_id
             )
             ON DUPLICATE KEY UPDATE
                 value = pt.medium_image_url"
@@ -7026,7 +7026,7 @@ class Sinch
                     sinch_product_id int(11),
                     image_url varchar(255),
                     thumb_image_url varchar(255),
-                    key(sinch_product_id),
+                    KEY(sinch_product_id)
                 )"
             );
 
@@ -7323,16 +7323,14 @@ class Sinch
         }
     }
 
-    private function getStoreProductIdByEntity($entity_id)
+    private function getSinchProductIdByEntity($entity_id)
     {
         $res = $this->_doQuery(
-            "SELECT store_product_id
-                FROM " . $this->_getTableName('sinch_products_mapping') . "
-                WHERE entity_id = " . $entity_id,
+            "SELECT sinch_product_id FROM " . $this->_getTableName('sinch_products_mapping') . " WHERE entity_id = " . $entity_id,
             true
         )->fetch();
 
-        return ($res['store_product_id']);
+        return ($res['sinch_product_id']);
     }
 
     /**
@@ -7340,14 +7338,14 @@ class Sinch
      */
     public function loadGalleryPhotos($entity_id)
     {
-        $store_product_id = $this->getStoreProductIdByEntity($entity_id);
-        if (!$store_product_id) {
+        $sinch_product_id = $this->getSinchProductIdByEntity($entity_id);
+        if (!$sinch_product_id) {
             return $this;
         }
         $res = $this->_doQuery(
             "SELECT COUNT(*) AS cnt
                 FROM " . $this->_getTableName('sinch_products_pictures_gallery') . "
-                WHERE store_product_id = " . $store_product_id,
+                WHERE sinch_product_id = " . $sinch_product_id,
             true
         )->fetch();
 
@@ -7358,7 +7356,7 @@ class Sinch
         $photos = $this->_doQuery(
             "SELECT image_url as Pic, thumb_image_url as ThumbPic
                 FROM " . $this->_getTableName('sinch_products_pictures_gallery') . "
-                WHERE store_product_id = " . $store_product_id,
+                WHERE sinch_product_id = " . $sinch_product_id,
             true
         )->fetchAll();
 
@@ -7548,14 +7546,14 @@ class Sinch
                   SELECT
                     " . $this->_getProductAttributeId('meta_title') . ",
                     0,
-                    a.entity_id,
-                    b.Title
-                  FROM " . $this->_getTableName('catalog_product_entity') . " a
-                  INNER JOIN " . $this->_getTableName('products_temp') . " b
-                    ON a.store_product_id = b.store_product_id
+                    cpe.entity_id,
+                    pt.Title
+                  FROM " . $this->_getTableName('catalog_product_entity') . " cpe
+                  INNER JOIN " . $this->_getTableName('products_temp') . " pt
+                    ON cpe.sinch_product_id = pt.sinch_product_id
                 )
                 ON DUPLICATE KEY UPDATE
-                    value = b.Title"
+                    value = pt.Title"
             );
         } else {
             $this->print("-- Ignore the meta title for product configuration.");
