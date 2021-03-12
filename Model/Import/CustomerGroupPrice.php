@@ -438,12 +438,12 @@ class CustomerGroupPrice extends AbstractImportSection {
     private function insertMissingRules()
     {
         $this->getConnection()->query(
-            "INSERT INTO catalog_product_entity_tier_price
+            "INSERT INTO {$this->tierPriceTable}
                 (entity_id, all_groups, customer_group_id, qty, value, website_id)
                 SELECT productmap.entity_id, 0, groupmap.magento_id, 1.0, current.price, 0
-                FROM sinch_customer_group_price_cur current
-                    INNER JOIN sinch_group_mapping groupmap ON current.sinch_group_id = groupmap.sinch_id
-                    INNER JOIN sinch_products_mapping productmap ON current.sinch_product_id = productmap.sinch_product_id
+                FROM {$this->groupPriceTableCurrent} current
+                    INNER JOIN {$this->mappingTable} groupmap ON current.sinch_group_id = groupmap.sinch_id
+                    INNER JOIN {$this->sinchProductsMappingTable} productmap ON current.sinch_product_id = productmap.sinch_product_id
                 WHERE magento_value_id IS NULL
                 ON DUPLICATE KEY UPDATE value = current.price"
         );
