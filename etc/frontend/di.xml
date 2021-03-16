@@ -9,12 +9,6 @@
     <type name="Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface">
         <plugin name="sitc_customcatalog_ESConfiguration" type="SITC\Sinchimport\Plugin\Elasticsuite\ContainerConfiguration" />
     </type>
-    <type name="Smile\ElasticsuiteCore\Api\Index\MappingInterface">
-        <plugin name="sitc_search_mapping" type="SITC\Sinchimport\Plugin\Elasticsuite\Mapping" />
-    </type>
-    <type name="Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder">
-        <plugin name="sitc_query_builder" type="SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder" />
-    </type>
     <type name="Magento\Catalog\Model\Product">
         <plugin name="sitc_customcatalog_product" type="SITC\Sinchimport\Plugin\Product" />
     </type>
