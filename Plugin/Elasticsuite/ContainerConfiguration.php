@@ -2,13 +2,14 @@
 
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
+use SITC\Sinchimport\Helper\Data;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Api\Search\ContextInterface;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 
 class ContainerConfiguration {
-    /** @var \SITC\Sinchimport\Helper\Data $helper */
+    /** @var Data $helper */
     private $helper;
     /** @var QueryFactory $queryFactory */
     private $queryFactory;
@@ -17,7 +18,7 @@ class ContainerConfiguration {
 
 
     public function __construct(
-        \SITC\Sinchimport\Helper\Data $helper,
+        Data $helper,
         QueryFactory $queryFactory,
         ContextInterface $searchContext
     ){
@@ -35,21 +36,12 @@ class ContainerConfiguration {
      *
      * @return QueryInterface[]
      */
-    public function afterGetFilters(
-        ContainerConfigurationInterface $_subject,
-        $result
-    ){
+    public function afterGetFilters(ContainerConfigurationInterface $_subject, array $result): array
+    {
         if ($this->helper->isProductVisibilityEnabled()) {
             $result[] = $this->queryFactory->create(
                 'sitcAccountGroupQuery',
                 ['account_group' => $this->helper->getCurrentAccountGroupId()]
-            );
-        }
-
-        if ($this->helper->experimentalSearchEnabled() && !empty($this->searchContext->getCurrentSearchQuery())) {
-            $result[] = $this->queryFactory->create(
-                'sitcCategoryBoostQuery',
-                ['query' => $this->searchContext->getCurrentSearchQuery()->getQueryText()]
             );
         }
         return $result;
