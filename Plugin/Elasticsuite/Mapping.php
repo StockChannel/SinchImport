@@ -38,6 +38,7 @@ class Mapping {
             self::CATEGORY_SEARCH_FIELD => $boost * self::CATEGORY_SEARCH_WEIGHT 
         ];
         $result = array_merge($result, $catMapping);
+        
         return $result;
     }
 }
