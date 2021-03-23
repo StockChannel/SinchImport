@@ -2,19 +2,21 @@
 
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
-use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory;
+use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Framework\App\Response\Http as HttpResponse;
 use Smile\ElasticsuiteCore\Client\Client;
+use \Magento\Framework\App\ResourceConnection;
 
 class QueryBuilder
 {
 
-    const PRODUCT_INDEX_NAME = 'magento2_default_catalog_product';
+    const CATEGORY_INDEX_NAME = 'magento2_default_catalog_category';
+	const METHOD = 'mysql';
 
     /**
-     * @var \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory 
+     * @var \Magento\Catalog\Api\CategoryRepositoryInterface
      */
-    private $collectionFactory;
+    private $categoryRespository;
 
     /**
      * @var \Magento\Framework\App\Response\Http
@@ -31,15 +33,32 @@ class QueryBuilder
      */
     private $client;
 
+	private $resourceConnection;
 
-    public function __construct(CollectionFactory $collectionFactory, HttpResponse $response, Client $client)
+	private $connection;
+
+	private $categoryTableVarchar;
+	private $categoryTable;
+	private $eavTable;
+
+    public function __construct(
+		CategoryRepositoryInterface $categoryRespository, 
+		HttpResponse $response, 
+		Client $client, 
+		ResourceConnection $resourceConnection
+	)
     {
-        $this->collectionFactory = $collectionFactory;
+        $this->categoryRespository = $categoryRespository;
         $this->response = $response;
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/joe_search_stuff.log');
         $this->logger = new \Zend\Log\Logger();
         $this->logger->addWriter($writer);
         $this->client = $client;
+		$this->resourceConnection = $resourceConnection;
+		$this->connection = $this->resourceConnection->getConnection();
+		$this->categoryTableVarchar = $this->connection->getTableName('catalog_category_entity_varchar');
+		$this->categoryTable = $this->connection->getTableName('catalog_category_entity');
+		$this->eavTable = $this->connection->getTableName('eav_attribute');
     }
 
     /**
@@ -54,48 +73,53 @@ class QueryBuilder
      */
     public function afterCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, $result, $containerConfig, $queryText)
     {
-        $categoryCollection = $this->collectionFactory->create()->addAttributeToFilter('name', $queryText);
+		$start = microtime(true);
+		if (self::METHOD == 'mysql') {
+			$pluralQueryText = $queryText . 's';
+			$catId = $this->connection->fetchOne("
+			SELECT ccev.entity_id FROM {$this->categoryTableVarchar} ccev 
+			JOIN {$this->eavTable} ea ON ea.attribute_id = ccev.attribute_id AND ea.attribute_code = 'name'
+			JOIN {$this->categoryTable} cce ON cce.attribute_set_id = ea.entity_type_id AND cce.entity_id = ccev.entity_id
+			WHERE ccev.value = :queryText OR ccev.value = :pluralQueryText",
+			['queryText' => $queryText, 'pluralQueryText' => $pluralQueryText]);
 
-        // $mapping = $this->client->getMapping('magento2_default_catalog_product');
+			if (empty($catId)) {
+				$this->logger->info("No category redirect found");
+				return $result;
+			}
+	
+			$category = $this->categoryRespository->get((int)$catId);
+			$this->logger->info("Category redirect to: " . strval($category->getId()) . "|" . $category->getName() . " for search term: " . $queryText);
+	
+			$this->response->setRedirect($category->getUrl())->sendResponse();
+	
+			$elapsed = abs(microtime(true) - $start) * 1000;
+			$this->logger->info("Total execution time: " . strval($elapsed) . "ms");
+			return null;
+		} else if (self::METHOD == 'elasticsearch') {
+			$analyzedQueryText = $this->getAnalyzedQueryText($queryText);
+            $this->logger->info("Analyzed query text: " . $analyzedQueryText);
+			$searchReq = [
+				'index' => self::CATEGORY_INDEX_NAME,
+				'body' => [
+					'size' => 1,
+					'query' => [
+					  'term' => [
+						'name' => $analyzedQueryText
+					  ]
+					]
+				  ]
+			];
+			$res = $this->client->search($searchReq);
+			$catId = $res['hits']['hits'][0]['_id'];
+			$category = $this->categoryRespository->get((int)$catId);
+			$this->logger->info("Category redirect to: " . strval($category->getId()) . "|" . $category->getName() . " for search term: " . $queryText);
+			$this->response->setRedirect($category->getUrl())->sendResponse();
 
-        // $mapping['magento2_default_catalog_product_20210319_010718']['mappings']['properties']['category']['properties']['name']['fields'] = [
-        //     'stemmed' => [
-        //         'type' => 'text',
-        //         'analyzer' => 'english',
-        //     ]
-        // ];
-
-        // $this->client->putMapping('magento2_default_catalog_product', $mapping['magento2_default_catalog_product_20210319_010718']['mappings']);
-
-        // $mapping = $this->client->getMapping('magento2_default_catalog_product');
-
-        // $this->logger->info("*** UPDATED MAPPING ***");
-        // $this->logger->info(json_encode($mapping));
-
-        if ($categoryCollection->getSize() < 1) {
-            $analyzedQueryText = $this->getAnalyzedQueryText($queryText);
-            $this->logger->info("Analyzed query text: " . json_encode($analyzedQueryText));
-
-            $categoryCollection = $this->collectionFactory->create()->addAttributeToFilter('name', $analyzedQueryText);
-        }
-
-		// if ($categoryCollection->getSize() < 1) {
-		// 	$this->logger->info("Pluralising query");
-		// 	$queryText .= 's';
-		// 	$categoryCollection = $this->collectionFactory->create()->addAttributeToFilter('name', $queryText);
-		// }
-
-        if ($categoryCollection->getSize() > 0) {
-            $category = $categoryCollection->getFirstItem(); //How often is the size of the collection > 1? #getFirstItem() maybe not a good idea
-            $this->logger->info("Collection size: " . strval($categoryCollection->getSize()));
-            $this->logger->info("Category redirect to: " . strval($category->getId()) . "|" . $category->getName() . " for search term: " . $queryText);
-
-            $this->response->setRedirect($category->getUrl())->sendResponse();
-            return null;
-        }
-
-        $this->logger->info("No category redirect found");
-        return $result;
+			$elapsed = abs(microtime(true) - $start) * 1000;
+			$this->logger->info("Total execution time: " . strval($elapsed) . "ms");
+			return null;
+		}
     }
 
     /**
@@ -105,7 +129,7 @@ class QueryBuilder
      *
      * @return string
      */
-    private function getAnalyzedQueryText($queryText)
+    private function getAnalyzedQueryText($queryText) : string
     {
         try {
             $analysis = $this->client->analyze(
