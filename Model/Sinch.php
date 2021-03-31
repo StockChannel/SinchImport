@@ -811,6 +811,10 @@ class Sinch
         }
     }
 
+    /**
+     * @return array Root category names, as determined by RootName
+     * @throws LocalizedException
+     */
     private function parseCategories(): array
     {
         $imType = $this->_dataConf['replace_category'];
@@ -827,24 +831,6 @@ class Sinch
 
             $categories_temp = $this->getTableName(
                 'categories_temp'
-            );
-            $catalog_category_entity = $this->getTableName(
-                'catalog_category_entity'
-            );
-            $catalog_category_entity_varchar = $this->getTableName(
-                'catalog_category_entity_varchar'
-            );
-            $catalog_category_entity_int = $this->getTableName(
-                'catalog_category_entity_int'
-            );
-            $sinch_categories_mapping_temp = $this->getTableName(
-                'sinch_categories_mapping_temp'
-            );
-            $sinch_categories_mapping = $this->getTableName(
-                'sinch_categories_mapping'
-            );
-            $sinch_categories = $this->getTableName(
-                'sinch_categories'
             );
 
             $_categoryDefault_attribute_set_id
@@ -868,11 +854,7 @@ class Sinch
                 $parseFile,
                 $field_terminated_char
             );
-            $coincidence = $this->calculateCategoryCoincidence(
-                $categories_temp,
-                $catalog_category_entity,
-                $catalog_category_entity_varchar
-            );
+            $rootCatNames = $this->getDistinctRootCatNames();
 
             if (!$this->check_loaded_data($parseFile, $categories_temp)) {
                 $this->_setErrorMessage(
@@ -882,7 +864,7 @@ class Sinch
                 throw new LocalizedException(__("Import files in invalid format"));
             }
 
-            if (count($coincidence) == 1) { // one store logic
+            if (count($rootCatNames) == 1) { // one store logic
 
                 //TODO: Should single store logic be removed in favour of a multistore version that robustly handles single store too?
                 $this->print("==========SINGLE STORE LOGIC==========");
@@ -892,9 +874,6 @@ class Sinch
 
                     $rootCat = $this->truncateAllCategoriesAndRecreateDefaults(
                         $rootCat,
-                        $catalog_category_entity,
-                        $catalog_category_entity_varchar,
-                        $catalog_category_entity_int,
                         $_categoryDefault_attribute_set_id,
                         $name_attrid,
                         $attr_url_key,
@@ -908,20 +887,9 @@ class Sinch
 
                 $this->_rootCat = $rootCat;
 
-                $this->setCategorySettings($categories_temp, $rootCat);
-                $this->mapSinchCategories(
-                    $sinch_categories_mapping,
-                    $catalog_category_entity,
-                    $categories_temp,
-                    $imType
-                );
+                $this->setCategorySettings($rootCat);
+                $this->mapSinchCategories($imType, $name_attrid);
                 $this->addCategoryData(
-                    $categories_temp,
-                    $sinch_categories_mapping,
-                    $sinch_categories,
-                    $catalog_category_entity,
-                    $catalog_category_entity_varchar,
-                    $catalog_category_entity_int,
                     $_categoryDefault_attribute_set_id,
                     $name_attrid,
                     $attr_is_active,
@@ -930,17 +898,14 @@ class Sinch
                     $image_attrid,
                     $imType
                 );
-            } elseif (count($coincidence) > 1) { // multistore logic
+            } elseif (count($rootCatNames) > 1) { // multistore logic
 
                 $this->print("==========MULTI STORE LOGIC==========");
 
                 switch ($imType) {
                     case "REWRITE":
                         $this->rewriteMultistoreCategories(
-                            $coincidence,
-                            $catalog_category_entity,
-                            $catalog_category_entity_varchar,
-                            $catalog_category_entity_int,
+                            $rootCatNames,
                             $_categoryDefault_attribute_set_id,
                             $imType,
                             $name_attrid,
@@ -949,19 +914,12 @@ class Sinch
                             $attr_include_in_menu,
                             $attr_is_active,
                             $image_attrid,
-                            $is_anchor_attrid,
-                            $sinch_categories_mapping_temp,
-                            $sinch_categories_mapping,
-                            $sinch_categories,
-                            $categories_temp
+                            $is_anchor_attrid
                         );
                         break;
                     case "MERGE":
                         $this->mergeMultistoreCategories(
-                            $coincidence,
-                            $catalog_category_entity,
-                            $catalog_category_entity_varchar,
-                            $catalog_category_entity_int,
+                            $rootCatNames,
                             $_categoryDefault_attribute_set_id,
                             $imType,
                             $name_attrid,
@@ -970,11 +928,7 @@ class Sinch
                             $attr_include_in_menu,
                             $attr_is_active,
                             $image_attrid,
-                            $is_anchor_attrid,
-                            $sinch_categories_mapping_temp,
-                            $sinch_categories_mapping,
-                            $sinch_categories,
-                            $categories_temp
+                            $is_anchor_attrid
                         );
                         break;
                     default:
@@ -991,7 +945,7 @@ class Sinch
         $this->_log(' ');
         $this->_set_default_rootCategory();
 
-        return $coincidence;
+        return $rootCatNames;
     }
 
     private function _getCategoryEntityTypeIdAndDefault_attribute_set_id()
@@ -1069,25 +1023,9 @@ class Sinch
         );
     }
 
-    private function calculateCategoryCoincidence(
-        $categories_temp,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar
-    ): array
+    private function getDistinctRootCatNames(): array
     {
-        $this->_doQuery(
-            "
-            SELECT
-                cce.entity_id,
-                ccev.value AS category_name
-            FROM $catalog_category_entity cce
-            JOIN $catalog_category_entity_varchar ccev
-                ON cce.entity_id = ccev.entity_id
-                AND ccev.store_id = 0
-                AND ccev.attribute_id = 41
-            WHERE parent_id = 1
-        "
-        )->fetchAll();
+        $categories_temp = $this->getTableName('categories_temp');
 
         $newRootCat = $this->_doQuery(
             "SELECT DISTINCT RootName FROM $categories_temp"
@@ -1126,12 +1064,9 @@ class Sinch
         );
     }
 
-    //TODO: Remove pointless table names passed as arguments
+    //TODO: Remove pointless attribute ids passed as args
     private function truncateAllCategoriesAndRecreateDefaults(
         $rootCat,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
         $attr_url_key,
@@ -1140,6 +1075,10 @@ class Sinch
         $attr_include_in_menu
     )
     {
+        $catalog_category_entity = $this->getTableName('catalog_category_entity');
+        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
+        $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
+
         $this->_doQuery("DELETE FROM $catalog_category_entity");
 
         $this->_doQuery(
@@ -1231,9 +1170,10 @@ class Sinch
         }
     }
 
-    //TODO: Remove pointless table names passed as arguments
-    private function setCategorySettings($categories_temp, $rootCat)
+    private function setCategorySettings($rootCat)
     {
+        $categories_temp = $this->getTableName('categories_temp');
+
         $this->_doQuery(
             "UPDATE $categories_temp
             SET parent_store_category_id = :root
@@ -1304,240 +1244,6 @@ class Sinch
         return $level;
     }
 
-    //TODO: Remove pointless table names passed as arguments
-    private function mapSinchCategories(
-        $sinch_categories_mapping,
-        $catalog_category_entity,
-        $categories_temp,
-        $imType,
-        $mapping_again = false
-    )
-    {
-        $sinch_categories_mapping_temp = $this->getTableName('sinch_categories_mapping_temp');
-
-        $this->_doQuery("DROP TABLE IF EXISTS $sinch_categories_mapping_temp");
-
-        $this->_doQuery(
-            "CREATE TABLE $sinch_categories_mapping_temp
-                (
-                    shop_entity_id                INT(11) UNSIGNED NOT NULL,
-                    shop_attribute_set_id         INT(11),
-                    shop_parent_id                INT(11),
-                    shop_store_category_id        INT(11),
-                    shop_parent_store_category_id INT(11),
-                    store_category_id             INT(11),
-                    parent_store_category_id      INT(11),
-                    category_name                 VARCHAR(255),
-                    order_number                  INT(11),
-                    products_within_this_category INT(11),
-
-                    KEY shop_entity_id (shop_entity_id),
-                    KEY shop_parent_id (shop_parent_id),
-                    KEY store_category_id (store_category_id),
-                    KEY parent_store_category_id (parent_store_category_id),
-                    UNIQUE KEY(shop_entity_id)
-                )"
-        );
-
-        $this->_doQuery(
-            "CREATE TABLE IF NOT EXISTS $sinch_categories_mapping LIKE $sinch_categories_mapping_temp"
-        );
-
-        // added for mapping new sinch categories in merge && !UPDATE_CATEGORY_DATA mode
-        if ((UPDATE_CATEGORY_DATA && $imType == "MERGE") || ($imType == "REWRITE")) {
-            // backup Category ID in REWRITE mode
-            if ($mapping_again) {
-                $this->_doQuery(
-                    "
-                    INSERT IGNORE INTO $sinch_categories_mapping_temp
-                        (
-                            shop_entity_id,
-                            shop_attribute_set_id,
-                            shop_parent_id,
-                            shop_store_category_id,
-                            shop_parent_store_category_id
-                        )
-                    (SELECT
-                        entity_id,
-                        attribute_set_id,
-                        parent_id,
-                        store_category_id,
-                        parent_store_category_id
-                    FROM $catalog_category_entity)"
-                );
-
-                $this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $categories_temp c
-                        ON cmt.shop_store_category_id = c.store_category_id
-                    SET
-                        cmt.store_category_id             = c.store_category_id,
-                        cmt.parent_store_category_id      = c.parent_store_category_id,
-                        cmt.category_name                 = c.category_name,
-                        cmt.order_number                  = c.order_number,
-                        cmt.products_within_this_category = c.products_within_this_category"
-                );
-
-                $this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $catalog_category_entity cce
-                        ON cmt.parent_store_category_id = cce.store_category_id
-                    SET cmt.shop_parent_id = cce.entity_id"
-                );
-
-                $this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $categories_temp c
-                        ON cmt.shop_store_category_id = c.store_category_id
-                    SET shop_parent_id = " . $this->_rootCat . "
-                    WHERE shop_parent_id = 0"
-                );
-
-                $this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $catalog_category_entity cce
-                        ON cmt.shop_entity_id = cce.entity_id
-                    SET cce.parent_id = cmt.shop_parent_id"
-                );
-            } else {
-                $catalog_category_entity_backup = $this->getTableName(
-                    'sinch_category_backup'
-                );
-                if (!$this->tableHasData(
-                    $catalog_category_entity_backup
-                )
-                ) {
-                    $catalog_category_entity_backup = $catalog_category_entity;
-                }
-
-                $this->_doQuery(
-                    "
-                    INSERT IGNORE INTO $sinch_categories_mapping_temp
-                        (
-                            shop_entity_id,
-                            shop_attribute_set_id,
-                            shop_parent_id,
-                            shop_store_category_id,
-                            shop_parent_store_category_id
-                        )
-                    (SELECT
-                        entity_id,
-                        attribute_set_id,
-                        parent_id,
-                        store_category_id,
-                        parent_store_category_id
-                    FROM $catalog_category_entity_backup)"
-                );
-
-                $this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $categories_temp c
-                        ON cmt.shop_store_category_id = c.store_category_id
-                    SET
-                        cmt.store_category_id             = c.store_category_id,
-                        cmt.parent_store_category_id      = c.parent_store_category_id,
-                        cmt.category_name                 = c.category_name,
-                        cmt.order_number                  = c.order_number,
-                        cmt.products_within_this_category = c.products_within_this_category"
-                );
-
-                $this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $catalog_category_entity_backup cce
-                        ON cmt.parent_store_category_id = cce.store_category_id
-                    SET cmt.shop_parent_id = cce.entity_id"
-                );
-
-                $this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $categories_temp c
-                        ON cmt.shop_store_category_id = c.store_category_id
-                    SET shop_parent_id = " . $this->_rootCat . "
-                    WHERE shop_parent_id = 0"
-                );
-
-                $this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $catalog_category_entity cce
-                        ON cmt.shop_entity_id = cce.entity_id
-                    SET cce.parent_id = cmt.shop_parent_id"
-                );
-            }
-            // (end) backup Category ID in REWRITE mode
-        } else {
-            $this->_doQuery(
-                "
-                INSERT IGNORE INTO $sinch_categories_mapping_temp
-                    (
-                        shop_entity_id,
-                        shop_attribute_set_id,
-                        shop_parent_id,
-                        shop_store_category_id,
-                        shop_parent_store_category_id
-                    )
-                (SELECT
-                    entity_id,
-                    attribute_set_id,
-                    parent_id,
-                    store_category_id,
-                    parent_store_category_id
-                FROM $catalog_category_entity)"
-            );
-
-            $this->_doQuery(
-                "
-                UPDATE $sinch_categories_mapping_temp cmt
-                JOIN $categories_temp c
-                    ON cmt.shop_store_category_id = c.store_category_id
-                SET
-                    cmt.store_category_id             = c.store_category_id,
-                    cmt.parent_store_category_id      = c.parent_store_category_id,
-                    cmt.category_name                 = c.category_name,
-                    cmt.order_number                  = c.order_number,
-                    cmt.products_within_this_category = c.products_within_this_category"
-            );
-
-            $this->_doQuery(
-                "
-                UPDATE $sinch_categories_mapping_temp cmt
-                JOIN $catalog_category_entity cce
-                    ON cmt.parent_store_category_id = cce.store_category_id
-                SET cmt.shop_parent_id = cce.entity_id"
-            );
-
-            $this->_doQuery(
-                "
-                UPDATE $sinch_categories_mapping_temp cmt
-                JOIN $categories_temp c
-                    ON cmt.shop_store_category_id = c.store_category_id
-                SET shop_parent_id = " . $this->_rootCat . "
-                WHERE shop_parent_id = 0"
-            );
-
-            $this->_doQuery(
-                "
-                UPDATE $sinch_categories_mapping_temp cmt
-                JOIN $catalog_category_entity cce
-                    ON cmt.shop_entity_id = cce.entity_id
-                SET cce.parent_id = cmt.shop_parent_id
-                WHERE cce.parent_id = 0 AND cce.store_category_id IS NOT NULL"
-            );
-        }
-        $this->_log("Execute function mapSinchCategories");
-        $this->_doQuery("DROP TABLE IF EXISTS $sinch_categories_mapping");
-        $this->_doQuery(
-            "RENAME TABLE $sinch_categories_mapping_temp TO $sinch_categories_mapping"
-        );
-    }
-
     private function tableHasData($table): bool
     {
         $tableRowCount = $this->_doQuery(
@@ -1546,528 +1252,6 @@ class Sinch
         )->rowCount();
 
         return $tableRowCount > 0;
-    }
-
-    //TODO: Remove pointless table names passed as arguments
-    private function addCategoryData(
-        $categories_temp,
-        $sinch_categories_mapping,
-        $sinch_categories,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
-        $_categoryDefault_attribute_set_id,
-        $name_attrid,
-        $attr_is_active,
-        $attr_include_in_menu,
-        $is_anchor_attrid,
-        $image_attrid,
-        $imType
-    )
-    {
-        if (UPDATE_CATEGORY_DATA) {
-            $q = "INSERT INTO $catalog_category_entity
-            (
-                attribute_set_id,
-                created_at,
-                updated_at,
-                level,
-                children_count,
-                entity_id,
-                position,
-                parent_id,
-                store_category_id,
-                parent_store_category_id
-            )
-            (
-                SELECT
-                $_categoryDefault_attribute_set_id,
-                now(),
-                now(),
-                c.level,
-                c.children_count,
-                scm.shop_entity_id,
-                c.order_number,
-                scm.shop_parent_id,
-                c.store_category_id,
-                c.parent_store_category_id
-                FROM $categories_temp c
-                LEFT JOIN $sinch_categories_mapping scm
-                ON c.store_category_id = scm.store_category_id
-            )
-            ON DUPLICATE KEY UPDATE
-                updated_at = now(),
-                store_category_id = c.store_category_id,
-                level = c.level,
-                children_count = c.children_count,
-                position = c.order_number,
-                parent_store_category_id = c.parent_store_category_id";
-        } else {
-            $q = "INSERT IGNORE INTO $catalog_category_entity
-            (
-                attribute_set_id,
-                created_at,
-                updated_at,
-                level,
-                children_count,
-                entity_id,
-                position,
-                parent_id,
-                store_category_id,
-                parent_store_category_id
-            )
-            (
-                SELECT
-                $_categoryDefault_attribute_set_id,
-                now(),
-                now(),
-                c.level,
-                c.children_count,
-                scm.shop_entity_id,
-                c.order_number,
-                scm.shop_parent_id,
-                c.store_category_id,
-                c.parent_store_category_id
-                FROM $categories_temp c
-                LEFT JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-            )";
-        }
-        $this->_doQuery($q);
-
-        $this->mapSinchCategories(
-            $sinch_categories_mapping,
-            $catalog_category_entity,
-            $categories_temp,
-            $imType,
-            true
-        );
-
-        $categories = $this->_doQuery(
-            "SELECT entity_id, parent_id FROM $catalog_category_entity ORDER BY parent_id"
-        )->fetchAll();
-
-        foreach ($categories as $category) {
-            $parent_id = $category['parent_id'];
-            $entity_id = $category['entity_id'];
-
-            $path = $this->calculateCategoryPath($parent_id, $entity_id);
-
-            $this->_doQuery(
-                "UPDATE $catalog_category_entity
-                    SET path = '$path'
-                    WHERE entity_id = $entity_id"
-            );
-        }
-
-        if (UPDATE_CATEGORY_DATA) {
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $name_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.category_name
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.category_name"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $name_attrid,
-                    1,
-                    scm.shop_entity_id,
-                    c.category_name
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.category_name"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $attr_is_active,
-                    0,
-                    scm.shop_entity_id,
-                    1
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = 1"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_int
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $attr_is_active,
-                    1,
-                    scm.shop_entity_id,
-                    1
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = 1"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_int
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $attr_include_in_menu,
-                    0,
-                    scm.shop_entity_id,
-                    c.include_in_menu
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.include_in_menu"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_int
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $is_anchor_attrid,
-                    1,
-                    scm.shop_entity_id,
-                    c.is_anchor
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.is_anchor"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_int
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $is_anchor_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.is_anchor
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.is_anchor"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $image_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.categories_image
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.categories_image"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryMetaTitleAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.MetaTitle
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                     value = c.MetaTitle"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryMetadescriptionAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.MetaDescription
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.MetaDescription"
-            );
-
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryDescriptionAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.Description
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.Description"
-            );
-        } else {
-            $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $name_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.category_name
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )"
-            );
-
-            $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_int
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $attr_is_active,
-                    0,
-                    scm.shop_entity_id,
-                    1
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )"
-            );
-
-            $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_int
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $attr_include_in_menu,
-                    0,
-                    scm.shop_entity_id,
-                    c.include_in_menu
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )"
-            );
-
-            $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_int
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $is_anchor_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.is_anchor
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )"
-            );
-
-            $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $image_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.categories_image
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )"
-            );
-
-            $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryMetaTitleAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.MetaTitle
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )"
-            );
-
-            $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryMetadescriptionAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.MetaDescription
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )"
-            );
-
-            $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
-                (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryDescriptionAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.Description
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )"
-            );
-        }
-
-        $this->deleteOldSinchCategories();
-
-        $this->_doQuery("DROP TABLE IF EXISTS $sinch_categories");
-        $this->_doQuery("RENAME TABLE $categories_temp TO $sinch_categories");
     }
 
     private function calculateCategoryPath($parent_id, $ent_id): string
@@ -2083,6 +1267,8 @@ class Sinch
             [":catId" => $cat_id]
         );
 
+        //Must avoid 0 otherwise we get a completely fucked category tree
+        //If that happens categories only turn up as search filters
         while (is_numeric($parentCat) && $parentCat != 0) {
             $path = $parentCat . '/' . $path;
             $parentCat = $conn->fetchOne(
@@ -2095,9 +1281,9 @@ class Sinch
         }
 
         if ($path) {
-            return ($path . $ent_id);
+            return $path . $ent_id;
         } else {
-            return ($ent_id);
+            return $ent_id;
         }
     }
 
@@ -2136,12 +1322,9 @@ class Sinch
         );
     }
 
-    //TODO: Remove pointless table names passed as arguments
+    //TODO: Remove pointless attribute ids passed as args
     private function rewriteMultistoreCategories(
         $coincidence,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $imType,
         $name_attrid,
@@ -2150,20 +1333,14 @@ class Sinch
         $attr_include_in_menu,
         $attr_is_active,
         $image_attrid,
-        $is_anchor_attrid,
-        $sinch_categories_mapping_temp,
-        $sinch_categories_mapping,
-        $sinch_categories,
-        $categories_temp
+        $is_anchor_attrid
     )
     {
+
         $this->print("Rewrite Categories...");
 
         $this->print("    --Truncate all categories...");
         $this->truncateCategoriesAndCreateRoot(
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
             $name_attrid,
             $attr_url_key,
@@ -2173,9 +1350,6 @@ class Sinch
         $this->print("    --Create default categories...");
         $this->createDefaultCategories(
             $coincidence,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
             $name_attrid,
             $attr_display_mode,
@@ -2185,25 +1359,13 @@ class Sinch
         );
 
         $this->print("    --Map SINCH categories...");
-        $this->mapSinchCategoriesMultistore(
-            $sinch_categories_mapping_temp,
-            $sinch_categories_mapping,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $categories_temp,
+        $this->mapSinchCategories(
             $imType,
             $name_attrid
         );
 
         $this->print("    --Add category data...");
-        $this->addCategoryDataMultistore(
-            $categories_temp,
-            $sinch_categories_mapping_temp,
-            $sinch_categories_mapping,
-            $sinch_categories,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $catalog_category_entity_int,
+        $this->addCategoryData(
             $_categoryDefault_attribute_set_id,
             $imType,
             $name_attrid,
@@ -2214,17 +1376,18 @@ class Sinch
         );
     }
 
-    //TODO: Remove pointless table names passed as arguments
+    //TODO: Remove pointless attribute ids passed as args
     private function truncateCategoriesAndCreateRoot(
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
         $attr_url_key,
         $attr_include_in_menu
     )
     {
+        $catalog_category_entity = $this->getTableName('catalog_category_entity');
+        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
+        $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
+
         $this->_doQuery("DELETE FROM $catalog_category_entity");
 
         $this->_doQuery(
@@ -2254,12 +1417,9 @@ class Sinch
         );
     }
 
-    //TODO: Remove pointless table names passed as arguments
+    //TODO: Remove pointless attribute ids passed as args
     private function createDefaultCategories(
         $coincidence, //TODO: Actually an array of category names?
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
         $attr_display_mode,
@@ -2268,6 +1428,10 @@ class Sinch
         $attr_include_in_menu
     )
     {
+        $catalog_category_entity = $this->getTableName('catalog_category_entity');
+        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
+        $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
+
         $i = 3; // 2 - is Default Category... not use.
 
         foreach ($coincidence as $key) {
@@ -2318,27 +1482,34 @@ class Sinch
         }
     }
 
-    //TODO: Remove pointless table names passed as arguments
-    private function mapSinchCategoriesMultistore(
-        $sinch_categories_mapping_temp,
-        $sinch_categories_mapping,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $categories_temp,
-        $imType,
-        $name_attrid,
-        $mapping_again = false
-    )
+    //TODO: Remove pointless attribute ids passed as args
+    private function mapSinchCategories($imType, $name_attrid, $mapping_again = false)
     {
-        $this->createMappingSinchTables(
-            $sinch_categories_mapping_temp,
-            $sinch_categories_mapping
+        $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
+        $sinch_categories_mapping_temp = $this->getTableName('sinch_categories_mapping_temp');
+        $catalog_category_entity = $this->getTableName('catalog_category_entity');
+        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
+        $categories_temp = $this->getTableName('categories_temp');
+
+        $this->createMappingSinchTables();
+
+        $rootCategories = $this->conn->fetchAll(
+            "SELECT DISTINCT
+                        c.RootName, cce.entity_id
+                    FROM $categories_temp c
+                    JOIN $catalog_category_entity_varchar ccev
+                        ON c.RootName = ccev.value
+                        AND ccev.attribute_id = $name_attrid
+                        AND ccev.store_id = 0
+                    JOIN $catalog_category_entity cce
+                        ON ccev.entity_id = cce.entity_id"
         );
 
         // backup Category ID in REWRITE mode
         if ($imType == "REWRITE" || (UPDATE_CATEGORY_DATA && $imType == "MERGE")) {
             if ($mapping_again) {
-                $query = "INSERT IGNORE INTO $sinch_categories_mapping_temp
+                $this->_doQuery(
+                    "INSERT IGNORE INTO $sinch_categories_mapping_temp
                         (
                             shop_entity_id,
                             shop_attribute_set_id,
@@ -2352,11 +1523,11 @@ class Sinch
                         parent_id,
                         store_category_id,
                         parent_store_category_id
-                    FROM $catalog_category_entity)";
+                    FROM $catalog_category_entity)"
+                );
 
-                $this->_doQuery($query);
-
-                $query = "UPDATE $sinch_categories_mapping_temp cmt
+                $this->_doQuery(
+                    "UPDATE $sinch_categories_mapping_temp cmt
                     JOIN $categories_temp c
                         ON cmt.shop_store_category_id = c.store_category_id
                     SET
@@ -2364,60 +1535,53 @@ class Sinch
                         cmt.parent_store_category_id      = c.parent_store_category_id,
                         cmt.category_name                 = c.category_name,
                         cmt.order_number                  = c.order_number,
-                        cmt.products_within_this_category = c.products_within_this_category";
+                        cmt.products_within_this_category = c.products_within_this_category"
+                );
 
-                $this->_doQuery($query);
-
-                $query = "UPDATE $sinch_categories_mapping_temp cmt
+                $this->_doQuery(
+                    "UPDATE $sinch_categories_mapping_temp cmt
                     JOIN $catalog_category_entity cce
                         ON cmt.parent_store_category_id = cce.store_category_id
-                    SET cmt.shop_parent_id = cce.entity_id";
+                    SET cmt.shop_parent_id = cce.entity_id"
+                );
 
-                $this->_doQuery($query);
+                //TODO: Doesn't work on single store currently as single-store parent category is named 'Default Category', not RootName
+                //Single store just does:
+                /*$this->_doQuery(
+                    "
+                    UPDATE $sinch_categories_mapping_temp cmt
+                    JOIN $categories_temp c
+                        ON cmt.shop_store_category_id = c.store_category_id
+                    SET shop_parent_id = " . $this->_rootCat . "
+                    WHERE shop_parent_id = 0"
+                );*/
 
-                $query = "SELECT DISTINCT
-                        c.RootName, cce.entity_id
-                    FROM $categories_temp c
-                    JOIN $catalog_category_entity_varchar ccev
-                        ON c.RootName = ccev.value
-                        AND ccev.attribute_id = $name_attrid
-                        AND ccev.store_id = 0
-                    JOIN $catalog_category_entity cce
-                        ON ccev.entity_id = cce.entity_id";
-
-                $rootCategories = $this->_doQuery($query)->fetchAll();
-
-                foreach ($rootCategories as $key => $rootCat) {
-                    $root_id = $rootCat['entity_id'];
-                    $root_name = $rootCat['RootName'];
-
-                    $query = "UPDATE $sinch_categories_mapping_temp cmt
+                foreach ($rootCategories as $rootCat) {
+                    $this->_doQuery(
+                        "UPDATE $sinch_categories_mapping_temp cmt
                         JOIN $categories_temp c
                             ON cmt.shop_store_category_id = c.store_category_id
                         SET
-                            cmt.shop_parent_id = $root_id,
-                            cmt.shop_parent_store_category_id = $root_id,
-                            cmt.parent_store_category_id = $root_id,
-                            c.parent_store_category_id = $root_id
-                        WHERE RootName = '$root_name'
-                            AND cmt.shop_parent_id = 0";
-
-                    $this->_doQuery($query);
+                            cmt.shop_parent_id = :rootId,
+                            cmt.shop_parent_store_category_id = :rootId,
+                            cmt.parent_store_category_id = :rootId,
+                            c.parent_store_category_id = :rootId
+                        WHERE RootName = :rootName
+                            AND cmt.shop_parent_id = 0",
+                        [
+                            ":rootId" => $rootCat['entity_id'],
+                            ":rootName" => $rootCat['RootName']
+                        ]
+                    );
                 }
             } else {
-                $catalog_category_entity_backup = $this->getTableName(
-                    'sinch_category_backup'
-                );
-                if (!$this->tableHasData(
-                    $catalog_category_entity_backup
-                )
-                ) {
+                $catalog_category_entity_backup = $this->getTableName('sinch_category_backup');
+                if (!$this->tableHasData($catalog_category_entity_backup)) {
                     $catalog_category_entity_backup = $catalog_category_entity;
                 }
 
-                $query
-                    = "
-                    INSERT IGNORE INTO $sinch_categories_mapping_temp
+                $this->_doQuery(
+                    "INSERT IGNORE INTO $sinch_categories_mapping_temp
                         (
                             shop_entity_id,
                             shop_attribute_set_id,
@@ -2431,13 +1595,11 @@ class Sinch
                         parent_id,
                         store_category_id,
                         parent_store_category_id
-                    FROM $catalog_category_entity_backup)";
+                    FROM $catalog_category_entity_backup)"
+                );
 
-                $this->_doQuery($query);
-
-                $query
-                    = "
-                    UPDATE $sinch_categories_mapping_temp cmt
+                $this->_doQuery(
+                    "UPDATE $sinch_categories_mapping_temp cmt
                     JOIN $categories_temp c
                         ON cmt.shop_store_category_id = c.store_category_id
                     SET
@@ -2445,66 +1607,57 @@ class Sinch
                         cmt.parent_store_category_id      = c.parent_store_category_id,
                         cmt.category_name                 = c.category_name,
                         cmt.order_number                  = c.order_number,
-                        cmt.products_within_this_category = c.products_within_this_category";
+                        cmt.products_within_this_category = c.products_within_this_category"
+                );
 
-                $this->_doQuery($query);
-
-                $query
-                    = "
-                    UPDATE $sinch_categories_mapping_temp cmt
+                $this->_doQuery(
+                    "UPDATE $sinch_categories_mapping_temp cmt
                     JOIN $catalog_category_entity_backup cce
                         ON cmt.parent_store_category_id = cce.store_category_id
-                    SET cmt.shop_parent_id = cce.entity_id";
+                    SET cmt.shop_parent_id = cce.entity_id"
+                );
 
-                $this->_doQuery($query);
+                //TODO: Doesn't work in single store (ditto), should be fine if multistore were the default
+                //Single store just does:
+                /*$this->_doQuery(
+                    "
+                    UPDATE $sinch_categories_mapping_temp cmt
+                    JOIN $categories_temp c
+                        ON cmt.shop_store_category_id = c.store_category_id
+                    SET shop_parent_id = " . $this->_rootCat . "
+                    WHERE shop_parent_id = 0"
+                );*/
 
-                $query
-                    = "
-                    SELECT DISTINCT
-                        c.RootName, cce.entity_id
-                    FROM $categories_temp c
-                    JOIN $catalog_category_entity_varchar ccev
-                        ON c.RootName = ccev.value
-                        AND ccev.attribute_id = $name_attrid
-                        AND ccev.store_id = 0
-                    JOIN $catalog_category_entity_backup cce
-                        ON ccev.entity_id = cce.entity_id";
-
-                $rootCategories = $this->_doQuery($query)->fetchAll();
-
-                foreach ($rootCategories as $key => $rootCat) {
-                    $root_id = $rootCat['entity_id'];
-                    $root_name = $rootCat['RootName'];
-
-                    $query
-                        = "
-                        UPDATE $sinch_categories_mapping_temp cmt
+                foreach ($rootCategories as $rootCat) {
+                    $this->_doQuery(
+                        "UPDATE $sinch_categories_mapping_temp cmt
                         JOIN $categories_temp c
                             ON cmt.shop_store_category_id = c.store_category_id
                         SET
-                            cmt.shop_parent_id = $root_id,
-                            cmt.shop_parent_store_category_id = $root_id,
-                            cmt.parent_store_category_id = $root_id,
-                            c.parent_store_category_id = $root_id
-                        WHERE RootName = '$root_name'
-                            AND cmt.shop_parent_id = 0";
-
-                    $this->_doQuery($query);
+                            cmt.shop_parent_id = :rootId,
+                            cmt.shop_parent_store_category_id = :rootId,
+                            cmt.parent_store_category_id = :rootId,
+                            c.parent_store_category_id = :rootId
+                        WHERE RootName = :rootName
+                            AND cmt.shop_parent_id = 0",
+                        [
+                            ":rootId" => $rootCat['entity_id'],
+                            ":rootName" => $rootCat['RootName']
+                        ]
+                    );
                 }
             }
             // (end) backup Category ID in REWRITE mode
         } else {
-            $query
-                = "
-                INSERT IGNORE INTO $sinch_categories_mapping_temp
+            $this->_doQuery(
+                "INSERT IGNORE INTO $sinch_categories_mapping_temp
                     (shop_entity_id, shop_attribute_set_id, shop_parent_id, shop_store_category_id, shop_parent_store_category_id)
                 (SELECT entity_id, attribute_set_id, parent_id, store_category_id, parent_store_category_id
-                FROM $catalog_category_entity)";
-            $this->_doQuery($query);
+                FROM $catalog_category_entity)"
+            );
 
-            $query
-                = "
-                UPDATE $sinch_categories_mapping_temp cmt
+            $this->_doQuery(
+                "UPDATE $sinch_categories_mapping_temp cmt
                 JOIN $categories_temp c
                     ON cmt.shop_store_category_id = c.store_category_id
                 SET
@@ -2512,90 +1665,72 @@ class Sinch
                     cmt.parent_store_category_id      = c.parent_store_category_id,
                     cmt.category_name                 = c.category_name,
                     cmt.order_number                  = c.order_number,
-                    cmt.products_within_this_category = c.products_within_this_category";
+                    cmt.products_within_this_category = c.products_within_this_category"
+            );
 
-            $this->_doQuery($query);
-
-            $query
-                = "
-                UPDATE $sinch_categories_mapping_temp cmt
+            $this->_doQuery(
+                "UPDATE $sinch_categories_mapping_temp cmt
                 JOIN $catalog_category_entity cce
                     ON cmt.parent_store_category_id = cce.store_category_id
-                SET cmt.shop_parent_id = cce.entity_id";
+                SET cmt.shop_parent_id = cce.entity_id"
+            );
 
-            $this->_doQuery($query);
+            //TODO: Doesn't work on single store (ditto), should be fine if multistore default
+            //Single store just does:
+            /*$this->_doQuery(
+                "
+                UPDATE $sinch_categories_mapping_temp cmt
+                JOIN $categories_temp c
+                    ON cmt.shop_store_category_id = c.store_category_id
+                SET shop_parent_id = " . $this->_rootCat . "
+                WHERE shop_parent_id = 0"
+            );*/
 
-            $query
-                = "
-                SELECT DISTINCT
-                    c.RootName, cce.entity_id
-                FROM $categories_temp c
-                JOIN $catalog_category_entity_varchar ccev
-                    ON c.RootName = ccev.value
-                    AND ccev.attribute_id = $name_attrid
-                    AND ccev.store_id = 0
-                JOIN $catalog_category_entity cce
-                    ON ccev.entity_id = cce.entity_id";
-
-            $rootCategories = $this->_doQuery($query)->fetchAll();
-
-            foreach ($rootCategories as $key => $rootCat) {
-                $root_id = $rootCat['entity_id'];
-                $root_name = $rootCat['RootName'];
-
-                $query
-                    = "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $categories_temp c
-                        ON cmt.shop_store_category_id = c.store_category_id
-                    SET
-                        cmt.shop_parent_id = $root_id,
-                        cmt.shop_parent_store_category_id = $root_id,
-                        cmt.parent_store_category_id = $root_id,
-                        c.parent_store_category_id = $root_id
-                    WHERE RootName = '$root_name'
-                        AND cmt.shop_parent_id = 0";
-
-                $this->_doQuery($query);
+            foreach ($rootCategories as $rootCat) {
+                $this->_doQuery(
+                    "UPDATE $sinch_categories_mapping_temp cmt
+                        JOIN $categories_temp c
+                            ON cmt.shop_store_category_id = c.store_category_id
+                        SET
+                            cmt.shop_parent_id = :rootId,
+                            cmt.shop_parent_store_category_id = :rootId,
+                            cmt.parent_store_category_id = :rootId,
+                            c.parent_store_category_id = :rootId
+                        WHERE RootName = :rootName
+                            AND cmt.shop_parent_id = 0",
+                    [
+                        ":rootId" => $rootCat['entity_id'],
+                        ":rootName" => $rootCat['RootName']
+                    ]
+                );
             }
         }
 
         // added for mapping new sinch categories in merge && !UPDATE_CATEGORY_DATA mode
-        if ((UPDATE_CATEGORY_DATA && $imType == "MERGE")
-            || ($imType == "REWRITE")
-        ) {
+        if ((UPDATE_CATEGORY_DATA && $imType == "MERGE") || ($imType == "REWRITE")) {
             $where = '';
         } else {
-            $where
-                = 'WHERE cce.parent_id = 0 AND cce.store_category_id IS NOT NULL';
+            $where = 'WHERE cce.parent_id = 0 AND cce.store_category_id IS NOT NULL';
         }
 
-        $query
-            = "
-            UPDATE $sinch_categories_mapping_temp cmt
+        $this->_doQuery(
+            "UPDATE $sinch_categories_mapping_temp cmt
             JOIN $catalog_category_entity cce
                 ON cmt.shop_entity_id = cce.entity_id
             SET cce.parent_id = cmt.shop_parent_id
-            $where";
-
-        $this->_doQuery($query);
+            $where"
+        );
         $this->_log("Execute function mapSinchCategoriesMultistore");
-        $query = "DROP TABLE IF EXISTS $sinch_categories_mapping";
 
-        $this->_doQuery($query);
-
-        $query
-            = "RENAME TABLE $sinch_categories_mapping_temp TO $sinch_categories_mapping";
-
-        $this->_doQuery($query);
+        $this->_doQuery("DROP TABLE IF EXISTS $sinch_categories_mapping");
+        $this->_doQuery("RENAME TABLE $sinch_categories_mapping_temp TO $sinch_categories_mapping");
     }
 
-    //TODO: Remove pointless table names passed as arguments
-    private function createMappingSinchTables(
-        $sinch_categories_mapping_temp,
-        $sinch_categories_mapping
-    )
+    private function createMappingSinchTables()
     {
+        $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
+        $sinch_categories_mapping_temp = $this->getTableName('sinch_categories_mapping_temp');
+
         $this->_doQuery("DROP TABLE IF EXISTS $sinch_categories_mapping_temp");
         $this->_doQuery(
             "CREATE TABLE $sinch_categories_mapping_temp
@@ -2624,15 +1759,8 @@ class Sinch
         );
     }
 
-    //TODO: Remove pointless table names passed as arguments
-    private function addCategoryDataMultistore(
-        $categories_temp,
-        $sinch_categories_mapping_temp,
-        $sinch_categories_mapping,
-        $sinch_categories,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
+    //TODO: Remove pointless attribute ids passed as args
+    private function addCategoryData(
         $_categoryDefault_attribute_set_id,
         $imType,
         $name_attrid,
@@ -2642,6 +1770,13 @@ class Sinch
         $image_attrid
     )
     {
+        $categories_temp = $this->getTableName('categories_temp');
+        $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
+        $sinch_categories = $this->getTableName('sinch_categories');
+        $catalog_category_entity = $this->getTableName('catalog_category_entity');
+        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
+        $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
+
         $ignore = 'IGNORE';
         $onDuplicate = '';
         if (UPDATE_CATEGORY_DATA) {
@@ -2687,29 +1822,17 @@ class Sinch
                 ) $onDuplicate"
         );
 
-        $this->mapSinchCategoriesMultistore(
-            $sinch_categories_mapping_temp,
-            $sinch_categories_mapping,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $categories_temp,
-            $imType,
-            $name_attrid,
-            true
-        );
+        $this->mapSinchCategories($imType, $name_attrid, true);
 
         $categories = $this->_doQuery(
             "SELECT entity_id, parent_id FROM $catalog_category_entity ORDER BY parent_id"
-        );
+        )->fetchAll();
+
         foreach ($categories as $category) {
             $parent_id = $category['parent_id'];
             $entity_id = $category['entity_id'];
 
-            $path = $this->culcPathMultistore(
-                $parent_id,
-                $entity_id,
-                $catalog_category_entity
-            );
+            $path = $this->calculateCategoryPath($parent_id, $entity_id);
 
             $this->_doQuery(
                 "UPDATE $catalog_category_entity SET path = :path WHERE entity_id = :entityId",
@@ -2717,6 +1840,7 @@ class Sinch
             );
         }
 
+        //TODO: Remove UPDATE_CATEGORY_DATA?
         if (UPDATE_CATEGORY_DATA) {
             $this->_doQuery(
                 "INSERT INTO $catalog_category_entity_int (attribute_id, store_id, entity_id, value)
@@ -2827,216 +1951,107 @@ class Sinch
             );
         } else {
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
                 (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $name_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.category_name
+                    SELECT :nameAttr, 0, scm.shop_entity_id, c.category_name
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
-                )"
+                )",
+                [":nameAttr" => $name_attrid]
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_int
+                "INSERT IGNORE INTO $catalog_category_entity_int (attribute_id, store_id, entity_id, value)
                 (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $attr_is_active,
-                    0,
-                    scm.shop_entity_id,
-                    1
+                    SELECT :isActiveAttr, 0, scm.shop_entity_id, 1
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
-                )"
+                )",
+                [":isActiveAttr" => $attr_is_active]
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_int
+                "INSERT IGNORE INTO $catalog_category_entity_int (attribute_id, store_id, entity_id, value)
                 (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $attr_include_in_menu,
-                    0,
-                    scm.shop_entity_id,
-                    c.include_in_menu
+                    SELECT :includeInMenuAttr, 0, scm.shop_entity_id, c.include_in_menu
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
-                )"
+                )",
+                [":includeInMenuAttr" => $attr_include_in_menu]
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_int
+                "INSERT IGNORE INTO $catalog_category_entity_int (attribute_id, store_id, entity_id, value)
                 (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $is_anchor_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.is_anchor
+                    SELECT :isAnchorAttr, 0, scm.shop_entity_id, c.is_anchor
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
-                )"
+                )",
+                [":isAnchorAttr" => $is_anchor_attrid]
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
                 (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $image_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.categories_image
+                    SELECT :imageAttr, 0, scm.shop_entity_id, c.categories_image
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
-                )"
+                )",
+                [":imageAttr" => $image_attrid]
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
                 (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryMetaTitleAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.MetaTitle
+                    SELECT :catMetaTitleAttr, 0, scm.shop_entity_id, c.MetaTitle
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
-                )"
+                )",
+                [":catMetaTitleAttr" => $this->_categoryMetaTitleAttrId]
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
                 (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryMetadescriptionAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.MetaDescription
+                    SELECT :catMetaDescriptionAttr, 0, scm.shop_entity_id, c.MetaDescription
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
-                )"
+                )",
+                [":catMetaDescriptionAttr" => $this->_categoryMetadescriptionAttrId]
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
                 (
-                    attribute_id,
-                    store_id,
-                    entity_id,
-                    value
-                )
-                (
-                    SELECT
-                    $this->_categoryDescriptionAttrId,
-                    0,
-                    scm.shop_entity_id,
-                    c.Description
+                    SELECT :catDescriptionAttr, 0, scm.shop_entity_id, c.Description
                     FROM $categories_temp c
                     JOIN $sinch_categories_mapping scm
                         ON c.store_category_id = scm.store_category_id
-                )"
+                )",
+                [":catDescriptionAttr" => $this->_categoryDescriptionAttrId]
             );
         }
 
-        $this->deleteOldSinchCategories();
+        if($imType == 'MERGE') {
+            $this->deleteOldSinchCategoriesFromShopMerge();
+        } else {
+            $this->deleteOldSinchCategories();
+        }
+
         $this->_doQuery("DROP TABLE IF EXISTS $sinch_categories\n\n");
         $this->_doQuery("RENAME TABLE $categories_temp TO $sinch_categories");
     }
 
-    private function culcPathMultistore(
-        $parent_id,
-        $ent_id,
-        $catalog_category_entity
-    )
-    {
-        $path = '';
-        $cat_id = $parent_id;
-        $conn = $this->_resourceConnection->getConnection();
-
-        $res = $conn->fetchOne(
-            "SELECT parent_id FROM $catalog_category_entity WHERE entity_id = :cat_id",
-            [":cat_id" => $cat_id]
-        );
-
-        //Must avoid 0 otherwise we get a completely fucked category tree
-        //If that happens categories only turn up as search filters
-        while (is_numeric($res) && $res != 0) {
-            $path = $res . '/' . $path;
-            $parent_id = $res;
-
-            $res = $conn->fetchOne(
-                "SELECT parent_id FROM $catalog_category_entity WHERE entity_id = :parent_id",
-                [":parent_id" => $parent_id]
-            );
-        }
-
-        if ($cat_id) {
-            $path .= $cat_id . "/";
-        }
-
-        if ($path) {
-            $path .= $ent_id;
-        } else {
-            $path = $ent_id;
-        }
-
-        return $path;
-    }
-
+    //TODO: Remove pointless attribute ids passed as args
     private function mergeMultistoreCategories(
         $coincidence,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $imType,
         $name_attrid,
@@ -3045,20 +2060,20 @@ class Sinch
         $attr_include_in_menu,
         $attr_is_active,
         $image_attrid,
-        $is_anchor_attrid,
-        $sinch_categories_mapping_temp,
-        $sinch_categories_mapping,
-        $sinch_categories,
-        $categories_temp
+        $is_anchor_attrid
     )
     {
+        $categories_temp = $this->getTableName('categories_temp');
+        $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
+        $sinch_categories = $this->getTableName('sinch_categories');
+        $catalog_category_entity = $this->getTableName('catalog_category_entity');
+        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
+        $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
+
         $this->print("mergeMultistoreCategories RUN");
 
         $this->createNewDefaultCategories(
             $coincidence,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
             $name_attrid,
             $attr_display_mode,
@@ -3067,24 +2082,12 @@ class Sinch
             $attr_include_in_menu
         );
 
-        $this->mapSinchCategoriesMultistoreMerge(
-            $sinch_categories_mapping_temp,
-            $sinch_categories_mapping,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $categories_temp,
+        $this->mapSinchCategories(
             $imType,
             $name_attrid
         );
 
-        $this->addCategoryDataMultistoreMerge(
-            $categories_temp,
-            $sinch_categories_mapping_temp,
-            $sinch_categories_mapping,
-            $sinch_categories,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $catalog_category_entity_int,
+        $this->addCategoryData(
             $_categoryDefault_attribute_set_id,
             $imType,
             $name_attrid,
@@ -3097,11 +2100,10 @@ class Sinch
         $this->print("mergeMultistoreCategories DONE");
     }
 
+    //TODO: Remove pointless attribute ids passed as args
+    //TODO: Remove, almost identical duplicate of createDefaultCategories
     private function createNewDefaultCategories(
         $coincidence,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
         $attr_display_mode,
@@ -3110,30 +2112,27 @@ class Sinch
         $attr_include_in_menu
     )
     {
+        $catalog_category_entity = $this->getTableName('catalog_category_entity');
+        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
+        $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
+
         $this->print("=== createNewDefaultCategories start...");
 
-        $old_cats = [];
         $attributeId = $this->_eavAttribute->getIdByCode('catalog_category', 'name');
-        $res = $this->_doQuery(
-            "
-            SELECT
-                cce.entity_id,
-                ccev.value AS category_name
-            FROM $catalog_category_entity cce
-            JOIN $catalog_category_entity_varchar ccev
-                ON cce.entity_id = ccev.entity_id
-                AND ccev.store_id = 0
-                AND ccev.attribute_id = $attributeId
-            WHERE parent_id = 1"
-        )->fetchAll(); // 41 - category name
+        $old_cats = $this->conn->fetchCol(
+            "SELECT ccev.value
+                    FROM $catalog_category_entity cce
+                    JOIN $catalog_category_entity_varchar ccev
+                        ON cce.entity_id = ccev.entity_id
+                        AND ccev.store_id = 0
+                        AND ccev.attribute_id = :nameAttr
+                    WHERE parent_id = 1",
+            [":nameAttr" => $attributeId]
+        );
 
-        foreach ($res as $key => $category) {
-            $old_cats[] = $category['category_name'];
-        }
-
-        $max_entity_id = $this->_doQuery(
+        $max_entity_id = (int)$this->conn->fetchOne(
             "SELECT MAX(entity_id) FROM $catalog_category_entity"
-        )->fetchColumn();
+        );
 
         $i = $max_entity_id + 1;
 
@@ -3180,670 +2179,35 @@ class Sinch
         $this->print("Create New Default Categories -> DONE...");
     }
 
-    private function mapSinchCategoriesMultistoreMerge(
-        $sinch_categories_mapping_temp,
-        $sinch_categories_mapping,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $categories_temp,
-        $imType,
-        $name_attrid
-    )
+    private function deleteOldSinchCategoriesFromShopMerge()
     {
-        $this->createMappingSinchTables(
-            $sinch_categories_mapping_temp,
-            $sinch_categories_mapping
-        );
-
-        $query
-            = "
-            INSERT IGNORE INTO $sinch_categories_mapping_temp
-                (shop_entity_id, shop_attribute_set_id, shop_parent_id, shop_store_category_id, shop_parent_store_category_id)
-            (SELECT entity_id, attribute_set_id, parent_id, store_category_id, parent_store_category_id
-            FROM $catalog_category_entity)";
-
-        $this->_doQuery($query);
-
-        $query
-            = "
-            UPDATE $sinch_categories_mapping_temp cmt
-            JOIN $categories_temp c
-                ON cmt.shop_store_category_id = c.store_category_id
-            SET
-                cmt.store_category_id             = c.store_category_id,
-                cmt.parent_store_category_id      = c.parent_store_category_id,
-                cmt.category_name                 = c.category_name,
-                cmt.order_number                  = c.order_number,
-                cmt.products_within_this_category = c.products_within_this_category";
-
-        $this->_doQuery($query);
-
-        $query
-            = "
-            UPDATE $sinch_categories_mapping_temp cmt
-            JOIN $catalog_category_entity cce
-                ON cmt.parent_store_category_id = cce.store_category_id
-            SET cmt.shop_parent_id = cce.entity_id";
-
-        $this->_doQuery($query);
-
-        $query
-            = "
-            SELECT DISTINCT
-                c.RootName, cce.entity_id
-            FROM $categories_temp c
-            JOIN $catalog_category_entity_varchar ccev
-                ON c.RootName = ccev.value
-                AND ccev.attribute_id = $name_attrid
-                AND ccev.store_id = 0
-            JOIN $catalog_category_entity cce
-                ON ccev.entity_id = cce.entity_id";
-
-        $rootCategories = $this->_doQuery($query)->fetchAll();
-
-        foreach ($rootCategories as $rootCat) {
-            $root_id = $rootCat['entity_id'];
-            $root_name = $rootCat['RootName'];
-
-            $query
-                = "
-                UPDATE $sinch_categories_mapping_temp cmt
-                JOIN $categories_temp c
-                    ON cmt.shop_store_category_id = c.store_category_id
-                SET
-                    cmt.shop_parent_id = $root_id,
-                    cmt.shop_parent_store_category_id = $root_id,
-                    cmt.parent_store_category_id = $root_id,
-                    c.parent_store_category_id = $root_id
-                WHERE RootName = '$root_name'
-                    AND cmt.shop_parent_id = 0";
-
-            $this->_doQuery($query);
-        }
-
-        // added for mapping new sinch categories in merge && !UPDATE_CATEGORY_DATA mode
-        if ((UPDATE_CATEGORY_DATA && $imType == "MERGE")
-            || ($imType == "REWRITE")
-        ) {
-            $where = '';
-        } else {
-            $where
-                = 'WHERE cce.parent_id = 0 AND cce.store_category_id IS NOT NULL';
-        }
-
-        $query
-            = "
-            UPDATE $sinch_categories_mapping_temp cmt
-            JOIN $catalog_category_entity cce
-                ON cmt.shop_entity_id = cce.entity_id
-            SET cce.parent_id = cmt.shop_parent_id
-            $where";
-
-        $this->_doQuery($query);
-
-        $query = "DROP TABLE IF EXISTS $sinch_categories_mapping";
-
-        $this->_doQuery($query);
-
-        $query
-            = "RENAME TABLE $sinch_categories_mapping_temp TO $sinch_categories_mapping";
-
-        $this->_doQuery($query);
-    }
-
-    private function addCategoryDataMultistoreMerge(
-        $categories_temp,
-        $sinch_categories_mapping_temp,
-        $sinch_categories_mapping,
-        $sinch_categories,
-        $catalog_category_entity,
-        $catalog_category_entity_varchar,
-        $catalog_category_entity_int,
-        $_categoryDefault_attribute_set_id,
-        $imType,
-        $name_attrid,
-        $attr_is_active,
-        $attr_include_in_menu,
-        $is_anchor_attrid,
-        $image_attrid
-    )
-    {
-        if (UPDATE_CATEGORY_DATA) {
-            $ignore = '';
-            $on_diplicate_key_update
-                = "
-                ON DUPLICATE KEY UPDATE
-                    updated_at = now(),
-                    store_category_id = c.store_category_id,
-                    level = c.level,
-                    children_count = c.children_count,
-                    position = c.order_number,
-                    parent_store_category_id = c.parent_store_category_id";
-        } else {
-            $ignore = 'IGNORE';
-            $on_diplicate_key_update = '';
-        }
-
-        $query
-            = "
-            INSERT $ignore INTO $catalog_category_entity
-                (
-                    attribute_set_id,
-                    created_at,
-                    updated_at,
-                    level,
-                    children_count,
-                    entity_id,
-                    position,
-                    parent_id,
-                    store_category_id,
-                    parent_store_category_id
-                )
-            (SELECT
-                $_categoryDefault_attribute_set_id,
-                NOW(),
-                NOW(),
-                c.level,
-                c.children_count,
-                scm.shop_entity_id,
-                c.order_number,
-                scm.shop_parent_id,
-                c.store_category_id,
-                c.parent_store_category_id
-                FROM $categories_temp c
-                LEFT JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-            ) $on_diplicate_key_update";
-
-        $this->_doQuery($query);
-
-        $this->mapSinchCategoriesMultistoreMerge(
-            $sinch_categories_mapping_temp,
-            $sinch_categories_mapping,
-            $catalog_category_entity,
-            $catalog_category_entity_varchar,
-            $categories_temp,
-            $imType,
-            $name_attrid
-        );
-
-        $categories = $this->_doQuery(
-            "SELECT entity_id, parent_id FROM $catalog_category_entity ORDER BY parent_id"
-        )->fetchAll();
-        foreach ($categories as $category) {
-            $parent_id = $category['parent_id'];
-            $entity_id = $category['entity_id'];
-
-            $path = $this->culcPathMultistore(
-                $parent_id,
-                $entity_id,
-                $catalog_category_entity
-            );
-
-            $this->_doQuery(
-                "
-                UPDATE $catalog_category_entity
-                SET path = '$path'
-                WHERE entity_id = $entity_id"
-            );
-        }
-
-        if (UPDATE_CATEGORY_DATA) {
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_varchar
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $name_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.category_name
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.category_name";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_varchar
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $name_attrid,
-                    1,
-                    scm.shop_entity_id,
-                    c.category_name
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.category_name";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $attr_is_active,
-                    0,
-                    scm.shop_entity_id,
-                    1
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = 1";
-
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_int
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $attr_is_active,
-                    1,
-                    scm.shop_entity_id,
-                    1
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = 1";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_int
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $attr_include_in_menu,
-                    0,
-                    scm.shop_entity_id,
-                    c.include_in_menu
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.include_in_menu";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_int
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $is_anchor_attrid,
-                    1,
-                    scm.shop_entity_id,
-                    c.is_anchor
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.is_anchor";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_int
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $is_anchor_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.is_anchor
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.is_anchor";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_varchar
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $image_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.categories_image
-                    FROM $categories_temp c
-                    JOIN $sinch_categories_mapping scm
-                        ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = c.categories_image";
-            $this->_doQuery($q);
-
-            //STP
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_varchar
-                    (
-                     attribute_id,
-                     store_id,
-                     entity_id,
-                     value
-                    )
-                (SELECT
-                     $this->_categoryEntityTypeId,
-                     $this->_categoryMetaTitleAttrId,
-                     0,
-                     scm.shop_entity_id,
-                     c.MetaTitle
-                 FROM $categories_temp c
-                 JOIN $sinch_categories_mapping scm
-                     ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                     value = c.MetaTitle";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_varchar
-                    (
-                     attribute_id,
-                     store_id,
-                     entity_id,
-                     value
-                    )
-                (SELECT
-                     $this->_categoryMetadescriptionAttrId,
-                     0,
-                     scm.shop_entity_id,
-                     c.MetaDescription
-                 FROM $categories_temp c
-                 JOIN $sinch_categories_mapping scm
-                     ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                     value = c.MetaDescription";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT INTO $catalog_category_entity_varchar
-                    (
-                     attribute_id,
-                     store_id,
-                     entity_id,
-                     value
-                    )
-                (SELECT
-                     $this->_categoryDescriptionAttrId,
-                     0,
-                     scm.shop_entity_id,
-                     c.Description
-                 FROM $categories_temp c
-                 JOIN $sinch_categories_mapping scm
-                     ON c.store_category_id = scm.store_category_id
-                )
-                ON DUPLICATE KEY UPDATE
-                     value = c.Description";
-            $this->_doQuery($q);
-        } else {
-            $q
-                = "
-                INSERT IGNORE INTO $catalog_category_entity_varchar
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                            $name_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.category_name
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT IGNORE INTO $catalog_category_entity_int
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $attr_is_active,
-                    0,
-                    scm.shop_entity_id,
-                    1
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT IGNORE INTO $catalog_category_entity_int
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $attr_include_in_menu,
-                    0,
-                    scm.shop_entity_id,
-                    c.include_in_menu
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT IGNORE INTO $catalog_category_entity_int
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $is_anchor_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.is_anchor
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT IGNORE INTO $catalog_category_entity_varchar
-                    (
-                        attribute_id,
-                        store_id,
-                        entity_id,
-                        value
-                    )
-                (SELECT
-                    $image_attrid,
-                    0,
-                    scm.shop_entity_id,
-                    c.categories_image
-                FROM $categories_temp c
-                JOIN $sinch_categories_mapping scm
-                    ON c.store_category_id = scm.store_category_id
-                )";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT IGNORE INTO $catalog_category_entity_varchar
-                    (
-                     attribute_id,
-                     store_id,
-                     entity_id,
-                     value
-                    )
-                (SELECT
-                     $this->_categoryMetaTitleAttrId,
-                     0,
-                     scm.shop_entity_id,
-                     c.MetaTitle
-                 FROM $categories_temp c
-                 JOIN $sinch_categories_mapping scm
-                     ON c.store_category_id = scm.store_category_id
-                )
-               ";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT IGNORE INTO $catalog_category_entity_varchar
-                    (
-                     attribute_id,
-                     store_id,
-                     entity_id,
-                     value
-                    )
-                (SELECT
-                     $this->_categoryMetadescriptionAttrId,
-                     0,
-                     scm.shop_entity_id,
-                     c.MetaDescription
-                 FROM $categories_temp c
-                 JOIN $sinch_categories_mapping scm
-                     ON c.store_category_id = scm.store_category_id
-                )
-            ";
-            $this->_doQuery($q);
-
-            $q
-                = "
-                INSERT IGNORE INTO $catalog_category_entity_varchar
-                    (
-                     attribute_id,
-                     store_id,
-                     entity_id,
-                     value
-                    )
-                (SELECT
-                     $this->_categoryDescriptionAttrId,
-                     0,
-                     scm.shop_entity_id,
-                     c.Description
-                 FROM $categories_temp c
-                 JOIN $sinch_categories_mapping scm
-                     ON c.store_category_id = scm.store_category_id
-                )
-            ";
-            $this->_doQuery($q);
-        }
-
-        $this->_doQuery("DROP TABLE IF EXISTS $sinch_categories\n\n");
-        $this->_doQuery("RENAME TABLE $categories_temp TO $sinch_categories");
-
-        $this->deleteOldSinchCategoriesFromShopMerge(
-            $catalog_category_entity
-        );
-    }
-
-    private function deleteOldSinchCategoriesFromShopMerge(
-        $catalog_category_entity
-    )
-    {
-        $query = "DROP TABLE IF EXISTS delete_cats";
-
-        $this->_doQuery($query);
-
         $delete_cats = $this->getTableName('delete_cats');
+        $this->_doQuery("DROP TABLE IF EXISTS $delete_cats");
+
+        $catalog_category_entity = $this->getTableName('catalog_category_entity');
         $sinch_categories = $this->getTableName('sinch_categories');
 
-        $query
-            = "
-            CREATE TABLE $delete_cats
+        $this->_doQuery(
+            "CREATE TABLE $delete_cats
+                    SELECT entity_id
+                    FROM $catalog_category_entity cce
+                    WHERE cce.entity_id NOT IN
+                    (
+                        SELECT cce2.entity_id
+                        FROM $catalog_category_entity cce2
+                        JOIN $sinch_categories sc
+                            ON cce2.store_category_id = sc.store_category_id
+                    )
+                    AND cce.store_category_id IS NOT NULL;"
+        );
 
-            SELECT entity_id
-            FROM $catalog_category_entity cce
-            WHERE cce.entity_id NOT IN
-                (
-                SELECT cce2.entity_id
-                FROM $catalog_category_entity cce2
-                JOIN $sinch_categories sc
-                    ON cce2.store_category_id = sc.store_category_id
-                )
-                AND cce.store_category_id IS NOT NULL;";
-
-        $this->_doQuery($query);
-
-        $query
-            = "DELETE cce FROM $catalog_category_entity cce JOIN $delete_cats dc USING(entity_id)";
-
-        $this->_doQuery($query);
-
-        $query = "DROP TABLE IF EXISTS $delete_cats";
-
-        $this->_doQuery($query);
+        $this->_doQuery(
+            "DELETE cce FROM $catalog_category_entity cce JOIN $delete_cats dc USING(entity_id)"
+        );
+        $this->_doQuery("DROP TABLE IF EXISTS $delete_cats");
     }
 
+    //TODO: Badly named
     private function _set_default_rootCategory()
     {
         $q = "UPDATE " . $this->getTableName('store_group') . " csg
