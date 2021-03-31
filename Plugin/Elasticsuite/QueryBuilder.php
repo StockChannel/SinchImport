@@ -9,6 +9,8 @@ use SITC\Sinchimport\Helper\Data;
 
 class QueryBuilder
 {
+
+	CONST PRICE_REGEXP = "/(?(DEFINE)(?<price>[0-9]+(?:.[0-9]+)?)(?<cur>(?:\p{Sc}|[A-Z]{3})\s?))(?<query>.+?)\s+(?J:(?:below|under|(?:cheaper|less)\sthan)\s+(?&cur)?(?<below>(?&price))|(?:between|from)?\s*(?&cur)?(?<above>(?&price))\s*(?:and|to|-)\s*(?&cur)?(?<below>(?&price)))/";
     /**
      * @var \Magento\Catalog\Api\CategoryRepositoryInterface
      */
@@ -74,6 +76,16 @@ class QueryBuilder
 			return $result;
 		}
 
+		$priceFilter = $this->getPriceFiltersFromQuery($queryText);
+		$filterParams = '';
+		if ($priceFilter !== false) {
+			$queryText = $priceFilter['query'];
+			$below = $priceFilter['below'];
+			$above = $priceFilter['above'];
+			if ($below != -1)
+				$filterParams = "?price={$above}-{$below}";
+		}
+
 		$start = microtime(true);
 		$pluralQueryText = $queryText . 's';
 
@@ -88,11 +100,41 @@ class QueryBuilder
 		}
 
 		$category = $this->categoryRespository->get((int)$catId);
+		$url = $category->getUrl() . $filterParams;
 
-		$this->response->setRedirect($category->getUrl())->sendResponse(); //This redirects to the non-SEO cat URL
+		$this->response->setRedirect($url)->sendResponse(); 
 
 		$elapsed = abs(microtime(true) - $start) * 1000;
 		$this->logger->info("Total execution time: " . strval($elapsed) . "ms");
 		return null;
     }
+
+
+	/**
+	 * Get price bounds from query text
+	 *
+	 * @param string $queryText
+	 *
+	 * @return array|bool
+	 */
+	private function getPriceFiltersFromQuery($queryText)
+	{
+		$matches = [];
+		if (preg_match_all(self::PRICE_REGEXP, $queryText, $matches, PREG_SET_ORDER)) {
+			$matches = $matches[0];
+			$query = isset($matches['query']) ? $matches['query'] : '';
+			$below = isset($matches['below']) ? $matches['below'] : -1;
+			$above = isset($matches['above']) ? $matches['above'] : 0;
+
+			$res = [
+				'query' => $query,
+				'below' => $below,
+				'above' => $above,
+			];
+
+			return $res;
+		}
+
+		return false;
+	}
 }
