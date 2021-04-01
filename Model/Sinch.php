@@ -864,7 +864,8 @@ class Sinch
                 throw new LocalizedException(__("Import files in invalid format"));
             }
 
-            if (count($rootCatNames) == 1) { // one store logic
+            //TODO: Disabled single store logic, remove if works with single store feed
+            if (false && count($rootCatNames) == 1) { // one store logic
 
                 //TODO: Should single store logic be removed in favour of a multistore version that robustly handles single store too?
                 $this->print("==========SINGLE STORE LOGIC==========");
@@ -898,7 +899,9 @@ class Sinch
                     $image_attrid,
                     $imType
                 );
-            } elseif (count($rootCatNames) > 1) { // multistore logic
+            }
+            //TODO: Made multistore default here with =
+            if (count($rootCatNames) >= 1) { // multistore logic
 
                 $this->print("==========MULTI STORE LOGIC==========");
 
@@ -1545,17 +1548,22 @@ class Sinch
                     SET cmt.shop_parent_id = cce.entity_id"
                 );
 
-                //TODO: Doesn't work on single store currently as single-store parent category is named 'Default Category', not RootName
-                //Single store just does:
-                /*$this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $categories_temp c
-                        ON cmt.shop_store_category_id = c.store_category_id
-                    SET shop_parent_id = " . $this->_rootCat . "
-                    WHERE shop_parent_id = 0"
-                );*/
 
+                //TODO: Old single store implementation, deprecated, intent to remove
+//                if (count($rootCategories) < 2) {
+//                    //Single store just did:
+//                    $this->_doQuery(
+//                        "
+//                        UPDATE $sinch_categories_mapping_temp cmt
+//                        JOIN $categories_temp c
+//                            ON cmt.shop_store_category_id = c.store_category_id
+//                        SET shop_parent_id = :rootCat
+//                        WHERE shop_parent_id = 0",
+//                        [":rootCat" => $this->_rootCat]
+//                    );
+//                }
+
+                //TODO: Doesn't work on single store currently as single-store parent category is named 'Default Category', not RootName
                 foreach ($rootCategories as $rootCat) {
                     $this->_doQuery(
                         "UPDATE $sinch_categories_mapping_temp cmt
@@ -1617,17 +1625,22 @@ class Sinch
                     SET cmt.shop_parent_id = cce.entity_id"
                 );
 
-                //TODO: Doesn't work in single store (ditto), should be fine if multistore were the default
-                //Single store just does:
-                /*$this->_doQuery(
-                    "
-                    UPDATE $sinch_categories_mapping_temp cmt
-                    JOIN $categories_temp c
-                        ON cmt.shop_store_category_id = c.store_category_id
-                    SET shop_parent_id = " . $this->_rootCat . "
-                    WHERE shop_parent_id = 0"
-                );*/
 
+                //TODO: Old single store implementation, deprecated, intent to remove
+//                if (count($rootCategories) < 2) {
+//                    //Single store just did:
+//                    $this->_doQuery(
+//                        "
+//                        UPDATE $sinch_categories_mapping_temp cmt
+//                        JOIN $categories_temp c
+//                            ON cmt.shop_store_category_id = c.store_category_id
+//                        SET shop_parent_id = :rootCat
+//                        WHERE shop_parent_id = 0",
+//                        [":rootCat" => $this->_rootCat]
+//                    );
+//                }
+
+                //TODO: Doesn't work in single store (ditto), should be fine if multistore were the default
                 foreach ($rootCategories as $rootCat) {
                     $this->_doQuery(
                         "UPDATE $sinch_categories_mapping_temp cmt
@@ -1675,17 +1688,21 @@ class Sinch
                 SET cmt.shop_parent_id = cce.entity_id"
             );
 
-            //TODO: Doesn't work on single store (ditto), should be fine if multistore default
-            //Single store just does:
-            /*$this->_doQuery(
-                "
-                UPDATE $sinch_categories_mapping_temp cmt
-                JOIN $categories_temp c
-                    ON cmt.shop_store_category_id = c.store_category_id
-                SET shop_parent_id = " . $this->_rootCat . "
-                WHERE shop_parent_id = 0"
-            );*/
+            //TODO: Old single store implementation, deprecated, intent to remove
+//            if (count($rootCategories) < 2) {
+//                //Single store just did:
+//                $this->_doQuery(
+//                    "
+//                    UPDATE $sinch_categories_mapping_temp cmt
+//                    JOIN $categories_temp c
+//                        ON cmt.shop_store_category_id = c.store_category_id
+//                    SET shop_parent_id = :rootCat
+//                    WHERE shop_parent_id = 0",
+//                    [":rootCat" => $this->_rootCat]
+//                );
+//            }
 
+            //TODO: Doesn't work on single store (ditto), should be fine if multistore default
             foreach ($rootCategories as $rootCat) {
                 $this->_doQuery(
                     "UPDATE $sinch_categories_mapping_temp cmt
@@ -1841,7 +1858,7 @@ class Sinch
         }
 
         //TODO: Remove UPDATE_CATEGORY_DATA?
-        if (UPDATE_CATEGORY_DATA) {
+        if ($imType == "REWRITE" || UPDATE_CATEGORY_DATA) {
             $this->_doQuery(
                 "INSERT INTO $catalog_category_entity_int (attribute_id, store_id, entity_id, value)
                     (
@@ -2063,11 +2080,6 @@ class Sinch
         $is_anchor_attrid
     )
     {
-        $categories_temp = $this->getTableName('categories_temp');
-        $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
-        $sinch_categories = $this->getTableName('sinch_categories');
-        $catalog_category_entity = $this->getTableName('catalog_category_entity');
-        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
         $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
 
         $this->print("mergeMultistoreCategories RUN");
@@ -2727,7 +2739,8 @@ class Sinch
 
             $this->print("--Parse Products 7");
 
-            if (count($coincidence) == 1) {
+            //TODO: Disabled single store logic, remove if works with single store feed
+            if (false && count($coincidence) == 1) {
                 $this->replaceMagentoProducts();
             } else {
                 switch ($this->imType) {
@@ -3035,18 +3048,18 @@ class Sinch
                  pm.entity_id,
                  $this->defaultAttributeSetId,
                  'simple',
-                 a.product_sku,
+                 pt.product_sku,
                  NOW(),
                  0,
-                 a.sinch_product_id
-              FROM " . $this->getTableName('products_temp') . " a
+                 pt.sinch_product_id
+              FROM " . $this->getTableName('products_temp') . " pt
               LEFT JOIN " . $this->getTableName('sinch_products_mapping') . " pm
-                 ON a.sinch_product_id = pm.sinch_product_id
+                 ON pt.sinch_product_id = pm.sinch_product_id
               WHERE pm.entity_id IS NOT NULL
             )
             ON DUPLICATE KEY UPDATE
-                sku = a.product_sku,
-                sinch_product_id = a.sinch_product_id"
+                sku = pt.product_sku,
+                sinch_product_id = pt.sinch_product_id"
         );
 
         $this->_doQuery(
@@ -3062,18 +3075,18 @@ class Sinch
                  pm.entity_id,
                  $this->defaultAttributeSetId,
                  'simple',
-                 a.product_sku,
+                 pt.product_sku,
                  NOW(),
                  0,
-                 a.sinch_product_id
-              FROM " . $this->getTableName('products_temp') . " a
+                 pt.sinch_product_id
+              FROM " . $this->getTableName('products_temp') . " pt
               LEFT JOIN " . $this->getTableName('sinch_products_mapping') . " pm
-                 ON a.sinch_product_id=pm.sinch_product_id
+                 ON pt.sinch_product_id = pm.sinch_product_id
               WHERE pm.entity_id IS NULL
             )
             ON DUPLICATE KEY UPDATE
-                sku= a.product_sku,
-                sinch_product_id=a.sinch_product_id"
+                sku = pt.product_sku,
+                sinch_product_id = pt.sinch_product_id"
         );
 
         //Set enabled
@@ -4276,7 +4289,7 @@ class Sinch
                 pm.entity_id,
                 $_defaultAttributeSetId,
                 'simple',
-                a.product_sku,
+                pt.product_sku,
                 NOW(),
                 0,
                 pt.sinch_product_id
