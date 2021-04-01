@@ -21,7 +21,8 @@
         <plugin name="sitc_search_mapping" type="SITC\Sinchimport\Plugin\Elasticsuite\Mapping" />
     </type>
     <type name="Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder">
-        <plugin name="sitc_query_builder" type="SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder" />
+        <!-- Specify sort order to ensure that optimizers run as expected -->
+        <plugin name="sitc_query_builder" type="SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder" sortOrder="0"/>
     </type>
     <!-- End search stuff-->
 </config>
