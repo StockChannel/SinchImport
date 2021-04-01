@@ -15,4 +15,13 @@
     <type name="Magento\Framework\App\Action\AbstractAction">
         <plugin name="sitc_customcatalog_vary_context_accgrp" type="SITC\Sinchimport\Plugin\VaryContext" sortOrder="11"/>
     </type>
+
+    <!-- Start search stuff -->
+    <type name="Smile\ElasticsuiteCore\Api\Index\MappingInterface">
+        <plugin name="sitc_search_mapping" type="SITC\Sinchimport\Plugin\Elasticsuite\Mapping" />
+    </type>
+    <type name="Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder">
+        <plugin name="sitc_query_builder" type="SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder" />
+    </type>
+    <!-- End search stuff-->
 </config>
