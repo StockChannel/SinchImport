@@ -190,6 +190,17 @@
                 </field>
             </group>
 
+            <group id="search" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Search</label>
+                <field id="category_field_search_weight" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Category search weight</label>
+                    <comment><![CDATA[The search weight for the category name field]]></comment>
+                </field>
+                <field id="brand_field_search_weight" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Brand name search weight</label>
+                    <comment><![CDATA[The search weight for the brand name field]]></comment>
+                </field>
+            </group>
         </section>
     </system>
 </config>

@@ -4,21 +4,33 @@ namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 use Smile\ElasticsuiteCore\Api\Index\MappingInterface;
 use Smile\ElasticsuiteCore\Api\Search\ContextInterface;
-
+use SITC\Sinchimport\Helper\Data;
 
 class Mapping {
 
     const CATEGORY_SEARCH_FIELD = 'category.name';
-    const CATEGORY_SEARCH_WEIGHT = 8;
+    private $categorySearchWeight;
+
+    const BRAND_SEARCH_FIELD = 'option_text_manufacturer';
+    private $brandSearchWeight;
 
     /** @var ContextInterface $searchContext */
     private $searchContext;
 
+    /** @var Data $helper */
+    private $helper;
+
+
+
 
     public function __construct(
-        ContextInterface $searchContext
+        ContextInterface $searchContext,
+        Data $helper
     ){
         $this->searchContext = $searchContext;
+        $this->helper = $helper;
+        $this->categorySearchWeight = $this->helper->getStoreConfig('sinchimport/search/category_field_search_weight');
+        $this->brandSearchWeight = $this->helper->getStoreConfig('sinchimport/search/brand_field_search_weight');
     }
 
     /**
@@ -35,9 +47,12 @@ class Mapping {
             return $result;
         }
         $catMapping = [ 
-            self::CATEGORY_SEARCH_FIELD => $boost * self::CATEGORY_SEARCH_WEIGHT 
+            self::CATEGORY_SEARCH_FIELD => $boost * $this->categorySearchWeight
         ];
-        $result = array_merge($result, $catMapping);
+        $brandMapping = [
+            self::BRAND_SEARCH_FIELD => $boost * $this->brandSearchWeight
+        ];
+        $result = array_merge($result, $catMapping, $brandMapping);
         
         return $result;
     }
