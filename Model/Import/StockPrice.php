@@ -16,6 +16,7 @@ class StockPrice extends AbstractImportSection
     const STOCK_IMPORT_TABLE = 'sinch_stock_and_prices';
     const DISTI_TABLE = 'sinch_distributors';
     const DISTI_STOCK_IMPORT_TABLE = 'sinch_distributors_stock_and_price';
+    const SINCH_PRODUCTS_TABLE = 'sinch_products';
 
     /** @var \SITC\Sinchimport\Helper\Data */
     private $helper;
@@ -32,6 +33,7 @@ class StockPrice extends AbstractImportSection
     private $distiTable;
     private $distiStockImportTable;
     private $importStatsTable;
+    private $sinchProductsTable;
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
@@ -53,6 +55,7 @@ class StockPrice extends AbstractImportSection
         $this->distiTable = $this->getTableName(self::DISTI_TABLE);
         $this->distiStockImportTable = $this->getTableName(self::DISTI_STOCK_IMPORT_TABLE);
         $this->importStatsTable = $this->getTableName('sinch_import_status_statistic');
+        $this->sinchProductsTable = $this->getTableName(self::SINCH_PRODUCTS_TABLE);
     }
 
     /**
@@ -366,6 +369,25 @@ class StockPrice extends AbstractImportSection
                           AND (ssp.stock IS NULL OR ssp.stock < 1)
                 )"
             );
+            $this->endTimingStep();
+
+            $this->startTimingStep('Remove non-existent stock records (MSI)');
+
+            $distributorIds = $conn->fetchCol("SELECT DISTINCT source_code FROM {$inventory_source_item}");
+
+            foreach ($distributorIds as $distributorId) {
+                $distributorId = (int)str_replace('sinch_', '', $distributorId);
+                $conn->query(
+                    "UPDATE {$inventory_source_item} isi SET isi.quantity = 0, isi.status = 0 
+                    WHERE isi.source_code = CONCAT('sinch_', :distiId) 
+                    AND isi.sku NOT IN 
+                        (SELECT sp.product_sku FROM {$sinch_distributors_stock_and_price} sdsp 
+                            INNER JOIN {$this->sinchProductsTable} sp ON sdsp.product_id = sp.sinch_product_id 
+                        WHERE sdsp.distributor_id = :distiId AND sdsp.stock > 0) AND (isi.quantity > 0 OR isi.status = 1)",
+                    ['distiId' => $distributorId]
+                    );
+            }
+
             $this->endTimingStep();
 
             //Create stock records per distributor
