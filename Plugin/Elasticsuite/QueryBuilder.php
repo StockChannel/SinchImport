@@ -5,16 +5,16 @@ namespace SITC\Sinchimport\Plugin\Elasticsuite;
 use Magento\Catalog\Api\CategoryRepositoryInterface;
 use Magento\Customer\Model\Group;
 use Magento\Customer\Model\Session;
-use Magento\Framework\App\Response\Http as HttpResponse;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\App\Response\Http as HttpResponse;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use SITC\Sinchimport\Helper\Data;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
-use Smile\ElasticsuiteCore\Search\Request\Query\Nested;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Smile\ElasticsuiteThesaurus\Model\Index;
+use Zend\Log\Logger;
 
 class QueryBuilder
 {
@@ -25,7 +25,7 @@ class QueryBuilder
     private $categoryRespository;
     /** @var HttpResponse */
     private $response;
-    /** @var \Zend\Log\Logger */
+    /** @var Logger */
     private $logger;
 	private $resourceConnection;
 	private $connection;
@@ -56,7 +56,7 @@ class QueryBuilder
         $this->categoryRespository = $categoryRespository;
         $this->response = $response;
         $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/joe_search_stuff.log');
-        $this->logger = new \Zend\Log\Logger();
+        $this->logger = new Logger();
         $this->logger->addWriter($writer);
 		$this->resourceConnection = $resourceConnection;
 		$this->connection = $this->resourceConnection->getConnection();
@@ -118,11 +118,19 @@ class QueryBuilder
 		        return $originalResult;
             }
 
+			$groupId = Group::NOT_LOGGED_IN_ID;
+			try {
+				$groupId = $this->customerSession->getCustomerGroupId();
+			} catch (NoSuchEntityException | LocalizedException $e) {}
+
 		    return $this->queryFactory->create(
 		        QueryInterface::TYPE_BOOL,
                 [
                     'must' => [$originalResult],
-                    'should' => [$this->buildPriceRangeQuery($bounds)],
+                    'should' => [$this->queryFactory->create(
+                    	'sitcPriceRangeQuery',
+	                    ['bounds' => $bounds, 'account_group' => $groupId]
+                    )],
                     'minimumShouldMatch' => $this->priceFilterMode ? 1 : 0
                 ]
             );
@@ -205,37 +213,5 @@ class QueryBuilder
             } catch (NoSuchEntityException $e) {}
         }
         return false;
-    }
-
-	private function buildPriceRangeQuery(array $bounds): QueryInterface
-    {
-        $rangeQuery = $this->queryFactory->create(
-            QueryInterface::TYPE_RANGE,
-            ['field' => 'price.price', 'bounds' => $bounds]
-        );
-
-        $groupId = Group::NOT_LOGGED_IN_ID;
-        try {
-            $groupId = $this->customerSession->getCustomerGroupId();
-        } catch (NoSuchEntityException | LocalizedException $e) {}
-
-
-        $customerGroupQuery = $this->queryFactory->create(
-            QueryInterface::TYPE_TERM,
-            ['field' => 'price.customer_group_id', 'value' => $groupId]
-        );
-
-        return $this->queryFactory->create(
-            QueryInterface::TYPE_NESTED,
-            [
-                'path' => 'price',
-                'query' => $this->queryFactory->create(
-                    QueryInterface::TYPE_BOOL,
-                    ['must' => [$rangeQuery, $customerGroupQuery]]
-                ),
-                'scoreMode' => Nested::SCORE_MODE_AVG,
-                'boost' => 10.0
-            ]
-        );
     }
 }
