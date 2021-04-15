@@ -71,11 +71,13 @@
     <!-- Virtual types for Elasticsuite custom query types -->
     <virtualType name="sitcAccountGroupQueryFactory" type="SITC\Sinchimport\Search\Request\Query\AccountGroupFilterFactory" />
     <virtualType name="sitcCategoryBoostQueryFactory" type="SITC\Sinchimport\Search\Request\Query\CategoryBoostFilterFactory" />
+    <virtualType name="sitcPriceRangeQueryFactory" type="SITC\Sinchimport\Search\Request\Query\PriceRangeQueryFactory" />
     <type name="Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory">
         <arguments>
             <argument name="factories" xsi:type="array">
                 <item name="sitcAccountGroupQuery" xsi:type="object">sitcAccountGroupQueryFactory</item>
                 <item name="sitcCategoryBoostQuery" xsi:type="object">sitcCategoryBoostQueryFactory</item>
+                <item name="sitcPriceRangeQuery" xsi:type="object">sitcPriceRangeQueryFactory</item>
             </argument>
         </arguments>
     </type>
@@ -85,6 +87,7 @@
             <argument name="builders" xsi:type="array">
                 <item name="sitcAccountGroupQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\AccountGroupFilter\Proxy</item>
                 <item name="sitcCategoryBoostQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\CategoryBoostFilter\Proxy</item>
+                <item name="sitcPriceRangeQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\PriceRangeQuery\Proxy</item>
             </argument>
         </arguments>
     </type>

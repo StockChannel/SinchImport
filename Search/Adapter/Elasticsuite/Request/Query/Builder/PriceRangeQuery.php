@@ -16,6 +16,8 @@ namespace SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder;
 use Magento\Customer\Model\Group;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder;
+use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder\AbstractComplexBuilder;
 use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\BuilderInterface;
 use Smile\ElasticsuiteCore\Search\Request\Query\Nested;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
@@ -28,18 +30,21 @@ use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
  * @package  SITC\Sinchimport
  * @author   Nick Anstee <nick.anstee@stockinthechannel.com>
  */
-class PriceRangeQuery implements BuilderInterface
+class PriceRangeQuery extends AbstractComplexBuilder implements BuilderInterface
 {
 	/** @var QueryFactory  */
 	private $queryFactory;
 
 	/**
 	 * PriceRangeQuery constructor.
+	 * @param Builder $builder
 	 * @param QueryFactory $queryFactory
 	 */
 	public function __construct(
+		Builder $builder,
 		QueryFactory $queryFactory
 	){
+		parent::__construct($builder);
 		$this->queryFactory = $queryFactory;
 	}
 
@@ -68,17 +73,19 @@ class PriceRangeQuery implements BuilderInterface
 		    ['field' => 'price.customer_group_id', 'value' => $groupId]
 	    );
 
-	    return $this->queryFactory->create(
-		    QueryInterface::TYPE_NESTED,
-		    [
-			    'path' => 'price',
-			    'query' => $this->queryFactory->create(
-				    QueryInterface::TYPE_BOOL,
-				    ['must' => [$rangeQuery, $customerGroupQuery]]
-			    ),
-			    'scoreMode' => Nested::SCORE_MODE_AVG,
-			    'boost' => $query->getBoost()
-		    ]
+	    return $this->parentBuilder->buildQuery(
+		    $this->queryFactory->create(
+			    QueryInterface::TYPE_NESTED,
+			    [
+				    'path' => 'price',
+				    'query' => $this->queryFactory->create(
+					    QueryInterface::TYPE_BOOL,
+					    ['must' => [$rangeQuery, $customerGroupQuery]]
+				    ),
+				    'scoreMode' => Nested::SCORE_MODE_AVG,
+				    'boost' => $query->getBoost()
+			    ]
+		    )
 	    );
     }
 }

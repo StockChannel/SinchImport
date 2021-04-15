@@ -51,23 +51,30 @@ class CategoryBoostFilter extends AbstractComplexBuilder implements BuilderInter
             throw new InvalidArgumentException("Query builder : invalid query type {$query->getType()}");
         }
 
+        $queries = [];
+        $categoryFieldWeight = $this->helper->getStoreConfig('sinchimport/search/category_field_search_weight');
+
+        foreach ($query->getCategories() as $category) {
+        	$queries[] = $this->queryFactory->create(
+		        QueryInterface::TYPE_NESTED,
+		        [
+			        'path' => 'category',
+			        'query' => $this->queryFactory->create(
+				        QueryInterface::TYPE_MATCH,
+				        [
+					        'field' => 'category.name',
+					        'queryText' => $category,
+					        'boost' => $categoryFieldWeight
+				        ]
+			        ),
+			        'scoreMode' => Nested::SCORE_MODE_MAX,
+			        'boost' => 1
+		        ]
+	        );
+        }
+
         return $this->parentBuilder->buildQuery(
-            $this->queryFactory->create(
-                QueryInterface::TYPE_NESTED,
-                [
-                    'path' => 'category',
-                    'query' => $this->queryFactory->create(
-                        QueryInterface::TYPE_MATCH,
-                        [
-                            'field' => 'category.name',
-                            'queryText' => $query->getCategory(),
-                            'boost' => $this->helper->getStoreConfig('sinchimport/search/category_field_search_weight')
-                        ]
-                    ),
-                    'scoreMode' => Nested::SCORE_MODE_MAX,
-                    'boost' => 1
-                ]
-            )
+			$this->queryFactory->create(QueryInterface::TYPE_BOOL, ['should' => $queries, 'minimumShouldMatch' => 0])
         );
     }
 }

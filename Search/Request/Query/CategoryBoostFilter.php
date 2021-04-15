@@ -13,8 +13,8 @@ class CategoryBoostFilter implements QueryInterface
 {
     /** @var string Query Name */
     private $name;
-    /** @var string Query to match Category Name */
-    private $category;
+    /** @var string[] Query to match Category Name */
+    private $categories;
     /** @var boolean */
     private $cached;
 
@@ -23,16 +23,16 @@ class CategoryBoostFilter implements QueryInterface
      *
      * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
      *
-     * @param string $query The category name to match
+     * @param string[] $queries The category name to match
      * @param null $name Query name.
      * @param boolean $cached Should the query be cached or not.
      */
     public function __construct(
-        string $query,
+        array $queries,
         $name = null,
         $cached = false
     ) {
-        $this->category = $query;
+        $this->categories = $queries;
         $this->name = $name;
         $this->cached = $cached;
     }
@@ -66,9 +66,9 @@ class CategoryBoostFilter implements QueryInterface
      *
      * @return string
      */
-    public function getCategory()
+    public function getCategories()
     {
-        return $this->category;
+        return $this->categories;
     }
 
     /**
