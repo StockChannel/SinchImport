@@ -36,7 +36,6 @@ use Zend_Db_Statement_Interface;
 
 class Sinch
 {
-    public $connection;
     public $varDir;
     public $files;
     public $debug_mode = false;
@@ -98,7 +97,6 @@ class Sinch
     private $_attributeId;
     private $_categoryEntityTypeId;
     private $_categoryDefault_attribute_set_id;
-    private $_rootCat;
     private $import_run_type = 'MANUAL';
     private $_ignore_category_features = false;
     private $_ignore_product_related = false;
@@ -318,7 +316,7 @@ class Sinch
                 $this->parseCategoryTypes();
 
                 $this->print("Parse Categories...");
-                $coincidence = $this->parseCategories();
+                $this->parseCategories();
                 $this->addImportStatus('Parse Categories');
 
                 $this->print("Parse Category Features...");
@@ -358,7 +356,7 @@ class Sinch
                 $this->parseProductCategories();
 
                 $this->print("Parse Products...");
-                $this->parseProducts($coincidence);
+                $this->parseProducts();
                 $this->addImportStatus('Parse Products');
 
                 $this->print("Parse Pictures Gallery...");
@@ -864,42 +862,6 @@ class Sinch
                 throw new LocalizedException(__("Import files in invalid format"));
             }
 
-            //TODO: Disabled single store logic, remove if works with single store feed
-            if (false && count($rootCatNames) == 1) { // one store logic
-
-                //TODO: Should single store logic be removed in favour of a multistore version that robustly handles single store too?
-                $this->print("==========SINGLE STORE LOGIC==========");
-
-                if ($imType == "REWRITE") {
-                    $rootCat = 2;
-
-                    $rootCat = $this->truncateAllCategoriesAndRecreateDefaults(
-                        $rootCat,
-                        $_categoryDefault_attribute_set_id,
-                        $name_attrid,
-                        $attr_url_key,
-                        $attr_display_mode,
-                        $attr_is_active,
-                        $attr_include_in_menu
-                    );
-                } else {
-                    $rootCat = $this->_getShopRootCategoryId();
-                }
-
-                $this->_rootCat = $rootCat;
-
-                $this->setCategorySettings($rootCat);
-                $this->mapSinchCategories($imType, $name_attrid);
-                $this->addCategoryData(
-                    $_categoryDefault_attribute_set_id,
-                    $name_attrid,
-                    $attr_is_active,
-                    $attr_include_in_menu,
-                    $is_anchor_attrid,
-                    $image_attrid,
-                    $imType
-                );
-            }
             //TODO: Made multistore default here with =
             if (count($rootCatNames) >= 1) { // multistore logic
 
@@ -1065,186 +1027,6 @@ class Sinch
         return (int)$this->conn->fetchOne(
             "SELECT COUNT(*) FROM $table"
         );
-    }
-
-    //TODO: Remove pointless attribute ids passed as args
-    private function truncateAllCategoriesAndRecreateDefaults(
-        $rootCat,
-        $_categoryDefault_attribute_set_id,
-        $name_attrid,
-        $attr_url_key,
-        $attr_display_mode,
-        $attr_is_active,
-        $attr_include_in_menu
-    )
-    {
-        $catalog_category_entity = $this->getTableName('catalog_category_entity');
-        $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
-        $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
-
-        $this->_doQuery("DELETE FROM $catalog_category_entity");
-
-        $this->_doQuery(
-            "
-                    INSERT $catalog_category_entity
-                        (
-                            entity_id,
-                            attribute_set_id,
-                            parent_id,
-                            created_at,
-                            updated_at,
-                            path,
-                            position,
-                            level,
-                            children_count,
-                            store_category_id,
-                            parent_store_category_id
-                        )
-                    VALUES
-                                (1, $_categoryDefault_attribute_set_id, 0, '0000-00-00 00:00:00', now(), '1', 0, 0, 1, null, null),
-                                (2, $_categoryDefault_attribute_set_id, 1, now(), now(), '1/2', 1, 1, 1, null, null)"
-        );
-        $this->_doQuery(
-            "
-                    INSERT $catalog_category_entity_varchar
-                        (
-                            value_id,
-                            attribute_id,
-                            store_id,
-                            entity_id,
-                            value
-                        )
-                    VALUES
-                        (1, $name_attrid, 0, 1, 'Root Catalog'),
-                        (2, $name_attrid, 1, 1, 'Root Catalog'),
-                        (3, $attr_url_key, 0, 1, 'root-catalog'),
-                        (4, $name_attrid, 0, 2, 'Default Category'),
-                        (5, $name_attrid, 1, 2, 'Default Category'),
-                        (6, $attr_display_mode, 1, 2, 'PRODUCTS'),
-                        (7, $attr_url_key, 0, 2, 'default-category')"
-        );
-        $this->_doQuery(
-            "
-                    INSERT $catalog_category_entity_int
-                        (
-                            value_id,
-                            attribute_id,
-                            store_id,
-                            entity_id,
-                            value
-                        )
-                    VALUES
-                        (1, $attr_is_active, 0, 2, 1),
-                        (2, $attr_is_active, 1, 2, 1),
-                        (3, $attr_include_in_menu, 0, 1, 1),
-                        (4, $attr_include_in_menu, 0, 2, 1)"
-        );
-
-        return $rootCat;
-    }
-
-    private function _getShopRootCategoryId($cat_id = 0): int
-    {
-        if ($rootCat = $this->_storeManager->getStore()->getRootCategoryId()) {
-            return $rootCat;
-        } else {
-            //The url_key attribute with value 'default-category' can tell us which is the default category
-            $res = $this->conn->fetchOne(
-                "SELECT entity_id FROM " . $this->getTableName('catalog_category_entity_varchar') . " WHERE value = 'default-category'"
-            );
-            if (is_numeric($res)) {
-                return (int)$res;
-            } else {
-                $statement = $this->_doQuery(
-                    "SELECT entity_id FROM " . $this->getTableName('catalog_category_entity') . " WHERE parent_id = :parent",
-                    [":parent" => $cat_id]
-                );
-
-                if ($statement->rowCount() != 1) {
-                    return $cat_id;
-                }
-
-                $entity_id = (int)$statement->fetchColumn();
-                $statement->closeCursor();
-
-                //Recurse until hitting a category with != 1 child
-                return $this->_getShopRootCategoryId($entity_id);
-            }
-        }
-    }
-
-    private function setCategorySettings($rootCat)
-    {
-        $categories_temp = $this->getTableName('categories_temp');
-
-        $this->_doQuery(
-            "UPDATE $categories_temp
-            SET parent_store_category_id = :root
-            WHERE parent_store_category_id = 0",
-            [":root" => $rootCat]
-        );
-
-        $storeCatIds = $this->conn->fetchCol("SELECT store_category_id FROM $categories_temp");
-
-        foreach ($storeCatIds as $storeCategory) {
-            $children_count = $this->countChildCategories($storeCategory);
-            $level = $this->getCategoryDepth($storeCategory);
-
-            $this->_doQuery(
-                "UPDATE $categories_temp
-                    SET children_count = :childCount, level = :level
-                    WHERE store_category_id = :catId",
-                [
-                    ":catId" => $storeCategory,
-                    ":childCount" => $children_count,
-                    ":level" => $level
-                ]
-            );
-        }
-    }
-
-    private function countChildCategories($sinch_category_id): int
-    {
-        $categories_temp = $this->getTableName('categories_temp');
-        $childCategories = $this->conn->fetchCol(
-            "SELECT store_category_id FROM {$categories_temp} WHERE parent_store_category_id = :parent",
-            [":parent" => $sinch_category_id]
-        );
-
-        $count = count($childCategories);
-        foreach ($childCategories as $childCat) {
-            $count += $this->countChildCategories($childCat);
-        }
-
-        return $count;
-    }
-
-    private function getCategoryDepth($sinch_category_id): int
-    {
-        $conn = $this->_resourceConnection->getConnection();
-
-        $catTemp = $this->getTableName('categories_temp');
-        $parentCat = $conn->fetchOne(
-            "SELECT parent_store_category_id FROM {$catTemp} WHERE store_category_id = :storeCategoryId",
-            [":storeCategoryId" => $sinch_category_id]
-        );
-
-        $level = 1;
-
-        while (is_numeric($parentCat) && $parentCat != 0) {
-            $parentCat = $conn->fetchOne(
-                "SELECT parent_store_category_id FROM {$catTemp} WHERE store_category_id = :storeCategoryId",
-                [":storeCategoryId" => $parentCat]
-            );
-
-            $level++;
-
-            if ($level > 20) {
-                break;
-            }
-        }
-
-        return $level;
     }
 
     private function tableHasData($table): bool
@@ -1548,22 +1330,6 @@ class Sinch
                     SET cmt.shop_parent_id = cce.entity_id"
                 );
 
-
-                //TODO: Old single store implementation, deprecated, intent to remove
-//                if (count($rootCategories) < 2) {
-//                    //Single store just did:
-//                    $this->_doQuery(
-//                        "
-//                        UPDATE $sinch_categories_mapping_temp cmt
-//                        JOIN $categories_temp c
-//                            ON cmt.shop_store_category_id = c.store_category_id
-//                        SET shop_parent_id = :rootCat
-//                        WHERE shop_parent_id = 0",
-//                        [":rootCat" => $this->_rootCat]
-//                    );
-//                }
-
-                //TODO: Doesn't work on single store currently as single-store parent category is named 'Default Category', not RootName
                 foreach ($rootCategories as $rootCat) {
                     $this->_doQuery(
                         "UPDATE $sinch_categories_mapping_temp cmt
@@ -1625,22 +1391,6 @@ class Sinch
                     SET cmt.shop_parent_id = cce.entity_id"
                 );
 
-
-                //TODO: Old single store implementation, deprecated, intent to remove
-//                if (count($rootCategories) < 2) {
-//                    //Single store just did:
-//                    $this->_doQuery(
-//                        "
-//                        UPDATE $sinch_categories_mapping_temp cmt
-//                        JOIN $categories_temp c
-//                            ON cmt.shop_store_category_id = c.store_category_id
-//                        SET shop_parent_id = :rootCat
-//                        WHERE shop_parent_id = 0",
-//                        [":rootCat" => $this->_rootCat]
-//                    );
-//                }
-
-                //TODO: Doesn't work in single store (ditto), should be fine if multistore were the default
                 foreach ($rootCategories as $rootCat) {
                     $this->_doQuery(
                         "UPDATE $sinch_categories_mapping_temp cmt
@@ -1688,21 +1438,6 @@ class Sinch
                 SET cmt.shop_parent_id = cce.entity_id"
             );
 
-            //TODO: Old single store implementation, deprecated, intent to remove
-//            if (count($rootCategories) < 2) {
-//                //Single store just did:
-//                $this->_doQuery(
-//                    "
-//                    UPDATE $sinch_categories_mapping_temp cmt
-//                    JOIN $categories_temp c
-//                        ON cmt.shop_store_category_id = c.store_category_id
-//                    SET shop_parent_id = :rootCat
-//                    WHERE shop_parent_id = 0",
-//                    [":rootCat" => $this->_rootCat]
-//                );
-//            }
-
-            //TODO: Doesn't work on single store (ditto), should be fine if multistore default
             foreach ($rootCategories as $rootCat) {
                 $this->_doQuery(
                     "UPDATE $sinch_categories_mapping_temp cmt
@@ -2078,10 +1813,7 @@ class Sinch
         $attr_is_active,
         $image_attrid,
         $is_anchor_attrid
-    )
-    {
-        $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
-
+    ){
         $this->print("mergeMultistoreCategories RUN");
 
         $this->createNewDefaultCategories(
@@ -2613,7 +2345,7 @@ class Sinch
         }
     }
 
-    private function parseProducts($coincidence)
+    private function parseProducts()
     {
         $this->print("--Parse Products 1");
 
@@ -2738,21 +2470,7 @@ class Sinch
             $this->mapSinchProducts($replace_merge_product);
 
             $this->print("--Parse Products 7");
-
-            //TODO: Disabled single store logic, remove if works with single store feed
-            if (false && count($coincidence) == 1) {
-                $this->replaceMagentoProducts();
-            } else {
-                switch ($this->imType) {
-                    case "REWRITE":
-                        $this->replaceMagentoProductsMultistore();
-                        break;
-                    case "MERGE":
-                        $this->replaceMagentoProductsMultistoreMERGE();
-                        break;
-                }
-            }
-
+            $this->replaceMagentoProductsMultistore($this->imType == "MERGE");
             $this->print("--Parse Products 8");
 
             $this->mapSinchProducts($replace_merge_product, true);
@@ -3022,504 +2740,6 @@ class Sinch
         );
     }
 
-    private function replaceMagentoProducts()
-    {
-        $this->_doQuery(
-            "DELETE cpe
-                FROM " . $this->getTableName('catalog_product_entity') . " cpe
-                JOIN " . $this->getTableName('sinch_products_mapping') . " pm
-                    ON cpe.entity_id = pm.entity_id
-                WHERE pm.shop_sinch_product_id IS NOT NULL
-                    AND pm.sinch_product_id IS NULL"
-        );
-
-        //Inserting new products and updating old others.
-        $this->_getProductDefaulAttributeSetId();
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity') . " (
-                entity_id,
-                attribute_set_id,
-                type_id,
-                sku,
-                updated_at,
-                has_options,
-                sinch_product_id
-            )(SELECT
-                 pm.entity_id,
-                 $this->defaultAttributeSetId,
-                 'simple',
-                 pt.product_sku,
-                 NOW(),
-                 0,
-                 pt.sinch_product_id
-              FROM " . $this->getTableName('products_temp') . " pt
-              LEFT JOIN " . $this->getTableName('sinch_products_mapping') . " pm
-                 ON pt.sinch_product_id = pm.sinch_product_id
-              WHERE pm.entity_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                sku = pt.product_sku,
-                sinch_product_id = pt.sinch_product_id"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity') . " (
-                entity_id,
-                attribute_set_id,
-                type_id,
-                sku,
-                updated_at,
-                has_options,
-                sinch_product_id
-            )(SELECT
-                 pm.entity_id,
-                 $this->defaultAttributeSetId,
-                 'simple',
-                 pt.product_sku,
-                 NOW(),
-                 0,
-                 pt.sinch_product_id
-              FROM " . $this->getTableName('products_temp') . " pt
-              LEFT JOIN " . $this->getTableName('sinch_products_mapping') . " pm
-                 ON pt.sinch_product_id = pm.sinch_product_id
-              WHERE pm.entity_id IS NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                sku = pt.product_sku,
-                sinch_product_id = pt.sinch_product_id"
-        );
-
-        //Set enabled
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_int') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-                SELECT
-                " . $this->_getProductAttributeId('status') . ",
-                w.website,
-                a.entity_id,
-                1
-                FROM " . $this->getTableName('catalog_product_entity') . " a
-                INNER JOIN " . $this->getTableName('products_website_temp') . " w
-                    ON a.sinch_product_id = w.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value=1"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_int') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(SELECT
-                " . $this->_getProductAttributeId('status') . ",
-                0,
-                a.entity_id,
-                1
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-            )
-            ON DUPLICATE KEY UPDATE
-                value=1"
-        );
-
-        //Unifying products with categories.
-
-        //TODO: This seems to change category mapping to the root category when the actual category doesn't exist
-        $this->_doQuery(
-            "UPDATE IGNORE " . $this->getTableName('catalog_category_product')
-            . " ccp
-                                LEFT JOIN " . $this->getTableName(
-                'catalog_category_entity'
-            ) . " cce
-                                    ON ccp.category_id=cce.entity_id
-                                SET ccp.category_id=" . $this->_rootCat . "
-                                WHERE cce.entity_id IS NULL"
-        );
-
-        $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $this->getTableName('catalog_category_product') . "_for_delete_temp"
-        );
-        // TEMPORARY
-        $this->_doQuery(
-            "CREATE TABLE `" . $this->getTableName('catalog_category_product') . "_for_delete_temp` (
-                `category_id` int(10) unsigned NOT NULL default '0',
-                `product_id` int(10) unsigned NOT NULL default '0',
-                `store_product_id` int(10) NOT NULL default '0',
-                `store_category_id` int(10) NOT NULL default '0',
-                `new_category_id` int(10) NOT NULL default '0',
-                UNIQUE KEY `UNQ_CATEGORY_PRODUCT` (`category_id`,`product_id`),
-                KEY `CATALOG_CATEGORY_PRODUCT_CATEGORY` (`category_id`),
-                KEY `CATALOG_CATEGORY_PRODUCT_PRODUCT` (`product_id`),
-                KEY `CATALOG_NEW_CATEGORY_PRODUCT_CATEGORY` (`new_category_id`)
-            )"
-        );
-
-        //Make existing links for sinch products eligible for deletion
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_category_product') . "_for_delete_temp (
-                category_id,
-                product_id,
-                store_product_id
-            )(SELECT
-                ccp.category_id,
-                ccp.product_id,
-                cpe.sinch_product_id
-              FROM " . $this->getTableName('catalog_category_product') . " ccp
-              INNER JOIN " . $this->getTableName('catalog_product_entity') . " cpe
-                ON ccp.product_id=cpe.entity_id
-              WHERE cpe.sinch_product_id IS NOT NULL
-            )"
-        );
-
-        $this->_doQuery(
-            "UPDATE " . $this->getTableName('catalog_category_product') . "_for_delete_temp ccpfd
-                        INNER JOIN " . $this->getTableName('products_temp') . " p
-                            ON ccpfd.store_product_id=p.sinch_product_id
-                        SET ccpfd.store_category_id=p.store_category_id
-                        WHERE ccpfd.store_product_id!=0"
-        );
-
-        $this->_doQuery(
-            "UPDATE " . $this->getTableName('catalog_category_product') . "_for_delete_temp ccpfd
-                                INNER JOIN " . $this->getTableName('sinch_categories_mapping') . " scm
-                                    ON ccpfd.store_category_id=scm.store_category_id
-                                SET ccpfd.new_category_id=scm.shop_entity_id
-                                WHERE ccpfd.store_category_id!=0"
-        );
-
-        $this->_doQuery(
-            "DELETE FROM " . $this->getTableName('catalog_category_product') . "_for_delete_temp
-                                WHERE category_id=new_category_id"
-        );
-
-        //Delete primary links that no longer exist in the new feed
-        $this->_doQuery(
-            "DELETE ccp FROM " . $this->getTableName('catalog_category_product') . " ccp
-                                INNER JOIN " . $this->getTableName('catalog_category_product') . "_for_delete_temp ccpfd
-                                    ON ccp.product_id=ccpfd.product_id
-                                    AND ccp.category_id=ccpfd.category_id"
-        );
-
-        //add multi categories;
-        $catalog_category_product = $this->getTableName("catalog_category_product");
-        $sinch_product_categories = $this->getTableName("sinch_product_categories");
-        $catalog_product_entity = $this->getTableName("catalog_product_entity");
-        $sinch_categories_mapping = $this->getTableName("sinch_categories_mapping");
-
-        $this->_doQuery("INSERT INTO $catalog_category_product (category_id, product_id) (
-            SELECT scm.shop_entity_id, cpe.entity_id
-                FROM $sinch_product_categories spc
-            INNER JOIN $catalog_product_entity cpe
-                ON spc.store_product_id = cpe.sinch_product_id
-            INNER JOIN $sinch_categories_mapping scm
-                ON spc.store_category_id = scm.store_category_id
-        ) ON DUPLICATE KEY UPDATE product_id = cpe.entity_id, category_id = scm.shop_entity_id");
-
-        //Set product name for specific web sites
-        $this->_doQuery(
-            "DELETE cpev
-                        FROM " . $this->getTableName('catalog_product_entity_varchar') . " cpev
-                        LEFT JOIN " . $this->getTableName('catalog_product_entity') . " cpe
-                        ON cpev.entity_id=cpe.entity_id
-                        WHERE cpe.entity_id IS NULL"
-        );
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(SELECT
-                " . $this->_getProductAttributeId('name') . ",
-                w.website,
-                a.entity_id,
-                b.product_name
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('products_temp') . " b
-                ON a.sinch_product_id = b.sinch_product_id
-              INNER JOIN " . $this->getTableName('products_website_temp') . " w
-                ON a.sinch_product_id = w.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.product_name"
-        );
-
-        // product name for all web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('name') . ",
-                0,
-                a.entity_id,
-                b.product_name
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('products_temp') . " b
-                ON a.sinch_product_id = b.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.product_name"
-        );
-
-        $this->dropHTMLentities(
-            $this->_getProductAttributeId('name')
-        );
-        $this->addDescriptions();
-        $this->cleanProductDistributors();
-        if (!$this->_ignore_product_contracts) {
-            $this->cleanProductContracts();
-        }
-        $this->addReviews();
-        $this->addWeight();
-        $this->addPdfUrl();
-        $this->addShortDescriptions();
-        $this->stockPriceImport->applyDistributors();
-        if (!$this->_ignore_product_contracts) {
-            $this->addProductContracts();
-        }
-        $this->addMetaTitle();
-        $this->addMetaDescriptions();
-        $this->addEAN();
-        $this->addSpecification();
-        $this->addManufacturers();
-
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_int') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('visibility') . ",
-                w.website,
-                a.entity_id,
-                4
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('products_website_temp') . " w
-              ON a.sinch_product_id=w.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-            value = 4"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_int') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('visibility') . ",
-                0,
-                a.entity_id,
-                4
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 4"
-        );
-
-        $this->_doQuery(
-            "DELETE cpw
-                        FROM " . $this->getTableName('catalog_product_website') . " cpw
-                        LEFT JOIN " . $this->getTableName('catalog_product_entity') . " cpe
-                            ON cpw.product_id=cpe.entity_id
-                        WHERE cpe.entity_id IS NULL"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_website') . " (
-                product_id,
-                website_id
-            )(
-              SELECT a.entity_id, w.website_id
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('products_website_temp') . " w
-                  ON a.sinch_product_id=w.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                product_id=a.entity_id,
-                website_id=w.website_id"
-        );
-
-        //Adding tax class "Taxable Goods"
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_int') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('tax_class_id') . ",
-                w.website,
-                a.entity_id,
-                2
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('products_website_temp') . " w
-              ON a.sinch_product_id=w.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 2"
-        );
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_int') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('tax_class_id') . ",
-                0,
-                a.entity_id,
-                2
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 2"
-        );
-
-        // Load url Image
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('image') . ",
-                w.store_id,
-                a.entity_id,
-                b.main_image_url
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('store') . " w
-              INNER JOIN " . $this->getTableName('products_temp') . " b
-                ON a.sinch_product_id = b.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.main_image_url"
-        );
-        // image for specific web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('image') . ",
-                0,
-                a.entity_id,
-                b.main_image_url
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('products_temp') . " b
-                ON a.sinch_product_id = b.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.main_image_url"
-        );
-        // small_image for specific web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('small_image') . ",
-                w.store_id,
-                a.entity_id,
-                b.medium_image_url
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('store') . " w
-              INNER JOIN " . $this->getTableName('products_temp') . " b
-                ON a.sinch_product_id = b.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.medium_image_url"
-        );
-        // small_image for all web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('small_image') . ",
-                0,
-                a.entity_id,
-                b.medium_image_url
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('store') . " w
-              INNER JOIN " . $this->getTableName('products_temp') . " b
-                ON a.sinch_product_id = b.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.medium_image_url"
-        );
-        // thumbnail for specific web site
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('thumbnail') . ",
-                w.store_id,
-                a.entity_id,
-                b.thumb_image_url
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('store') . " w
-              INNER JOIN " . $this->getTableName('products_temp') . " b
-                ON a.sinch_product_id = b.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.thumb_image_url"
-        );
-        // thumbnail for all web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('thumbnail') . ",
-                0,
-                a.entity_id,
-                b.thumb_image_url
-              FROM " . $this->getTableName('catalog_product_entity') . " a
-              INNER JOIN " . $this->getTableName('store') . " w
-              INNER JOIN " . $this->getTableName('products_temp') . " b
-                ON a.sinch_product_id = b.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = b.thumb_image_url"
-        );
-
-        $this->addRelatedProducts();
-    }
-
     private function _getProductDefaulAttributeSetId()
     {
         if (!$this->defaultAttributeSetId) {
@@ -3636,15 +2856,6 @@ class Sinch
                     WHERE attribute_id = " . $this->_getProductAttributeId('supplier_' . $i)
             );
         }
-    }
-
-    private function cleanProductContracts()
-    {
-        $this->_doQuery(
-            "UPDATE " . $this->getTableName('catalog_product_entity_varchar') . "
-                    SET value = ''
-                    WHERE attribute_id = " . $this->_getProductAttributeId('contract_id')
-        );
     }
 
     private function addReviews()
@@ -3845,68 +3056,6 @@ class Sinch
             )
             ON DUPLICATE KEY UPDATE
                 value = pt.product_short_description"
-        );
-    }
-
-    private function addProductContracts()
-    {
-        $this->_doQuery("DROP TABLE IF EXISTS " . $this->getTableName('sinch_product_contracts_temporary'));
-        $this->_doQuery(
-            "CREATE TABLE IF NOT EXISTS " . $this->getTableName('sinch_product_contracts_temporary') . "(
-              `store_product_id` int(11) DEFAULT NULL,
-              `contract_id_str` varchar(255) DEFAULT NULL,
-              KEY `store_product_id` (store_product_id)
-            )"
-        );
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('sinch_product_contracts_temporary') . "
-                    SELECT store_product_id, group_concat(contract_id)
-                    FROM " . $this->getTableName('sinch_product_contracts') . "
-                    GROUP BY store_product_id"
-        );
-
-        // add contract to product for all web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('contract_id') . ",
-                pwt.website,
-                cpe.entity_id,
-                spct.contract_id_str
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('sinch_product_contracts_temporary') . " spct
-                ON cpe.sinch_product_id = spct.store_product_id
-              INNER JOIN " . $this->getTableName('products_website_temp') . " pwt
-                ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = spct.contract_id_str"
-        );
-
-        // add contract to product for all web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->_getProductAttributeId('contract_id') . ",
-                0,
-                cpe.entity_id,
-                spct.contract_id_str
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('sinch_product_contracts_temporary') . " spct
-                ON cpe.sinch_product_id = spct.store_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = spct.contract_id_str"
         );
     }
 
@@ -4242,7 +3391,7 @@ class Sinch
         );
     }
 
-    private function replaceMagentoProductsMultistore()
+    private function replaceMagentoProductsMultistore(bool $merge_mode)
     {
         $this->print("--Replace Magento Products Multistore 1...");
 
@@ -4283,8 +3432,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 3...");
 
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity
-                (entity_id, attribute_set_id, type_id, sku, updated_at, has_options, sinch_product_id)
+            "INSERT INTO $catalog_product_entity (entity_id, attribute_set_id, type_id, sku, updated_at, has_options, sinch_product_id)
             (SELECT
                 pm.entity_id,
                 $_defaultAttributeSetId,
@@ -4304,8 +3452,7 @@ class Sinch
         );
 
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity
-                (entity_id, attribute_set_id, type_id, sku, updated_at, has_options, sinch_product_id)
+            "INSERT INTO $catalog_product_entity (entity_id, attribute_set_id, type_id, sku, updated_at, has_options, sinch_product_id)
             (SELECT
                 pm.entity_id,
                 $_defaultAttributeSetId,
@@ -4336,8 +3483,7 @@ class Sinch
         );
 
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int
-                (attribute_id, store_id, entity_id, value)
+            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_atatus,
                 pwt.website,
@@ -4355,8 +3501,7 @@ class Sinch
 
         // set status = 1 for all stores
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int
-                (attribute_id, store_id, entity_id, value)
+            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_atatus,
                 0,
@@ -4404,14 +3549,15 @@ class Sinch
         $this->print("--Replace Magento Multistore 9...");
         $this->print("--Replace Magento Multistore 10...");
 
-        $catalog_category_product_for_delete_temp = $catalog_category_product . "_for_delete_temp";
+        if (!$merge_mode) {
+            $catalog_category_product_for_delete_temp = $catalog_category_product . "_for_delete_temp";
 
-        // TEMPORARY
-        $this->_doQuery(
-            " DROP TABLE IF EXISTS $catalog_category_product_for_delete_temp"
-        );
-        $this->_doQuery(
-            "CREATE TABLE $catalog_category_product_for_delete_temp
+            // TEMPORARY
+            $this->_doQuery(
+                " DROP TABLE IF EXISTS $catalog_category_product_for_delete_temp"
+            );
+            $this->_doQuery(
+                "CREATE TABLE $catalog_category_product_for_delete_temp
             (
                 `category_id`       int(10) unsigned NOT NULL default '0',
                 `product_id`        int(10) unsigned NOT NULL default '0',
@@ -4424,13 +3570,12 @@ class Sinch
                 KEY `CATALOG_CATEGORY_PRODUCT_PRODUCT` (`product_id`),
                 KEY `CATALOG_NEW_CATEGORY_PRODUCT_CATEGORY` (`new_category_id`)
             )"
-        );
+            );
 
-        $this->print("--Replace Magento Multistore 11...");
+            $this->print("--Replace Magento Multistore 11...");
 
-        $this->_doQuery(
-            "INSERT INTO $catalog_category_product_for_delete_temp
-                (category_id, product_id, store_product_id)
+            $this->_doQuery(
+                "INSERT INTO $catalog_category_product_for_delete_temp (category_id, product_id, store_product_id)
             (SELECT
                 ccp.category_id,
                 ccp.product_id,
@@ -4439,42 +3584,65 @@ class Sinch
             JOIN $catalog_product_entity cpe
                 ON ccp.product_id = cpe.entity_id
             WHERE cpe.sinch_product_id IS NOT NULL)"
-        );
+            );
 
-        $this->print("--Replace Magento Multistore 12...");
+            $this->print("--Replace Magento Multistore 12...");
 
-        $this->_doQuery(
-            "UPDATE $catalog_category_product_for_delete_temp ccpfd
+            $this->_doQuery(
+                "UPDATE $catalog_category_product_for_delete_temp ccpfd
                 JOIN $products_temp pt
                     ON ccpfd.store_product_id = pt.sinch_product_id
                 SET ccpfd.store_category_id = pt.store_category_id
                 WHERE ccpfd.store_product_id != 0"
-        );
+            );
 
-        $this->print("--Replace Magento Multistore 13...");
+            $this->print("--Replace Magento Multistore 13...");
 
-        $this->_doQuery(
-            "UPDATE $catalog_category_product_for_delete_temp ccpfd
+            $this->_doQuery(
+                "UPDATE $catalog_category_product_for_delete_temp ccpfd
             JOIN $sinch_categories_mapping scm
                 ON ccpfd.store_category_id = scm.store_category_id
             SET ccpfd.new_category_id = scm.shop_entity_id
             WHERE ccpfd.store_category_id != 0"
-        );
+            );
 
-        $this->print("--Replace Magento Multistore 14...");
+            $this->print("--Replace Magento Multistore 14...");
 
-        $this->_doQuery(
-            "DELETE FROM $catalog_category_product_for_delete_temp WHERE category_id = new_category_id"
-        );
-        $this->_doQuery(
-            "DELETE ccp
+            $this->_doQuery(
+                "DELETE FROM $catalog_category_product_for_delete_temp WHERE category_id = new_category_id"
+            );
+            $this->_doQuery(
+                "DELETE ccp
             FROM $catalog_category_product ccp
             JOIN $catalog_category_product_for_delete_temp ccpfd
                 ON ccp.product_id = ccpfd.product_id
                 AND ccp.category_id = ccpfd.category_id"
-        );
+            );
 
-        $this->print("--Replace Magento Multistore 15...");
+            $this->print("--Replace Magento Multistore 15...");
+        } else { //Merge mode, originally from replaceMagentoProductsMultistoreMERGE
+            //TODO: This potentially doesn't need the intermediary table (dependent on the worst case scenario of the query)
+            $sinch_products = $this->getTableName('sinch_products');
+            $sinch_products_delete = $this->getTableName('sinch_products_delete');
+
+            $this->_doQuery("DROP TABLE IF EXISTS $sinch_products_delete");
+            $this->_doQuery(
+                "CREATE TABLE $sinch_products_delete
+            SELECT cpe.entity_id
+            FROM $catalog_product_entity cpe
+            WHERE cpe.entity_id NOT IN
+            (
+                SELECT cpe2.entity_id
+                FROM $catalog_product_entity cpe2
+                JOIN $sinch_products sp
+                ON cpe2.sinch_product_id = sp.sinch_product_id
+            )
+            AND cpe.type_id = 'simple'
+            AND cpe.sinch_product_id IS NOT NULL"
+            );
+            $this->_doQuery("DELETE cpe FROM $catalog_product_entity cpe JOIN $sinch_products_delete spd USING(entity_id)");
+            $this->_doQuery("DROP TABLE IF EXISTS $sinch_products_delete");
+        }
         $this->print("--Replace Magento Multistore 16 (add multi categories)...");
         $sinch_product_categories = $this->getTableName('sinch_product_categories');
 
@@ -4504,8 +3672,7 @@ class Sinch
 
         //Set product name for specific web sites
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar
-                (attribute_id, store_id, entity_id, value)
+            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_name,
                 pwt.website,
@@ -4525,8 +3692,7 @@ class Sinch
 
         // product name for all web sites
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar
-                (attribute_id, store_id, entity_id, value)
+            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_name,
                 0,
@@ -4770,501 +3936,6 @@ class Sinch
         );
 
         $this->print("--Replace Magento Multistore 35...");
-
-        $this->addRelatedProducts();
-    }
-
-    private function replaceMagentoProductsMultistoreMERGE()
-    {
-        $this->print("--Replace Magento Multistore 1...");
-
-        $products_temp = $this->getTableName('products_temp');
-        $products_website_temp = $this->getTableName('products_website_temp');
-        $catalog_product_entity = $this->getTableName('catalog_product_entity');
-        $catalog_product_entity_int = $this->getTableName('catalog_product_entity_int');
-        $catalog_product_entity_varchar = $this->getTableName('catalog_product_entity_varchar');
-        $catalog_category_product = $this->getTableName('catalog_category_product');
-        $sinch_products_mapping = $this->getTableName('sinch_products_mapping');
-        $sinch_products = $this->getTableName('sinch_products');
-        $catalog_category_entity = $this->getTableName('catalog_category_entity');
-        $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
-        $core_store = $this->getTableName('store');
-        $catalog_product_website = $this->getTableName('catalog_product_website');
-
-        $_defaultAttributeSetId = $this->_getProductDefaulAttributeSetId();
-
-        $attr_atatus = $this->_getProductAttributeId('status');
-        $attr_name = $this->_getProductAttributeId('name');
-        $attr_visibility = $this->_getProductAttributeId('visibility');
-        $attr_tax_class_id = $this->_getProductAttributeId('tax_class_id');
-        $attr_image = $this->_getProductAttributeId('image');
-        $attr_small_image = $this->_getProductAttributeId('small_image');
-        $attr_thumbnail = $this->_getProductAttributeId('thumbnail');
-
-        $this->print("--Replace Magento Multistore 2...");
-
-        //clear products, inserting new products and updating old others.
-        $this->_doQuery(
-            "DELETE cpe
-                FROM $catalog_product_entity cpe
-                JOIN $sinch_products_mapping pm
-                    ON cpe.entity_id = pm.entity_id
-                WHERE pm.shop_sinch_product_id IS NOT NULL
-                    AND pm.sinch_product_id IS NULL"
-        );
-
-        $this->print("--Replace Magento Multistore 3...");
-
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity (entity_id, attribute_set_id, type_id, sku, updated_at, has_options, sinch_product_id)
-            (SELECT
-                pm.entity_id,
-                $_defaultAttributeSetId,
-                'simple',
-                pt.product_sku,
-                NOW(),
-                0,
-                pt.sinch_product_id
-            FROM $products_temp pt
-            LEFT JOIN $sinch_products_mapping pm
-                ON pt.sinch_product_id = pm.sinch_product_id
-            WHERE pm.entity_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                sku = pt.product_sku,
-                sinch_product_id = pt.sinch_product_id"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity (entity_id, attribute_set_id, type_id, sku, updated_at, has_options, sinch_product_id)
-            (SELECT
-                pm.entity_id,
-                $_defaultAttributeSetId,
-                'simple',
-                pt.product_sku,
-                NOW(),
-                0,
-                pt.sinch_product_id
-            FROM $products_temp pt
-            LEFT JOIN $sinch_products_mapping pm
-                ON pt.sinch_product_id = pm.sinch_product_id
-            WHERE pm.entity_id IS NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                sku = pt.product_sku,
-                sinch_product_id = pt.sinch_product_id"
-        );
-
-        $this->print("--Replace Magento Multistore 4...");
-        //Set enabled
-        $this->_doQuery(
-            "DELETE cpei
-            FROM $catalog_product_entity_int cpei
-            LEFT JOIN $catalog_product_entity cpe
-                ON cpei.entity_id = cpe.entity_id
-            WHERE cpe.entity_id IS NULL"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_atatus,
-                pwt.website,
-                cpe.entity_id,
-                1
-            FROM $catalog_product_entity cpe
-            JOIN $products_website_temp pwt
-                ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 1"
-        );
-
-        $this->print("--Replace Magento Multistore 5...");
-
-        // set status = 1 for all stores
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_atatus,
-                0,
-                cpe.entity_id,
-                1
-            FROM $catalog_product_entity cpe
-            WHERE cpe.sinch_product_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 1"
-        );
-
-        $this->print("--Replace Magento Multistore 6...");
-
-        //Unifying products with categories.
-        $this->_doQuery(
-            "DELETE ccp
-            FROM $catalog_category_product ccp
-            LEFT JOIN $catalog_product_entity cpe
-                ON ccp.product_id = cpe.entity_id
-            WHERE cpe.entity_id IS NULL"
-        );
-
-        $this->print("--Replace Magento Multistore 7...");
-
-        $rootCats = $this->getTableName('rootCats');
-
-        $this->_doQuery("DROP TABLE IF EXISTS $rootCats");
-        $this->_doQuery(
-            "CREATE TABLE $rootCats
-            SELECT
-                entity_id,
-                path,
-                SUBSTRING(path, LOCATE('/', path)+1) AS short_path,
-                LOCATE('/', SUBSTRING(path, LOCATE('/', path)+1)) AS end_pos,
-                SUBSTRING(SUBSTRING(path, LOCATE('/', path)+1), 1, LOCATE('/', SUBSTRING(path, LOCATE('/', path)+1))-1) as rootCat
-            FROM $catalog_category_entity"
-        );
-        $this->_doQuery(
-            "UPDATE $rootCats SET rootCat = entity_id WHERE CHAR_LENGTH(rootCat) = 0"
-        );
-
-        $this->print("--Replace Magento Multistore 8...");
-
-        $this->_doQuery(
-            "UPDATE IGNORE $catalog_category_product ccp
-                LEFT JOIN $catalog_category_entity cce
-                    ON ccp.category_id = cce.entity_id
-                JOIN $rootCats rc
-                    ON cce.entity_id = rc.entity_id
-                SET ccp.category_id = rc.rootCat
-                WHERE cce.entity_id IS NULL"
-        );
-
-        $this->print("--Replace Magento Multistore 9...");
-
-        $this->_doQuery(
-            "DELETE ccp
-                FROM $catalog_category_product ccp
-                LEFT JOIN $catalog_category_entity cce
-                    ON ccp.category_id = cce.entity_id
-                WHERE cce.entity_id IS NULL"
-        );
-
-        //TODO: This potentially doesn't need the intermediary table (dependent on the worst case scenario of the query)
-        $stinch_products_delete = $this->getTableName('stinch_products_delete');
-
-        $this->_doQuery("DROP TABLE IF EXISTS $stinch_products_delete");
-        $this->_doQuery(
-            "CREATE TABLE $stinch_products_delete
-            SELECT cpe.entity_id
-            FROM $catalog_product_entity cpe
-            WHERE cpe.entity_id NOT IN
-            (
-                SELECT cpe2.entity_id
-                FROM $catalog_product_entity cpe2
-                JOIN $sinch_products sp
-                ON cpe2.sinch_product_id = sp.sinch_product_id
-            )
-            AND cpe.type_id = 'simple'
-            AND cpe.sinch_product_id IS NOT NULL"
-        );
-        $this->_doQuery(
-            "DELETE cpe FROM $catalog_product_entity cpe JOIN $stinch_products_delete spd USING(entity_id)"
-        );
-
-        $this->_doQuery("DROP TABLE IF EXISTS $stinch_products_delete");
-
-        $this->print("--Replace Magento Multistore 10...");
-        $this->print("--Replace Magento Multistore 11 (add multi categories)...");
-        $sinch_product_categories = $this->getTableName("sinch_product_categories");
-
-        $this->_doQuery("INSERT INTO $catalog_category_product (category_id, product_id) (
-            SELECT scm.shop_entity_id, cpe.entity_id
-                FROM $sinch_product_categories spc
-            INNER JOIN $catalog_product_entity cpe
-                ON spc.store_product_id = cpe.sinch_product_id
-            INNER JOIN $sinch_categories_mapping scm
-                ON spc.store_category_id = scm.store_category_id
-        ) ON DUPLICATE KEY UPDATE product_id = cpe.entity_id, category_id = scm.shop_entity_id");
-
-        $this->print("--Replace Magento Multistore 12...");
-        $this->print("--Replace Magento Multistore 13...");
-        $this->print("--Replace Magento Multistore 14...");
-        $this->print("--Replace Magento Multistore 15...");
-
-        //Set product name for specific web sites
-        $this->_doQuery(
-            "DELETE cpev
-            FROM $catalog_product_entity_varchar cpev
-            LEFT JOIN $catalog_product_entity cpe
-                ON cpev.entity_id = cpe.entity_id
-            WHERE cpe.entity_id IS NULL"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_name,
-                pwt.website,
-                cpe.entity_id,
-                pt.product_name
-            FROM $catalog_product_entity cpe
-            JOIN $products_temp pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            JOIN $products_website_temp pwt
-                ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.product_name"
-        );
-
-        $this->print("--Replace Magento Multistore 16...");
-
-        // product name for all web sites
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_name,
-                0,
-                cpe.entity_id,
-                pt.product_name
-            FROM $catalog_product_entity cpe
-            JOIN $products_temp pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.product_name"
-        );
-
-        $this->print("--Replace Magento Multistore 17...");
-
-        $this->dropHTMLentities($this->_getProductAttributeId('name'));
-        $this->addDescriptions();
-        $this->cleanProductDistributors();
-        if (!$this->_ignore_product_contracts) {
-            $this->cleanProductContracts();
-        }
-
-        $this->addReviews();
-        $this->addWeight();
-        $this->addPdfUrl();
-        $this->addShortDescriptions();
-        $this->stockPriceImport->applyDistributors();
-        if (!$this->_ignore_product_contracts) {
-            $this->addProductContracts();
-        }
-
-        $this->addMetaTitle();
-        $this->addMetaDescriptions();
-        $this->addEAN();
-        $this->addSpecification();
-        $this->addManufacturers();
-
-        $this->print("--Replace Magento Multistore 18...");
-
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_visibility,
-                pwt.website,
-                cpe.entity_id,
-                4
-            FROM $catalog_product_entity cpe
-            JOIN $products_website_temp pwt
-                ON cpe.sinch_product_id = w.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 4"
-        );
-
-        $this->print("--Replace Magento Multistore 19...");
-
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_visibility,
-                0,
-                cpe.entity_id,
-                4
-            FROM $catalog_product_entity cpe
-            WHERE cpe.sinch_product_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 4"
-        );
-
-        $this->print("--Replace Magento Multistore 20...");
-
-        $this->_doQuery(
-            "DELETE cpw
-            FROM $catalog_product_website cpw
-            LEFT JOIN $catalog_product_entity cpe
-                ON cpw.product_id = cpe.entity_id
-            WHERE cpe.entity_id IS NULL"
-        );
-
-        $this->print("--Replace Magento Multistore 21...");
-
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_website (product_id, website_id)
-            (SELECT
-                cpe.entity_id,
-                pwt.website_id
-            FROM $catalog_product_entity cpe
-            JOIN $products_website_temp pwt
-                ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                product_id = cpe.entity_id,
-                website_id = pwt.website_id"
-        );
-
-        $this->print("--Replace Magento Multistore 22...");
-
-        //Adding tax class "Taxable Goods" (website scope)
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_tax_class_id,
-                pwt.website,
-                cpe.entity_id,
-                2
-            FROM $catalog_product_entity cpe
-            JOIN $products_website_temp pwt
-                ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 2"
-        );
-
-        $this->print("--Replace Magento Multistore 23...");
-
-        //Adding tax class "Taxable Goods" (global scope)
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_tax_class_id,
-                0,
-                cpe.entity_id,
-                2
-            FROM $catalog_product_entity cpe
-            WHERE cpe.sinch_product_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 2"
-        );
-
-        $this->print("--Replace Magento Multistore 24...");
-
-        // Load url Image
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_image,
-                store.store_id,
-                cpe.entity_id,
-                pt.main_image_url
-            FROM $catalog_product_entity cpe
-            JOIN $core_store store
-            JOIN $products_temp pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.main_image_url"
-        );
-
-        $this->print("--Replace Magento Multistore 25...");
-
-        // image for specific web sites
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_image,
-                0,
-                cpe.entity_id,
-                pt.main_image_url
-            FROM $catalog_product_entity cpe
-            JOIN $products_temp pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.main_image_url"
-        );
-
-        $this->print("--Replace Magento Multistore 26...");
-
-        // small_image for specific web sites
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_small_image,
-                store.store_id,
-                cpe.entity_id,
-                pt.medium_image_url
-            FROM $catalog_product_entity cpe
-            JOIN $core_store store
-            JOIN $products_temp pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.medium_image_url"
-        );
-
-        $this->print("--Replace Magento Multistore 27...");
-
-        // small_image for all web sites
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_small_image,
-                0,
-                cpe.entity_id,
-                pt.medium_image_url
-            FROM $catalog_product_entity cpe
-            JOIN $products_temp pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.medium_image_url"
-        );
-
-        $this->print("--Replace Magento Multistore 28...");
-
-        // thumbnail for specific web site
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_thumbnail,
-                store.store_id,
-                cpe.entity_id,
-                pt.thumb_image_url
-            FROM $catalog_product_entity cpe
-            JOIN $core_store store
-            JOIN $products_temp pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.thumb_image_url"
-        );
-
-        $this->print("--Replace Magento Multistore 29...");
-
-        // thumbnail for all web sites
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_thumbnail,
-                0,
-                cpe.entity_id,
-                pt.thumb_image_url
-            FROM $catalog_product_entity cpe
-            JOIN $products_temp pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.thumb_image_url"
-        );
-
-        $this->print("--Replace Magento Multistore 30...");
 
         $this->addRelatedProducts();
     }
