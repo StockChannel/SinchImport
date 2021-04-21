@@ -1,6 +1,19 @@
 <?php
 namespace SITC\Sinchimport\Model\Import;
 
+use Exception;
+use Magento\Catalog\Api\Data\TierPriceInterface;
+use Magento\Catalog\Api\Data\TierPriceInterfaceFactory;
+use Magento\Catalog\Api\TierPriceStorageInterface;
+use Magento\Customer\Api\Data\GroupInterfaceFactory;
+use Magento\Customer\Api\GroupRepositoryInterface;
+use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Util\CsvIterator;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
 /**
  * Class CustomerGroupPrice
  * 
@@ -12,11 +25,6 @@ class CustomerGroupPrice extends AbstractImportSection {
     const LOG_PREFIX = "CustomerGroupPrice: ";
     const LOG_FILENAME = "customer_groups_price";
 
-    const CUSTOMER_GROUPS = 'group_name';
-    const PRICE_COLUMN = 'customer_group_price';
-    const CHUNK_SIZE = 1000;
-    const INSERT_THRESHOLD = 500; //Inserts are most efficient around batches of 500 (possibly related to TierPricePersistence inserting in batches of 500?)
-
     const GROUP_SUFFIX = " (SITC)";
 
     const PRICE_TABLE_CURRENT = "sinch_customer_group_price_cur";
@@ -26,32 +34,32 @@ class CustomerGroupPrice extends AbstractImportSection {
     private $customerGroupPriceCount = 0;
 
     /**
-     * @var \SITC\Sinchimport\Helper\Data
+     * @var Data
      */
     private $helper;
     /**
      * CSV parser
-     * @var \SITC\Sinchimport\Util\CsvIterator
+     * @var CsvIterator
      */
     private $csv;
     /**
-     * @var \Magento\Customer\Api\Data\GroupInterfaceFactory
+     * @var GroupInterfaceFactory
      */
     private $groupFactory;
     /**
-     * @var \Magento\Customer\Api\GroupRepositoryInterface
+     * @var GroupRepositoryInterface
      */
     private $groupRepository;
     /**
-     * @var \Magento\Catalog\Api\TierPriceStorageInterface
+     * @var TierPriceStorageInterface
      */
     private $tierPriceStorage;
     /**
-     * @var \Magento\Catalog\Api\Data\TierPriceInterface
+     * @var TierPriceInterface
      */
     private $tierPriceFactory;
     /**
-     * @var \Magento\Framework\Api\SearchCriteriaBuilder
+     * @var SearchCriteriaBuilder
      */
     private $searchCriteriaBuilder;
 
@@ -78,36 +86,19 @@ class CustomerGroupPrice extends AbstractImportSection {
     /** @var string */
     private $groupPriceTableNext;
 
-
-    /**
-     * @var array Holds a cache of sinchGroup -> magentoGroupId conversions
-     * 
-     */
-    private $groupIdCache = [];
-    /**
-     * @var array Holds a cache of sinchGroup -> magentoGroupCode conversions
-     */
-    private $groupCodeCache = [];
-
-
-    /**
-     * CustomerGroupPrice constructor.
-     * @param \SITC\Sinchimport\Util\CsvIterator $csv
-     * @param \Magento\Framework\App\ResourceConnection $resource
-     * @param \Symfony\Component\Console\Output\ConsoleOutput $output
-     */
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \SITC\Sinchimport\Helper\Data $helper,
-        \SITC\Sinchimport\Util\CsvIterator $csv,
-        \Magento\Customer\Api\Data\GroupInterfaceFactory $groupFactory,
-        \Magento\Customer\Api\GroupRepositoryInterface $groupRepository,
-        \Magento\Catalog\Api\TierPriceStorageInterface $tierPriceStorage,
-        \Magento\Catalog\Api\Data\TierPriceInterfaceFactory $tierPriceFactory,
-        \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $dlHelper,
+        Data $helper,
+        CsvIterator $csv,
+        GroupInterfaceFactory $groupFactory,
+        GroupRepositoryInterface $groupRepository,
+        TierPriceStorageInterface $tierPriceStorage,
+        TierPriceInterfaceFactory $tierPriceFactory,
+        SearchCriteriaBuilder $searchCriteriaBuilder
     ){
-        parent::__construct($resourceConn, $output);
+        parent::__construct($resourceConn, $output, $dlHelper);
         $this->helper = $helper;
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->groupFactory = $groupFactory;
@@ -166,18 +157,19 @@ class CustomerGroupPrice extends AbstractImportSection {
 
 
     /**
-     * @param string $customerGroupFile
-     * @param string $customerGroupPriceFile
-     * @throws \Exception
+     * @throws Exception
      */
-    public function parse($customerGroupFile, $customerGroupPriceFile)
+    public function parse()
     {
+        $accountGroupFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUPS);
+        $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
+
         $this->log("Starting CustomerGroupPrice parse");
         $this->createMappingTable();
         $this->initDeltaPricing();
 
         $this->startTimingStep('Group parsing');
-        $customerGroupCsv = $this->csv->getData($customerGroupFile);
+        $customerGroupCsv = $this->csv->getData($accountGroupFile);
         unset($customerGroupCsv[0]);
 
         foreach($customerGroupCsv as $groupData){
@@ -185,14 +177,12 @@ class CustomerGroupPrice extends AbstractImportSection {
             $this->createOrUpdateGroup($groupData[0], $groupData[1]);
         }
         $this->endTimingStep();
-
         $this->log("Processed {$this->customerGroupCount} customer groups");
-        $parseStart = $this->microtime_float();
-        
+
         $this->startTimingStep('Group prices - LOAD DATA');
         $this->log("Loading new values into database for processing");
         $this->getConnection()->query(
-            "LOAD DATA LOCAL INFILE '{$customerGroupPriceFile}'
+            "LOAD DATA LOCAL INFILE '{$accountGroupPriceFile}'
                 INTO TABLE {$this->groupPriceTableNext}
                 FIELDS TERMINATED BY '|'
                 OPTIONALLY ENCLOSED BY '\"'
@@ -245,7 +235,7 @@ class CustomerGroupPrice extends AbstractImportSection {
             }
             $toDelete = null;
             $this->getConnection()->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->getConnection()->rollBack();
             throw $e;
         } finally {
@@ -302,7 +292,7 @@ class CustomerGroupPrice extends AbstractImportSection {
             }
             $toUpdate = null;
             $this->getConnection()->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->getConnection()->rollBack();
             throw $e;
         } finally {
@@ -339,7 +329,7 @@ class CustomerGroupPrice extends AbstractImportSection {
 
             $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext}");
             $this->getConnection()->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->getConnection()->rollBack();
             throw $e;
         } finally {
@@ -357,7 +347,7 @@ class CustomerGroupPrice extends AbstractImportSection {
      * @param string $groupName The Sinch Group Name
      * @return void
      */
-    private function createOrUpdateGroup($sinchGroupId, $groupName)
+    private function createOrUpdateGroup(int $sinchGroupId, string $groupName)
     {
         $fullGroupName = $groupName . self::GROUP_SUFFIX;
         $this->customerGroupCount += 1;

@@ -2,15 +2,12 @@
 
 namespace SITC\Sinchimport\Model;
 
-require_once __DIR__ . '/Config.php';
-
 use DateTime;
 use Exception;
 use Magento\Eav\Model\ResourceModel\Entity\Attribute;
 use Magento\Framework\App\Cache\Frontend\Pool;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\DeploymentConfig;
-use Magento\Framework\App\Filesystem\DirectoryList;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\DeadlockException;
 use Magento\Framework\Event\ManagerInterface;
@@ -34,9 +31,10 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 use Zend_Db_Statement_Exception;
 use Zend_Db_Statement_Interface;
 
-class Sinch
-{
-    public $varDir;
+class Sinch {
+    public const FIELD_TERMINATED_CHAR = "|";
+    private const UPDATE_CATEGORY_DATA = false;
+
     public $files;
     public $debug_mode = false;
 
@@ -98,9 +96,7 @@ class Sinch
     private $_categoryEntityTypeId;
     private $_categoryDefault_attribute_set_id;
     private $import_run_type = 'MANUAL';
-    private $_ignore_category_features = false;
     private $_ignore_product_related = false;
-    private $_ignore_product_contracts = false;
     private $_categoryMetaTitleAttrId;
     private $_categoryMetadescriptionAttrId;
     private $_categoryDescriptionAttrId;
@@ -120,7 +116,6 @@ class Sinch
 
     public function __construct(
         Context $context,
-        DirectoryList $directoryList,
         StoreManagerInterface $storeManager,
         ScopeConfigInterface $scopeConfig,
         Logger $sinchLogger,
@@ -167,28 +162,22 @@ class Sinch
         $this->import_status_table = $this->getTableName('sinch_import_status');
         $this->import_status_statistic_table = $this->getTableName('sinch_import_status_statistic');
 
-        $this->createTempDir($directoryList);
-
         $this->files = [
-            FILE_CATEGORIES,
-            FILE_CATEGORY_TYPES,
-            FILE_CATEGORIES_FEATURES,
-            FILE_DISTRIBUTORS,
-            FILE_DISTRIBUTORS_STOCK_AND_PRICES,
-            FILE_EANCODES,
-            FILE_MANUFACTURERS,
-            FILE_PRODUCT_FEATURES,
-            FILE_PRODUCT_CATEGORIES,
-            FILE_PRODUCTS,
-            FILE_RELATED_PRODUCTS,
-            FILE_RESTRICTED_VALUES,
-            FILE_STOCK_AND_PRICES,
-            FILE_PRODUCTS_PICTURES_GALLERY,
-            FILE_PRICE_RULES,
-            FILE_PRODUCT_CONTRACTS,
-            FILE_CUSTOMER_GROUP_CATEGORIES,
-            FILE_CUSTOMER_GROUPS,
-            FILE_CUSTOMER_GROUP_PRICE
+            Download::FILE_CATEGORIES,
+            Download::FILE_CATEGORIES_FEATURES,
+            Download::FILE_DISTRIBUTORS,
+            Download::FILE_DISTRIBUTORS_STOCK,
+            Download::FILE_MANUFACTURERS,
+            Download::FILE_PRODUCT_FEATURES,
+            Download::FILE_PRODUCT_CATEGORIES,
+            Download::FILE_PRODUCTS,
+            Download::FILE_RELATED_PRODUCTS,
+            Download::FILE_RESTRICTED_VALUES,
+            Download::FILE_STOCK_AND_PRICES,
+            Download::FILE_PRODUCTS_GALLERY_PICTURES,
+            Download::FILE_ACCOUNT_GROUP_CATEGORIES,
+            Download::FILE_ACCOUNT_GROUPS,
+            Download::FILE_ACCOUNT_GROUP_PRICE
         ];
 
         $this->_dataConf = $this->scopeConfig->getValue(
@@ -198,29 +187,12 @@ class Sinch
 
         $this->_deploymentData = $deploymentConfig->getConfigData();
 
-        $this->field_terminated_char = DEFAULT_FILE_TERMINATED_CHAR;
+        $this->field_terminated_char = self::FIELD_TERMINATED_CHAR;
     }
 
     private function getTableName(string $tableName): string
     {
         return $this->_resourceConnection->getTableName($tableName);
-    }
-
-    /**
-     * Create the import directory Hierarchy
-     *
-     * @param DirectoryList $directoryList
-     * @throws LocalizedException
-     */
-    private function createTempDir(DirectoryList $directoryList)
-    {
-        $dir = $directoryList->getPath(DirectoryList::VAR_DIR) . '/SITC/Sinchimport/';
-        if (!is_dir($dir)) {
-            if (!mkdir($dir, 0777, true)) {
-                throw new LocalizedException(__("Failed to create import directory. Check filesystem permissions"));
-            }
-        }
-        $this->varDir = $dir;
     }
 
     /**
@@ -309,31 +281,21 @@ class Sinch
                 $this->print("========IMPORTING DATA IN $imType MODE========");
 
                 $this->print("Upload Files...");
-                $this->downloadFiles();
+                $this->downloadFiles(true);
                 $this->addImportStatus('Upload Files');
-
-                $this->print("Parse Category Types...");
-                $this->parseCategoryTypes();
 
                 $this->print("Parse Categories...");
                 $this->parseCategories();
                 $this->addImportStatus('Parse Categories');
 
-                $this->print("Parse Category Features...");
-                $this->parseCategoryFeatures();
+                //TODO: Remove unnecessary import status
                 $this->addImportStatus('Parse Category Features');
 
                 $this->print("Parse Distributors...");
-                $this->stockPriceImport->parse(
-                    $this->varDir . FILE_STOCK_AND_PRICES,
-                    $this->varDir . FILE_DISTRIBUTORS,
-                    $this->varDir . FILE_DISTRIBUTORS_STOCK_AND_PRICES
-                );
-                $this->parseProductContracts();
+                $this->stockPriceImport->parse();
                 $this->addImportStatus('Parse Distributors');
 
-                $this->print("Parse EAN Codes...");
-                $this->parseEANCodes();
+                //TODO: Remove unnecessary import status
                 $this->addImportStatus('Parse EAN Codes');
 
                 $this->print("Parse Manufacturers...");
@@ -345,11 +307,7 @@ class Sinch
                 $this->addImportStatus('Parse Related Products');
 
                 $this->print("Parse Product Features...");
-                $this->attributesImport->parse(
-                    $this->varDir . FILE_CATEGORIES_FEATURES,
-                    $this->varDir . FILE_RESTRICTED_VALUES,
-                    $this->varDir . FILE_PRODUCT_FEATURES
-                );
+                $this->attributesImport->parse();
                 $this->addImportStatus('Parse Product Features');
 
                 $this->print("Parse Product Categories...");
@@ -373,23 +331,12 @@ class Sinch
                 $this->addImportStatus('Parse Stock And Prices');
 
                 $this->print("Apply Customer Group Price...");
-                if (file_exists($this->varDir . FILE_CUSTOMER_GROUPS) &&
-                    file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE)) {
-                    $this->customerGroupPrice->parse(
-                        $this->varDir . FILE_CUSTOMER_GROUPS,
-                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
-                    );
-                }
 
-                if (file_exists($this->varDir . FILE_PRICE_RULES)) {
-                    $this->_eventManager->dispatch(
-                        'sinch_pricerules_import_ftp',
-                        [
-                            'ftp_host' => $this->_dataConf["ftp_server"],
-                            'ftp_username' => $this->_dataConf["username"],
-                            'ftp_password' => $this->_dataConf["password"]
-                        ]
-                    );
+                $cgSaveFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUPS);
+                $cgpSaveFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
+
+                if (file_exists($cgSaveFile) && file_exists($cgpSaveFile)) {
+                    $this->customerGroupPrice->parse();
                 }
 
                 //Allow the CC category visibility import section to be skipped
@@ -399,9 +346,9 @@ class Sinch
                 );
 
                 if (!$ccCategoryDisable) {
-                    if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
+                    if (file_exists($this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_CATEGORIES))) {
                         $this->print("Parsing customer group categories...");
-                        $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                        $this->customerGroupCatsImport->parse();
                     }
                 } else {
                     $this->print("Skipping custom catalog categories as 'sinchimport/category_visibility/disable_import' is enabled");
@@ -417,12 +364,11 @@ class Sinch
                 );
 
                 if (!$ccProductDisable) {
-                    if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)) {
+                    $customerGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
+                    $stockAndPriceFile = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
+                    if (file_exists($customerGroupPriceFile) && file_exists($stockAndPriceFile)) {
                         $this->print("Processing Custom catalog restrictions...");
-                        $this->customCatalogImport->parse(
-                            $this->varDir . FILE_STOCK_AND_PRICES,
-                            $this->varDir . FILE_CUSTOMER_GROUP_PRICE
-                        );
+                        $this->customCatalogImport->parse();
                     }
                 } else {
                     $this->print("Skipping custom catalog restrictions as 'sinchimport/product_visibility/disable_import' is enabled");
@@ -717,9 +663,17 @@ class Sinch
         }
     }
 
-    private function downloadFiles()
+    /**
+     * Download the required files for this import
+     * @param bool $fullImport Whether this is a full import or stock price
+     * @throws LocalizedException
+     */
+    private function downloadFiles(bool $fullImport)
     {
         $this->_log("--- Start downloading files ---");
+
+        //Ensure the save directory exists
+        $this->dlHelper->createSaveDir();
 
         $connRes = $this->dlHelper->connect();
         if ($connRes !== true) {
@@ -727,86 +681,35 @@ class Sinch
             throw new LocalizedException(__($connRes));
         }
 
+        $requiredFiles = $this->dlHelper->getRequiredFilenames($fullImport);
+        $optionalFiles = $this->dlHelper->getOptionalFilenames($fullImport);
+
         try {
-            foreach ($this->files as $file) {
-                $dlRes = $this->dlHelper->downloadFile($file);
-                if (!$dlRes || !file_exists($this->varDir . $file) || @filesize($this->varDir . $file) < 1) {
-                    //Allow failures of optional files
-                    switch ($file) {
-                        case FILE_CATEGORIES_FEATURES:
-                            $this->_ignore_category_features = true;
-                            break;
-                        case FILE_CATEGORY_TYPES:
-                        case FILE_CUSTOMER_GROUP_CATEGORIES:
-                        case FILE_DISTRIBUTORS_STOCK_AND_PRICES:
-                        case FILE_RESTRICTED_VALUES:
-                        case FILE_PRICE_RULES:
-                        case FILE_PRODUCT_FEATURES:
-                            break;
-                        case FILE_RELATED_PRODUCTS:
+            //Download required files, then optional ones (favour priority)
+            $this->_log("Downloading required files");
+            foreach ($requiredFiles as $filename) {
+                if (!$this->dlHelper->downloadFile($filename)) {
+                    $this->_setErrorMessage("$filename is empty, cannot continue");
+                    throw new LocalizedException(__("$filename is empty, cannot continue"));
+                }
+            }
+            $this->_log("Downloading optional files");
+            foreach ($optionalFiles as $filename) {
+                if (!$this->dlHelper->downloadFile($filename)) {
+                    //Allow failures of optional files, turn off their features
+                    switch ($filename) {
+                        case Download::FILE_RELATED_PRODUCTS:
                             $this->_ignore_product_related = true;
                             break;
-                        case FILE_PRODUCT_CONTRACTS:
-                            $this->_ignore_product_contracts = true;
-                            break;
                         default:
-                            $this->_setErrorMessage("$file is empty, cannot continue");
-                            throw new LocalizedException(__("$file is empty, cannot continue"));
                     }
-                    $this->print("Failed to download optional file $file, skipping");
+                    $this->print("Failed to download optional file $filename, skipping");
                 }
             }
         } finally {
             $this->dlHelper->disconnect();
         }
         $this->_log("--- Finished downloading files ---");
-    }
-
-    private function parseCategoryTypes()
-    {
-        $parseFile = $this->varDir . FILE_CATEGORY_TYPES;
-        if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_CATEGORY_TYPES);
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'category_types_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->getTableName('category_types_temp') . "(
-                          id int(11),
-                          name varchar(255),
-                          key(id)
-                          )"
-            );
-
-            $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->getTableName(
-                    'category_types_temp'
-                ) . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
-                          OPTIONALLY ENCLOSED BY '\"'
-                          LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
-            );
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'sinch_category_types'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->getTableName('category_types_temp') . "
-                          TO " . $this->getTableName('sinch_category_types')
-            );
-
-            $this->_log("Finish parse " . FILE_CATEGORY_TYPES);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
     }
 
     /**
@@ -816,14 +719,13 @@ class Sinch
     private function parseCategories(): array
     {
         $imType = $this->_dataConf['replace_category'];
-        $parseFile = $this->varDir . FILE_CATEGORIES;
-        //$parseFile = $this->varDir . FILE_CATEGORIES_TEST;
+        $parseFile = $this->dlHelper->getSavePath(Download::FILE_CATEGORIES);
         $field_terminated_char = $this->field_terminated_char;
 
         $this->imType = $imType;
 
         if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_CATEGORIES);
+            $this->_log("Start parse " . Download::FILE_CATEGORIES);
 
             $this->_getCategoryEntityTypeIdAndDefault_attribute_set_id();
 
@@ -903,7 +805,7 @@ class Sinch
                 $this->print("====================>ERROR");
             }
 
-            $this->_log("Finish parse " . FILE_CATEGORIES);
+            $this->_log("Finish parse " . Download::FILE_CATEGORIES);
         } else {
             $this->_log("Wrong file " . $parseFile);
         }
@@ -1291,7 +1193,7 @@ class Sinch
         );
 
         // backup Category ID in REWRITE mode
-        if ($imType == "REWRITE" || (UPDATE_CATEGORY_DATA && $imType == "MERGE")) {
+        if ($imType == "REWRITE" || (self::UPDATE_CATEGORY_DATA && $imType == "MERGE")) {
             if ($mapping_again) {
                 $this->_doQuery(
                     "INSERT IGNORE INTO $sinch_categories_mapping_temp
@@ -1459,7 +1361,7 @@ class Sinch
         }
 
         // added for mapping new sinch categories in merge && !UPDATE_CATEGORY_DATA mode
-        if ((UPDATE_CATEGORY_DATA && $imType == "MERGE") || ($imType == "REWRITE")) {
+        if ((self::UPDATE_CATEGORY_DATA && $imType == "MERGE") || ($imType == "REWRITE")) {
             $where = '';
         } else {
             $where = 'WHERE cce.parent_id = 0 AND cce.store_category_id IS NOT NULL';
@@ -1531,7 +1433,7 @@ class Sinch
 
         $ignore = 'IGNORE';
         $onDuplicate = '';
-        if (UPDATE_CATEGORY_DATA) {
+        if (self::UPDATE_CATEGORY_DATA) {
             $ignore = '';
             $onDuplicate = "ON DUPLICATE KEY UPDATE
                         updated_at = NOW(),
@@ -1593,7 +1495,7 @@ class Sinch
         }
 
         //TODO: Remove UPDATE_CATEGORY_DATA?
-        if ($imType == "REWRITE" || UPDATE_CATEGORY_DATA) {
+        if ($imType == "REWRITE" || self::UPDATE_CATEGORY_DATA) {
             $this->_doQuery(
                 "INSERT INTO $catalog_category_entity_int (attribute_id, store_id, entity_id, value)
                     (
@@ -1963,161 +1865,11 @@ class Sinch
         $this->_doQuery($q);
     }
 
-    private function parseCategoryFeatures()
-    {
-        $parseFile = $this->varDir . FILE_CATEGORIES_FEATURES;
-        if (filesize($parseFile) || $this->_ignore_category_features) {
-            $this->_log("Start parse " . FILE_CATEGORIES_FEATURES);
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'categories_features_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->getTableName(
-                    'categories_features_temp'
-                ) . " (
-                                category_feature_id int(11),
-                                store_category_id int(11),
-                                feature_name varchar(50),
-                                display_order_number int(11),
-                                KEY(store_category_id),
-                                KEY(category_feature_id)
-                          )
-                        "
-            );
-
-            if (!$this->_ignore_category_features) {
-                $this->_doQuery(
-                    "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                              INTO TABLE " . $this->getTableName(
-                        'categories_features_temp'
-                    ) . "
-                              FIELDS TERMINATED BY '"
-                    . $this->field_terminated_char . "'
-                              OPTIONALLY ENCLOSED BY '\"'
-                              LINES TERMINATED BY \"\r\n\"
-                              IGNORE 1 LINES "
-                );
-            }
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'sinch_categories_features'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->getTableName(
-                    'categories_features_temp'
-                ) . "
-                          TO " . $this->getTableName(
-                    'sinch_categories_features'
-                )
-            );
-
-            $this->_log("Finish parse " . FILE_CATEGORIES_FEATURES);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
-    private function parseProductContracts()
-    {
-        $parseFile = $this->varDir . FILE_PRODUCT_CONTRACTS;
-        if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_PRODUCT_CONTRACTS);
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'product_contracts_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->getTableName('product_contracts_temp')
-                . "(
-                          `store_product_id` int(11) DEFAULT NULL,
-                          `contract_id` varchar(50) DEFAULT NULL,
-                          KEY `store_product_id` (store_product_id)
-                          )"
-            );
-
-            $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->getTableName(
-                    'product_contracts_temp'
-                ) . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
-                          OPTIONALLY ENCLOSED BY '\"'
-                          LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
-            );
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'sinch_product_contracts'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->getTableName('product_contracts_temp')
-                . "
-                          TO " . $this->getTableName('sinch_product_contracts')
-            );
-
-            $this->_log("Finish parse " . FILE_PRODUCT_CONTRACTS);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
-    private function parseEANCodes()
-    {
-        $parseFile = $this->varDir . FILE_EANCODES;
-        if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_EANCODES);
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName('ean_codes_temp')
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->getTableName('ean_codes_temp') . "(
-                           product_id int(11),
-                           ean_code varchar(255),
-                           KEY(product_id)
-                          )"
-            );
-
-            $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->getTableName('ean_codes_temp')
-                . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
-                          OPTIONALLY ENCLOSED BY '\"'
-                          LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
-            );
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'sinch_ean_codes'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->getTableName('ean_codes_temp') . "
-                          TO " . $this->getTableName('sinch_ean_codes')
-            );
-
-            $this->_log("Finish parse " . FILE_EANCODES);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
     private function parseManufacturers()
     {
-        $parseFile = $this->varDir . FILE_MANUFACTURERS;
+        $parseFile = $this->dlHelper->getSavePath(Download::FILE_MANUFACTURERS);
         if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_MANUFACTURERS);
+            $this->_log("Start parse " . Download::FILE_MANUFACTURERS);
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->getTableName(
                     'manufacturers_temp'
@@ -2234,7 +1986,7 @@ class Sinch
                 "RENAME TABLE " . $this->getTableName('manufacturers_temp') . "
                           TO " . $this->getTableName('sinch_manufacturers')
             );
-            $this->_log("Finish parse " . FILE_MANUFACTURERS);
+            $this->_log("Finish parse " . Download::FILE_MANUFACTURERS);
         } else {
             $this->_log("Wrong file " . $parseFile);
         }
@@ -2247,9 +1999,9 @@ class Sinch
 
     private function parseRelatedProducts()
     {
-        $parseFile = $this->varDir . FILE_RELATED_PRODUCTS;
+        $parseFile = $this->dlHelper->getSavePath(Download::FILE_RELATED_PRODUCTS);
         if (filesize($parseFile) || $this->_ignore_product_related) {
-            $this->_log("Start parse " . FILE_RELATED_PRODUCTS);
+            $this->_log("Start parse " . Download::FILE_RELATED_PRODUCTS);
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->getTableName(
                     'related_products_temp'
@@ -2285,7 +2037,7 @@ class Sinch
                 . " TO " . $this->getTableName('sinch_related_products')
             );
 
-            $this->_log("Finish parse " . FILE_RELATED_PRODUCTS);
+            $this->_log("Finish parse " . Download::FILE_RELATED_PRODUCTS);
         } else {
             $this->_log("Wrong file " . $parseFile);
         }
@@ -2293,9 +2045,9 @@ class Sinch
 
     private function parseProductCategories()
     {
-        $parseFile = $this->varDir . FILE_PRODUCT_CATEGORIES;
+        $parseFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCT_CATEGORIES);
         if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_PRODUCT_CATEGORIES);
+            $this->_log("Start parse " . Download::FILE_PRODUCT_CATEGORIES);
 
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->getTableName(
@@ -2339,7 +2091,7 @@ class Sinch
                 )
             );
 
-            $this->_log("Finish parse " . FILE_PRODUCT_CATEGORIES);
+            $this->_log("Finish parse " . Download::FILE_PRODUCT_CATEGORIES);
         } else {
             $this->_log("Wrong file " . $parseFile);
         }
@@ -2351,10 +2103,10 @@ class Sinch
 
         $replace_merge_product = $this->_dataConf['replace_product'];
 
-        $parseFile = $this->varDir . FILE_PRODUCTS;
-        //$parseFile = $this->varDir . FILE_PRODUCTS_TEST;
+        $parseFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCTS);
+
         if (filesize($parseFile)) {
-            $this->_log("Start parse " . FILE_PRODUCTS);
+            $this->_log("Start parse " . Download::FILE_PRODUCTS);
 
             $this->_doQuery("DROP TABLE IF EXISTS " . $this->getTableName('products_temp'));
             $this->_doQuery(
@@ -2482,7 +2234,7 @@ class Sinch
                 "RENAME TABLE " . $this->getTableName('products_temp') . "
                           TO " . $this->getTableName('sinch_products')
             );
-            $this->_log("Finish parse " . FILE_PRODUCTS);
+            $this->_log("Finish parse " . Download::FILE_PRODUCTS);
         } else {
             $this->_log("Wrong file " . $parseFile);
         }
@@ -3942,10 +3694,10 @@ class Sinch
 
     private function parseProductsPicturesGallery()
     {
-        $parseFile = $this->varDir . FILE_PRODUCTS_PICTURES_GALLERY;
+        $parseFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCTS_GALLERY_PICTURES);
         if (filesize($parseFile)) {
             $this->_log(
-                "Start parse " . FILE_PRODUCTS_PICTURES_GALLERY
+                "Start parse " . Download::FILE_PRODUCTS_GALLERY_PICTURES
             );
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->getTableName('products_pictures_gallery_temp')
@@ -3975,7 +3727,7 @@ class Sinch
                 "RENAME TABLE " . $this->getTableName('products_pictures_gallery_temp') . " TO " . $this->getTableName('sinch_products_pictures_gallery')
             );
 
-            $this->_log("Finish parse" . FILE_PRODUCTS_PICTURES_GALLERY);
+            $this->_log("Finish parse" . Download::FILE_PRODUCTS_GALLERY_PICTURES);
         } else {
             $this->_log("Wrong file" . $parseFile);
         }
@@ -4139,45 +3891,29 @@ class Sinch
                 $this->print("Upload Files...");
 
                 $this->files = [
-                    FILE_STOCK_AND_PRICES,
-                    FILE_PRICE_RULES,
-                    FILE_CUSTOMER_GROUPS,
-                    FILE_CUSTOMER_GROUP_CATEGORIES,
-                    FILE_CUSTOMER_GROUP_PRICE,
-                    FILE_DISTRIBUTORS,
-                    FILE_DISTRIBUTORS_STOCK_AND_PRICES
+                    Download::FILE_STOCK_AND_PRICES,
+                    Download::FILE_ACCOUNT_GROUPS,
+                    Download::FILE_ACCOUNT_GROUP_CATEGORIES,
+                    Download::FILE_ACCOUNT_GROUP_PRICE,
+                    Download::FILE_DISTRIBUTORS,
+                    Download::FILE_DISTRIBUTORS_STOCK
                 ];
 
-                $this->downloadFiles();
+                $this->downloadFiles(false);
                 $this->addImportStatus('Stock Price Upload Files');
 
                 $this->print("Parse Stock And Prices...");
                 //Replaces parseStockAndPrices
-                $this->stockPriceImport->parse(
-                    $this->varDir . FILE_STOCK_AND_PRICES,
-                    $this->varDir . FILE_DISTRIBUTORS,
-                    $this->varDir . FILE_DISTRIBUTORS_STOCK_AND_PRICES
-                );
+                $this->stockPriceImport->parse();
                 $this->stockPriceImport->apply();
                 $this->addImportStatus('Stock Price Parse Products');
 
                 $this->print("Apply Customer Group Price...");
-                if (file_exists($this->varDir . FILE_CUSTOMER_GROUPS) &&
-                    file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE)) {
-                    $this->customerGroupPrice->parse(
-                        $this->varDir . FILE_CUSTOMER_GROUPS,
-                        $this->varDir . FILE_CUSTOMER_GROUP_PRICE
-                    );
+                $customerGroupsFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUPS);
+                $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
+                if (file_exists($customerGroupsFile) && file_exists($accountGroupPriceFile)) {
+                    $this->customerGroupPrice->parse();
                 }
-
-                $this->_eventManager->dispatch(
-                    'sinch_pricerules_import_ftp',
-                    [
-                        'ftp_host' => $this->_dataConf["ftp_server"],
-                        'ftp_username' => $this->_dataConf["username"],
-                        'ftp_password' => $this->_dataConf["password"]
-                    ]
-                );
 
                 //Allow the CC category visibility import section to be skipped
                 $ccCategoryDisable = $this->scopeConfig->getValue(
@@ -4186,9 +3922,9 @@ class Sinch
                 );
 
                 if (!$ccCategoryDisable) {
-                    if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
+                    if (file_exists($this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_CATEGORIES))) {
                         $this->print("Parsing customer group categories...");
-                        $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
+                        $this->customerGroupCatsImport->parse();
                     }
                 } else {
                     $this->print("Skipping custom catalog categories as 'sinchimport/category_visibility/disable_import' is enabled");
@@ -4201,12 +3937,11 @@ class Sinch
                 );
 
                 if (!$ccProductDisable) {
-                    if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)) {
+                    $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
+                    $stockAndPriceFile = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
+                    if (file_exists($accountGroupPriceFile) && file_exists($stockAndPriceFile)) {
                         $this->print("Processing Custom catalog restrictions...");
-                        $this->customCatalogImport->parse(
-                            $this->varDir . FILE_STOCK_AND_PRICES,
-                            $this->varDir . FILE_CUSTOMER_GROUP_PRICE
-                        );
+                        $this->customCatalogImport->parse();
                     }
                 } else {
                     $this->print("Skipping custom catalog restrictions as 'sinchimport/product_visibility/disable_import' is enabled");

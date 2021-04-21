@@ -52,7 +52,7 @@ class IndexManagement {
      * 
      * @return bool True if no indexers are currently in the "working" state
      */
-    public function ensureIndexersNotRunning()
+    public function ensureIndexersNotRunning(): bool
     {
         $waitForIndexers = $this->helper->getStoreConfig('sinchimport/general/wait_for_index_completion');
         if($waitForIndexers) {
@@ -67,7 +67,7 @@ class IndexManagement {
      * 
      * @return bool
      */
-    private function noIndexersRunning()
+    private function noIndexersRunning(): bool
     {
         foreach(array_keys($this->indexerConfig->getIndexers()) as $indexerId) {
             $indexerState = $this->stateFactory->create();

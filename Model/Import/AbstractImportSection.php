@@ -2,12 +2,17 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\DB\Adapter\AdapterInterface;
+use SITC\Sinchimport\Helper\Download;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
 abstract class AbstractImportSection {
     const LOG_PREFIX = "AbstractImportSection: ";
     const LOG_FILENAME = "unknown";
 
     /**
-     * @var \Magento\Framework\App\ResourceConnection $resourceConn
+     * @var ResourceConnection $resourceConn
      */
     protected $resourceConn;
     /**
@@ -15,16 +20,19 @@ abstract class AbstractImportSection {
      */
     protected $logger;
     /**
-     * @var \Symfony\Component\Console\Output\ConsoleOutput
+     * @var ConsoleOutput
      */
     protected $output;
+    /** @var Download */
+    protected $dlHelper;
 
     /** @var mixed */
     protected $timingStep = [];
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $downloadHelper
     ){
         $this->resourceConn = $resourceConn;
 
@@ -33,30 +41,31 @@ abstract class AbstractImportSection {
         $logger->addWriter($writer);
         $this->logger = $logger;
         $this->output = $output;
+        $this->dlHelper = $downloadHelper;
     }
 
     /**
      * @return float
      */
-    protected function microtime_float()
+    protected function microtime_float(): float
     {
         list($usec, $sec) = explode(" ", microtime());
         return ((float)$usec + (float)$sec);
     }
 
     /**
-     * @return \Magento\Framework\DB\Adapter\AdapterInterface
+     * @return AdapterInterface
      */
-    protected function getConnection()
+    protected function getConnection(): AdapterInterface
     {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
+        return $this->resourceConn->getConnection(ResourceConnection::DEFAULT_CONNECTION);
     }
 
     /**
      * @param string $table Table name
      * @return string Resolved table name
      */
-    protected function getTableName($table)
+    protected function getTableName(string $table): string
     {
         return $this->resourceConn->getTableName($table);
     }
@@ -74,7 +83,7 @@ abstract class AbstractImportSection {
      * @param string $name A name to describe what occurs in the step
      * @return void
      */
-    protected function startTimingStep($name)
+    protected function startTimingStep(string $name)
     {
         $now = $this->microtime_float();
         $this->timingStep[] = [
@@ -112,4 +121,6 @@ abstract class AbstractImportSection {
         $elapsed = number_format($totalElapsed, 2);
         $this->log("Took {$elapsed} seconds total");
     }
+
+    public abstract function parse();
 }

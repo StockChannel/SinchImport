@@ -2,9 +2,30 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Exception;
+use Magento\Catalog\Api\AttributeSetRepositoryInterface;
+use Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory;
+use Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface;
+use Magento\Catalog\Api\ProductAttributeManagementInterface;
+use Magento\Catalog\Api\ProductAttributeOptionManagementInterface;
+use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
+use Magento\Catalog\Model\Product;
+use Magento\Catalog\Model\ResourceModel\Product\Action;
+use Magento\Eav\Api\Data\AttributeGroupInterface;
+use Magento\Eav\Api\Data\AttributeGroupInterfaceFactory;
+use Magento\Eav\Api\Data\AttributeOptionInterfaceFactory;
+use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\App\Cache\TypeListInterface;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\InputException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Exception\StateException;
+use Magento\Framework\File\Csv;
+use Magento\Store\Model\ScopeInterface;
+use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Model\Sinch;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 class Attributes extends AbstractImportSection {
     const LOG_PREFIX = "Attributes: ";
@@ -62,25 +83,26 @@ class Attributes extends AbstractImportSection {
     private $filterMappingInsert = null;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \Magento\Framework\File\Csv $csv,
-        \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository,
-        \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
-        \Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory $attributeFactory,
-        \Magento\Eav\Api\Data\AttributeGroupInterfaceFactory $attributeGroupFactory,
-        \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder,
-        \Magento\Catalog\Api\ProductAttributeOptionManagementInterface $optionManagement,
-        \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory,
-        \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository,
-        \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
-        \Magento\Framework\App\Cache\TypeListInterface $cacheType,
-        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $dlHelper,
+        Csv $csv,
+        ProductAttributeRepositoryInterface $attributeRepository,
+        ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
+        ProductAttributeInterfaceFactory $attributeFactory,
+        AttributeGroupInterfaceFactory $attributeGroupFactory,
+        SearchCriteriaBuilder $searchCriteriaBuilder,
+        ProductAttributeOptionManagementInterface $optionManagement,
+        AttributeOptionInterfaceFactory $optionFactory,
+        AttributeSetRepositoryInterface $attributeSetRepository,
+        ProductAttributeManagementInterface $attributeManagement,
+        TypeListInterface $cacheType,
+        Action $massProdValues,
+        ScopeConfigInterface $scopeConfig
     )
     {
-        parent::__construct($resourceConn, $output);
-        $this->csv = $csv->setLineLength(256)->setDelimiter("|");
+        parent::__construct($resourceConn, $output, $dlHelper);
+        $this->csv = $csv->setLineLength(256)->setDelimiter(Sinch::FIELD_TERMINATED_CHAR);
         $this->attributeRepository = $attributeRepository;
         $this->attributeGroupRepository = $attributeGroupRepository;
         $this->attributeFactory = $attributeFactory;
@@ -102,17 +124,18 @@ class Attributes extends AbstractImportSection {
     }
 
     /**
-     * @param string $categoryFeaturesFile CategoryFeatures.csv
-     * @param string $restrictedValuesFile RestrictedValues.csv
-     * @param string $productFeaturesFile ProductFeatures.csv
      * @throws InputException
      * @throws NoSuchEntityException
      * @throws StateException
-     * @throws \Exception
+     * @throws Exception
      */
-    public function parse(string $categoryFeaturesFile, string $restrictedValuesFile, string $productFeaturesFile)
+    public function parse()
     {
         $this->log("--- Begin Attribute Parse ---");
+
+        $categoryFeaturesFile = $this->dlHelper->getSavePath(Download::FILE_CATEGORIES_FEATURES);
+        $restrictedValuesFile = $this->dlHelper->getSavePath(Download::FILE_RESTRICTED_VALUES);
+        $productFeaturesFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCT_FEATURES);
 
         $this->startTimingStep("Parse raw files");
         //ID, CategoryID, Name, Order
@@ -241,7 +264,7 @@ class Attributes extends AbstractImportSection {
     {
         $this->logger->info("Creating attribute " . self::ATTRIBUTE_PREFIX . $sinch_id);
         $attribute = $this->attributeFactory->create()
-            ->setEntityTypeId(\Magento\Catalog\Model\Product::ENTITY)
+            ->setEntityTypeId(Product::ENTITY)
             ->setAttributeCode(self::ATTRIBUTE_PREFIX . $sinch_id)
             ->setBackendType('int')
             ->setFrontendInput('select')
@@ -267,7 +290,7 @@ class Attributes extends AbstractImportSection {
     {
         $attr_visible_in_admin = $this->scopeConfig->getValue(
             'sinchimport/attributes/visible_in_admin',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_STORE
         );
         return $attribute->setDefaultFrontendLabel($data["name"])
             ->setIsVisible($attr_visible_in_admin)
@@ -387,7 +410,7 @@ class Attributes extends AbstractImportSection {
      */
     private function createAttributeGroups()
     {
-        $criteria = $this->searchCriteriaBuilder->addFilter(\Magento\Eav\Api\Data\AttributeGroupInterface::GROUP_NAME, self::ATTRIBUTE_GROUP_NAME, "eq")->create();
+        $criteria = $this->searchCriteriaBuilder->addFilter(AttributeGroupInterface::GROUP_NAME, self::ATTRIBUTE_GROUP_NAME, "eq")->create();
         $groups = $this->attributeGroupRepository->getList($criteria)->getItems();
         $this->logger->info("Matching attribute groups: " . count($groups));
 
@@ -429,7 +452,7 @@ class Attributes extends AbstractImportSection {
      * @return array
      * @throws StateException
      */
-    private function getAttributeSetIds()
+    private function getAttributeSetIds(): array
     {
         if($this->attributeSetCache == null){
             $attributeSets = $this->attributeSetRepository->getList(
@@ -490,7 +513,7 @@ class Attributes extends AbstractImportSection {
 
     /**
      * @throws StateException
-     * @throws \Exception
+     * @throws Exception
      */
     public function applyAttributeValues()
     {

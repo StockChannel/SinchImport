@@ -3,6 +3,14 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Magento\CatalogInventory\Api\StockConfigurationInterface;
+use Magento\Framework\App\ResourceConnection;
+use Magento\InventoryApi\Api\Data\StockInterfaceFactory;
+use Magento\InventoryApi\Api\StockRepositoryInterface;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Helper\Download;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
 /**
  * Class StockPrice
  * @package SITC\Sinchimport\Model\Import
@@ -17,15 +25,15 @@ class StockPrice extends AbstractImportSection
     const DISTI_TABLE = 'sinch_distributors';
     const DISTI_STOCK_IMPORT_TABLE = 'sinch_distributors_stock_and_price';
 
-    /** @var \SITC\Sinchimport\Helper\Data */
+    /** @var Data */
     private $helper;
-    /** @var \Magento\CatalogInventory\Api\StockConfigurationInterface */
+    /** @var StockConfigurationInterface */
     private $stockConfiguration;
     /** @var IndexManagement */
     private $indexManagement;
-    /** @var \Magento\InventoryApi\Api\StockRepositoryInterface */
+    /** @var StockRepositoryInterface */
     private $stockRepo;
-    /** @var \Magento\InventoryApi\Api\Data\StockInterfaceFactory */
+    /** @var StockInterfaceFactory */
     private $stockFactory;
 
     private $stockImportTable;
@@ -34,15 +42,16 @@ class StockPrice extends AbstractImportSection
     private $importStatsTable;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \SITC\Sinchimport\Helper\Data $helper,
-        \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfiguration,
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $dlHelper,
+        Data $helper,
+        StockConfigurationInterface $stockConfiguration,
         IndexManagement $indexManagement,
-        \Magento\InventoryApi\Api\StockRepositoryInterface\Proxy $stockRepo,
-        \Magento\InventoryApi\Api\Data\StockInterfaceFactory\Proxy $stockFactory
+        StockRepositoryInterface\Proxy $stockRepo,
+        StockInterfaceFactory\Proxy $stockFactory
     ){
-        parent::__construct($resourceConn, $output);
+        parent::__construct($resourceConn, $output, $dlHelper);
         $this->helper = $helper;
         $this->stockConfiguration = $stockConfiguration;
         $this->indexManagement = $indexManagement;
@@ -57,13 +66,14 @@ class StockPrice extends AbstractImportSection
 
     /**
      * Parse the stock files
-     * @param string $stockAndPricesCsv StockAndPrices.csv
-     * @param string $distributorsCsv Distributors.csv
-     * @param string $distiStockAndPricesCsv DistributorStockAndPrices.csv
      */
-    public function parse(string $stockAndPricesCsv, string $distributorsCsv, string $distiStockAndPricesCsv)
+    public function parse()
     {
         $conn = $this->getConnection();
+
+        $stockAndPricesCsv = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
+        $distributorsCsv = $this->dlHelper->getSavePath(Download::FILE_DISTRIBUTORS);
+        $distiStockAndPricesCsv = $this->dlHelper->getSavePath(Download::FILE_DISTRIBUTORS_STOCK);
 
         $this->startTimingStep('Load distributors');
         $conn->query("DELETE FROM {$this->distiTable}");

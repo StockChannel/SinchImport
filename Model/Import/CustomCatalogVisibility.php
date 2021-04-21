@@ -2,6 +2,13 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Magento\Catalog\Model\ResourceModel\Product\Action;
+use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Model\Sinch;
+use SITC\Sinchimport\Util\CsvIterator;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
 class CustomCatalogVisibility extends AbstractImportSection {
     const LOG_PREFIX = "CustomCatalog: ";
     const LOG_FILENAME = "custom_catalog";
@@ -14,16 +21,16 @@ class CustomCatalogVisibility extends AbstractImportSection {
     private $flagTable = "sinch_custom_catalog_flag";
 
     /**
-     * @var \SITC\Sinchimport\Util\CsvIterator $stockPriceCsv
+     * @var CsvIterator $stockPriceCsv
      */
     private $stockPriceCsv;
     /**
-     * @var \SITC\Sinchimport\Util\CsvIterator $groupPriceCsv
+     * @var CsvIterator $groupPriceCsv
      */
     private $groupPriceCsv;
 
     /**
-     * @var \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
+     * @var Action $massProdValues
      */
     private $massProdValues;
 
@@ -38,13 +45,14 @@ class CustomCatalogVisibility extends AbstractImportSection {
     private $restrictCount = 0;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \SITC\Sinchimport\Util\CsvIterator $csv,
-        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $dlHelper,
+        CsvIterator $csv,
+        Action $massProdValues
     ){
-        parent::__construct($resourceConn, $output);
-        $this->stockPriceCsv = $csv->setLineLength(256)->setDelimiter("|");
+        parent::__construct($resourceConn, $output, $dlHelper);
+        $this->stockPriceCsv = $csv->setLineLength(256)->setDelimiter(Sinch::FIELD_TERMINATED_CHAR);
         $this->groupPriceCsv = clone $this->stockPriceCsv;
         $this->massProdValues = $massProdValues;
 
@@ -86,13 +94,13 @@ class CustomCatalogVisibility extends AbstractImportSection {
         );
     }
 
-    public function parse($stockPriceFile, $customerGroupPriceFile)
+    public function parse()
     {
         $parseStart = $this->microtime_float();
 
         $this->createTempTable();
-        $this->checkProductModes($stockPriceFile);
-        $this->processGroupPrices($customerGroupPriceFile);
+        $this->checkProductModes();
+        $this->processGroupPrices();
         $this->buildFinalRules();
         //$this->cleanupTempTables();
 
@@ -101,10 +109,11 @@ class CustomCatalogVisibility extends AbstractImportSection {
     }
 
     /**
-     * @param string $stockPriceFile The path to StockAndPrices.csv
      */
-    private function checkProductModes($stockPriceFile)
+    private function checkProductModes()
     {
+        $stockPriceFile = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
+
         $this->log("Checking product modes");
         $this->stockPriceCsv->openIter($stockPriceFile);
         $this->stockPriceCsv->take(1); //Discard first row
@@ -134,12 +143,13 @@ class CustomCatalogVisibility extends AbstractImportSection {
     }
 
     /**
-     * @var string $customerGroupPriceFile The path to CustomerGroupPrices.csv
      */
-    private function processGroupPrices($customerGroupPriceFile)
+    private function processGroupPrices()
     {
+        $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
+
         $this->log("Processing group prices");
-        $this->groupPriceCsv->openIter($customerGroupPriceFile);
+        $this->groupPriceCsv->openIter($accountGroupPriceFile);
         $this->groupPriceCsv->take(1); //Discard first row
 
         //CustomerGroupID|ProductID|PriceTypeID|Price
@@ -220,7 +230,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
      * @param string $value String to check for emptiness/whitespace
      * @return bool True if empty or whitespace
      */
-    private function isEmptyOrWhitespace($value)
+    private function isEmptyOrWhitespace(string $value): bool
     {
         return empty($value) || empty(trim($value));
     }
@@ -229,7 +239,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
      * @param int $product_id the Sinch product ID
      * @return bool
      */
-    private function isWhitelisted($product_id)
+    private function isWhitelisted($product_id): bool
     {
         return $this->getConnection()->fetchOne(
             "SELECT whitelist FROM {$this->flagTable} WHERE product_id = :product_id",

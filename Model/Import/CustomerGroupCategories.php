@@ -1,6 +1,12 @@
 <?php
 namespace SITC\Sinchimport\Model\Import;
 
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\File\Csv;
+use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Model\Sinch;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
 class CustomerGroupCategories extends AbstractImportSection {
     const LOG_PREFIX = "CustomerGroupCategories: ";
     const LOG_FILENAME = "customer_groups_cats";
@@ -8,7 +14,7 @@ class CustomerGroupCategories extends AbstractImportSection {
     const MAPPING_TABLE = "sinch_cat_visibility";
 
     /**
-     * @var \Magento\Framework\File\Csv
+     * @var Csv
      */
     private $csv;
 
@@ -18,24 +24,25 @@ class CustomerGroupCategories extends AbstractImportSection {
     private $insertMapping = null;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \Magento\Framework\File\Csv $csv
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $dlHelper,
+        Csv $csv
     ){
-        parent::__construct($resourceConn, $output);
-        $this->csv = $csv->setLineLength(256)->setDelimiter("|");
+        parent::__construct($resourceConn, $output, $dlHelper);
+        $this->csv = $csv->setLineLength(256)->setDelimiter(Sinch::FIELD_TERMINATED_CHAR);
         $this->mappingTablenameFinal = $this->getTableName(self::MAPPING_TABLE);
     }
 
     /**
      * Parses the customer group categories file into the mapping table
-     *
-     * @param string $customerGroupCatsFile The path to the CustomerGroupCategories.csv file
      */
-    public function parse($customerGroupCatsFile)
+    public function parse()
     {
-        $this->log("--- Begin Customer Group Categories Parse ---");
-        $customerGroupCats = $this->csv->getData($customerGroupCatsFile);
+        $accountGroupCatsFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_CATEGORIES);
+
+        $this->log("--- Begin Account Group Categories Parse ---");
+        $customerGroupCats = $this->csv->getData($accountGroupCatsFile);
         unset($customerGroupCats[0]); //Unset the first entry as the sinch export files have a header row
 
         $this->log("Deleting existing entries in customer group categories mapping table");
@@ -45,7 +52,7 @@ class CustomerGroupCategories extends AbstractImportSection {
         $this->log("Begin parsing new entries (" . count($customerGroupCats) . ")");
         foreach($customerGroupCats as $row){
             if(count($row) != 2) {
-                $this->logger->warn("CustomerGroupCategories row not 2 columns");
+                $this->logger->warn("AccountGroupCategories row not 2 columns");
                 $this->logger->debug(print_r($row, true));
                 continue;
             }
@@ -53,7 +60,7 @@ class CustomerGroupCategories extends AbstractImportSection {
             $this->insertMapping($row[0], $row[1]);
         }
 
-        $this->log("--- Completed Customer Group Categories parse ---");
+        $this->log("--- Completed Account Group Categories parse ---");
     }
 
     private function insertMapping($category_id, $account_group_id)
