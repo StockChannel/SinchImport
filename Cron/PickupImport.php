@@ -54,7 +54,7 @@ class PickupImport
                 AND start_import > NOW() - INTERVAL 5 MINUTE"
         );
 
-        if(!empty($importType) && !$this->sinch->isImportNotRun()) {
+        if(!empty($importType) && !$this->sinch->canImport()) {
             //Import scheduled, but one is already running
             $this->logger->info("An import of type '{$importType}' is scheduled, but an import is already running");
             return;

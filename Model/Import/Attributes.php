@@ -123,6 +123,15 @@ class Attributes extends AbstractImportSection {
         $this->eavOptionValueTable = $this->getTableName("eav_attribute_option_value");
     }
 
+    public function getRequiredFiles(): array
+    {
+        return [
+            Download::FILE_CATEGORIES_FEATURES,
+            Download::FILE_RESTRICTED_VALUES,
+            Download::FILE_PRODUCT_FEATURES
+        ];
+    }
+
     /**
      * @throws InputException
      * @throws NoSuchEntityException

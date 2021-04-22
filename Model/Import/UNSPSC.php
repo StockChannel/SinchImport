@@ -5,6 +5,7 @@ namespace SITC\Sinchimport\Model\Import;
 use Magento\Catalog\Model\ResourceModel\Product\Action;
 use Magento\Framework\App\Cache\TypeListInterface;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Exception\StateException;
 use SITC\Sinchimport\Helper\Download;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
@@ -40,6 +41,11 @@ class UNSPSC extends AbstractImportSection {
 
         $this->productTempTable = $this->getTableName('products_temp');
         $this->cpeTable = $this->getTableName('catalog_product_entity');
+    }
+
+    public function getRequiredFiles(): array
+    {
+        return [];
     }
 
     public function parse()
@@ -80,7 +86,7 @@ class UNSPSC extends AbstractImportSection {
             $entityIds = $this->sinchToEntityIds($sinch_ids);
             if($entityIds === false){
                 $this->logger->err("Failed to retreive entity ids");
-                throw new \Magento\Framework\Exception\StateException(__("Failed to retrieve entity ids"));
+                throw new StateException(__("Failed to retrieve entity ids"));
             }
 
             $productCount = count($entityIds);
@@ -107,11 +113,11 @@ class UNSPSC extends AbstractImportSection {
 
     /**
      * Convert Sinch Product IDs to Product Entity IDs
-     * 
+     *
      * @param int[] $sinch_prod_ids Sinch Product IDs
      * @return int[] Product Entity IDs
      */
-    private function sinchToEntityIds($sinch_prod_ids)
+    private function sinchToEntityIds(array $sinch_prod_ids): array
     {
         $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
         $entIdQuery = $this->getConnection()->prepare(

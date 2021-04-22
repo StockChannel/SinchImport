@@ -60,6 +60,14 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->productMappingTable = $this->getTableName('sinch_products_mapping');
     }
 
+    public function getRequiredFiles(): array
+    {
+        return [
+            Download::FILE_STOCK_AND_PRICES,
+            Download::FILE_ACCOUNT_GROUP_PRICE
+        ];
+    }
+
     private function cleanupTempTables()
     {
         $this->getConnection()->query("DROP TABLE IF EXISTS {$this->flagTable}");
@@ -152,13 +160,13 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->groupPriceCsv->openIter($accountGroupPriceFile);
         $this->groupPriceCsv->take(1); //Discard first row
 
-        //CustomerGroupID|ProductID|PriceTypeID|Price
+        //AccountGroupID|ProductID|Price
         while($toProcess = $this->groupPriceCsv->take(self::CHUNK_SIZE)) {
             $rulesForInsertion = [];
             foreach($toProcess as $row) {
                 //Whitelist/blacklist logic
                 $whitelist = $this->isWhitelisted($row[1]);
-                $noPrice = $this->isEmptyOrWhitespace($row[3]);
+                $noPrice = $this->isEmptyOrWhitespace($row[2]);
                 //Whitelist mode (Non-empty group price means visible) || Blacklist mode (Empty group price means not visible)
                 if(($whitelist & !$noPrice) || (!$whitelist && $noPrice)) {
                     $rulesForInsertion[] = [

@@ -11,21 +11,49 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 
 class Download extends AbstractHelper
 {
+    public const FILE_ACCOUNT_GROUP_CATEGORIES = 'AccountGroupCategories.csv';
+    public const FILE_ACCOUNT_GROUP_PRICE = 'AccountGroupPrices.csv';
+    public const FILE_ACCOUNT_GROUPS = 'AccountGroups.csv';
+    public const FILE_BRANDS = 'Brands.csv';
+    public const FILE_BULLET_POINTS = 'BulletPoints.csv';
     public const FILE_CATEGORIES = 'Categories.csv';
     public const FILE_CATEGORIES_FEATURES = 'CategoryFeatures.csv';
     public const FILE_DISTRIBUTORS = 'Distributors.csv';
     public const FILE_DISTRIBUTORS_STOCK = 'DistributorStock.csv';
-    public const FILE_MANUFACTURERS = 'Manufacturers.csv';
-    public const FILE_PRODUCT_FEATURES = 'ProductFeatures.csv';
+    public const FILE_FAMILIES = 'Families.csv';
+    public const FILE_FAMILY_SERIES = 'FamilySeries.csv';
+    public const FILE_MULTIMEDIA = 'Multimedia.csv';
+    public const FILE_PRODUCTS_GALLERY_PICTURES = 'Pictures.csv';
     public const FILE_PRODUCT_CATEGORIES = 'ProductCategories.csv';
+    public const FILE_PRODUCT_FEATURES = 'ProductFeatures.csv';
     public const FILE_PRODUCTS = 'Products.csv';
+    public const FILE_REASONS_TO_BUY = 'ReasonsToBuy.csv';
     public const FILE_RELATED_PRODUCTS = 'RelatedProducts.csv';
     public const FILE_RESTRICTED_VALUES = 'RestrictedValues.csv';
     public const FILE_STOCK_AND_PRICES = 'StockAndPrices.csv';
-    public const FILE_PRODUCTS_GALLERY_PICTURES = 'Pictures.csv';
-    public const FILE_ACCOUNT_GROUP_CATEGORIES = 'AccountGroupCategories.csv';
-    public const FILE_ACCOUNT_GROUPS = 'AccountGroups.csv';
-    public const FILE_ACCOUNT_GROUP_PRICE = 'AccountGroupPrices.csv';
+
+    private const EXPECTED_HEADER = [
+        self::FILE_ACCOUNT_GROUP_CATEGORIES => 'AccountGroupID|CategoryID',
+        self::FILE_ACCOUNT_GROUP_PRICE => 'AccountGroupID|ProductID|Price',
+        self::FILE_ACCOUNT_GROUPS => 'ID|Name',
+        self::FILE_BRANDS => 'ID|Name',
+        self::FILE_BULLET_POINTS => 'ID|No|Value',
+        self::FILE_CATEGORIES => 'ID|ParentID|Name|Order|IsHidden|ProductCount|SubCategoryProductCount|ThumbImageURL|NestLevel|SubCategoryCount|UNSPSC|TypeID|MainImageURL|MetaTitle|MetaDescription|Description',
+        self::FILE_CATEGORIES_FEATURES => 'ID|CategoryID|Name|Order',
+        self::FILE_DISTRIBUTORS => 'ID|Name',
+        self::FILE_DISTRIBUTORS_STOCK => 'ProductID|DistributorID|Stock',
+        self::FILE_FAMILIES => 'ID|ParentID|Name',
+        self::FILE_FAMILY_SERIES => 'ID|Name',
+        self::FILE_MULTIMEDIA => 'ID|ProductID|Description|URL|ContentType',
+        self::FILE_PRODUCTS_GALLERY_PICTURES => 'ProductID|MainImageURL|ThumbImageURL',
+        self::FILE_PRODUCT_CATEGORIES => 'ProductID|CategoryID',
+        self::FILE_PRODUCT_FEATURES => 'ID|ProductID|RestrictedValueID',
+        self::FILE_PRODUCTS => 'ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate',
+        self::FILE_REASONS_TO_BUY => 'ID|No|Value',
+        self::FILE_RELATED_PRODUCTS => 'ProductID|RelatedProductID',
+        self::FILE_RESTRICTED_VALUES => 'ID|CategoryFeatureID|Text|Order',
+        self::FILE_STOCK_AND_PRICES => 'ProductID|Stock|Price|Cost'
+    ];
 
     /** @var ConsoleOutput $output */
     private $output;
@@ -203,10 +231,6 @@ class Download extends AbstractHelper
             $outputLoc = \escapeshellarg($this->saveDir . $file . ".gz");
             \exec("gunzip {$outputLoc}");
         }
-        if (!$this->validateFile($file)) {
-            $this->print("File downloaded correctly but failed to pass validation");
-            return false;
-        }
         return true;
     }
 
@@ -219,69 +243,6 @@ class Download extends AbstractHelper
         if($this->ftpConn != null){
             ftp_close($this->ftpConn);
             $this->ftpConn = null;
-        }
-    }
-
-    /**
-     * Return the required files for the given import mode
-     * @param bool $fullImport Full import if true, otherwise stock price
-     * @return string[] The required filenames
-     */
-    public function getRequiredFilenames(bool $fullImport): array
-    {
-        if ($fullImport) {
-            return [
-                FILE_CATEGORIES,
-                FILE_CATEGORY_TYPES,
-                FILE_CATEGORIES_FEATURES,
-                FILE_DISTRIBUTORS,
-                FILE_DISTRIBUTORS_STOCK,
-                FILE_EANCODES,
-                FILE_MANUFACTURERS,
-                FILE_PRODUCT_FEATURES,
-                FILE_PRODUCT_CATEGORIES,
-                FILE_PRODUCTS,
-                FILE_RELATED_PRODUCTS,
-                FILE_RESTRICTED_VALUES,
-                FILE_STOCK_AND_PRICES,
-                FILE_PRODUCTS_GALLERY_PICTURES,
-                FILE_PRICE_RULES,
-                FILE_PRODUCT_CONTRACTS,
-                FILE_ACCOUNT_GROUP_CATEGORIES,
-                FILE_ACCOUNT_GROUPS,
-                FILE_ACCOUNT_GROUP_PRICE
-            ];
-        }
-        return [
-            FILE_STOCK_AND_PRICES,
-            FILE_PRICE_RULES,
-            FILE_ACCOUNT_GROUPS,
-            FILE_ACCOUNT_GROUP_CATEGORIES,
-            FILE_ACCOUNT_GROUP_PRICE,
-            FILE_DISTRIBUTORS,
-            FILE_DISTRIBUTORS_STOCK
-        ];
-    }
-
-    /**
-     * Return the optional files for the given import mode
-     * @param bool $fullImport Full import if true, otherwise stock price
-     * @return string[] The optional filenames
-     */
-    public function getOptionalFilenames(bool $fullImport): array
-    {
-        if ($fullImport) {
-            return [
-                FILE_CATEGORIES_FEATURES,
-                FILE_CATEGORY_TYPES,
-                FILE_ACCOUNT_GROUP_CATEGORIES,
-                FILE_DISTRIBUTORS_STOCK,
-                FILE_RESTRICTED_VALUES,
-                FILE_PRICE_RULES,
-                FILE_PRODUCT_FEATURES,
-                FILE_RELATED_PRODUCTS,
-                FILE_PRODUCT_CONTRACTS
-            ];
         }
     }
 
@@ -301,13 +262,19 @@ class Download extends AbstractHelper
      * @param string $filename
      * @return bool
      */
-    private function validateFile(string $filename): bool
+    public function validateFile(string $filename): bool
     {
         $saveFile = $this->saveDir . $filename;
         if (!file_exists($saveFile) || @filesize($saveFile) < 1) return false;
 
-        //TODO: Header validation
-        return true;
+        //Read the header row from the given file and validate it matches the header we expect for it
+        $fileHandle = fopen($saveFile, 'r');
+        if ($fileHandle === false) {
+            return false;
+        }
+        $headerLine = fgets($fileHandle);
+        fclose($fileHandle);
+        return $headerLine == self::EXPECTED_HEADER[$filename];
     }
 
     private function print($message, $newline = true)

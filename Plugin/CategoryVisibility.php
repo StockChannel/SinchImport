@@ -32,7 +32,7 @@ class CategoryVisibility {
         $this->resourceConn = $resourceConn;
         $this->logger = $logger;
         $this->helper = $helper;
-        $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE);
+        $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\AccountGroupCategories::MAPPING_TABLE);
     }
 
     public function aroundGetIsActive(\Magento\Catalog\Model\Category $subject, $proceed)

@@ -15,15 +15,15 @@ use SITC\Sinchimport\Util\CsvIterator;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 /**
- * Class CustomerGroupPrice
+ * Class AccountGroupPrice
  * 
  * NOTE: ScopedProductTierPriceManagementInterface is avoided because its too slow
  * 
  * @package SITC\Sinchimport\Model\Import
  */
-class CustomerGroupPrice extends AbstractImportSection {
-    const LOG_PREFIX = "CustomerGroupPrice: ";
-    const LOG_FILENAME = "customer_groups_price";
+class AccountGroupPrice extends AbstractImportSection {
+    const LOG_PREFIX = "AccountGroupPrice: ";
+    const LOG_FILENAME = "account_group_price";
 
     const GROUP_SUFFIX = " (SITC)";
 
@@ -116,6 +116,14 @@ class CustomerGroupPrice extends AbstractImportSection {
         $this->groupPriceTableNext = $this->getTableName(self::PRICE_TABLE_NEXT);
     }
 
+    public function getRequiredFiles(): array
+    {
+        return [
+            Download::FILE_ACCOUNT_GROUPS,
+            Download::FILE_ACCOUNT_GROUP_PRICE
+        ];
+    }
+
     private function createMappingTable()
     {
         $groupTable = $this->getTableName('customer_group');
@@ -188,9 +196,9 @@ class CustomerGroupPrice extends AbstractImportSection {
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (sinch_group_id, sinch_product_id, price_type, price)"
+                (sinch_group_id, sinch_product_id, price)"
         );
-        $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext} WHERE price <= 0 OR price_type != 1");
+        $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext} WHERE price <= 0");
         $this->endTimingStep();
         
         $this->log("New rules loaded, calculating delta");

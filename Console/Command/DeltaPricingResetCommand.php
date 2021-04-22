@@ -2,16 +2,18 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Model\Import\AccountGroupPrice;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class DeltaPricingResetCommand extends Command
 {
-    /** @var \Magento\Framework\App\ResourceConnection */
+    /** @var ResourceConnection */
     private $resourceConn;
     
-    public function __construct(\Magento\Framework\App\ResourceConnection $resourceConn) {
+    public function __construct(ResourceConnection $resourceConn) {
         parent::__construct();
         $this->resourceConn = $resourceConn;
     }
@@ -32,8 +34,8 @@ class DeltaPricingResetCommand extends Command
     {
         try {
             $output->write("Resetting delta pricing...");
-            $currTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupPrice::PRICE_TABLE_CURRENT);
-            $nextTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupPrice::PRICE_TABLE_NEXT);
+            $currTable = $this->resourceConn->getTableName(AccountGroupPrice::PRICE_TABLE_CURRENT);
+            $nextTable = $this->resourceConn->getTableName(AccountGroupPrice::PRICE_TABLE_NEXT);
             $conn = $this->resourceConn->getConnection();
             $conn->query(
                 "DROP TABLE IF EXISTS {$currTable}"

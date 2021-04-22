@@ -18,7 +18,7 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
     ) {
         $this->resourceConn = $resourceConn;
         $this->helper = $helper;
-        $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE);
+        $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\AccountGroupCategories::MAPPING_TABLE);
     }
 
 

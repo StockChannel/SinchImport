@@ -17,12 +17,14 @@ use Magento\Indexer\Model\Indexer\CollectionFactory;
 use Magento\Indexer\Model\Processor;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
+use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
 use SITC\Sinchimport\Logger\Logger;
 use SITC\Sinchimport\Model\Import\Attributes;
+use SITC\Sinchimport\Model\Import\Brands;
 use SITC\Sinchimport\Model\Import\CustomCatalogVisibility;
-use SITC\Sinchimport\Model\Import\CustomerGroupCategories;
-use SITC\Sinchimport\Model\Import\CustomerGroupPrice;
+use SITC\Sinchimport\Model\Import\AccountGroupCategories;
+use SITC\Sinchimport\Model\Import\AccountGroupPrice;
 use SITC\Sinchimport\Model\Import\IndexManagement;
 use SITC\Sinchimport\Model\Import\StockPrice;
 use SITC\Sinchimport\Model\Import\UNSPSC;
@@ -35,7 +37,6 @@ class Sinch {
     public const FIELD_TERMINATED_CHAR = "|";
     private const UPDATE_CATEGORY_DATA = false;
 
-    public $files;
     public $debug_mode = false;
 
     /**
@@ -105,14 +106,17 @@ class Sinch {
     private $imType;
 
     //Nick
+    private $sitcIndexMgmt;
     private $attributesImport;
     private $customerGroupCatsImport;
     private $customerGroupPrice;
     private $unspscImport;
     private $customCatalogImport;
-    private $sitcIndexMgmt;
-    private $dlHelper;
     private $stockPriceImport;
+    private $brandImport;
+
+    private $dlHelper;
+    private $dataHelper;
 
     public function __construct(
         Context $context,
@@ -127,24 +131,29 @@ class Sinch {
         CollectionFactory $indexersFactory,
         Attribute $eavAttribute,
         ConsoleOutput $output,
+        IndexManagement $sitcIndexMgmt,
         Attributes $attributesImport,
-        CustomerGroupCategories $customerGroupCatsImport,
-        CustomerGroupPrice $customerGroupPrice,
+        AccountGroupCategories $customerGroupCatsImport,
+        AccountGroupPrice $customerGroupPrice,
         UNSPSC $unspscImport,
         CustomCatalogVisibility $customCatalogImport,
-        IndexManagement $sitcIndexMgmt,
+        StockPrice $stockPriceImport,
+        Brands $brandImport,
         Download $dlHelper,
-        StockPrice $stockPriceImport
+        Data $dataHelper
     )
     {
+        $this->sitcIndexMgmt = $sitcIndexMgmt;
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
         $this->customerGroupPrice = $customerGroupPrice;
         $this->unspscImport = $unspscImport;
         $this->customCatalogImport = $customCatalogImport;
-        $this->sitcIndexMgmt = $sitcIndexMgmt;
-        $this->dlHelper = $dlHelper;
         $this->stockPriceImport = $stockPriceImport;
+        $this->brandImport = $brandImport;
+
+        $this->dlHelper = $dlHelper;
+        $this->dataHelper = $dataHelper;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -161,24 +170,6 @@ class Sinch {
 
         $this->import_status_table = $this->getTableName('sinch_import_status');
         $this->import_status_statistic_table = $this->getTableName('sinch_import_status_statistic');
-
-        $this->files = [
-            Download::FILE_CATEGORIES,
-            Download::FILE_CATEGORIES_FEATURES,
-            Download::FILE_DISTRIBUTORS,
-            Download::FILE_DISTRIBUTORS_STOCK,
-            Download::FILE_MANUFACTURERS,
-            Download::FILE_PRODUCT_FEATURES,
-            Download::FILE_PRODUCT_CATEGORIES,
-            Download::FILE_PRODUCTS,
-            Download::FILE_RELATED_PRODUCTS,
-            Download::FILE_RESTRICTED_VALUES,
-            Download::FILE_STOCK_AND_PRICES,
-            Download::FILE_PRODUCTS_GALLERY_PICTURES,
-            Download::FILE_ACCOUNT_GROUP_CATEGORIES,
-            Download::FILE_ACCOUNT_GROUPS,
-            Download::FILE_ACCOUNT_GROUP_PRICE
-        ];
 
         $this->_dataConf = $this->scopeConfig->getValue(
             'sinchimport/sinch_ftp',
@@ -230,15 +221,9 @@ class Sinch {
             ScopeInterface::SCOPE_STORE
         );
 
-        $this->_categoryMetaTitleAttrId = $this->_getCategoryAttributeId(
-            'meta_title'
-        );
-        $this->_categoryMetadescriptionAttrId = $this->_getCategoryAttributeId(
-            'meta_description'
-        );
-        $this->_categoryDescriptionAttrId = $this->_getCategoryAttributeId(
-            'description'
-        );
+        $this->_categoryMetaTitleAttrId = $this->dataHelper->getCategoryAttributeId('meta_title');
+        $this->_categoryMetadescriptionAttrId = $this->dataHelper->getCategoryAttributeId('meta_description');
+        $this->_categoryDescriptionAttrId = $this->dataHelper->getCategoryAttributeId('description');
 
         $this->initImportStatuses('FULL');
 
@@ -258,7 +243,7 @@ class Sinch {
             throw new LocalizedException(__("LOCAL INFILE is not enabled in the database"));
         }
 
-        if ($this->isImportNotRun()) {
+        if ($this->canImport()) {
             $current_vhost = $this->scopeConfig->getValue(
                 'web/unsecure/base_url',
                 ScopeInterface::SCOPE_STORE
@@ -280,8 +265,28 @@ class Sinch {
 
                 $this->print("========IMPORTING DATA IN $imType MODE========");
 
+                $requiredFiles = [
+                    Download::FILE_CATEGORIES,
+                    Download::FILE_DISTRIBUTORS,
+                    Download::FILE_DISTRIBUTORS_STOCK,
+                    Download::FILE_PRODUCT_CATEGORIES,
+                    Download::FILE_PRODUCTS,
+                    Download::FILE_STOCK_AND_PRICES,
+                    Download::FILE_PRODUCTS_GALLERY_PICTURES
+                ];
+                $optionalFiles = [
+                    Download::FILE_ACCOUNT_GROUP_CATEGORIES,
+                    Download::FILE_ACCOUNT_GROUPS,
+                    Download::FILE_ACCOUNT_GROUP_PRICE,
+                    Download::FILE_RELATED_PRODUCTS,
+                    Download::FILE_CATEGORIES_FEATURES,
+                    Download::FILE_PRODUCT_FEATURES,
+                    Download::FILE_RESTRICTED_VALUES,
+                    Download::FILE_BRANDS
+                ];
+
                 $this->print("Upload Files...");
-                $this->downloadFiles(true);
+                $this->downloadFiles($requiredFiles, $optionalFiles);
                 $this->addImportStatus('Upload Files');
 
                 $this->print("Parse Categories...");
@@ -292,6 +297,10 @@ class Sinch {
                 $this->addImportStatus('Parse Category Features');
 
                 $this->print("Parse Distributors...");
+                if (!$this->stockPriceImport->haveRequiredFiles()) {
+                    $this->_setErrorMessage('Missing required files for Stock price import section, or some files failed validation');
+                    throw new LocalizedException(__("Missing required files for stock price section"));
+                }
                 $this->stockPriceImport->parse();
                 $this->addImportStatus('Parse Distributors');
 
@@ -299,7 +308,9 @@ class Sinch {
                 $this->addImportStatus('Parse EAN Codes');
 
                 $this->print("Parse Manufacturers...");
-                $this->parseManufacturers();
+                if ($this->brandImport->haveRequiredFiles()) {
+                    $this->brandImport->parse();
+                }
                 $this->addImportStatus('Parse Manufacturers');
 
                 $this->print("Parse Related Products...");
@@ -307,7 +318,11 @@ class Sinch {
                 $this->addImportStatus('Parse Related Products');
 
                 $this->print("Parse Product Features...");
-                $this->attributesImport->parse();
+                if ($this->attributesImport->haveRequiredFiles()) {
+                    $this->attributesImport->parse();
+                } else {
+                    $this->print("Missing required files for attributes import section, or downloaded files failed validation, skipping");
+                }
                 $this->addImportStatus('Parse Product Features');
 
                 $this->print("Parse Product Categories...");
@@ -322,7 +337,9 @@ class Sinch {
                 $this->addImportStatus('Parse Pictures Gallery');
 
                 $this->print("Parse Restricted Values...");
-                $this->attributesImport->applyAttributeValues();
+                if ($this->attributesImport->haveRequiredFiles()) {
+                    $this->attributesImport->applyAttributeValues();
+                }
                 $this->addImportStatus('Parse Restricted Values');
 
                 $this->print("Parse Stock And Prices...");
@@ -330,13 +347,11 @@ class Sinch {
                 $this->stockPriceImport->apply();
                 $this->addImportStatus('Parse Stock And Prices');
 
-                $this->print("Apply Customer Group Price...");
-
-                $cgSaveFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUPS);
-                $cgpSaveFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
-
-                if (file_exists($cgSaveFile) && file_exists($cgpSaveFile)) {
+                $this->print("Apply Account Group Price...");
+                if ($this->customerGroupPrice->haveRequiredFiles()) {
                     $this->customerGroupPrice->parse();
+                } else {
+                    $this->print("Missing required files for account group price section, or downloaded files failed validation, skipping");
                 }
 
                 //Allow the CC category visibility import section to be skipped
@@ -346,9 +361,11 @@ class Sinch {
                 );
 
                 if (!$ccCategoryDisable) {
-                    if (file_exists($this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_CATEGORIES))) {
-                        $this->print("Parsing customer group categories...");
+                    if ($this->customerGroupCatsImport->haveRequiredFiles()) {
+                        $this->print("Parsing account group categories...");
                         $this->customerGroupCatsImport->parse();
+                    } else {
+                        $this->print("Missing required files for account group categories section, or downloaded files failed validation, skipping");
                     }
                 } else {
                     $this->print("Skipping custom catalog categories as 'sinchimport/category_visibility/disable_import' is enabled");
@@ -364,11 +381,11 @@ class Sinch {
                 );
 
                 if (!$ccProductDisable) {
-                    $customerGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
-                    $stockAndPriceFile = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
-                    if (file_exists($customerGroupPriceFile) && file_exists($stockAndPriceFile)) {
+                    if ($this->customCatalogImport->haveRequiredFiles()) {
                         $this->print("Processing Custom catalog restrictions...");
                         $this->customCatalogImport->parse();
+                    } else {
+                        $this->print("Missing required files for custom catalog section, or downloaded files failed validation, skipping");
                     }
                 } else {
                     $this->print("Skipping custom catalog restrictions as 'sinchimport/product_visibility/disable_import' is enabled");
@@ -424,57 +441,6 @@ class Sinch {
         } else {
             $this->print("--------SINCHIMPORT ALREADY RUN--------");
         }
-    }
-
-    private function _getCategoryAttributeId($attributeCode)
-    {
-        return $this->_getAttributeId($attributeCode, 'catalog_category');
-    }
-
-    private function _getAttributeId($attributeCode, $typeCode)
-    {
-        if ($typeCode == 'catalog_product') {
-            $typeId = $this->_getProductEntityTypeId();
-        } else {
-            $typeId = $this->_getEntityTypeId($typeCode);
-        }
-
-        if (!isset($this->_attributeId[$typeCode]) or !is_array($this->_attributeId[$typeCode])) {
-            $eav_attribute = $this->getTableName('eav_attribute');
-            $result = $this->conn->fetchAll(
-                "SELECT attribute_id, attribute_code FROM $eav_attribute WHERE entity_type_id = :typeId",
-                [":typeId" => $typeId]
-            );
-
-            foreach ($result as $resultItem) {
-                $this->_attributeId[$typeCode][$resultItem['attribute_code']] = $resultItem['attribute_id'];
-            }
-        }
-
-        return $this->_attributeId[$typeCode][$attributeCode];
-    }
-
-    private function _getProductEntityTypeId()
-    {
-        if (!$this->_productEntityTypeId) {
-            $this->_productEntityTypeId = $this->_getEntityTypeId('catalog_product');
-        }
-        return $this->_productEntityTypeId;
-    }
-
-    private function _getEntityTypeId($code)
-    {
-        $eav_entity_type = $this->getTableName('eav_entity_type');
-        $result = $this->conn->fetchOne(
-            "SELECT entity_type_id FROM $eav_entity_type WHERE entity_type_code = :code LIMIT 1",
-            [":code" => $code]
-        );
-
-        if (is_numeric($result)) {
-            return (int)$result;
-        }
-
-        return false;
     }
 
     private function initImportStatuses($type)
@@ -585,7 +551,11 @@ class Sinch {
         return $result['Variable_name'] == 'local_infile' && $result['Value'] == "ON";
     }
 
-    public function isImportNotRun(): bool
+    /**
+     * Return whether we can start an import right now
+     * @return bool true if no import is running (and thus we can safely start one)
+     */
+    public function canImport(): bool
     {
         $current_vhost = $this->scopeConfig->getValue(
             'web/unsecure/base_url',
@@ -665,10 +635,11 @@ class Sinch {
 
     /**
      * Download the required files for this import
-     * @param bool $fullImport Whether this is a full import or stock price
+     * @param array $requiredFiles Required Files
+     * @param array $optionalFiles Optional Files (permit failure)
      * @throws LocalizedException
      */
-    private function downloadFiles(bool $fullImport)
+    private function downloadFiles(array $requiredFiles, array $optionalFiles = [])
     {
         $this->_log("--- Start downloading files ---");
 
@@ -680,9 +651,6 @@ class Sinch {
             $this->_setErrorMessage($connRes);
             throw new LocalizedException(__($connRes));
         }
-
-        $requiredFiles = $this->dlHelper->getRequiredFilenames($fullImport);
-        $optionalFiles = $this->dlHelper->getOptionalFilenames($fullImport);
 
         try {
             //Download required files, then optional ones (favour priority)
@@ -736,18 +704,14 @@ class Sinch {
             $_categoryDefault_attribute_set_id
                 = $this->_categoryDefault_attribute_set_id;
 
-            $name_attrid = $this->_getCategoryAttributeId('name');
-            $is_anchor_attrid = $this->_getCategoryAttributeId('is_anchor');
-            $image_attrid = $this->_getCategoryAttributeId('image');
+            $name_attrid = $this->dataHelper->getCategoryAttributeId('name');
+            $is_anchor_attrid = $this->dataHelper->getCategoryAttributeId('is_anchor');
+            $image_attrid = $this->dataHelper->getCategoryAttributeId('image');
 
-            $attr_url_key = $this->_getCategoryAttributeId('url_key');
-            $attr_display_mode = $this->_getCategoryAttributeId(
-                'display_mode'
-            );
-            $attr_is_active = $this->_getCategoryAttributeId('is_active');
-            $attr_include_in_menu = $this->_getCategoryAttributeId(
-                'include_in_menu'
-            );
+            $attr_url_key = $this->dataHelper->getCategoryAttributeId('url_key');
+            $attr_display_mode = $this->dataHelper->getCategoryAttributeId('display_mode');
+            $attr_is_active = $this->dataHelper->getCategoryAttributeId('is_active');
+            $attr_include_in_menu = $this->dataHelper->getCategoryAttributeId('include_in_menu');
 
             $this->loadCategoriesTemp(
                 $categories_temp,
@@ -1865,138 +1829,6 @@ class Sinch {
         $this->_doQuery($q);
     }
 
-    private function parseManufacturers()
-    {
-        $parseFile = $this->dlHelper->getSavePath(Download::FILE_MANUFACTURERS);
-        if (filesize($parseFile)) {
-            $this->_log("Start parse " . Download::FILE_MANUFACTURERS);
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'manufacturers_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->getTableName('manufacturers_temp') . "(
-                                      sinch_manufacturer_id int(11),
-                                      manufacturer_name varchar(255),
-                                      manufacturers_image varchar(255),
-                                      shop_option_id int(11),
-                                      KEY(sinch_manufacturer_id),
-                                      KEY(shop_option_id),
-                                      KEY(manufacturer_name)
-                          )"
-            );
-
-            $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->getTableName(
-                    'manufacturers_temp'
-                ) . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
-                          OPTIONALLY ENCLOSED BY '\"'
-                          LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
-            );
-
-            $q
-                = "DELETE aov
-                FROM " . $this->getTableName('eav_attribute_option') . " ao
-                JOIN " . $this->getTableName('eav_attribute_option_value') . " aov
-                    ON ao.option_id=aov.option_id left
-                JOIN " . $this->getTableName('manufacturers_temp') . " mt
-                    ON aov.value=mt.manufacturer_name
-                WHERE
-                    ao.attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                ) . " AND
-                    mt.manufacturer_name is null";
-            $this->_doQuery($q);
-
-            $q
-                = "DELETE ao
-                FROM " . $this->getTableName('eav_attribute_option') . " ao
-                LEFT JOIN " . $this->getTableName('eav_attribute_option_value')
-                . " aov
-                    ON ao.option_id=aov.option_id
-                WHERE
-                    attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                ) . " AND
-                    aov.option_id is null";
-            $this->_doQuery($q);
-
-            $q
-                = "SELECT
-                    m.sinch_manufacturer_id,
-                    m.manufacturer_name,
-                    m.manufacturers_image
-                FROM " . $this->getTableName('manufacturers_temp') . " m
-                LEFT JOIN " . $this->getTableName('eav_attribute_option_value')
-                . " aov
-                    ON m.manufacturer_name=aov.value
-                WHERE aov.value  IS NULL";
-            $res = $this->_doQuery($q)->fetchAll();
-
-            foreach ($res as $row) {
-                $q0 = "INSERT INTO " . $this->getTableName(
-                        'eav_attribute_option'
-                    ) . "
-                        (attribute_id)
-                     VALUES(" . $this->_getProductAttributeId('manufacturer')
-                    . ")";
-                $this->_doQuery($q0);
-
-                $q2 = "INSERT INTO " . $this->getTableName(
-                        'eav_attribute_option_value'
-                    ) . "(
-                        option_id,
-                        value
-                     )(
-                       SELECT
-                        max(option_id) as option_id,
-                        " . $this->conn->quote($row['manufacturer_name'])
-                    . "
-                       FROM " . $this->getTableName('eav_attribute_option') . "
-                       WHERE attribute_id=" . $this->_getProductAttributeId(
-                        'manufacturer'
-                    ) . "
-                     )
-                    ";
-                $this->_doQuery($q2);
-            }
-
-            $q = "UPDATE " . $this->getTableName('manufacturers_temp') . " mt
-                JOIN  " . $this->getTableName('eav_attribute_option_value') . " aov
-                    ON mt.manufacturer_name=aov.value
-                JOIN " . $this->getTableName('eav_attribute_option') . " ao
-                    ON ao.option_id=aov.option_id
-                SET mt.shop_option_id=aov.option_id
-                WHERE ao.attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                );
-            $this->_doQuery($q);
-
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'sinch_manufacturers'
-                )
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->getTableName('manufacturers_temp') . "
-                          TO " . $this->getTableName('sinch_manufacturers')
-            );
-            $this->_log("Finish parse " . Download::FILE_MANUFACTURERS);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
-    private function _getProductAttributeId($attributeCode)
-    {
-        return $this->_getAttributeId($attributeCode, 'catalog_product');
-    }
-
     private function parseRelatedProducts()
     {
         $parseFile = $this->dlHelper->getSavePath(Download::FILE_RELATED_PRODUCTS);
@@ -2103,9 +1935,9 @@ class Sinch {
 
         $replace_merge_product = $this->_dataConf['replace_product'];
 
-        $parseFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCTS);
+        $productsCsv = $this->dlHelper->getSavePath(Download::FILE_PRODUCTS);
 
-        if (filesize($parseFile)) {
+        if (filesize($productsCsv)) {
             $this->_log("Start parse " . Download::FILE_PRODUCTS);
 
             $this->_doQuery("DROP TABLE IF EXISTS " . $this->getTableName('products_temp'));
@@ -2116,28 +1948,24 @@ class Sinch {
                          product_name varchar(255),
                          sinch_manufacturer_id int(11),
                          main_image_url varchar(255),
+                         medium_image_url varchar(255),
                          thumb_image_url varchar(255),
                          specifications text,
                          description text,
-                         search_cache text,
                          description_type varchar(50),
-                         medium_image_url varchar(255),
+                         short_description varchar(255),
                          Title varchar(255),
                          Weight decimal(15,4),
-                         Family varchar(255),
+                         family_id int(11),
+                         series_id int(11),
                          Reviews varchar(255),
-                         pdf_url varchar(255),
-                         product_short_description varchar(255),
                          unspsc int(11),
+                         ean_code varchar(32),
+                         score int(11),
+                         release_date datetime,
+                         eol_date datetime,
                          products_date_added datetime default NULL,
                          products_last_modified datetime default NULL,
-                         availability_id_in_stock int(11) default '1',
-                         availability_id_out_of_stock int(11) default '2',
-                         products_locate varchar(30) default NULL,
-                         products_ordered int(11) NOT NULL default '0',
-                         products_url varchar(255) default NULL,
-                         products_viewed int(5) default '0',
-                         products_seo_url varchar(100) NOT NULL,
                          manufacturer_name varchar(255) default NULL,
                          store_category_id int(11),
                          KEY pt_store_category_product_id (`store_category_id`),
@@ -2145,18 +1973,40 @@ class Sinch {
                          KEY pt_sinch_product_id (`sinch_product_id`),
                          KEY pt_sinch_manufacturer_id (`sinch_manufacturer_id`),
                          KEY pt_manufacturer_name (`manufacturer_name`)
-                      )DEFAULT CHARSET=utf8
-                    "
+                      ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
             );
             $this->print("--Parse Products 2");
 
+            //Products CSV is ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate
             $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
+                "LOAD DATA LOCAL INFILE '" . $productsCsv . "'
                           INTO TABLE " . $this->getTableName('products_temp') . "
                           FIELDS TERMINATED BY '" . $this->field_terminated_char . "'
                           OPTIONALLY ENCLOSED BY '\"'
                           LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
+                          IGNORE 1 LINES
+                          (
+                            sinch_product_id,
+                            product_sku,
+                            product_name,
+                            sinch_manufacturer_id,
+                            main_image_url,
+                            thumb_image_url,
+                            specifications,
+                            description,
+                            description_type,
+                            medium_image_url,
+                            Title,
+                            Weight,
+                            short_description,
+                            unspsc,
+                            ean_code,
+                            family_id,
+                            series_id,
+                            score,
+                            release_date,
+                            eol_date
+                          )"
             );
 
 
@@ -2236,7 +2086,7 @@ class Sinch {
             );
             $this->_log("Finish parse " . Download::FILE_PRODUCTS);
         } else {
-            $this->_log("Wrong file " . $parseFile);
+            $this->_log("Wrong file " . $productsCsv);
         }
     }
 
@@ -2357,7 +2207,7 @@ class Sinch {
             SET
                 manufacturer_option_id=cpie.value,
                 manufacturer_name=aov.value
-            WHERE cpie.attribute_id=" . $this->_getProductAttributeId(
+            WHERE cpie.attribute_id=" . $this->dataHelper->getProductAttributeId(
                 'manufacturer'
             );
         $this->_doQuery($q);
@@ -2399,7 +2249,7 @@ class Sinch {
                     'catalog_product_index_eav'
                 ) . "
                                     WHERE attribute_id = "
-                . $this->_getProductAttributeId(
+                . $this->dataHelper->getProductAttributeId(
                     'manufacturer'
                 )//." AND store_id = ".$websiteId
             );
@@ -2416,7 +2266,7 @@ class Sinch {
             )(
               SELECT
                 a.entity_id,
-                " . $this->_getProductAttributeId('manufacturer') . ",
+                " . $this->dataHelper->getProductAttributeId('manufacturer') . ",
                 w.website,
                 mn.shop_option_id
               FROM " . $this->getTableName('catalog_product_entity') . " a
@@ -2442,7 +2292,7 @@ class Sinch {
             )(
               SELECT
                 a.entity_id,
-                " . $this->_getProductAttributeId('manufacturer') . ",
+                " . $this->dataHelper->getProductAttributeId('manufacturer') . ",
                 0,
                 mn.shop_option_id
               FROM " . $this->getTableName('catalog_product_entity') . " a
@@ -2472,7 +2322,7 @@ class Sinch {
                                     value
                                 )(
                                   SELECT
-                                    " . $this->_getProductAttributeId(
+                                    " . $this->dataHelper->getProductAttributeId(
                 'manufacturer'
             ) . ",
                                     0,
@@ -2563,7 +2413,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('description') . ",
+                " . $this->dataHelper->getProductAttributeId('description') . ",
                 pwt.website,
                 cpe.entity_id,
                 pt.description
@@ -2586,7 +2436,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('description') . ",
+                " . $this->dataHelper->getProductAttributeId('description') . ",
                 0,
                 cpe.entity_id,
                 pt.description
@@ -2605,7 +2455,7 @@ class Sinch {
             $this->_doQuery(
                 "UPDATE " . $this->getTableName('catalog_product_entity_varchar') . "
                     SET value = ''
-                    WHERE attribute_id = " . $this->_getProductAttributeId('supplier_' . $i)
+                    WHERE attribute_id = " . $this->dataHelper->getProductAttributeId('supplier_' . $i)
             );
         }
     }
@@ -2621,7 +2471,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('reviews') . ",
+                " . $this->dataHelper->getProductAttributeId('reviews') . ",
                 pwt.website,
                 cpe.entity_id,
                 pt.Reviews
@@ -2644,7 +2494,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('reviews') . ",
+                " . $this->dataHelper->getProductAttributeId('reviews') . ",
                 0,
                 cpe.entity_id,
                 pt.Reviews
@@ -2668,7 +2518,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('weight') . ",
+                " . $this->dataHelper->getProductAttributeId('weight') . ",
                 pwt.website,
                 cpe.entity_id,
                 pt.Weight
@@ -2690,7 +2540,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('weight') . ",
+                " . $this->dataHelper->getProductAttributeId('weight') . ",
                 0,
                 cpe.entity_id,
                 pt.Weight
@@ -2730,7 +2580,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('pdf_url') . ",
+                " . $this->dataHelper->getProductAttributeId('pdf_url') . ",
                 pwt.website,
                 cpe.entity_id,
                 pt.pdf_url
@@ -2752,7 +2602,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('pdf_url') . ",
+                " . $this->dataHelper->getProductAttributeId('pdf_url') . ",
                 0,
                 cpe.entity_id,
                 pt.pdf_url
@@ -2776,10 +2626,10 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('short_description') . ",
+                " . $this->dataHelper->getProductAttributeId('short_description') . ",
                 pwt.website,
                 cpe.entity_id,
-                pt.product_short_description
+                pt.short_description
               FROM " . $this->getTableName('catalog_product_entity') . " cpe
               INNER JOIN " . $this->getTableName('products_temp') . " pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
@@ -2787,7 +2637,7 @@ class Sinch {
                 ON cpe.sinch_product_id = pwt.sinch_product_id
             )
             ON DUPLICATE KEY UPDATE
-                value = pt.product_short_description"
+                value = pt.short_description"
         );
         // product short description for all web sites
         $this->_doQuery(
@@ -2798,16 +2648,16 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('short_description') . ",
+                " . $this->dataHelper->getProductAttributeId('short_description') . ",
                 0,
                 cpe.entity_id,
-                pt.product_short_description
+                pt.short_description
               FROM " . $this->getTableName('catalog_product_entity') . " cpe
               INNER JOIN " . $this->getTableName('products_temp') . " pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
             )
             ON DUPLICATE KEY UPDATE
-                value = pt.product_short_description"
+                value = pt.short_description"
         );
     }
 
@@ -2826,7 +2676,7 @@ class Sinch {
                     value
                 )(
                   SELECT
-                    " . $this->_getProductAttributeId('meta_title') . ",
+                    " . $this->dataHelper->getProductAttributeId('meta_title') . ",
                     pwt.website,
                     cpe.entity_id,
                     pt.Title
@@ -2848,7 +2698,7 @@ class Sinch {
                     value
                 )(
                   SELECT
-                    " . $this->_getProductAttributeId('meta_title') . ",
+                    " . $this->dataHelper->getProductAttributeId('meta_title') . ",
                     0,
                     cpe.entity_id,
                     pt.Title
@@ -2890,10 +2740,10 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('meta_description') . ",
+                " . $this->dataHelper->getProductAttributeId('meta_description') . ",
                 pwt.website,
                 cpe.entity_id,
-                pt.product_short_description
+                pt.short_description
               FROM " . $this->getTableName('catalog_product_entity') . " cpe
               INNER JOIN " . $this->getTableName('products_temp') . " pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
@@ -2901,7 +2751,7 @@ class Sinch {
                 ON cpe.sinch_product_id = pwt.sinch_product_id
             )
             ON DUPLICATE KEY UPDATE
-                value = pt.product_short_description"
+                value = pt.short_description"
         );
         // product meta description for all web sites
         $this->_doQuery(
@@ -2912,16 +2762,16 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('meta_description') . ",
+                " . $this->dataHelper->getProductAttributeId('meta_description') . ",
                 0,
                 cpe.entity_id,
-                pt.product_short_description
+                pt.short_description
               FROM " . $this->getTableName('catalog_product_entity') . " cpe
               INNER JOIN " . $this->getTableName('products_temp') . " pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
             )
             ON DUPLICATE KEY UPDATE
-                value = pt.product_short_description"
+                value = pt.short_description"
         );
     }
 
@@ -2957,7 +2807,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('ean') . ",
+                " . $this->dataHelper->getProductAttributeId('ean') . ",
                 pwt.website,
                 cpe.entity_id,
                 e.EANs
@@ -2980,7 +2830,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('ean') . ",
+                " . $this->dataHelper->getProductAttributeId('ean') . ",
                 0,
                 cpe.entity_id,
                 e.EANs
@@ -3004,7 +2854,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('specification') . ",
+                " . $this->dataHelper->getProductAttributeId('specification') . ",
                 pwt.website,
                 cpe.entity_id,
                 pt.specifications
@@ -3026,7 +2876,7 @@ class Sinch {
                 value
             )(
               SELECT
-                " . $this->_getProductAttributeId('specification') . ",
+                " . $this->dataHelper->getProductAttributeId('specification') . ",
                 0,
                 cpe.entity_id,
                 pt.specifications
@@ -3161,13 +3011,13 @@ class Sinch {
 
         $_defaultAttributeSetId = $this->_getProductDefaulAttributeSetId();
 
-        $attr_atatus = $this->_getProductAttributeId('status');
-        $attr_name = $this->_getProductAttributeId('name');
-        $attr_visibility = $this->_getProductAttributeId('visibility');
-        $attr_tax_class_id = $this->_getProductAttributeId('tax_class_id');
-        $attr_image = $this->_getProductAttributeId('image');
-        $attr_small_image = $this->_getProductAttributeId('small_image');
-        $attr_thumbnail = $this->_getProductAttributeId('thumbnail');
+        $attr_atatus = $this->dataHelper->getProductAttributeId('status');
+        $attr_name = $this->dataHelper->getProductAttributeId('name');
+        $attr_visibility = $this->dataHelper->getProductAttributeId('visibility');
+        $attr_tax_class_id = $this->dataHelper->getProductAttributeId('tax_class_id');
+        $attr_image = $this->dataHelper->getProductAttributeId('image');
+        $attr_small_image = $this->dataHelper->getProductAttributeId('small_image');
+        $attr_thumbnail = $this->dataHelper->getProductAttributeId('thumbnail');
 
         $this->print("--Replace Magento Multistore 2...");
 
@@ -3460,7 +3310,7 @@ class Sinch {
 
         $this->print("--Replace Magento Multistore 22...");
 
-        $this->dropHTMLentities($this->_getProductAttributeId('name'));
+        $this->dropHTMLentities($this->dataHelper->getProductAttributeId('name'));
         $this->addDescriptions();
         $this->cleanProductDistributors();
         $this->addReviews();
@@ -3824,9 +3674,8 @@ class Sinch {
     {
         $this->_doQuery("DELETE FROM " . $this->getTableName('url_rewrite'));
         $this->_doQuery(
-            "UPDATE " . $this->getTableName('catalog_product_entity_varchar') . "
-                SET value = ''
-            WHERE attribute_id = " . $this->_getProductAttributeId('url_key')
+            "UPDATE " . $this->getTableName('catalog_product_entity_varchar') . " SET value = '' WHERE attribute_id = :urlKey",
+            [':urlKey' => $this->dataHelper->getProductAttributeId('url_key')]
         );
 
         $this->_productUrlFactory->create()->refreshRewrites();
@@ -3868,7 +3717,7 @@ class Sinch {
             throw new LocalizedException(__("LOCAL INFILE not enabled in the database"));
         }
 
-        if ($this->isImportNotRun() && $this->isFullImportHaveBeenRun()) {
+        if ($this->canImport() && $this->isFullImportHaveBeenRun()) {
             try {
                 $current_vhost = $this->scopeConfig->getValue(
                     'web/unsecure/base_url',
@@ -3890,16 +3739,19 @@ class Sinch {
 
                 $this->print("Upload Files...");
 
-                $this->files = [
+                $requiredFiles = [
                     Download::FILE_STOCK_AND_PRICES,
-                    Download::FILE_ACCOUNT_GROUPS,
-                    Download::FILE_ACCOUNT_GROUP_CATEGORIES,
-                    Download::FILE_ACCOUNT_GROUP_PRICE,
                     Download::FILE_DISTRIBUTORS,
                     Download::FILE_DISTRIBUTORS_STOCK
                 ];
+                //Files we can live without (we want them but it doesn't seriously affect us if its missing)
+                $optionalFiles = [
+                    Download::FILE_ACCOUNT_GROUPS,
+                    Download::FILE_ACCOUNT_GROUP_CATEGORIES,
+                    Download::FILE_ACCOUNT_GROUP_PRICE,
+                ];
 
-                $this->downloadFiles(false);
+                $this->downloadFiles($requiredFiles, $optionalFiles);
                 $this->addImportStatus('Stock Price Upload Files');
 
                 $this->print("Parse Stock And Prices...");
@@ -3908,11 +3760,11 @@ class Sinch {
                 $this->stockPriceImport->apply();
                 $this->addImportStatus('Stock Price Parse Products');
 
-                $this->print("Apply Customer Group Price...");
-                $customerGroupsFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUPS);
-                $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
-                if (file_exists($customerGroupsFile) && file_exists($accountGroupPriceFile)) {
+                $this->print("Apply Account Group Price...");
+                if ($this->customerGroupPrice->haveRequiredFiles()) {
                     $this->customerGroupPrice->parse();
+                } else {
+                    $this->print("Missing required files for account group price section, or downloaded files failed validation, skipping");
                 }
 
                 //Allow the CC category visibility import section to be skipped
@@ -3922,9 +3774,11 @@ class Sinch {
                 );
 
                 if (!$ccCategoryDisable) {
-                    if (file_exists($this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_CATEGORIES))) {
-                        $this->print("Parsing customer group categories...");
+                    if ($this->customerGroupCatsImport->haveRequiredFiles()) {
+                        $this->print("Parsing account group categories...");
                         $this->customerGroupCatsImport->parse();
+                    } else {
+                        $this->print("Missing required files for account group categories section, or downloaded files failed validation, skipping");
                     }
                 } else {
                     $this->print("Skipping custom catalog categories as 'sinchimport/category_visibility/disable_import' is enabled");
@@ -3937,11 +3791,11 @@ class Sinch {
                 );
 
                 if (!$ccProductDisable) {
-                    $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
-                    $stockAndPriceFile = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
-                    if (file_exists($accountGroupPriceFile) && file_exists($stockAndPriceFile)) {
+                    if ($this->customCatalogImport->haveRequiredFiles()) {
                         $this->print("Processing Custom catalog restrictions...");
                         $this->customCatalogImport->parse();
+                    } else {
+                        $this->print("Missing required files for custom catalog section, or downloaded files failed validation, skipping");
                     }
                 } else {
                     $this->print("Skipping custom catalog restrictions as 'sinchimport/product_visibility/disable_import' is enabled");
@@ -3976,7 +3830,7 @@ class Sinch {
                 $this->_setErrorMessage($e);
             }
         } else {
-            if (!$this->isImportNotRun()) {
+            if (!$this->canImport()) {
                 $this->print("--------SINCHIMPORT ALREADY RUN--------");
             } else {
                 $this->print("Full import has never finished with success...");

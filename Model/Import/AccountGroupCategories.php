@@ -7,9 +7,9 @@ use SITC\Sinchimport\Helper\Download;
 use SITC\Sinchimport\Model\Sinch;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
-class CustomerGroupCategories extends AbstractImportSection {
-    const LOG_PREFIX = "CustomerGroupCategories: ";
-    const LOG_FILENAME = "customer_groups_cats";
+class AccountGroupCategories extends AbstractImportSection {
+    const LOG_PREFIX = "AccountGroupCategories: ";
+    const LOG_FILENAME = "account_group_cats";
 
     const MAPPING_TABLE = "sinch_cat_visibility";
 
@@ -32,6 +32,13 @@ class CustomerGroupCategories extends AbstractImportSection {
         parent::__construct($resourceConn, $output, $dlHelper);
         $this->csv = $csv->setLineLength(256)->setDelimiter(Sinch::FIELD_TERMINATED_CHAR);
         $this->mappingTablenameFinal = $this->getTableName(self::MAPPING_TABLE);
+    }
+
+    public function getRequiredFiles(): array
+    {
+        return [
+            Download::FILE_ACCOUNT_GROUP_CATEGORIES
+        ];
     }
 
     /**
@@ -63,7 +70,7 @@ class CustomerGroupCategories extends AbstractImportSection {
         $this->log("--- Completed Account Group Categories parse ---");
     }
 
-    private function insertMapping($category_id, $account_group_id)
+    private function insertMapping($account_group_id, $category_id)
     {
         if (empty($this->insertMapping)) {
             $this->insertMapping = $this->getConnection()->prepare(

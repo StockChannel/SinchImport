@@ -154,6 +154,23 @@ class UpgradeSchema implements UpgradeSchemaInterface
             }
         }
 
+        if (version_compare($context->getVersion(), '2.5.0', '<')) {
+            $connection = $installer->getConnection();
+
+            //sinch_distributors - DROP website column
+            $sinch_distributors = $installer->getTable('sinch_distributors');
+            $connection->query("ALTER TABLE {$sinch_distributors} DROP COLUMN website");
+            //sinch_stock_and_prices - DROP distributor_id
+            $sinch_stock_and_prices = $installer->getTable('sinch_stock_and_prices');
+            $connection->query("ALTER TABLE {$sinch_stock_and_prices} DROP COLUMN distributor_id");
+
+            //sinch_customer_group_price_{cur,nxt} - DROP price_type
+            $sinch_customer_group_price_cur = $installer->getTable('sinch_customer_group_price_cur');
+            $sinch_customer_group_price_nxt = $installer->getTable('sinch_customer_group_price_nxt');
+            $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
+            $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
+        }
+
         $installer->endSetup();
     }
 
@@ -177,7 +194,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
     private function upgrade216($installer)
     {
         $connection = $installer->getConnection();
-        $catVisTable = $installer->getTable(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE); //sinch_cat_visibility at the time of adding
+        $catVisTable = $installer->getTable(\SITC\Sinchimport\Model\Import\AccountGroupCategories::MAPPING_TABLE); //sinch_cat_visibility at the time of adding
         if ($connection->isTableExists($catVisTable) != true) {
             //Ditto of upgrade215
             $connection->query(

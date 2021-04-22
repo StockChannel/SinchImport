@@ -1,15 +1,25 @@
 <?php
 namespace SITC\Sinchimport\Helper;
 
-class Data extends \Magento\Framework\App\Helper\AbstractHelper
+use Magento\Catalog\Model\Category;
+use Magento\Catalog\Model\Product;
+use Magento\Customer\Model\Session;
+use Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Framework\App\Helper\Context;
+use Magento\Framework\App\Http\Context as HttpContext;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Filesystem\DirectoryList;
+use Magento\Store\Model\ScopeInterface;
+
+class Data extends AbstractHelper
 {
-    /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
+    /** @var ResourceConnection $resourceConn */
     private $resourceConn;
-    /** @var \Magento\Customer\Model\Session\Proxy $customerSession */
+    /** @var Proxy $customerSession */
     private $customerSession;
-    /** @var \Magento\Framework\Filesystem\DirectoryList\Proxy $dir */
+    /** @var DirectoryList $dir */
     private $dir;
-    /** @var \Magento\Framework\App\Http\Context $httpContext */
+    /** @var HttpContext $httpContext */
     private $httpContext;
 
     /** @var string $accountTable */
@@ -18,11 +28,11 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     private $groupMappingTable;
 
     public function __construct(
-        \Magento\Framework\App\Helper\Context $context,
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Customer\Model\Session\Proxy $customerSession,
-        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir,
-        \Magento\Framework\App\Http\Context $httpContext
+        Context $context,
+        ResourceConnection $resourceConn,
+        Session\Proxy $customerSession,
+        DirectoryList\Proxy $dir,
+        HttpContext $httpContext
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
@@ -37,7 +47,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     {
         return $this->scopeConfig->getValue(
             $configPath,
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_STORE
         );
     }
 
@@ -126,7 +136,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         //Import lock
         $current_vhost = $this->scopeConfig->getValue(
             'web/unsecure/base_url',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_STORE
         );
         $is_lock_free = $this->resourceConn->getConnection()->fetchOne("SELECT IS_FREE_LOCK('sinchimport_{$current_vhost}')");
         if ($is_lock_free === '0') {
@@ -174,5 +184,34 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     public function experimentalSearchEnabled(): bool
     {
         return $this->getStoreConfig('sinchimport/misc/experimental_search_features') == 1;
+    }
+
+    public function getProductAttributeId(string $attributeCode): ?int
+    {
+        return $this->getAttributeId(Product::ENTITY, $attributeCode);
+    }
+
+    public function getCategoryAttributeId(string $attributeCode): ?int
+    {
+        return $this->getAttributeId(Category::ENTITY, $attributeCode);
+    }
+
+    public function getAttributeId(string $type, string $code): ?int
+    {
+        $conn = $this->resourceConn->getConnection();
+
+        $eav_entity_type = $this->resourceConn->getTableName('eav_entity_type');
+        $eav_attribute = $this->resourceConn->getTableName('eav_attribute');
+
+        $attributeId = $conn->fetchOne(
+            "SELECT attribute_id FROM {$eav_attribute} ea
+                INNER JOIN {$eav_entity_type} eet ON ea.entity_type_id = eet.entity_type_id
+                WHERE eet.entity_type_code = :type AND ea.attribute_code = :code",
+            [':type' => $type, ':code' => $code]
+        );
+        if ($attributeId !== false) {
+            return (int)$attributeId;
+        }
+        return null;
     }
 }

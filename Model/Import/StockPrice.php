@@ -5,6 +5,8 @@ namespace SITC\Sinchimport\Model\Import;
 
 use Magento\CatalogInventory\Api\StockConfigurationInterface;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Exception\CouldNotSaveException;
+use Magento\Framework\Validation\ValidationException;
 use Magento\InventoryApi\Api\Data\StockInterfaceFactory;
 use Magento\InventoryApi\Api\StockRepositoryInterface;
 use SITC\Sinchimport\Helper\Data;
@@ -64,6 +66,15 @@ class StockPrice extends AbstractImportSection
         $this->importStatsTable = $this->getTableName('sinch_import_status_statistic');
     }
 
+    public function getRequiredFiles(): array
+    {
+        return [
+            Download::FILE_STOCK_AND_PRICES,
+            Download::FILE_DISTRIBUTORS,
+            Download::FILE_DISTRIBUTORS_STOCK
+        ];
+    }
+
     /**
      * Parse the stock files
      */
@@ -84,7 +95,7 @@ class StockPrice extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (distributor_id, distributor_name, website)"
+                (distributor_id, distributor_name)"
         );
         $this->endTimingStep();
 
@@ -97,7 +108,7 @@ class StockPrice extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (product_id, stock, @price, @cost, distributor_id)
+                (product_id, stock, @price, @cost)
                 SET price = REPLACE(@price, ',', '.'),
                     cost = REPLACE(@cost, ',', '.')"
         );
@@ -112,7 +123,7 @@ class StockPrice extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (product_id, distributor_id, stock, @cost, @distributor_sku, @distributor_category, @eta, @brand_sku)"
+                (product_id, distributor_id, stock)"
         );
         $this->endTimingStep();
 
@@ -161,7 +172,7 @@ class StockPrice extends AbstractImportSection
             //The group by causes only a single row to be emitted per product (it picks any value for distributor, so supplier order is undefined behaviour)
             $conn->query("INSERT INTO {$tempSingle} SELECT product_id, ANY_VALUE(distributor_id) FROM {$tempTable} GROUP BY product_id");
 
-            $supplierAttrId = $this->getProductAttributeId('supplier_' . $i);
+            $supplierAttrId = $this->helper->getProductAttributeId('supplier_' . $i);
             //Try to clear the attribute value (in case there are less than 5 suppliers for each product, but there was previously more)
             //We just update the value to an empty string, as UPDATE should be faster than DELETE + INSERT, especially with triggers
             $conn->query(
@@ -213,8 +224,8 @@ class StockPrice extends AbstractImportSection
     /**
      * Apply the new stock and price information to the Magento tables
      * @return void
-     * @throws \Magento\Framework\Exception\CouldNotSaveException
-     * @throws \Magento\Framework\Validation\ValidationException
+     * @throws CouldNotSaveException
+     * @throws ValidationException
      */
     public function apply()
     {
@@ -223,8 +234,8 @@ class StockPrice extends AbstractImportSection
         $catalogProductEntityDecimal = $this->getTableName('catalog_product_entity_decimal');
         $prodWebTemp = $this->getTableName('products_website_temp');
 
-        $priceAttrId = $this->getProductAttributeId('price');
-        $costAttrId = $this->getProductAttributeId('cost');
+        $priceAttrId = $this->helper->getProductAttributeId('price');
+        $costAttrId = $this->helper->getProductAttributeId('cost');
 
         $this->startTimingStep('Add price (global)');
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
@@ -286,8 +297,8 @@ class StockPrice extends AbstractImportSection
 
     /**
      * Apply Stock
-     * @throws \Magento\Framework\Exception\CouldNotSaveException
-     * @throws \Magento\Framework\Validation\ValidationException
+     * @throws CouldNotSaveException
+     * @throws ValidationException
      */
     private function applyStock()
     {
@@ -464,35 +475,12 @@ class StockPrice extends AbstractImportSection
     }
 
     /**
-     * Get the attribute id for the product attribute with the given $attribute_code
-     * @param string $attribute_code Attribute code
-     * @return int|null
-     */
-    private function getProductAttributeId(string $attribute_code)
-    {
-        $eav_entity_type = $this->getTableName('eav_entity_type');
-        $productEavTypeId = $this->getConnection()->fetchOne(
-            "SELECT entity_type_id FROM {$eav_entity_type} WHERE entity_type_code = :typeCode",
-            [":typeCode" => \Magento\Catalog\Model\Product::ENTITY]
-        );
-
-        $eav_attribute = $this->getTableName('eav_attribute');
-        return $this->getConnection()->fetchOne(
-            "SELECT attribute_id FROM {$eav_attribute} WHERE attribute_code = :attrCode AND entity_type_id = :typeId",
-            [
-                ":typeId" => $productEavTypeId,
-                ":attrCode" => $attribute_code
-            ]
-        );
-    }
-
-    /**
      * Creates the sinch stock source, ready for MSI functionality, returning the stock_id
      * @return int Stock ID
-     * @throws \Magento\Framework\Exception\CouldNotSaveException
-     * @throws \Magento\Framework\Validation\ValidationException
+     * @throws CouldNotSaveException
+     * @throws ValidationException
      */
-    private function createStockSource()
+    private function createStockSource(): int
     {
         //We use the repository methods to create the source as a view is created with it
         $source = $this->stockFactory->create();

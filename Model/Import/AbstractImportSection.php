@@ -123,4 +123,24 @@ abstract class AbstractImportSection {
     }
 
     public abstract function parse();
+
+    /**
+     * Get the filenames required for this import section
+     * @return array filenames needed to successfully run parse
+     */
+    public abstract function getRequiredFiles(): array;
+
+    /**
+     * Get whether we have the files needed for this import section to run
+     * @return bool
+     */
+    public function haveRequiredFiles(): bool
+    {
+        foreach ($this->getRequiredFiles() as $file) {
+            if (!$this->dlHelper->validateFile($file)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

@@ -68,11 +68,11 @@ class CustomerGroupsPrice extends \Magento\Backend\App\Action
 
         $rootDir = $this->_directory->getRoot() . '/';
 
-        if (!$this->sinch->isImportNotRun()) {
+        if (!$this->sinch->canImport()) {
             $result = [
                 'success' => false,
                 'message' => 'Import is running now! Please wait...',
-                'reload' => !$this->sinch->isImportNotRun() && !empty($lastImportData) && $lastImportData['import_type'] == 'FULL'
+                'reload' => !$this->sinch->canImport() && !empty($lastImportData) && $lastImportData['import_type'] == 'FULL'
             ];
         } else {
             exec(
