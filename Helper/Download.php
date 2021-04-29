@@ -270,11 +270,21 @@ class Download extends AbstractHelper
         //Read the header row from the given file and validate it matches the header we expect for it
         $fileHandle = fopen($saveFile, 'r');
         if ($fileHandle === false) {
+            $this->print("Failed to open $filename for validation");
             return false;
         }
         $headerLine = fgets($fileHandle);
         fclose($fileHandle);
-        return $headerLine == self::EXPECTED_HEADER[$filename];
+        if ($headerLine === false) {
+            $this->print("Failed to read header line from $filename for validation");
+            return false;
+        }
+        $headerLine = trim($headerLine);
+        if ($headerLine != self::EXPECTED_HEADER[$filename]) {
+            $this->print("Header line for file {$filename} doesn't match expected header: {$headerLine} != " . self::EXPECTED_HEADER[$filename]);
+            return false;
+        }
+        return true;
     }
 
     private function print($message, $newline = true)

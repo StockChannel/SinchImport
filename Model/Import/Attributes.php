@@ -545,11 +545,20 @@ class Attributes extends AbstractImportSection {
             }
             $prodCount = count($entityIds);
             $this->logger->info("({$currVal}/{$valueCount}) Setting option id {$attrData['option_id']} for {$prodCount} products");
-            $this->massProdValues->updateAttributes(
-                $entityIds, 
-                [self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] => $attrData['option_id']],
-                0 //store id (dummy value as they're global attributes)
-            );
+            try {
+                $this->massProdValues->updateAttributes(
+                    $entityIds,
+                    [self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] => $attrData['option_id']],
+                    0 //store id (dummy value as they're global attributes)
+                );
+            } catch (\Throwable $t) {
+                $this->logger->err("Caught error during apply for " . self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] . ", assuming attribute doesn't exist for some reason");
+                if ($this->getConnection()->getTransactionLevel() != 0) {
+                    $this->logger->err("The error we caught crashed out of an open transaction, make sure we roll it back so it doesn't affect other sections of the import");
+                    $this->getConnection()->rollBack();
+                }
+                continue;
+            }
         }
 
         $elapsed = number_format($this->microtime_float() - $applyStart, 2);
