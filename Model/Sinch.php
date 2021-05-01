@@ -370,16 +370,22 @@ class Sinch {
                 if ($this->bulletPointsImport->haveRequiredFiles()) {
                     $this->print("Parsing Bullet points...");
                     $this->bulletPointsImport->parse();
+                    $this->print("Applying Bullet points...");
+                    $this->bulletPointsImport->apply();
                 }
 
                 if ($this->familiesImport->haveRequiredFiles()) {
                     $this->print("Parsing Families...");
                     $this->familiesImport->parse();
+                    $this->print("Applying Families...");
+                    $this->familiesImport->apply();
                 }
 
                 if ($this->reasonsToBuyImport->haveRequiredFiles()) {
                     $this->print("Parsing Reasons to Buy...");
                     $this->reasonsToBuyImport->parse();
+                    $this->print("Applying Reasons to Buy...");
+                    $this->reasonsToBuyImport->apply();
                 }
 
                 $this->print("Parse Stock And Prices...");
@@ -1998,14 +2004,11 @@ class Sinch {
                          Weight decimal(15,4),
                          family_id int(11),
                          series_id int(11),
-                         Reviews varchar(255),
                          unspsc int(11),
                          ean_code varchar(32),
                          score int(11),
                          release_date datetime,
                          eol_date datetime,
-                         products_date_added datetime default NULL,
-                         products_last_modified datetime default NULL,
                          manufacturer_name varchar(255) default NULL,
                          store_category_id int(11),
                          KEY pt_store_category_product_id (`store_category_id`),
@@ -2068,12 +2071,6 @@ class Sinch {
             $this->unspscImport->parse();
 
             $this->print("--Parse Products 3");
-
-            $this->_doQuery(
-                "UPDATE " . $this->getTableName('products_temp') . "
-                          SET products_date_added=now(), products_last_modified=now()"
-            );
-
             $this->print("--Parse Products 4");
 
             $this->_doQuery(
@@ -2377,53 +2374,6 @@ class Sinch {
                     WHERE attribute_id = " . $this->dataHelper->getProductAttributeId('supplier_' . $i)
             );
         }
-    }
-
-    private function addReviews()
-    {
-        // product reviews for all web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->dataHelper->getProductAttributeId('reviews') . ",
-                pwt.website,
-                cpe.entity_id,
-                pt.Reviews
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-              INNER JOIN " . $this->getTableName('products_website_temp') . " pwt
-                ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.Reviews"
-        );
-
-        // product Reviews for all web sites
-        $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
-                attribute_id,
-                store_id,
-                entity_id,
-                value
-            )(
-              SELECT
-                " . $this->dataHelper->getProductAttributeId('reviews') . ",
-                0,
-                cpe.entity_id,
-                pt.Reviews
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
-                ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.Reviews"
-        );
     }
 
     private function addWeight()
@@ -3102,7 +3052,6 @@ class Sinch {
         $this->dropHTMLentities($this->dataHelper->getProductAttributeId('name'));
         $this->addDescriptions();
         $this->cleanProductDistributors();
-        $this->addReviews();
         $this->addWeight();
 
         //Formerly addPdfUrl

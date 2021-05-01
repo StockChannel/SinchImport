@@ -167,6 +167,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
             //sinch_customer_group_price_{cur,nxt} - DROP price_type
             $sinch_customer_group_price_cur = $installer->getTable('sinch_customer_group_price_cur');
             $sinch_customer_group_price_nxt = $installer->getTable('sinch_customer_group_price_nxt');
+            //Alter the primary keys to not include price type
+            $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
+            $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
+            //Drop price_type
             $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
             $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
         }

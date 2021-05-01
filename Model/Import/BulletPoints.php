@@ -2,6 +2,7 @@
 namespace SITC\Sinchimport\Model\Import;
 
 use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
@@ -9,11 +10,15 @@ class BulletPoints extends AbstractImportSection {
     const LOG_PREFIX = "BulletPoints: ";
     const LOG_FILENAME = "bullet_points";
 
+    private $dataHelper;
+
     private $bulletPointsTable;
 
-    public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper)
+    public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper, Data $dataHelper)
     {
         parent::__construct($resourceConn, $output, $downloadHelper);
+        $this->dataHelper = $dataHelper;
+
         $this->bulletPointsTable = $this->getTableName('sinch_bullet_points');
     }
 
@@ -41,9 +46,30 @@ class BulletPoints extends AbstractImportSection {
                 (id, number, value)"
         );
         $this->endTimingStep();
+    }
 
-        //TODO: Do something with the bullet point data
-        //Load into a single attribute (pipe separated or w/e)
+    public function apply() {
+        $catalog_product_entity = $this->getTableName('catalog_product_entity');
+        $catalog_product_entity_int = $this->getTableName('catalog_product_entity_int');
+
+        $bulletPointsAttr = $this->dataHelper->getProductAttributeId('sinch_bullet_points');
+
+        //Insert global values for Bullet Points
+        $this->startTimingStep('Insert Bullet Point values');
+        //Triple pipe delimited to reduce the likelihood of colliding with text in the value
+        $this->getConnection()->query(
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
+                SELECT :bulletPointsAttr, 0, cpe.entity_id, GROUP_CONCAT(sbp.value ORDER BY sbp.number SEPARATOR '|||')
+                FROM {$this->bulletPointsTable} sbp
+                INNER JOIN {$catalog_product_entity} cpe
+                    ON sbp.id = cpe.sinch_product_id
+                GROUP BY sbp.id, cpe.entity_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = VALUES(value)",
+            [":bulletPointsAttr" => $bulletPointsAttr]
+        );
+        $this->endTimingStep();
 
         $this->timingPrint();
     }

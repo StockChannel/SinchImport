@@ -2,6 +2,11 @@
 
 namespace SITC\Sinchimport\Setup;
 
+use Magento\Catalog\Model\Product;
+use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
+use Magento\Eav\Setup\EavSetup;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\Setup\UpgradeDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
@@ -13,14 +18,14 @@ class UpgradeData implements UpgradeDataInterface
 {
     /** @var \Magento\Eav\Setup\EavSetupFactory */
     private $eavSetupFactory;
-    /** @var \Magento\Framework\App\ResourceConnection */
+    /** @var ResourceConnection */
     private $resourceConn;
     /** @var \Magento\CatalogInventory\Api\StockConfigurationInterface */
     private $stockConfig;
 
     public function __construct(
         \Magento\Eav\Setup\EavSetupFactory $eavSetupFactory,
-        \Magento\Framework\App\ResourceConnection $resourceConn,
+        ResourceConnection $resourceConn,
         \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig
     ){
         $this->eavSetupFactory = $eavSetupFactory;
@@ -40,7 +45,7 @@ class UpgradeData implements UpgradeDataInterface
 
         if (version_compare($context->getVersion(), '2.1.1', '<' )) {
             //Make sinch_search_cache not visible on frontend
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, 'sinch_search_cache', 'is_visible_on_front', 0);
         }
 
@@ -58,14 +63,18 @@ class UpgradeData implements UpgradeDataInterface
 
         if (version_compare($context->getVersion(), '2.2.1', '<')){
             //Make sinch_restrict useable for promo rules (causing Elasticsuite to include it in the indexed documents)
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'is_used_for_promo_rules', 1);
         }
 
         if (version_compare($context->getVersion(), '2.4.0', '<')) {
             //Remove sinch_search_cache as it gains us nothing with ES
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $eavSetup->removeAttribute($entityTypeId, 'sinch_search_cache');
+        }
+
+        if (version_compare($context->getVersion(),'2.5.0', '<')) {
+            $this->nileUpgrade($eavSetup);
         }
 
         $installer->endSetup();
@@ -85,13 +94,14 @@ class UpgradeData implements UpgradeDataInterface
 
     /**
      * Adds the UNSPSC and product restriction attributes
-     * @var \Magento\Eav\Setup\EavSetup $eavSetup
+     *
+     * @var EavSetup $eavSetup
      */
-    private function upgrade218($eavSetup)
+    private function upgrade218(EavSetup $eavSetup)
     {
         //UNSPSC product attribute
         $eavSetup->addAttribute(
-            \Magento\Catalog\Model\Product::ENTITY,
+            Product::ENTITY,
             'unspsc',
             [
                 'label' => 'UNSPSC',
@@ -101,7 +111,7 @@ class UpgradeData implements UpgradeDataInterface
                 'frontend' => '',
                 'frontend_class' => 'validate-digits-range digits-range-0-99999999',
                 'source' => '',
-                'global' => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
                 'visible' => true,
                 'required' => false,
                 'user_defined' => false,
@@ -120,7 +130,7 @@ class UpgradeData implements UpgradeDataInterface
 
         //Restrict products attribute
         $eavSetup->addAttribute(
-            \Magento\Catalog\Model\Product::ENTITY,
+            Product::ENTITY,
             'sinch_restrict',
             [
                 'label' => 'Restrict Product to',
@@ -130,7 +140,7 @@ class UpgradeData implements UpgradeDataInterface
                 'backend' => '',
                 'frontend' => '',
                 'source' => '',
-                'global' => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
                 'visible' => true,
                 'required' => false,
                 'user_defined' => false,
@@ -145,16 +155,199 @@ class UpgradeData implements UpgradeDataInterface
         );
     }
 
-    private function upgrade219($eavSetup)
+    private function upgrade219(EavSetup $eavSetup)
     {
-        $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+        $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'is_visible_on_front', 0);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'used_in_product_listing', 1);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'note', "Enter a comma separated list of Account Group IDs. An exclamation mark before the group ID negates the match");
     }
 
-    private function getConnection()
+    private function nileUpgrade(EavSetup $eavSetup)
     {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
+        //Add attributes for new features from the nile format
+
+        //Bullet Points
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_bullet_points',
+            [
+                'label' => 'Bullet Points',
+                'note' => 'Summary Bullet Points, expected to be triple pipe (|||) delimited',
+                'type' => 'varchar',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Reasons to Buy
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_reasons_to_buy',
+            [
+                'label' => 'Reasons to Buy',
+                'note' => 'Key Reasons to buy this product, expected to be triple pipe (|||) delimited',
+                'type' => 'varchar',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Product Family
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_family',
+            [
+                'label' => 'Product Family',
+                'type' => 'int',
+                'input' => 'select', //Dropdown style
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => true,
+                'filterable' => true,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Product Family Series
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_family_series',
+            [
+                'label' => 'Product Series',
+                'type' => 'int',
+                'input' => 'select', //Dropdown style
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => true,
+                'filterable' => true,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Score
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_score',
+            [
+                'label' => 'Popularity Score',
+                'type' => 'int',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'frontend_class' => 'validate-digits-range digits-range-0-99999999',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Release Date
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_release_date',
+            [
+                'label' => 'Release Date',
+                'type' => 'datetime',
+                'input' => 'datetime',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //EOL Date
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_eol_date',
+            [
+                'label' => 'End of Life Date',
+                'type' => 'datetime',
+                'input' => 'datetime',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+    }
+
+    private function getConnection(): AdapterInterface
+    {
+        return $this->resourceConn->getConnection(ResourceConnection::DEFAULT_CONNECTION);
     }
 }

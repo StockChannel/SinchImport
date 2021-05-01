@@ -146,19 +146,17 @@ class AccountGroupPrice extends AbstractImportSection {
         $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->groupPriceTableCurrent} (
             sinch_group_id int(10) unsigned NOT NULL,
             sinch_product_id int(10) unsigned NOT NULL,
-            price_type int(10) unsigned NOT NULL DEFAULT 1,
             price decimal(12,4) NOT NULL,
             magento_value_id int(11) DEFAULT NULL UNIQUE KEY,
-            PRIMARY KEY (sinch_group_id, sinch_product_id, price_type),
+            PRIMARY KEY (sinch_group_id, sinch_product_id),
             FOREIGN KEY (magento_value_id) REFERENCES {$this->tierPriceTable} (value_id) ON UPDATE CASCADE ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
 
         $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->groupPriceTableNext} (
             sinch_group_id int(10) unsigned NOT NULL,
             sinch_product_id int(10) unsigned NOT NULL,
-            price_type int(10) unsigned NOT NULL DEFAULT 1,
             price decimal(12,4) NOT NULL,
-            PRIMARY KEY (sinch_group_id, sinch_product_id, price_type)
+            PRIMARY KEY (sinch_group_id, sinch_product_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
         $this->getConnection()->query("TRUNCATE TABLE {$this->groupPriceTableNext}");
     }
@@ -213,11 +211,10 @@ class AccountGroupPrice extends AbstractImportSection {
         $this->getConnection()->beginTransaction();
         try {
             $toDelete = $this->getConnection()->fetchAll(
-                "SELECT current.sinch_group_id, current.sinch_product_id, current.price_type, current.magento_value_id FROM {$this->groupPriceTableCurrent} current
+                "SELECT current.sinch_group_id, current.sinch_product_id, current.magento_value_id FROM {$this->groupPriceTableCurrent} current
                     LEFT JOIN {$this->groupPriceTableNext} next
                         ON current.sinch_group_id = next.sinch_group_id
                         AND current.sinch_product_id = next.sinch_product_id
-                        AND current.price_type = next.price_type
                     WHERE next.price IS NULL"
             );
             $deletedCount = count($toDelete);
@@ -232,12 +229,10 @@ class AccountGroupPrice extends AbstractImportSection {
                 $this->getConnection()->query(
                     "DELETE FROM {$this->groupPriceTableCurrent}
                         WHERE sinch_group_id = :sinch_group_id
-                        AND sinch_product_id = :sinch_product_id
-                        AND price_type = :price_type",
+                        AND sinch_product_id = :sinch_product_id",
                     [
                         ":sinch_group_id" => $rule['sinch_group_id'],
                         ":sinch_product_id" => $rule['sinch_product_id'],
-                        ":price_type" => $rule['price_type']
                     ]
                 );
             }
@@ -284,7 +279,6 @@ class AccountGroupPrice extends AbstractImportSection {
                 INNER JOIN {$this->groupPriceTableCurrent} current
                     ON next.sinch_group_id = current.sinch_group_id
                     AND next.sinch_product_id = current.sinch_product_id
-                    AND next.price_type = current.price_type
                 WHERE next.price != current.price AND current.magento_value_id IS NOT NULL"
             );
             $updatedCount = count($toUpdate);
@@ -314,8 +308,8 @@ class AccountGroupPrice extends AbstractImportSection {
         try {
             //Pull all updated data into current from next (this includes changed prices which were updated by the previous step)
             $this->getConnection()->query(
-                "INSERT INTO {$this->groupPriceTableCurrent} (sinch_group_id, sinch_product_id, price_type, price)
-                    SELECT sinch_group_id, sinch_product_id, price_type, price FROM {$this->groupPriceTableNext} next
+                "INSERT INTO {$this->groupPriceTableCurrent} (sinch_group_id, sinch_product_id, price)
+                    SELECT sinch_group_id, sinch_product_id, price FROM {$this->groupPriceTableNext} next
                 ON DUPLICATE KEY UPDATE price = next.price"
             );
 
