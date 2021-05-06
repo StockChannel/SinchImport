@@ -344,6 +344,111 @@ class UpgradeData implements UpgradeDataInterface
                 'group' => 'General'
             ]
         );
+
+        //Product Videos
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_videos',
+            [
+                'label' => 'Product Videos',
+                'note' => 'Semi-colon delimited Video URLs',
+                'type' => 'text',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Product Manuals (basically the same as PDF Urls but HTML links)
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_manuals',
+            [
+                'label' => 'Product Manuals (HTML)',
+                'note' => 'Semi-colon delimited Manual URLs',
+                'type' => 'text',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Additional Images
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_additional_images',
+            [
+                'label' => 'Additional Image URLs',
+                'note' => 'Semi-colon delimited Additional Image URLs',
+                'type' => 'text',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Remove and re-add PDF URL as a text attribute (previously varchar)
+        $eavSetup->removeAttribute(Product::ENTITY, 'pdf_url');
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'pdf_url',
+            [
+                'label' => 'PDF URLs',
+                'note' => 'Semi-colon delimited PDF URLs',
+                'type' => 'text',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
     }
 
     private function getConnection(): AdapterInterface

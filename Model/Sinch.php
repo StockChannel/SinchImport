@@ -30,6 +30,8 @@ use SITC\Sinchimport\Model\Import\EANCodes;
 use SITC\Sinchimport\Model\Import\Families;
 use SITC\Sinchimport\Model\Import\IndexManagement;
 use SITC\Sinchimport\Model\Import\Multimedia;
+use SITC\Sinchimport\Model\Import\Popularity;
+use SITC\Sinchimport\Model\Import\ProductDates;
 use SITC\Sinchimport\Model\Import\ReasonsToBuy;
 use SITC\Sinchimport\Model\Import\StockPrice;
 use SITC\Sinchimport\Model\Import\UNSPSC;
@@ -124,6 +126,8 @@ class Sinch {
     private $bulletPointsImport;
     private $familiesImport;
     private $reasonsToBuyImport;
+    private $datesImport;
+    private $popularityImport;
 
     private $dlHelper;
     private $dataHelper;
@@ -154,6 +158,8 @@ class Sinch {
         BulletPoints $bulletPointsImport,
         Families $familiesImport,
         ReasonsToBuy $reasonsToBuyImport,
+        ProductDates $datesImport,
+        Popularity $popularityImport,
         Download $dlHelper,
         Data $dataHelper
     )
@@ -171,6 +177,8 @@ class Sinch {
         $this->bulletPointsImport = $bulletPointsImport;
         $this->familiesImport = $familiesImport;
         $this->reasonsToBuyImport = $reasonsToBuyImport;
+        $this->datesImport = $datesImport;
+        $this->popularityImport = $popularityImport;
 
         $this->dlHelper = $dlHelper;
         $this->dataHelper = $dataHelper;
@@ -387,6 +395,11 @@ class Sinch {
                     $this->print("Applying Reasons to Buy...");
                     $this->reasonsToBuyImport->apply();
                 }
+
+                $this->print("Parsing Product Release and EOL Dates...");
+                $this->datesImport->parse();
+                $this->print("Parsing Product Popularity Scores...");
+                $this->popularityImport->parse();
 
                 $this->print("Parse Stock And Prices...");
                 //Replaced parseStockAndPrices

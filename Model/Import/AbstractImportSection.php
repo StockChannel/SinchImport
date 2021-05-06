@@ -85,6 +85,7 @@ abstract class AbstractImportSection {
      */
     protected function startTimingStep(string $name)
     {
+        $this->log("Timing Step: " . $name);
         $now = $this->microtime_float();
         $this->timingStep[] = [
             'start' => $now,
