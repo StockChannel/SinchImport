@@ -186,6 +186,16 @@ class Data extends AbstractHelper
         return $this->getStoreConfig('sinchimport/misc/experimental_search_features') == 1;
     }
 
+    public function popularityBoostEnabled(): bool
+    {
+        return $this->getStoreConfig('sinchimport/search/popularity_boost') == 1;
+    }
+
+    public function popularityBoostFactor(): float
+    {
+        return (float)$this->getStoreConfig('sinchimport/search/popularity_boost_factor');
+    }
+
     public function getProductAttributeId(string $attributeCode): ?int
     {
         return $this->getAttributeId(Product::ENTITY, $attributeCode);

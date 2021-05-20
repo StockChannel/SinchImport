@@ -290,6 +290,8 @@ class UpgradeData implements UpgradeDataInterface
                 'comparable' => false,
                 'visible_on_front' => false,
                 'visible_in_advanced_search' => false,
+                'is_visible_in_grid' => true,
+                'is_filterable_in_grid' => true,
                 'unique' => false,
                 'group' => 'General'
             ]

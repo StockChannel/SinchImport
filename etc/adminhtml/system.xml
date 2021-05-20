@@ -192,13 +192,22 @@
 
             <group id="search" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Search</label>
-                <field id="category_field_search_weight" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="category_field_search_weight" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Category search weight</label>
                     <comment><![CDATA[The search weight for the category name field]]></comment>
                 </field>
-                <field id="brand_field_search_weight" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="brand_field_search_weight" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Brand name search weight</label>
                     <comment><![CDATA[The search weight for the brand name field]]></comment>
+                </field>
+                <field id="popularity_boost" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Popularity Boost</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, boosts search results based on their popularity score attribute, multiplied by Popularity Boost Factor]]></comment>
+                </field>
+                <field id="popularity_boost_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Popularity Boost Factor</label>
+                    <comment><![CDATA[The factor to use when Popularity boosting]]></comment>
                 </field>
             </group>
         </section>

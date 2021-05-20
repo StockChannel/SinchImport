@@ -11,6 +11,7 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use SITC\Sinchimport\Helper\Data;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
+use Smile\ElasticsuiteCore\Search\Request\Query\FunctionScore;
 use Smile\ElasticsuiteCore\Search\Request\Query\Nested;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
@@ -105,6 +106,10 @@ class QueryBuilder
             $boost
         );
 
+		$shouldClauses = [];
+		$minShouldMatch = 0;
+
+		//Check if we should do price filtering/boost
 		if ($priceFilter !== false) {
 		    $bounds = [];
 		    if (!empty($priceFilter['above']) && is_numeric($priceFilter['above'])) {
@@ -114,16 +119,34 @@ class QueryBuilder
 		        $bounds['lte'] = $priceFilter['below'];
             }
 
-		    if(empty($bounds)) {
-		        return $originalResult;
+		    if(!empty($bounds)) {
+                $shouldClauses[] = $this->buildPriceRangeQuery($bounds);
+                $minShouldMatch += $this->priceFilterMode ? 1 : 0;
             }
+        }
 
+		if ($this->helper->popularityBoostEnabled()) {
+		    $shouldClauses[] = $this->queryFactory->create(
+		        QueryInterface::TYPE_FUNCTIONSCORE,
+                [
+                    'functions' => [
+                        FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                            'field' => '', //TODO: Determine field name
+                            'factor' => $this->helper->popularityBoostFactor(),
+                            'modifier' => 'none'
+                        ]
+                    ]
+                ]
+            );
+        }
+
+		if (!empty($shouldClauses)) {
 		    return $this->queryFactory->create(
-		        QueryInterface::TYPE_BOOL,
+                QueryInterface::TYPE_BOOL,
                 [
                     'must' => [$originalResult],
-                    'should' => [$this->buildPriceRangeQuery($bounds)],
-                    'minimumShouldMatch' => $this->priceFilterMode ? 1 : 0
+                    'should' => $shouldClauses,
+                    'minimumShouldMatch' => $minShouldMatch
                 ]
             );
         }
@@ -144,9 +167,9 @@ class QueryBuilder
 		$matches = [];
 		if (preg_match_all(self::PRICE_REGEXP, $queryText, $matches, PREG_SET_ORDER)) {
 			$matches = $matches[0];
-			$query = isset($matches['query']) ? $matches['query'] : '';
-			$below = isset($matches['below']) ? $matches['below'] : -1;
-			$above = isset($matches['above']) ? $matches['above'] : 0;
+			$query = $matches['query'] ?? '';
+			$below = $matches['below'] ?? -1;
+			$above = $matches['above'] ?? 0;
 
             return [
                 'query' => $query,
