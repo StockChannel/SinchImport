@@ -28,7 +28,7 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @codeCoverageIgnore
      */
-    protected function _getElementHtml(AbstractElement $element)
+    protected function _getElementHtml(AbstractElement $element): string
     {
         $html = $this->_appendCss();
         

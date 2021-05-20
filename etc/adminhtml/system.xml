@@ -111,10 +111,13 @@
             </group>
             <group id="sinch_import_history" translate="label" type="text" sortOrder="40" showInDefault="1"
                    showInWebsite="1" showInStore="1">
-                <label>Import History</label>
+                <label>Import Status and History</label>
                 <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1"
                        showInWebsite="1" showInStore="1">
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Importhistory</frontend_model>
+                </field>
+                <field id="import_status_block" translate="label" type="button" sortOrder="10" showInWebsite="1" showInDefault="1" showInStore="1">
+                    <frontend_model>SITC\Sinchimport\Block\System\Config\ImportStatus</frontend_model>
                 </field>
             </group>
 

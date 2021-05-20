@@ -1,0 +1,19 @@
+<table class='data-table history import-history' data-role="sinchimport-status">
+    <thead>
+        <tr>
+            <th style='text-align:left;padding:15px 5px;background-color:#ccc;font-size:12pt;'>Step</th>
+            <th style='text-align:left;padding:15px 5px;background-color:#ccc;font-size:12pt;'>Status</th>
+        </tr>
+    </thead>
+    <tbody id='sinchimport_status_table_body' data-bind="foreach: statuses">
+        <tr class="data-row">
+            <td data-bind="text: message"></td>
+            <td data-bind="if: finished">
+                <img data-bind="attr: { src: $component.completeIcon }" alt="Complete" />
+            </td>
+            <td data-bind="if: !finished">
+                <img data-bind="attr: { src: $component.runningIcon }" alt="Running" />
+            </td>
+        </tr>
+    </tbody>
+</table>
