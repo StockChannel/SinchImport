@@ -175,6 +175,18 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
         }
 
+        if (version_compare($context->getVersion(), '2.5.1', '<')) {
+            $connection = $installer->getConnection();
+            $sinch_import_status = $installer->getTable('sinch_import_status');
+
+            $connection->query("DROP TABLE $sinch_import_status");
+            $connection->query("CREATE TABLE IF NOT EXISTS $sinch_import_status (
+                id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                message varchar(255) NOT NULL UNIQUE,
+                finished tinyint(1) NOT NULL DEFAULT 0
+            )");
+        }
+
         $installer->endSetup();
     }
 

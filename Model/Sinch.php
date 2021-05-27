@@ -33,8 +33,10 @@ use SITC\Sinchimport\Model\Import\Multimedia;
 use SITC\Sinchimport\Model\Import\Popularity;
 use SITC\Sinchimport\Model\Import\ProductDates;
 use SITC\Sinchimport\Model\Import\ReasonsToBuy;
+use SITC\Sinchimport\Model\Import\Reviews;
 use SITC\Sinchimport\Model\Import\StockPrice;
 use SITC\Sinchimport\Model\Import\UNSPSC;
+use SITC\Sinchimport\Model\Import\VirtualCategory;
 use SITC\Sinchimport\Model\Product\UrlFactory;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Zend_Db_Statement_Exception;
@@ -94,13 +96,11 @@ class Sinch {
     protected $_eavAttribute;
     private $output;
     private $galleryPhotos = [];
-    private $_productEntityTypeId = 0;
     private $defaultAttributeSetId = 0;
     private $field_terminated_char;
     private $import_status_table;
     private $import_status_statistic_table;
     private $current_import_status_statistic_id;
-    private $_attributeId;
     private $_categoryEntityTypeId;
     private $_categoryDefault_attribute_set_id;
     private $import_run_type = 'MANUAL';
@@ -113,24 +113,26 @@ class Sinch {
     private $imType;
 
     //Nick
-    private $sitcIndexMgmt;
-    private $attributesImport;
-    private $customerGroupCatsImport;
-    private $customerGroupPrice;
-    private $unspscImport;
-    private $customCatalogImport;
-    private $stockPriceImport;
-    private $brandImport;
-    private $multimediaImport;
-    private $eanImport;
-    private $bulletPointsImport;
-    private $familiesImport;
-    private $reasonsToBuyImport;
-    private $datesImport;
-    private $popularityImport;
+    private IndexManagement $sitcIndexMgmt;
+    private Attributes $attributesImport;
+    private AccountGroupCategories $customerGroupCatsImport;
+    private AccountGroupPrice $customerGroupPrice;
+    private UNSPSC $unspscImport;
+    private CustomCatalogVisibility $customCatalogImport;
+    private StockPrice $stockPriceImport;
+    private Brands $brandImport;
+    private Multimedia $multimediaImport;
+    private EANCodes $eanImport;
+    private BulletPoints $bulletPointsImport;
+    private Families $familiesImport;
+    private ReasonsToBuy $reasonsToBuyImport;
+    private ProductDates $datesImport;
+    private Popularity $popularityImport;
+    private VirtualCategory $virtualCategoryImport;
+    private Reviews $reviewImport;
 
-    private $dlHelper;
-    private $dataHelper;
+    private Download $dlHelper;
+    private Data $dataHelper;
 
     public function __construct(
         Context $context,
@@ -160,6 +162,8 @@ class Sinch {
         ReasonsToBuy $reasonsToBuyImport,
         ProductDates $datesImport,
         Popularity $popularityImport,
+        VirtualCategory $virtualCategoryImport,
+        Reviews $reviewImport,
         Download $dlHelper,
         Data $dataHelper
     )
@@ -179,6 +183,8 @@ class Sinch {
         $this->reasonsToBuyImport = $reasonsToBuyImport;
         $this->datesImport = $datesImport;
         $this->popularityImport = $popularityImport;
+        $this->virtualCategoryImport = $virtualCategoryImport;
+        $this->reviewImport = $reviewImport;
 
         $this->dlHelper = $dlHelper;
         $this->dataHelper = $dataHelper;
@@ -281,6 +287,7 @@ class Sinch {
 
                 $this->_doQuery("SELECT GET_LOCK('sinchimport_{$current_vhost}', 30)");
 
+                $this->addImportStatus('Start Import');
                 //Once we hold the import lock, check/await indexer completion
                 $this->print("Making sure no indexers are currently running");
                 if (!$this->sitcIndexMgmt->ensureIndexersNotRunning()) {
@@ -288,8 +295,7 @@ class Sinch {
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
                     throw new LocalizedException(__("There are indexers currently running, abandoning import"));
                 }
-
-                $this->addImportStatus('Start Import');
+                $this->addImportStatus('Start Import', true);
 
                 $this->print("========IMPORTING DATA IN $imType MODE========");
 
@@ -318,97 +324,121 @@ class Sinch {
                     Download::FILE_REASONS_TO_BUY
                 ];
 
-                $this->print("Upload Files...");
+                $this->addImportStatus('Download Files');
                 $this->downloadFiles($requiredFiles, $optionalFiles);
-                $this->addImportStatus('Upload Files');
+                $this->addImportStatus('Download Files', true);
 
-                $this->print("Parse Categories...");
-                $this->parseCategories();
                 $this->addImportStatus('Parse Categories');
+                $this->parseCategories();
+                $this->addImportStatus('Parse Categories', true);
 
-                //TODO: Remove unnecessary import status
-                $this->addImportStatus('Parse Category Features');
+                if ($this->virtualCategoryImport->haveRequiredFiles()) {
+                    $this->print("Parsing Virtual Categories");
+                    $this->virtualCategoryImport->parse();
+                }
 
-                $this->print("Parse Distributors...");
+                $this->addImportStatus('Parse Stock and Prices');
                 if (!$this->stockPriceImport->haveRequiredFiles()) {
                     $this->_setErrorMessage('Missing required files for Stock price import section, or some files failed validation');
                     throw new LocalizedException(__("Missing required files for stock price section"));
                 }
                 $this->stockPriceImport->parse();
-                $this->addImportStatus('Parse Distributors');
+                $this->addImportStatus('Parse Stock and Prices', true);
 
-                //TODO: Remove unnecessary import status
-                $this->addImportStatus('Parse EAN Codes');
-
-                $this->print("Parse Manufacturers...");
                 if ($this->brandImport->haveRequiredFiles()) {
+                    $this->addImportStatus('Parse Manufacturers');
                     $this->brandImport->parse();
+                    $this->addImportStatus('Parse Manufacturers', true);
                 }
-                $this->addImportStatus('Parse Manufacturers');
 
-                $this->print("Parse Related Products...");
-                $this->parseRelatedProducts();
                 $this->addImportStatus('Parse Related Products');
+                $this->parseRelatedProducts();
+                $this->addImportStatus('Parse Related Products', true);
 
-                $this->print("Parse Product Features...");
+
                 if ($this->attributesImport->haveRequiredFiles()) {
+                    $this->addImportStatus('Parse Product Features');
                     $this->attributesImport->parse();
+                    $this->addImportStatus('Parse Product Features', true);
                 } else {
                     $this->print("Missing required files for attributes import section, or downloaded files failed validation, skipping");
                 }
-                $this->addImportStatus('Parse Product Features');
 
-                $this->print("Parse Product Categories...");
+
+                $this->addImportStatus('Parse Product Categories');
                 $this->parseProductCategories();
+                $this->addImportStatus('Parse Product Categories', true);
 
-                $this->print("Parse Products...");
-                $this->parseProducts();
                 $this->addImportStatus('Parse Products');
+                $this->parseProducts();
+                $this->addImportStatus('Parse Products', true);
 
-                $this->print("Parse Pictures Gallery...");
-                $this->parseProductsPicturesGallery();
                 $this->addImportStatus('Parse Pictures Gallery');
+                $this->parseProductsPicturesGallery();
+                $this->addImportStatus('Parse Pictures Gallery', true);
 
-                $this->print("Parse Restricted Values...");
+
                 if ($this->attributesImport->haveRequiredFiles()) {
+                    $this->addImportStatus('Parse Restricted Values');
                     $this->attributesImport->applyAttributeValues();
+                    $this->addImportStatus('Parse Restricted Values', true);
                 }
-                $this->addImportStatus('Parse Restricted Values');
 
                 if ($this->bulletPointsImport->haveRequiredFiles()) {
-                    $this->print("Parsing Bullet points...");
+                    $this->addImportStatus('Parsing Bullet points');
                     $this->bulletPointsImport->parse();
-                    $this->print("Applying Bullet points...");
+                    $this->addImportStatus('Parsing Bullet points', true);
+                    $this->addImportStatus('Applying Bullet points');
                     $this->bulletPointsImport->apply();
+                    $this->addImportStatus('Applying Bullet points', true);
                 }
 
                 if ($this->familiesImport->haveRequiredFiles()) {
-                    $this->print("Parsing Families...");
+                    $this->addImportStatus('Parsing Families');
                     $this->familiesImport->parse();
-                    $this->print("Applying Families...");
+                    $this->addImportStatus('Parsing Families', true);
+                    $this->addImportStatus('Applying Families');
                     $this->familiesImport->apply();
+                    $this->addImportStatus('Applying Families', true);
                 }
 
                 if ($this->reasonsToBuyImport->haveRequiredFiles()) {
-                    $this->print("Parsing Reasons to Buy...");
+                    $this->addImportStatus('Parsing Reasons to Buy');
                     $this->reasonsToBuyImport->parse();
-                    $this->print("Applying Reasons to Buy...");
+                    $this->addImportStatus('Parsing Reasons to Buy', true);
+                    $this->addImportStatus('Applying Reasons to Buy');
                     $this->reasonsToBuyImport->apply();
+                    $this->addImportStatus('Applying Reasons to Buy', true);
                 }
 
-                $this->print("Parsing Product Release and EOL Dates...");
-                $this->datesImport->parse();
-                $this->print("Parsing Product Popularity Scores...");
-                $this->popularityImport->parse();
+                if ($this->datesImport->haveRequiredFiles()) {
+                    $this->addImportStatus('Parsing Product Release and EOL Dates');
+                    $this->datesImport->parse();
+                    $this->addImportStatus('Parsing Product Release and EOL Dates', true);
+                }
 
-                $this->print("Parse Stock And Prices...");
+                if ($this->popularityImport->haveRequiredFiles()) {
+                    $this->addImportStatus('Parsing Product Popularity Scores');
+                    $this->popularityImport->parse();
+                    $this->addImportStatus('Parsing Product Popularity Scores', true);
+                }
+
+                if ($this->reviewImport->haveRequiredFiles()) {
+                    $this->addImportStatus('Parse Reviews');
+                    $this->reviewImport->parse();
+                    $this->addImportStatus('Parse Reviews', true);
+                }
+
+                $this->addImportStatus('Parse Stock And Prices');
                 //Replaced parseStockAndPrices
                 $this->stockPriceImport->apply();
-                $this->addImportStatus('Parse Stock And Prices');
+                $this->addImportStatus('Parse Stock And Prices', true);
 
-                $this->print("Apply Account Group Price...");
+
                 if ($this->customerGroupPrice->haveRequiredFiles()) {
+                    $this->addImportStatus('Apply Account Group Price');
                     $this->customerGroupPrice->parse();
+                    $this->addImportStatus('Apply Account Group Price', true);
                 } else {
                     $this->print("Missing required files for account group price section, or downloaded files failed validation, skipping");
                 }
@@ -421,8 +451,9 @@ class Sinch {
 
                 if (!$ccCategoryDisable) {
                     if ($this->customerGroupCatsImport->haveRequiredFiles()) {
-                        $this->print("Parsing account group categories...");
+                        $this->addImportStatus('Parsing account group categories');
                         $this->customerGroupCatsImport->parse();
+                        $this->addImportStatus('Parsing account group categories', true);
                     } else {
                         $this->print("Missing required files for account group categories section, or downloaded files failed validation, skipping");
                     }
@@ -430,8 +461,9 @@ class Sinch {
                     $this->print("Skipping custom catalog categories as 'sinchimport/category_visibility/disable_import' is enabled");
                 }
 
-                $this->print("Applying UNSPSC values...");
+                $this->addImportStatus('Applying UNSPSC values');
                 $this->unspscImport->apply();
+                $this->addImportStatus('Applying UNSPSC values', true);
 
                 //Allow the CC product visibility import section to be skipped
                 $ccProductDisable = $this->scopeConfig->getValue(
@@ -441,8 +473,9 @@ class Sinch {
 
                 if (!$ccProductDisable) {
                     if ($this->customCatalogImport->haveRequiredFiles()) {
-                        $this->print("Processing Custom catalog restrictions...");
+                        $this->addImportStatus('Processing Custom catalog restrictions');
                         $this->customCatalogImport->parse();
+                        $this->addImportStatus('Processing Custom catalog restrictions', true);
                     } else {
                         $this->print("Missing required files for custom catalog section, or downloaded files failed validation, skipping");
                     }
@@ -450,47 +483,39 @@ class Sinch {
                     $this->print("Skipping custom catalog restrictions as 'sinchimport/product_visibility/disable_import' is enabled");
                 }
 
-                $this->print("Start generating category filters...");
-                $this->addImportStatus('Generate category filters');
-                $this->print("Finish generating category filters...");
-
                 try {
-                    $this->print("Running post import hooks");
+                    $this->addImportStatus('Post import hooks');
                     $this->_eventManager->dispatch(
                         'sinchimport_post_import',
                         [
                             'import_type' => 'FULL'
                         ]
                     );
-                    $this->print("Post import hooks complete");
+                    $this->addImportStatus('Post import hooks', true);
                 } catch (Exception $e) {
                     $this->print("Caught exception while running post import hooks: " . $e->getMessage());
                 }
 
                 if (!$indexingSeparately) {
-                    $this->print("Start indexing data...");
+                    $this->addImportStatus('Run indexing');
                     $this->_cleanCateoryProductFlatTable();
                     $this->runIndexer();
+                    $this->addImportStatus('Run indexing', true);
                 } else {
-                    $this->print("Bypass indexing data...");
+                    $this->addImportStatus('Invalidate indexes');
                     $this->invalidateIndexers();
+                    $this->addImportStatus('Invalidate indexes', true);
                 }
 
-                $this->print("Start indexing catalog url rewrites...");
+                $this->addImportStatus('Index catalog url rewrites');
                 $this->_reindexProductUrlKey();
-                $this->print("Finish indexing catalog url rewrites...");
+                $this->addImportStatus('Index catalog url rewrites', true);
 
-                $this->addImportStatus('Indexing data');
-                $this->print("Finish indexing data...");
-
-                $this->print("Start cleaning Sinch cache...");
+                $this->addImportStatus('Clean cache');
                 $this->runCleanCache();
-                $this->print("Finish cleaning Sinch cache...");
+                $this->addImportStatus('Clean cache', true);
 
-                $this->addImportStatus('Finish import', 1);
-
-
-                $this->print("========>FINISH SINCH IMPORT...");
+                $this->addImportStatus('Finish import', true);
             } catch (Exception $e) {
                 $this->_setErrorMessage($e);
                 $this->print("Error (" . gettype($e) . "):" . $e->getMessage());
@@ -504,14 +529,7 @@ class Sinch {
 
     private function initImportStatuses($type)
     {
-        $this->_doQuery("DROP TABLE IF EXISTS {$this->import_status_table}");
-        $this->_doQuery(
-            "CREATE TABLE {$this->import_status_table} (
-                id int(11) NOT NULL auto_increment PRIMARY KEY,
-                message varchar(50),
-                finished int(1) default 0
-            )"
-        );
+        $this->conn->query("TRUNCATE TABLE {$this->import_status_table}");
 
         $scheduledImportId = false;
         if ($this->import_run_type == 'MANUAL') {
@@ -670,18 +688,25 @@ class Sinch {
         $this->_log($message);
     }
 
-    private function addImportStatus($message, $finished = 0)
+    /**
+     * Print message along with completion state to the screen and to the status table
+     * @param string $message Message
+     * @param bool $finished Whether the status entry is complete
+     */
+    private function addImportStatus(string $message, bool $finished = false)
     {
+        $this->print("-- " . $message . ($finished ? " - Done" : ""));
         $this->conn->query(
             "INSERT INTO {$this->import_status_table} (message, finished)
-                    VALUES(:msg, :finished)",
+                    VALUES(:msg, :finished)
+                    ON DUPLICATE KEY UPDATE finished = VALUES(finished)",
             [":msg" => $message, ":finished" => $finished]
         );
         $this->conn->query(
             "UPDATE {$this->import_status_statistic_table} SET detail_status_import = :msg WHERE id = :importId",
             [":importId" => $this->current_import_status_statistic_id, ":msg" => $message]
         );
-        if ($finished == 1) {
+        if ($message == 'Finish Import' && $finished) {
             $this->conn->query(
                 "UPDATE {$this->import_status_statistic_table}
                         SET global_status_import = 'Successful',
@@ -740,102 +765,137 @@ class Sinch {
     }
 
     /**
-     * @return array Root category names, as determined by RootName
      * @throws LocalizedException
      */
-    private function parseCategories(): array
+    private function parseCategories(): void
     {
-        $imType = $this->_dataConf['replace_category'];
-        $parseFile = $this->dlHelper->getSavePath(Download::FILE_CATEGORIES);
-        $field_terminated_char = $this->field_terminated_char;
+        $this->imType = $this->_dataConf['replace_category'];
 
-        $this->imType = $imType;
-
-        if (filesize($parseFile)) {
-            $this->_log("Start parse " . Download::FILE_CATEGORIES);
-
-            $this->_getCategoryEntityTypeIdAndDefault_attribute_set_id();
-
-            $categories_temp = $this->getTableName(
-                'categories_temp'
-            );
-
-            $_categoryDefault_attribute_set_id
-                = $this->_categoryDefault_attribute_set_id;
-
-            $name_attrid = $this->dataHelper->getCategoryAttributeId('name');
-            $is_anchor_attrid = $this->dataHelper->getCategoryAttributeId('is_anchor');
-            $image_attrid = $this->dataHelper->getCategoryAttributeId('image');
-
-            $attr_url_key = $this->dataHelper->getCategoryAttributeId('url_key');
-            $attr_display_mode = $this->dataHelper->getCategoryAttributeId('display_mode');
-            $attr_is_active = $this->dataHelper->getCategoryAttributeId('is_active');
-            $attr_include_in_menu = $this->dataHelper->getCategoryAttributeId('include_in_menu');
-
-            $this->loadCategoriesTemp(
-                $categories_temp,
-                $parseFile,
-                $field_terminated_char
-            );
-            $rootCatNames = $this->getDistinctRootCatNames();
-
-            if (!$this->check_loaded_data($parseFile, $categories_temp)) {
-                $this->_setErrorMessage(
-                    'The Stock In The Channel data files do not appear to be in the correct format. Check file'
-                    . $parseFile
-                );
-                throw new LocalizedException(__("Import files in invalid format"));
-            }
-
-            //TODO: Made multistore default here with =
-            if (count($rootCatNames) >= 1) { // multistore logic
-
-                $this->print("==========MULTI STORE LOGIC==========");
-
-                switch ($imType) {
-                    case "REWRITE":
-                        $this->rewriteMultistoreCategories(
-                            $rootCatNames,
-                            $_categoryDefault_attribute_set_id,
-                            $imType,
-                            $name_attrid,
-                            $attr_display_mode,
-                            $attr_url_key,
-                            $attr_include_in_menu,
-                            $attr_is_active,
-                            $image_attrid,
-                            $is_anchor_attrid
-                        );
-                        break;
-                    case "MERGE":
-                        $this->mergeMultistoreCategories(
-                            $rootCatNames,
-                            $_categoryDefault_attribute_set_id,
-                            $imType,
-                            $name_attrid,
-                            $attr_display_mode,
-                            $attr_url_key,
-                            $attr_include_in_menu,
-                            $attr_is_active,
-                            $image_attrid,
-                            $is_anchor_attrid
-                        );
-                        break;
-                    default:
-                        // do anything
-                }
-            } else {
-                $this->print("====================>ERROR");
-            }
-
-            $this->_log("Finish parse " . Download::FILE_CATEGORIES);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
+        if (!$this->dlHelper->validateFile(Download::FILE_CATEGORIES)) {
+            $this->_log(Download::FILE_CATEGORIES . " failed validation");
+            throw new LocalizedException(__(Download::FILE_CATEGORIES . ' failed validation'));
         }
-        $this->_log(' ');
+        $this->_log("Start parse " . Download::FILE_CATEGORIES);
+
+        $this->_getCategoryEntityTypeIdAndDefault_attribute_set_id();
+
+        $_categoryDefault_attribute_set_id
+            = $this->_categoryDefault_attribute_set_id;
+
+        $name_attrid = $this->dataHelper->getCategoryAttributeId('name');
+        $is_anchor_attrid = $this->dataHelper->getCategoryAttributeId('is_anchor');
+        $image_attrid = $this->dataHelper->getCategoryAttributeId('image');
+
+        $attr_url_key = $this->dataHelper->getCategoryAttributeId('url_key');
+        $attr_display_mode = $this->dataHelper->getCategoryAttributeId('display_mode');
+        $attr_is_active = $this->dataHelper->getCategoryAttributeId('is_active');
+        $attr_include_in_menu = $this->dataHelper->getCategoryAttributeId('include_in_menu');
+
+        $categories_temp = $this->getTableName('categories_temp');
+        $this->_doQuery("DROP TABLE IF EXISTS $categories_temp");
+
+        $this->_doQuery(
+            "CREATE TABLE $categories_temp (
+                    store_category_id              INT(11),
+                    parent_store_category_id       INT(11),
+                    category_name                  VARCHAR(50),
+                    order_number                   INT(11),
+                    include_in_menu                TINYINT(1) NOT NULL DEFAULT 1,
+                    products_within_sub_categories INT(11),
+                    products_within_this_category  INT(11),
+                    categories_image               VARCHAR(255),
+                    level                          INT(10) NOT NULL DEFAULT 0,
+                    children_count                 INT(11) NOT NULL DEFAULT 0,
+                    UNSPSC                         INT(10) DEFAULT NULL,
+                    RootName                       INT(10) DEFAULT NULL,
+                    MainImageURL                   VARCHAR(255),
+                    MetaTitle                      TEXT,
+                    MetaDescription                TEXT,
+                    Description                    TEXT,
+                    VirtualCategory                VARCHAR(255) DEFAULT NULL,
+                    is_anchor                      TINYINT(1) NOT NULL DEFAULT 1,
+                    KEY(store_category_id),
+                    KEY(parent_store_category_id)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+        );
+
+        //ID|ParentID|Name|Order|IsHidden|ProductCount|SubCategoryProductCount|ThumbImageURL|NestLevel|SubCategoryCount|UNSPSC|TypeID|MainImageURL|MetaTitle|MetaDescription|Description|VirtualCategory
+        $this->_doQuery(
+            "LOAD DATA LOCAL INFILE :categoriesCsv
+                INTO TABLE $categories_temp
+                FIELDS TERMINATED BY '{$this->field_terminated_char}'
+                OPTIONALLY ENCLOSED BY '\"'
+                LINES TERMINATED BY \"\r\n\"
+                IGNORE 1 LINES
+                (
+                    store_category_id,
+                    parent_store_category_id,
+                    category_name,
+                    order_number,
+                    @hidden,
+                    products_within_this_category,
+                    products_within_sub_categories,
+                    categories_image,
+                    @level,
+                    children_count,
+                    UNSPSC,
+                    RootName,
+                    MainImageURL,
+                    MetaTitle,
+                    MetaDescription,
+                    Description,
+                    VirtualCategory
+                )
+                SET include_in_menu = IF(UCASE(@hidden) = 'TRUE', 0, 1),
+                    level = IF(@level >= 0, @level + 2, @level)",
+            [":categoriesCsv" => $this->dlHelper->getSavePath(Download::FILE_CATEGORIES)]
+        );
+
+        $rootCatNames = $this->getDistinctRootCatNames();
+
+        //TODO: Made multistore default here with =
+        if (count($rootCatNames) >= 1) { // multistore logic
+
+            $this->print("==========MULTI STORE LOGIC==========");
+
+            switch ($this->imType) {
+                case "REWRITE":
+                    $this->rewriteMultistoreCategories(
+                        $rootCatNames,
+                        $_categoryDefault_attribute_set_id,
+                        $name_attrid,
+                        $attr_display_mode,
+                        $attr_url_key,
+                        $attr_include_in_menu,
+                        $attr_is_active,
+                        $image_attrid,
+                        $is_anchor_attrid
+                    );
+                    break;
+                case "MERGE":
+                    $this->mergeMultistoreCategories(
+                        $rootCatNames,
+                        $_categoryDefault_attribute_set_id,
+                        $name_attrid,
+                        $attr_display_mode,
+                        $attr_url_key,
+                        $attr_include_in_menu,
+                        $attr_is_active,
+                        $image_attrid,
+                        $is_anchor_attrid
+                    );
+                    break;
+                default:
+                    // do anything
+            }
+        } else {
+            $this->print("No root categories found");
+            throw new LocalizedException(__('Did not find any root categories'));
+        }
+
+        $this->_log("Finish parse " . Download::FILE_CATEGORIES);
         $this->_set_default_rootCategory();
 
-        return $rootCatNames;
     }
 
     private function _getCategoryEntityTypeIdAndDefault_attribute_set_id()
@@ -859,60 +919,6 @@ class Sinch {
         }
     }
 
-    private function loadCategoriesTemp(
-        $categories_temp,
-        $parseFile,
-        $field_terminated_char
-    )
-    {
-        $this->_doQuery("DROP TABLE IF EXISTS $categories_temp");
-
-        $this->_doQuery(
-            "
-            CREATE TABLE $categories_temp
-                (
-                    store_category_id              INT(11),
-                    parent_store_category_id       INT(11),
-                    category_name                  VARCHAR(50),
-                    order_number                   INT(11),
-                    is_hidden                      VARCHAR(10),
-                    products_within_sub_categories INT(11),
-                    products_within_this_category  INT(11),
-                    categories_image               VARCHAR(255),
-                    level                          INT(10) NOT NULL DEFAULT 0,
-                    children_count                 INT(11) NOT NULL DEFAULT 0,
-                    UNSPSC                         INT(10) DEFAULT NULL,
-                    RootName                       INT(10) DEFAULT NULL,
-                    MainImageURL                   VARCHAR(255),
-                    MetaTitle                      TEXT,
-                    MetaDescription                TEXT,
-                    Description                    TEXT,
-                    KEY(store_category_id),
-                    KEY(parent_store_category_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
-        );
-
-        $this->_doQuery(
-            "
-            LOAD DATA LOCAL INFILE '$parseFile' INTO TABLE $categories_temp
-            FIELDS TERMINATED BY '$field_terminated_char' OPTIONALLY ENCLOSED BY '\"' LINES TERMINATED BY \"\r\n\" IGNORE 1 LINES"
-        );
-
-        $this->_doQuery(
-            "ALTER TABLE $categories_temp ADD COLUMN include_in_menu TINYINT(1) NOT NULL DEFAULT 1"
-        );
-        $this->_doQuery(
-            "UPDATE $categories_temp SET include_in_menu = 0 WHERE UCASE(is_hidden)='TRUE'"
-        );
-
-        $this->_doQuery(
-            "ALTER TABLE $categories_temp ADD COLUMN is_anchor TINYINT(1) NOT NULL DEFAULT 1"
-        );
-        $this->_doQuery(
-            "UPDATE $categories_temp SET level = (level+2) WHERE level >= 0"
-        );
-    }
-
     private function getDistinctRootCatNames(): array
     {
         $categories_temp = $this->getTableName('categories_temp');
@@ -928,30 +934,6 @@ class Sinch {
         }
 
         return $existsCoincidence;
-    }
-
-    private function check_loaded_data($file, $table): bool
-    {
-        $cnt_strings_in_file = $this->file_strings_count($file);
-        $cnt_rows_int_table = $this->table_rows_count($table);
-        $persent_cnt_strings_in_file = $cnt_strings_in_file / 10;
-        if ($cnt_rows_int_table > $persent_cnt_strings_in_file) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private function file_strings_count($parseFile): int
-    {
-        return count(file($parseFile));
-    }
-
-    private function table_rows_count($table): int
-    {
-        return (int)$this->conn->fetchOne(
-            "SELECT COUNT(*) FROM $table"
-        );
     }
 
     private function tableHasData($table): bool
@@ -1036,7 +1018,6 @@ class Sinch {
     private function rewriteMultistoreCategories(
         $coincidence,
         $_categoryDefault_attribute_set_id,
-        $imType,
         $name_attrid,
         $attr_display_mode,
         $attr_url_key,
@@ -1044,9 +1025,7 @@ class Sinch {
         $attr_is_active,
         $image_attrid,
         $is_anchor_attrid
-    )
-    {
-
+    ){
         $this->print("Rewrite Categories...");
 
         $this->print("    --Truncate all categories...");
@@ -1070,14 +1049,12 @@ class Sinch {
 
         $this->print("    --Map SINCH categories...");
         $this->mapSinchCategories(
-            $imType,
             $name_attrid
         );
 
         $this->print("    --Add category data...");
         $this->addCategoryData(
             $_categoryDefault_attribute_set_id,
-            $imType,
             $name_attrid,
             $attr_is_active,
             $attr_include_in_menu,
@@ -1193,7 +1170,7 @@ class Sinch {
     }
 
     //TODO: Remove pointless attribute ids passed as args
-    private function mapSinchCategories($imType, $name_attrid, $mapping_again = false)
+    private function mapSinchCategories($name_attrid, $mapping_again = false)
     {
         $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
         $sinch_categories_mapping_temp = $this->getTableName('sinch_categories_mapping_temp');
@@ -1216,7 +1193,7 @@ class Sinch {
         );
 
         // backup Category ID in REWRITE mode
-        if ($imType == "REWRITE" || (self::UPDATE_CATEGORY_DATA && $imType == "MERGE")) {
+        if ($this->imType == "REWRITE" || (self::UPDATE_CATEGORY_DATA && $this->imType == "MERGE")) {
             if ($mapping_again) {
                 $this->_doQuery(
                     "INSERT IGNORE INTO $sinch_categories_mapping_temp
@@ -1384,7 +1361,7 @@ class Sinch {
         }
 
         // added for mapping new sinch categories in merge && !UPDATE_CATEGORY_DATA mode
-        if ((self::UPDATE_CATEGORY_DATA && $imType == "MERGE") || ($imType == "REWRITE")) {
+        if ((self::UPDATE_CATEGORY_DATA && $this->imType == "MERGE") || ($this->imType == "REWRITE")) {
             $where = '';
         } else {
             $where = 'WHERE cce.parent_id = 0 AND cce.store_category_id IS NOT NULL';
@@ -1439,7 +1416,6 @@ class Sinch {
     //TODO: Remove pointless attribute ids passed as args
     private function addCategoryData(
         $_categoryDefault_attribute_set_id,
-        $imType,
         $name_attrid,
         $attr_is_active,
         $attr_include_in_menu,
@@ -1499,7 +1475,7 @@ class Sinch {
                 ) $onDuplicate"
         );
 
-        $this->mapSinchCategories($imType, $name_attrid, true);
+        $this->mapSinchCategories($name_attrid, true);
 
         $categories = $this->_doQuery(
             "SELECT entity_id, parent_id FROM $catalog_category_entity ORDER BY parent_id"
@@ -1518,7 +1494,7 @@ class Sinch {
         }
 
         //TODO: Remove UPDATE_CATEGORY_DATA?
-        if ($imType == "REWRITE" || self::UPDATE_CATEGORY_DATA) {
+        if ($this->imType == "REWRITE" || self::UPDATE_CATEGORY_DATA) {
             $this->_doQuery(
                 "INSERT INTO $catalog_category_entity_int (attribute_id, store_id, entity_id, value)
                     (
@@ -1716,7 +1692,7 @@ class Sinch {
             );
         }
 
-        if($imType == 'MERGE') {
+        if($this->imType == 'MERGE') {
             $this->deleteOldSinchCategoriesFromShopMerge();
         } else {
             $this->deleteOldSinchCategories();
@@ -1730,7 +1706,6 @@ class Sinch {
     private function mergeMultistoreCategories(
         $coincidence,
         $_categoryDefault_attribute_set_id,
-        $imType,
         $name_attrid,
         $attr_display_mode,
         $attr_url_key,
@@ -1752,13 +1727,11 @@ class Sinch {
         );
 
         $this->mapSinchCategories(
-            $imType,
             $name_attrid
         );
 
         $this->addCategoryData(
             $_categoryDefault_attribute_set_id,
-            $imType,
             $name_attrid,
             $attr_is_active,
             $attr_include_in_menu,
@@ -3461,6 +3434,9 @@ class Sinch {
         }
     }
 
+    /**
+     * @throws LocalizedException
+     */
     public function startCronStockPriceImport()
     {
         $this->_log("Start stock price import from cron");
@@ -3495,6 +3471,7 @@ class Sinch {
                 );
                 $this->_doQuery("SELECT GET_LOCK('sinchimport_{$current_vhost}', 30)");
 
+                $this->addImportStatus('Stock Price Start Import');
                 //Once we hold the import lock, check/await indexer completion
                 $this->print("Making sure no indexers are currently running");
                 if (!$this->sitcIndexMgmt->ensureIndexersNotRunning()) {
@@ -3502,13 +3479,11 @@ class Sinch {
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
                     throw new LocalizedException(__("There are indexers currently running, abandoning import"));
                 }
-
-                $this->addImportStatus('Stock Price Start Import');
+                $this->addImportStatus('Stock Price Start Import', true);
 
                 $this->print("========IMPORTING STOCK AND PRICE========");
 
-                $this->print("Upload Files...");
-
+                $this->addImportStatus('Stock Price Download Files');
                 $requiredFiles = [
                     Download::FILE_STOCK_AND_PRICES,
                     Download::FILE_DISTRIBUTORS,
@@ -3522,17 +3497,20 @@ class Sinch {
                 ];
 
                 $this->downloadFiles($requiredFiles, $optionalFiles);
-                $this->addImportStatus('Stock Price Upload Files');
+                $this->addImportStatus('Stock Price Download Files', true);
 
-                $this->print("Parse Stock And Prices...");
+                $this->addImportStatus('Parse Stock And Prices');
                 //Replaces parseStockAndPrices
                 $this->stockPriceImport->parse();
+                $this->addImportStatus('Parse Stock and Prices', true);
+                $this->addImportStatus('Apply Stock and Prices');
                 $this->stockPriceImport->apply();
-                $this->addImportStatus('Stock Price Parse Products');
+                $this->addImportStatus('Apply Stock and Prices', true);
 
-                $this->print("Apply Account Group Price...");
                 if ($this->customerGroupPrice->haveRequiredFiles()) {
+                    $this->addImportStatus('Apply Account Group Price');
                     $this->customerGroupPrice->parse();
+                    $this->addImportStatus('Apply Account Group Price', true);
                 } else {
                     $this->print("Missing required files for account group price section, or downloaded files failed validation, skipping");
                 }
@@ -3545,8 +3523,9 @@ class Sinch {
 
                 if (!$ccCategoryDisable) {
                     if ($this->customerGroupCatsImport->haveRequiredFiles()) {
-                        $this->print("Parsing account group categories...");
+                        $this->addImportStatus('Parse Account Group Categories');
                         $this->customerGroupCatsImport->parse();
+                        $this->addImportStatus('Parse Account Group Categories', true);
                     } else {
                         $this->print("Missing required files for account group categories section, or downloaded files failed validation, skipping");
                     }
@@ -3562,8 +3541,9 @@ class Sinch {
 
                 if (!$ccProductDisable) {
                     if ($this->customCatalogImport->haveRequiredFiles()) {
-                        $this->print("Processing Custom catalog restrictions...");
+                        $this->addImportStatus('Processing Custom Catalog restrictions');
                         $this->customCatalogImport->parse();
+                        $this->addImportStatus('Processing Custom Catalog restrictions', true);
                     } else {
                         $this->print("Missing required files for custom catalog section, or downloaded files failed validation, skipping");
                     }
@@ -3572,27 +3552,23 @@ class Sinch {
                 }
 
                 try {
-                    $this->print("Running post import hooks");
+                    $this->addImportStatus('Post import hooks');
                     $this->_eventManager->dispatch(
                         'sinchimport_post_import',
                         [
                             'import_type' => 'PRICE STOCK'
                         ]
                     );
-                    $this->print("Post import hooks complete");
+                    $this->addImportStatus('Post import hooks');
                 } catch (Exception $e) {
                     $this->print("Caught exception while running post import hooks: " . $e->getMessage());
                 }
 
-                //Dead status (actually handled by StockPrice and IndexManagement now)
-                $this->addImportStatus('Stock Price Indexing data');
-
-                $this->print("Start cleaning Sinch cache...");
+                $this->addImportStatus('Clean cache');
                 $this->runCleanCache();
-                $this->print("Finish cleaning Sinch cache...");
+                $this->addImportStatus('Clean cache', true);
 
-                $this->addImportStatus('Stock Price Finish import', 1);
-
+                $this->addImportStatus('Finish import', true);
                 $this->print("========>FINISH STOCK & PRICE SINCH IMPORT");
 
                 $this->_doQuery("SELECT RELEASE_LOCK('sinchimport_{$current_vhost}')");

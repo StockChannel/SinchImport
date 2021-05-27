@@ -38,7 +38,9 @@ class Mapping {
      *
      * @param \Smile\ElasticsuiteCore\Api\Index\MappingInterface $_subject
      * @param float[] $result
-     *
+     * @param null $analyzer
+     * @param null $defaultField
+     * @param int $boost
      * @return float[]
      */
     public function afterGetWeightedSearchProperties(MappingInterface $_subject, $result, $analyzer = null, $defaultField = null, $boost = 1)

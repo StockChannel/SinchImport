@@ -11,23 +11,15 @@ abstract class AbstractImportSection {
     const LOG_PREFIX = "AbstractImportSection: ";
     const LOG_FILENAME = "unknown";
 
-    /**
-     * @var ResourceConnection $resourceConn
-     */
-    protected $resourceConn;
-    /**
-     * @var \Zend\Log\Logger
-     */
-    protected $logger;
-    /**
-     * @var ConsoleOutput
-     */
-    protected $output;
-    /** @var Download */
-    protected $dlHelper;
+    protected ResourceConnection $resourceConn;
+    protected \Zend\Log\Logger $logger;
+    protected ConsoleOutput $output;
+    protected Download $dlHelper;
 
     /** @var mixed */
     protected $timingStep = [];
+
+    private string $statusTable;
 
     public function __construct(
         ResourceConnection $resourceConn,
@@ -42,6 +34,8 @@ abstract class AbstractImportSection {
         $this->logger = $logger;
         $this->output = $output;
         $this->dlHelper = $downloadHelper;
+
+        $this->statusTable = $this->getTableName('sinch_import_status');
     }
 
     /**
@@ -92,6 +86,11 @@ abstract class AbstractImportSection {
             'name' => $name,
             'end' => null
         ];
+        //Insert into the import status table so the admin panel can see the import progressing
+        $this->getConnection()->query(
+            "INSERT INTO {$this->statusTable} (message, finished) VALUES(:msg, 0)",
+            [":msg" => static::LOG_PREFIX . $name]
+        );
     }
 
     /**
@@ -101,7 +100,13 @@ abstract class AbstractImportSection {
     protected function endTimingStep()
     {
         $now = $this->microtime_float();
-        $this->timingStep[count($this->timingStep) - 1]['end'] = $now;
+        $endedStepIdx = count($this->timingStep) - 1;
+        $this->timingStep[$endedStepIdx]['end'] = $now;
+        $this->getConnection()->query(
+            "INSERT INTO {$this->statusTable} (message, finished) VALUES(:msg, 1)
+                    ON DUPLICATE KEY UPDATE finished = VALUES(finished)",
+            [":msg" => static::LOG_PREFIX . $this->timingStep[$endedStepIdx]['name']]
+        );
     }
 
     /**

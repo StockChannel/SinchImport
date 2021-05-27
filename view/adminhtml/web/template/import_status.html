@@ -1,19 +1,34 @@
-<table class='data-table history import-history' data-role="sinchimport-status">
+<table class='data-table history import-history'>
     <thead>
         <tr>
             <th style='text-align:left;padding:15px 5px;background-color:#ccc;font-size:12pt;'>Step</th>
             <th style='text-align:left;padding:15px 5px;background-color:#ccc;font-size:12pt;'>Status</th>
         </tr>
     </thead>
-    <tbody id='sinchimport_status_table_body' data-bind="foreach: statuses">
+    <!-- ko if: statuses().length >= 1 -->
+    <tbody data-bind="foreach: statuses">
         <tr class="data-row">
             <td data-bind="text: message"></td>
-            <td data-bind="if: finished">
-                <img data-bind="attr: { src: $component.completeIcon }" alt="Complete" />
-            </td>
-            <td data-bind="if: !finished">
-                <img data-bind="attr: { src: $component.runningIcon }" alt="Running" />
+            <td>
+                <!-- ko if: finished != 0 -->
+                <img data-bind="attr: { src: $parent.completeIcon }" alt="Complete" />
+                <!-- /ko -->
+                <!-- ko if: finished == 0 -->
+                <img data-bind="attr: { src: $parent.runningIcon }" alt="Running" />
+                <!-- /ko -->
             </td>
         </tr>
     </tbody>
+    <!-- /ko -->
+    <!-- ko if: statuses().length == 0 -->
+    <tbody><tr><td colspan="2">There is not currently an import running</td></tr></tbody>
+    <!-- /ko -->
 </table>
+<style>
+    .import-history td {
+        padding: 10px !important;
+    }
+    .import-history th {
+        padding: 10px !important;
+    }
+</style>

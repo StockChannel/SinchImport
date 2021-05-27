@@ -31,6 +31,7 @@ class Download extends AbstractHelper
     public const FILE_RELATED_PRODUCTS = 'RelatedProducts.csv';
     public const FILE_RESTRICTED_VALUES = 'RestrictedValues.csv';
     public const FILE_STOCK_AND_PRICES = 'StockAndPrices.csv';
+    public const FILE_REVIEWS = 'Reviews.csv';
 
     private const EXPECTED_HEADER = [
         self::FILE_ACCOUNT_GROUP_CATEGORIES => 'AccountGroupID|CategoryID',
@@ -38,7 +39,7 @@ class Download extends AbstractHelper
         self::FILE_ACCOUNT_GROUPS => 'ID|Name',
         self::FILE_BRANDS => 'ID|Name',
         self::FILE_BULLET_POINTS => 'ID|No|Value',
-        self::FILE_CATEGORIES => 'ID|ParentID|Name|Order|IsHidden|ProductCount|SubCategoryProductCount|ThumbImageURL|NestLevel|SubCategoryCount|UNSPSC|TypeID|MainImageURL|MetaTitle|MetaDescription|Description',
+        self::FILE_CATEGORIES => 'ID|ParentID|Name|Order|IsHidden|ProductCount|SubCategoryProductCount|ThumbImageURL|NestLevel|SubCategoryCount|UNSPSC|TypeID|MainImageURL|MetaTitle|MetaDescription|Description|VirtualCategory',
         self::FILE_CATEGORIES_FEATURES => 'ID|CategoryID|Name|Order',
         self::FILE_DISTRIBUTORS => 'ID|Name',
         self::FILE_DISTRIBUTORS_STOCK => 'ProductID|DistributorID|Stock',
@@ -52,7 +53,8 @@ class Download extends AbstractHelper
         self::FILE_REASONS_TO_BUY => 'ID|No|Value',
         self::FILE_RELATED_PRODUCTS => 'ProductID|RelatedProductID',
         self::FILE_RESTRICTED_VALUES => 'ID|CategoryFeatureID|Text|Order',
-        self::FILE_STOCK_AND_PRICES => 'ProductID|Stock|Price|Cost'
+        self::FILE_STOCK_AND_PRICES => 'ProductID|Stock|Price|Cost',
+        self::FILE_REVIEWS => 'ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageUrl|AwardImage80Url|AwardImage200Url'
     ];
 
     /** @var ConsoleOutput $output */

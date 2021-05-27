@@ -131,7 +131,7 @@ class QueryBuilder
                 [
                     'functions' => [
                         FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
-                            'field' => '', //TODO: Determine field name
+                            'field' => 'sinch_score', //TODO: Seems like field names for non-option int attributes are just their attribute code, confirm
                             'factor' => $this->helper->popularityBoostFactor(),
                             'modifier' => 'none'
                         ]

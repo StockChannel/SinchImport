@@ -8,14 +8,23 @@ class ImportStatus extends Field
 {
     protected function _getElementHtml(AbstractElement $element): string
     {
-        return '<table class="data-table history import-history" data-role="sinchimport-status"></table>
+        return '<div id="sinchimport-status" data-bind="scope:\'import_status\'"><!-- ko template: getTemplate() --><!-- /ko --></div>
 <script type="text/x-magento-init">
     {
-        "[data-role=sinchimport-status]": {
-            "SITC_Sinchimport/js/import_status": {
-                "completeIcon": "' . $this->getViewFileUrl('SITC_Sinchimport::images/import_complete.gif') . '",
-                "runningIcon": "'. $this->getViewFileUrl('SITC_Sinchimport::images/ajax_running.gif'). '",
-                "updateURL": "' . $this->getUrl('sinchimport/ajax/updateStatus') . '"
+        "#sinchimport-status": {
+            "Magento_Ui/js/core/app": {
+                "components": {
+                    "import_status": {
+                        "component": "SITC_Sinchimport/js/import_status",
+                        "displayArea": "import_status",
+                        "config": {
+                            "template": "SITC_Sinchimport/import_status",
+                            "completeIcon": "' . $this->getViewFileUrl('SITC_Sinchimport::images/import_complete.gif') . '",
+                            "runningIcon": "'. $this->getViewFileUrl('SITC_Sinchimport::images/ajax_running.gif'). '",
+                            "updateURL": "' . $this->getUrl('sinchimport/ajax/updateStatus') . '"
+                        }
+                    }
+                }
             }
         }
     }

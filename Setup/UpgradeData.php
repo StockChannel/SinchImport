@@ -2,14 +2,17 @@
 
 namespace SITC\Sinchimport\Setup;
 
+use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\Product;
 use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
 use Magento\Eav\Setup\EavSetup;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
+use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Setup\UpgradeDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
+use Zend_Validate_Exception;
 
 /**
  * @codeCoverageIgnore
@@ -163,6 +166,10 @@ class UpgradeData implements UpgradeDataInterface
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'note', "Enter a comma separated list of Account Group IDs. An exclamation mark before the group ID negates the match");
     }
 
+    /**
+     * @throws Zend_Validate_Exception
+     * @throws LocalizedException
+     */
     private function nileUpgrade(EavSetup $eavSetup)
     {
         //Add attributes for new features from the nile format
@@ -446,6 +453,32 @@ class UpgradeData implements UpgradeDataInterface
                 'filterable' => false,
                 'comparable' => false,
                 'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Virtual Category (category attribute)
+        $eavSetup->addAttribute(
+            Category::ENTITY,
+            'sinch_virtual_category',
+            [
+                'label' => 'Virtual Category',
+                'note' => 'Virtual category that products within this category can be also be categorized as',
+                'type' => 'int',
+                'input' => 'select',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => true,
+                'comparable' => false,
+                'visible_on_front' => false,
                 'visible_in_advanced_search' => false,
                 'unique' => false,
                 'group' => 'General'

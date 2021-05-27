@@ -4,7 +4,7 @@
   "type": "magento2-module",
   "version": "3.1.4",
   "require": {
-    "php": ">=7.3.0",
+    "php": ">=7.4.0",
     "ext-ftp": "*",
     "ext-json": "*",
     "ext-pdo": "*",
@@ -15,6 +15,7 @@
     "magento/module-indexer": ">=100.2.0",
     "magento/module-inventory-api": ">=1.0.0",
     "magento/module-store": ">=100.2.2",
+    "magento/module-ui": ">=101.0.0",
     "smile/elasticsuite": "^2.10.0"
   },
   "require-dev": {
