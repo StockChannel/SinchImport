@@ -8,9 +8,6 @@ use SITC\Sinchimport\Helper\Data;
 
 class Mapping {
 
-    const CATEGORY_SEARCH_FIELD = 'category.name';
-    private $categorySearchWeight;
-
     const BRAND_SEARCH_FIELD = 'option_text_manufacturer';
     private $brandSearchWeight;
 
@@ -21,15 +18,12 @@ class Mapping {
     private $helper;
 
 
-
-
     public function __construct(
         ContextInterface $searchContext,
         Data $helper
     ){
         $this->searchContext = $searchContext;
         $this->helper = $helper;
-        $this->categorySearchWeight = $this->helper->getStoreConfig('sinchimport/search/category_field_search_weight');
         $this->brandSearchWeight = $this->helper->getStoreConfig('sinchimport/search/brand_field_search_weight');
     }
 
@@ -48,13 +42,10 @@ class Mapping {
         if (empty($this->searchContext->getCurrentSearchQuery())) {
             return $result;
         }
-        $catMapping = [ 
-            self::CATEGORY_SEARCH_FIELD => $boost * $this->categorySearchWeight
-        ];
         $brandMapping = [
             self::BRAND_SEARCH_FIELD => $boost * $this->brandSearchWeight
         ];
-        $result = array_merge($result, $catMapping, $brandMapping);
+        $result = array_merge($result, $brandMapping);
         
         return $result;
     }
