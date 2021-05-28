@@ -9,6 +9,8 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\Response\Http as HttpResponse;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Module\Dir;
+use Magento\Framework\Setup\SchemaSetupInterface;
 use SITC\Sinchimport\Helper\Data;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
@@ -20,10 +22,10 @@ use Zend\Log\Writer\Stream;
 class QueryBuilder
 {
 
-	const PRICE_REGEXP = "/(?(DEFINE)(?<price>[0-9]+(?:.[0-9]+)?)(?<cur>(?:\p{Sc}|[A-Z]{3})\s?))(?<query>.+?)\s+(?J:(?:below|under|(?:cheaper|less)\sthan)\s+(?&cur)?(?<below>(?&price))|(?:between|from)?\s*(?&cur)?(?<above>(?&price))\s*(?:and|to|-)\s*(?&cur)?(?<below>(?&price)))/";
+	const PRICE_REGEXP = "/(?(DEFINE)(?<price>[0-9]+(?:.[0-9]+)?)(?<cur>(?:\p{Sc}|[A-Z]{3})\s?))(?<query>.+?)\s+(?J:(?:below|under|(?:cheaper|less)\sthan)\s+(?&cur)?(?<below>(?&price))|(?:between|from)?\s*(?&cur)?(?<above>(?&price))\s*(?:and|to|-)\s*(?&cur)?(?<below>(?&price)))/u";
 
 	/** @var CategoryRepositoryInterface */
-	private $categoryRespository;
+	private $categoryRepository;
 	/** @var HttpResponse */
 	private $response;
 	/** @var Logger */
@@ -49,7 +51,7 @@ class QueryBuilder
 
 
 	public function __construct(
-		CategoryRepositoryInterface $categoryRespository,
+		CategoryRepositoryInterface $categoryRepository,
 		HttpResponse $response,
 		ResourceConnection $resourceConnection,
 		Data $helper,
@@ -58,7 +60,7 @@ class QueryBuilder
 		Index $thesaurus
 	)
 	{
-		$this->categoryRespository = $categoryRespository;
+		$this->categoryRepository = $categoryRepository;
 		$this->response = $response;
 		$writer = new Stream(BP . '/var/log/joe_search_stuff.log');
 		$this->logger = new Logger();
@@ -110,7 +112,8 @@ class QueryBuilder
 
 		$brandName = $this->isBrandName(array_merge($queryTokens, $doubleTokens));
 		if (!empty($brandName)) {
-			$queryText = str_ireplace("{$brandName} ", '', $queryText);
+			//Trim query text to ensure the category matches
+			$queryText = trim(str_ireplace("{$brandName}", '', $queryText));
 		}
 
 		$pluralQueryText = $queryText . 's';
@@ -120,6 +123,13 @@ class QueryBuilder
 			array_keys($this->thesaurus->getQueryRewrites($containerConfig, $queryText)),
 			array_keys($this->thesaurus->getQueryRewrites($containerConfig, $pluralQueryText))
 		)));
+		
+
+		//Pluralise each of the synonyms in thesaurus to prevent having to add plural versions to dictionary
+		foreach ($queryVariants as $queryVariant) {
+			$queryVariants[] = $queryVariant . 's';
+		}
+		$this->logger->info($queryVariants);
 
 		//If category match is successful return early
 		if ($this->checkCategoryMatch($containerConfig, $queryVariants, $priceFilter, $brandName)) {
@@ -158,20 +168,6 @@ class QueryBuilder
 
 			$should[] = $this->queryFactory->create('sitcPriceRangeQuery',
 				['bounds' => $bounds, 'account_group' => $groupId]);
-
-//			return $this->queryFactory->create(
-//				QueryInterface::TYPE_BOOL,
-//				[
-//					'must' => [$originalResult],
-//					'should' => [
-//						$this->queryFactory->create(
-//							'sitcPriceRangeQuery',
-//							['bounds' => $bounds, 'account_group' => $groupId]
-//						)
-//					],
-//					'minimumShouldMatch' => $this->priceFilterMode ? 1 : 0
-//				]
-//			);
 		}
 
 
@@ -223,7 +219,6 @@ class QueryBuilder
 	{
 		$start = microtime(true);
 
-		//Process thesaurus rewrites for our query
 		$inClause = implode(",", array_fill(0, count($queries), '?'));
 
 		$catId = $this->connection->fetchOne(
@@ -241,12 +236,13 @@ class QueryBuilder
 				$filterParams = "?price={$priceFilter['above']}-{$priceFilter['below']}";
 			}
 
+			//Check if brand name was included in query and apply filter if true
 			if (!empty($brandFilter)) {
 				$filterParams .= (empty($filterParams) ? "?" : "&") . "manufacturer=" . $brandFilter;
 			}
 
 			try {
-				$category = $this->categoryRespository->get((int)$catId);
+				$category = $this->categoryRepository->get((int)$catId);
 				$url = $category->getUrl() . $filterParams;
 
 				$this->response->setRedirect($url)->sendResponse();

@@ -1,8 +1,19 @@
 <?php
 namespace SITC\Sinchimport\Helper;
 
+use Magento\Framework\Module\Dir;
+use Magento\Framework\Module\Dir\Reader;
+use Magento\Framework\Setup\SchemaSetupInterface;
+
 class Data extends \Magento\Framework\App\Helper\AbstractHelper
 {
+
+	const SYNONYM_FILE = 'es_synonyms.csv';
+
+	const THESAURUS_TABLE = 'smile_elasticsuite_thesaurus';
+	const THESAURUS_STORE_TABLE = 'smile_elasticsuite_thesaurus_store';
+	const THESAURUS_TERMS_TABLE = 'smile_elasticsuite_thesaurus_expanded_terms';
+
     /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
     private $resourceConn;
     /** @var \Magento\Customer\Model\Session\Proxy $customerSession */
@@ -17,12 +28,18 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     /** @var string $groupMappingTable */
     private $groupMappingTable;
 
+    /** @var Reader */
+    private $moduleReader;
+
+
+
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Customer\Model\Session\Proxy $customerSession,
         \Magento\Framework\Filesystem\DirectoryList\Proxy $dir,
-        \Magento\Framework\App\Http\Context $httpContext
+        \Magento\Framework\App\Http\Context $httpContext,
+	    Reader $moduleReader
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
@@ -31,6 +48,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         $this->httpContext = $httpContext;
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
         $this->groupMappingTable = $this->resourceConn->getTableName('sinch_group_mapping');
+        $this->moduleReader = $moduleReader;
     }
 
     public function getStoreConfig($configPath)
@@ -174,5 +192,10 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     public function experimentalSearchEnabled(): bool
     {
         return $this->getStoreConfig('sinchimport/misc/experimental_search_features') == 1;
+    }
+
+    public function getModuleDirectory(string $type)
+    {
+	    return $this->moduleReader->getModuleDir($type, 'SITC_Sinchimport');
     }
 }
