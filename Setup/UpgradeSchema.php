@@ -6,10 +6,12 @@
 
 namespace SITC\Sinchimport\Setup;
 
+use Magento\Framework\Module\Dir;
 use Magento\Framework\Setup\UpgradeSchemaInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\SchemaSetupInterface;
 use Magento\Framework\DB\Ddl\Table;
+use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Model\Import\StockPrice;
 
 /**
@@ -17,6 +19,21 @@ use SITC\Sinchimport\Model\Import\StockPrice;
  */
 class UpgradeSchema implements UpgradeSchemaInterface
 {
+
+	const SYNONYM_FILE = 'es_synonyms.csv';
+
+	const THESAURUS_TABLE = 'smile_elasticsuite_thesaurus';
+	const THESAURUS_STORE_TABLE = 'smile_elasticsuite_thesaurus_store';
+	const THESAURUS_TERMS_TABLE = 'smile_elasticsuite_thesaurus_expanded_terms';
+
+	/** @var Data */
+	private $helper;
+
+	public function __construct(Data $helper)
+	{
+		$this->helper = $helper;
+	}
+
     /**
      * {@inheritdoc}
      */
@@ -25,7 +42,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
         $installer = $setup;
         $installer->startSetup();
 
-        if (version_compare($context->getVersion(), '2.1.1', '<')) {
+	    if (version_compare($context->getVersion(), '2.1.1', '<')) {
             $connection = $installer->getConnection();
             $mappingTable = $installer->getTable('sinch_restrictedvalue_mapping');
             // Check if the table already exists
@@ -173,6 +190,8 @@ class UpgradeSchema implements UpgradeSchemaInterface
             //Drop price_type
             $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
             $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
+            //Add Synonyms
+            $this->insertSynonyms();
         }
 
         if (version_compare($context->getVersion(), '2.5.1', '<')) {
@@ -406,5 +425,43 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 false
             );
         }
+    }
+
+    private function insertSynonyms(SchemaSetupInterface $setup)
+    {
+		$conn = $setup->getConnection();
+		$thesaurusTable = $conn->getTableName(self::THESAURUS_TABLE);
+		$thesaurusStoreTable = $conn->getTableName(self::THESAURUS_STORE_TABLE);
+		$thesaurusTermsTable = $conn->getTableName(self::THESAURUS_TERMS_TABLE);
+
+		$sinchThesaurusExists = true;
+		if (empty($conn->fetchAll("SELECT thesaurus_id FROM {$thesaurusTable} WHERE name = 'Sinch'"))) {
+			$conn->query("INSERT INTO {$thesaurusTable} (name, type, is_active) VALUES ('Sinch', 'synonym', 1)");
+			$sinchThesaurusExists = false;
+		}
+
+	    $thesaurusId = $conn->fetchOne("SELECT thesaurus_id FROM {$thesaurusTable} WHERE name = 'Sinch'");
+
+		if (empty($thesaurusId)) {
+			return;
+		} else {
+			$thesaurusId = (int)$thesaurusId; //Convert to int for insert to db
+		}
+
+		if (!$sinchThesaurusExists)
+			$conn->query("INSERT INTO {$thesaurusStoreTable} VALUES ({$thesaurusId}, 0)");
+
+		//Load the synonym CSV into an array
+	    $filePath = $this->helper->getModuleDirectory(Dir::MODULE_ETC_DIR) . '/' . self::SYNONYM_FILE;
+	    $csvLines = array_map('str_getcsv', file($filePath));
+
+	    $row = 1;
+	    foreach ($csvLines as $line) {
+	    	foreach ($line as $synonym) {
+			    $conn->query("INSERT INTO {$thesaurusTermsTable} VALUES (:id, :rowId, :term)",
+				    ['id' => $thesaurusId, 'rowId' => $row, 'term' => $synonym]);
+		    }
+	    	$row++;
+	    }
     }
 }

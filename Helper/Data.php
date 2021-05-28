@@ -1,19 +1,20 @@
 <?php
 namespace SITC\Sinchimport\Helper;
 
-use Magento\Catalog\Model\Category;
-use Magento\Catalog\Model\Product;
-use Magento\Customer\Model\Session;
-use Magento\Framework\App\Helper\AbstractHelper;
-use Magento\Framework\App\Helper\Context;
-use Magento\Framework\App\Http\Context as HttpContext;
-use Magento\Framework\App\ResourceConnection;
-use Magento\Framework\Filesystem\DirectoryList;
-use Magento\Store\Model\ScopeInterface;
+use Magento\Framework\Module\Dir;
+use Magento\Framework\Module\Dir\Reader;
+use Magento\Framework\Setup\SchemaSetupInterface;
 
-class Data extends AbstractHelper
+class Data extends \Magento\Framework\App\Helper\AbstractHelper
 {
-    /** @var ResourceConnection $resourceConn */
+
+	const SYNONYM_FILE = 'es_synonyms.csv';
+
+	const THESAURUS_TABLE = 'smile_elasticsuite_thesaurus';
+	const THESAURUS_STORE_TABLE = 'smile_elasticsuite_thesaurus_store';
+	const THESAURUS_TERMS_TABLE = 'smile_elasticsuite_thesaurus_expanded_terms';
+
+    /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
     private $resourceConn;
     /** @var Proxy $customerSession */
     private $customerSession;
@@ -27,12 +28,18 @@ class Data extends AbstractHelper
     /** @var string $groupMappingTable */
     private $groupMappingTable;
 
+    /** @var Reader */
+    private $moduleReader;
+
+
+
     public function __construct(
-        Context $context,
-        ResourceConnection $resourceConn,
-        Session\Proxy $customerSession,
-        DirectoryList\Proxy $dir,
-        HttpContext $httpContext
+        \Magento\Framework\App\Helper\Context $context,
+        \Magento\Framework\App\ResourceConnection $resourceConn,
+        \Magento\Customer\Model\Session\Proxy $customerSession,
+        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir,
+        \Magento\Framework\App\Http\Context $httpContext,
+	    Reader $moduleReader
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
@@ -41,6 +48,7 @@ class Data extends AbstractHelper
         $this->httpContext = $httpContext;
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
         $this->groupMappingTable = $this->resourceConn->getTableName('sinch_group_mapping');
+        $this->moduleReader = $moduleReader;
     }
 
     public function getStoreConfig($configPath)
@@ -223,5 +231,10 @@ class Data extends AbstractHelper
             return (int)$attributeId;
         }
         return null;
+    }
+
+    public function getModuleDirectory(string $type)
+    {
+	    return $this->moduleReader->getModuleDir($type, 'SITC_Sinchimport');
     }
 }
