@@ -137,9 +137,7 @@ class QueryBuilder
 		);
 
 		//Pass in a list of synonyms for the category boost
-		$should = [$this->queryFactory->create('sitcCategoryBoostQuery', ['queries' => $queryVariants])];
-
-		$shouldClauses = [];
+		$shouldClauses = [$this->queryFactory->create('sitcCategoryBoostQuery', ['queries' => $queryVariants])];
 		$minShouldMatch = 0;
 
 		//Check if we should do price filtering/boost
