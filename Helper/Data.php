@@ -1,45 +1,37 @@
 <?php
 namespace SITC\Sinchimport\Helper;
 
-use Magento\Framework\Module\Dir;
+use Magento\Catalog\Model\Category;
+use Magento\Catalog\Model\Product;
+use Magento\Customer\Model\Session;
+use Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Framework\App\Helper\Context;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Filesystem\DirectoryList;
 use Magento\Framework\Module\Dir\Reader;
-use Magento\Framework\Setup\SchemaSetupInterface;
+use Magento\Framework\App\Http\Context as HttpContext;
+use Magento\Store\Model\ScopeInterface;
 
-class Data extends \Magento\Framework\App\Helper\AbstractHelper
+class Data extends AbstractHelper
 {
-
-	const SYNONYM_FILE = 'es_synonyms.csv';
-
-	const THESAURUS_TABLE = 'smile_elasticsuite_thesaurus';
-	const THESAURUS_STORE_TABLE = 'smile_elasticsuite_thesaurus_store';
-	const THESAURUS_TERMS_TABLE = 'smile_elasticsuite_thesaurus_expanded_terms';
-
-    /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
-    private $resourceConn;
-    /** @var Proxy $customerSession */
-    private $customerSession;
+    private ResourceConnection $resourceConn;
+    private Session\Proxy $customerSession;
     /** @var DirectoryList $dir */
     private $dir;
-    /** @var HttpContext $httpContext */
-    private $httpContext;
+    private HttpContext $httpContext;
 
-    /** @var string $accountTable */
-    private $accountTable;
-    /** @var string $groupMappingTable */
-    private $groupMappingTable;
+    private string $accountTable;
+    private string $groupMappingTable;
 
-    /** @var Reader */
-    private $moduleReader;
-
-
+    private Reader $moduleReader;
 
     public function __construct(
-        \Magento\Framework\App\Helper\Context $context,
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Customer\Model\Session\Proxy $customerSession,
-        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir,
-        \Magento\Framework\App\Http\Context $httpContext,
-	    Reader $moduleReader
+        Context $context,
+        ResourceConnection $resourceConn,
+        Session\Proxy $customerSession,
+        DirectoryList\Proxy $dir,
+        HttpContext $httpContext,
+        Reader $moduleReader
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
@@ -227,13 +219,13 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
                 WHERE eet.entity_type_code = :type AND ea.attribute_code = :code",
             [':type' => $type, ':code' => $code]
         );
-        if ($attributeId !== false) {
+        if ($attributeId != false) {
             return (int)$attributeId;
         }
         return null;
     }
 
-    public function getModuleDirectory(string $type)
+    public function getModuleDirectory(string $type): string
     {
 	    return $this->moduleReader->getModuleDir($type, 'SITC_Sinchimport');
     }

@@ -2616,22 +2616,29 @@ class Sinch {
 
     private function addRelatedProducts()
     {
+        $sinch_related_products = $this->getTableName('sinch_related_products');
+        $catalog_product_entity = $this->getTableName('catalog_product_entity');
+        $catalog_product_link = $this->getTableName('catalog_product_link');
+        $catalog_product_link_type = $this->getTableName('catalog_product_link_type');
+
+        //Update the entity id's for the products in sinch_related_products
         $this->_doQuery(
-            "UPDATE " . $this->getTableName('sinch_related_products') . " srp
-                      JOIN " . $this->getTableName('catalog_product_entity') . " cpe
+            "UPDATE $sinch_related_products srp
+                      LEFT JOIN $catalog_product_entity cpe
                         ON srp.sinch_product_id = cpe.sinch_product_id
                       SET srp.entity_id = cpe.entity_id"
         );
 
+        //Update the entity id's for the related products in sinch_related_products
         $this->_doQuery(
-            "UPDATE " . $this->getTableName('sinch_related_products') . " srp
-                      JOIN " . $this->getTableName('catalog_product_entity') . " cpe
+            "UPDATE $sinch_related_products srp
+                      LEFT JOIN $catalog_product_entity cpe
                         ON srp.related_sinch_product_id = cpe.sinch_product_id
                       SET srp.related_entity_id = cpe.entity_id"
         );
 
         $results = $this->_doQuery(
-            "SELECT link_type_id, code FROM " . $this->getTableName('catalog_product_link_type')
+            "SELECT link_type_id, code FROM $catalog_product_link_type"
         )->fetchAll();
 
         $link_type = [];
@@ -2640,9 +2647,7 @@ class Sinch {
             $link_type[$res['code']] = $res['link_type_id'];
         }
 
-        $catalog_product_link = $this->getTableName('catalog_product_link');
-        $sinch_related_products = $this->getTableName('sinch_related_products');
-
+        //Inner joins on catalog product entity twice to ensure that both the main and related product exist (otherwise this query can crash out in merge mode with significant product changes)
         $this->_doQuery(
             "INSERT INTO $catalog_product_link (
                 product_id,
@@ -2650,16 +2655,20 @@ class Sinch {
                 link_type_id
             )(
                 SELECT
-                    entity_id,
-                    related_entity_id,
+                    srp.entity_id,
+                    srp.related_entity_id,
                     {$link_type['relation']}
-                FROM $sinch_related_products
-                WHERE sinch_product_id IS NOT NULL
-                AND related_sinch_product_id IS NOT NULL
+                FROM $sinch_related_products srp
+                INNER JOIN $catalog_product_entity cpe_main
+                    ON srp.entity_id = cpe_main.entity_id
+                INNER JOIN $catalog_product_entity cpe_rel
+                    ON srp.related_entity_id = cpe_rel.entity_id
+                WHERE srp.sinch_product_id IS NOT NULL
+                    AND srp.related_sinch_product_id IS NOT NULL
             )
             ON DUPLICATE KEY UPDATE
-                product_id = entity_id,
-                linked_product_id = related_entity_id"
+                product_id = VALUES(product_id),
+                linked_product_id = VALUES(linked_product_id)"
         );
 
         $link_attribute_int = $this->getTableName('catalog_product_link_attribute_int');
@@ -2967,7 +2976,7 @@ class Sinch {
             AND cpe.type_id = 'simple'
             AND cpe.sinch_product_id IS NOT NULL"
             );
-            $this->_doQuery("DELETE cpe FROM $catalog_product_entity cpe JOIN $sinch_products_delete spd USING(entity_id)");
+            $this->_doQuery("DELETE cpe FROM $catalog_product_entity cpe INNER JOIN $sinch_products_delete spd USING(entity_id)");
             $this->_doQuery("DROP TABLE IF EXISTS $sinch_products_delete");
         }
         $this->print("--Replace Magento Multistore 16 (add multi categories)...");
@@ -2980,13 +2989,15 @@ class Sinch {
                 ON spc.store_product_id = cpe.sinch_product_id
             INNER JOIN $sinch_categories_mapping scm
                 ON spc.store_category_id = scm.store_category_id
-        ) ON DUPLICATE KEY UPDATE product_id = cpe.entity_id, category_id = scm.shop_entity_id");
+            LEFT JOIN $catalog_category_entity cce
+                ON scm.shop_entity_id = cce.entity_id
+            WHERE cce.entity_id IS NOT NULL
+        ) ON DUPLICATE KEY UPDATE product_id = VALUES(product_id), category_id = VALUES(category_id)");
 
         $this->print("--Replace Magento Multistore 17...");
         $this->print("--Replace Magento Multistore 18....");
         $this->print("--Replace Magento Multistore 19...");
         $this->print("--Replace Magento Multistore 20...");
-
 
         //Delete varchar values for non-existent products
         $this->retriableQuery(

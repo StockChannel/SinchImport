@@ -4,6 +4,11 @@ namespace SITC\Sinchimport\Block\System\Config;
 use Magento\Config\Block\System\Config\Form\Field;
 use Magento\Framework\Data\Form\Element\AbstractElement;
 
+/**
+ * Class ImportStatus
+ * @package SITC\Sinchimport\Block\System\Config
+ * @SuppressWarnings('unused')
+ */
 class ImportStatus extends Field
 {
     protected function _getElementHtml(AbstractElement $element): string

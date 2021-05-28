@@ -29,7 +29,7 @@ class Reviews extends AbstractImportSection {
         $reviewsCsv = $this->dlHelper->getSavePath(Download::FILE_REVIEWS);
 
         $this->startTimingStep('Load Reviews');
-        $conn->query("DELETE FROM {$this->reviewsTable}");
+        $conn->query("TRUNCATE TABLE {$this->reviewsTable}");
         //Load the highest resolution award_image
         $conn->query(
             "LOAD DATA LOCAL INFILE '{$reviewsCsv}'
@@ -38,7 +38,7 @@ class Reviews extends AbstractImportSection {
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (id, score, date, url, author_name, comment, good, bad, bottom_line, review_site, @award_img_main, @award_img_80, @award_img_200)
+                (product_id, score, date, url, author_name, comment, good, bad, bottom_line, review_site, @award_img_main, @award_img_80, @award_img_200)
                 SET award_image = IF(
                     @award_img_main IS NOT NULL AND @award_img_main != '',
                     @award_img_main,
@@ -65,7 +65,8 @@ class Reviews extends AbstractImportSection {
         //We only store a single award image (do we really need a link to lower res copies?)
         $this->getConnection()->query(
             "CREATE TABLE IF NOT EXISTS {$this->reviewsTable} (
-                id int(10) NOT NULL PRIMARY KEY,
+                review_id int(10) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                product_id int(10) NOT NULL,
                 score decimal(3, 4) NOT NULL DEFAULT 0.0,
                 date timestamp NOT NULL DEFAULT NOW(),
                 url varchar(1024),                    

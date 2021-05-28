@@ -34,35 +34,33 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
         $html = $this->_appendJs();
         $html .= $this->_appendCss();
 
-        $html .= '<div id="sinchimport_status_template">';
-        $html .= $this->_getStatusTemplateHtml();
-        $html .= '</div>';
-
-        $html .= $this->getLayout()->createBlock(
-            'Magento\Backend\Block\Widget\Button'
-        )->setData(
-            ['label' => 'Force Import Now', 'id' => 'mb-sinch-import-button',
-                'class' => 'mb-start-button', 'style' => 'margin-top:30px']
-        )->toHtml();
+        $html .= $this->getLayout()
+            ->createBlock('Magento\Backend\Block\Widget\Button')
+            ->setData([
+                'label' => 'Force Import Now',
+                'id' => 'mb-sinch-import-button',
+                'class' => 'mb-start-button',
+                'style' => 'margin-top:30px'
+            ])
+            ->toHtml();
 
         $lastImportData   = $this->sinch->getDataOfLatestImport();
-        $lastImportStatus = is_array($lastImportData) ? $lastImportData['global_status_import'] : 'None';
 
         $html .= '<div id="sinchimport_current_status_message">';
-        if ($lastImportStatus == 'Failed') {
-            $html .= '<p class="sinch-error">The import has failed. Last step was "'
-                . $lastImportData['detail_status_import']
-                . '"<br> Error reporting : "'
-                . $lastImportData['error_report_message'] . '"</p>';
-        } elseif ($lastImportStatus == 'Successful') {
-            $html .= '<p class="sinch-success">'
-                . $lastImportData['number_of_products']
-                . ' products imported succesfully!</p>';
-        } elseif ($lastImportStatus == 'Run') {
-            $html .= '<p>Import is running now</p>';
-        }
-        elseif ($lastImportStatus == 'None') {
-            $html .= '<p>No import has run yet</p>';
+        switch (is_array($lastImportData) ? $lastImportData['global_status_import'] : 'None') {
+            case 'Failed':
+                $html .= "<p class=\"sinch-error\">The import has failed. Last step was \"{$lastImportData['detail_status_import']}\"<br>";
+                $html .= 'Error message: <pre>' . $lastImportData['error_report_message'] . '</pre></p>';
+                break;
+            case 'Successful':
+                $html .= "<p class=\"sinch-success\">{$lastImportData['number_of_products']} products imported succesfully!</p>";
+                break;
+            case 'Run':
+                $html .= '<p>Import is running now</p>';
+                break;
+            case 'None':
+                $html .= '<p>No import has run yet</p>';
+                break;
         }
         $html .= '</div>';
 
@@ -71,22 +69,12 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
 
     protected function _appendJs(): string
     {
-        $completeIcon = $this->getViewFileUrl(
-            'SITC_Sinchimport::images/import_complete.gif'
-        );
-        $runningIcon = $this->getViewFileUrl(
-            'SITC_Sinchimport::images/ajax_running.gif'
-        );
-
         $postUrl = $this->getUrl('sinchimport/ajax');
         $postStockPriceUrl = $this->getUrl('sinchimport/ajax/stockPrice');
         $postCustomerGroupsStockPriceUrl = $this->getUrl('sinchimport/ajax/customergroupsPrice');
-        $postUrlUpd = $this->getUrl('sinchimport/ajax/updateStatus');
         $indexingUrl = $this->getUrl('sinchimport/ajax/indexingData');
 
-        $html
-            = "
-<script>
+        return "<script>
     require([
         'prototype'
     ], function () {
@@ -97,9 +85,7 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
                 this.postStockPriceUrl = '" . $postStockPriceUrl . "';
                 this.postCustomerGroupsPriceUrl = '" . $postCustomerGroupsStockPriceUrl . "';
                 this.indexingUrl = '" . $indexingUrl . "';
-                this.postUrlUpd = '" . $postUrlUpd . "';
                 this.failureUrl = document.URL;
-                // default shipping code. Display on errors
 
                 elem = 'checkoutSteps';
                 clickableEntity = '.head';
@@ -112,79 +98,43 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
 
                 Event.observe($('mb-sinch-import-button'), 'click', this.beforeFullImport.bind(this));
                 
-                if($('mb-sinch-stock-price-import-button')) {
-                    Event.observe($('mb-sinch-stock-price-import-button'), 'click', this.beforeStockPriceImport.bind(this));
+                let stockPriceBtn = $('mb-sinch-stock-price-import-button');
+                if (stockPriceBtn) {
+                    Event.observe(stockPriceBtn, 'click', this.beforeStockPriceImport.bind(this));
                 }
                 
-                if($('mb-sinch-indexing-data-button')) {
-                    Event.observe($('mb-sinch-indexing-data-button'), 'click', this.beforeIndexing.bind(this));
+                let indexingBtn = $('mb-sinch-indexing-data-button');
+                if (indexingBtn) {
+                    Event.observe(indexingBtn, 'click', this.beforeIndexing.bind(this));
                 }
-                if($('mb-sinch-customer-groups-price-import-button')) {
-                    Event.observe($('mb-sinch-customer-groups-price-import-button'), 'click', this.beforeCustomerGroupsPriceImport.bind(this));
-                }
-                if($('mb-sinch-indexing-data-button')) {
-                    Event.observe($('mb-sinch-indexing-data-button'), 'click', this.beforeIndexing.bind(this));
+                
+                let cgpBtn = $('mb-sinch-customer-groups-price-import-button');
+                if (cgpBtn) {
+                    Event.observe(cgpBtn, 'click', this.beforeCustomerGroupsPriceImport.bind(this));
                 }
             },
 
             beforeFullImport: function () {
-                this.setFullImportRunningIcon();
                 //Hide the info about the previous import
-                curr_status_div = document.getElementById('sinchimport_current_status_message');
+                let curr_status_div = document.getElementById('sinchimport_current_status_message');
                 curr_status_div.style.display = 'none';
-                //Show the status template
-                status_div = document.getElementById('sinchimport_status_template');
-                status_div.style.display = '';
                 this.startSinchImport(this.postUrl);
             },
 
-            setFullImportRunningIcon: function () {
-            },
-
             beforeStockPriceImport: function () {
-                this.setStockPriceRunningIcon();
-                status_div = document.getElementById('sinchimport_stock_price_status_template');
-                curr_status_div = document.getElementById('sinchimport_stock_price_current_status_message');
+                let curr_status_div = document.getElementById('sinchimport_stock_price_current_status_message');
                 curr_status_div.style.display = 'none';
-                status_div.style.display = '';
                 this.startSinchImport(this.postStockPriceUrl);
-            },
-
-            setStockPriceRunningIcon: function () {
-                runningIcon='<img src=\"" . $runningIcon . "\"/>';
-                document.getElementById('sinchimport_stock_price_start_import').innerHTML=runningIcon;
-                document.getElementById('sinchimport_stock_price_upload_files').innerHTML=runningIcon;
-                document.getElementById('sinchimport_stock_price_parse_products').innerHTML=runningIcon;
-                document.getElementById('sinchimport_stock_price_indexing_data').innerHTML=runningIcon;
-                document.getElementById('sinchimport_stock_price_finish_import').innerHTML=runningIcon;
             },
              
             beforeCustomerGroupsPriceImport: function () {
-                this.setCustomerGroupsPriceRunningIcon();
-                status_div = document.getElementById('sinchimport_customer_groups_price_status_template');
-                curr_status_div = document.getElementById('sinchimport_customer_groups_price_current_status_message');
+                let curr_status_div = document.getElementById('sinchimport_customer_groups_price_current_status_message');
                 curr_status_div.style.display = 'none';
-                status_div.style.display = '';
                 this.startSinchImport(this.postCustomerGroupsPriceUrl);
             },
             
-            setCustomerGroupsPriceRunningIcon: function () {
-                runningIcon='<img src=\"" . $runningIcon . "\"/>';
-                document.getElementById('sinchimport_customer_groups_price_start_import').innerHTML=runningIcon;
-                document.getElementById('sinchimport_customer_groups_price_upload_files').innerHTML=runningIcon;
-                document.getElementById('sinchimport_customer_groups_price_parse_products').innerHTML=runningIcon;
-            },
-            
             beforeIndexing: function () {
-                this.setIndexingRunningIcon();
-                status_div = document.getElementById('sinchimport_indexing_status_template');
-                status_div.style.display = '';
                 this.startSinchImport(this.indexingUrl);
-            },
-            
-            setIndexingRunningIcon: function () {
-                runningIcon='<img src=\"" . $runningIcon . "\"/>';
-                document.getElementById('sinchimport_indexing_data_separately').innerHTML=runningIcon;
             },
 
             startSinchImport: function (url) {
@@ -219,30 +169,17 @@ class Importbutton extends \Magento\Config\Block\System\Config\Form\Field
             },
 
             ajaxFailure: function(){
-                this.clearUpdateInterval();
                 location.href = this.failureUrl;
             },
-
-            clearUpdateInterval: function () {
-                clearInterval(this.updateTimer);
-            }
         }
 
         sinchImport = new Sinch();
     });
-</script>
-        ";
-
-        return $html;
+</script>";
     }
 
     protected function _appendCss(): string
     {
         return '';
-    }
-
-    protected function _getStatusTemplateHtml(): string
-    {
-        return "";
     }
 }
