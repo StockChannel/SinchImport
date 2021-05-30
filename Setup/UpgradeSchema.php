@@ -191,7 +191,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
             $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
             //Add Synonyms
-            $this->insertSynonyms();
+            $this->insertSynonyms($installer);
         }
 
         if (version_compare($context->getVersion(), '2.5.1', '<')) {

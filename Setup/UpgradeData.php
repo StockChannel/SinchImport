@@ -181,7 +181,7 @@ class UpgradeData implements UpgradeDataInterface
             [
                 'label' => 'Bullet Points',
                 'note' => 'Summary Bullet Points, expected to be triple pipe (|||) delimited',
-                'type' => 'varchar',
+                'type' => 'text',
                 'input' => 'text',
                 'backend' => '',
                 'frontend' => '',
@@ -207,7 +207,7 @@ class UpgradeData implements UpgradeDataInterface
             [
                 'label' => 'Reasons to Buy',
                 'note' => 'Key Reasons to buy this product, expected to be triple pipe (|||) delimited',
-                'type' => 'varchar',
+                'type' => 'text',
                 'input' => 'text',
                 'backend' => '',
                 'frontend' => '',
@@ -484,6 +484,10 @@ class UpgradeData implements UpgradeDataInterface
                 'group' => 'General'
             ]
         );
+
+        $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
+        //Make specification not visible so Michael can make it its own product tab
+        $eavSetup->updateAttribute($entityTypeId, 'specification', 'is_visible_on_front', 0);
     }
 
     private function getConnection(): AdapterInterface

@@ -321,7 +321,8 @@ class Sinch {
                     Download::FILE_BULLET_POINTS,
                     Download::FILE_FAMILIES,
                     Download::FILE_FAMILY_SERIES,
-                    Download::FILE_REASONS_TO_BUY
+                    Download::FILE_REASONS_TO_BUY,
+                    Download::FILE_REVIEWS
                 ];
 
                 $this->addImportStatus('Download Files');

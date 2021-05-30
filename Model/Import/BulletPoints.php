@@ -50,7 +50,7 @@ class BulletPoints extends AbstractImportSection {
 
     public function apply() {
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
-        $catalog_product_entity_int = $this->getTableName('catalog_product_entity_int');
+        $catalog_product_entity_text = $this->getTableName('catalog_product_entity_text');
 
         $bulletPointsAttr = $this->dataHelper->getProductAttributeId('sinch_bullet_points');
 
@@ -58,7 +58,7 @@ class BulletPoints extends AbstractImportSection {
         $this->startTimingStep('Insert Bullet Point values');
         //Triple pipe delimited to reduce the likelihood of colliding with text in the value
         $this->getConnection()->query(
-            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
+            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
                 SELECT :bulletPointsAttr, 0, cpe.entity_id, GROUP_CONCAT(sbp.value ORDER BY sbp.number SEPARATOR '|||')
                 FROM {$this->bulletPointsTable} sbp
                 INNER JOIN {$catalog_product_entity} cpe

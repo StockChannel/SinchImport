@@ -175,11 +175,15 @@ class QueryBuilder
 		    $shouldClauses[] = $this->queryFactory->create(
 		        QueryInterface::TYPE_FUNCTIONSCORE,
                 [
+                    'query' => $this->queryFactory->create(QueryInterface::TYPE_FILTER), //Filtered with no args is a match_all
                     'functions' => [
-                        FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
-                            'field' => 'sinch_score', //TODO: Seems like field names for non-option int attributes are just their attribute code, confirm
-                            'factor' => $this->helper->popularityBoostFactor(),
-                            'modifier' => 'none'
+                        [
+                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                                'field' => 'sinch_score', //TODO: Seems like field names for non-option int attributes are just their attribute code, confirm
+                                'factor' => $this->helper->popularityBoostFactor(),
+                                'modifier' => 'none',
+                                'missing' => 0
+                            ]
                         ]
                     ]
                 ]

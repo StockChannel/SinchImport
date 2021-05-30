@@ -51,7 +51,7 @@ class ReasonsToBuy extends AbstractImportSection {
     public function apply()
     {
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
-        $catalog_product_entity_int = $this->getTableName('catalog_product_entity_int');
+        $catalog_product_entity_text = $this->getTableName('catalog_product_entity_text');
 
         $reasonsToBuyAttr = $this->dataHelper->getProductAttributeId('sinch_reasons_to_buy');
 
@@ -59,7 +59,7 @@ class ReasonsToBuy extends AbstractImportSection {
         $this->startTimingStep('Insert Reasons to Buy values');
         //Triple pipe delimited to reduce the likelihood of colliding with text in the value
         $this->getConnection()->query(
-            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
+            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
                 SELECT :reasonsToBuyAttr, 0, cpe.entity_id, GROUP_CONCAT(srtb.value ORDER BY srtb.number SEPARATOR '|||')
                 FROM {$this->reasonsToBuyTable} srtb
                 INNER JOIN {$catalog_product_entity} cpe
