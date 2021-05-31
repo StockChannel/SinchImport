@@ -516,7 +516,7 @@ class Sinch {
                 $this->runCleanCache();
                 $this->addImportStatus('Clean cache', true);
 
-                $this->addImportStatus('Finish import', true);
+                $this->addImportStatus('Finish Import', true);
             } catch (Exception $e) {
                 $this->_setErrorMessage($e);
                 $this->print("Error (" . gettype($e) . "):" . $e->getMessage());
@@ -3580,7 +3580,7 @@ class Sinch {
                 $this->runCleanCache();
                 $this->addImportStatus('Clean cache', true);
 
-                $this->addImportStatus('Finish import', true);
+                $this->addImportStatus('Finish Import', true);
                 $this->print("========>FINISH STOCK & PRICE SINCH IMPORT");
 
                 $this->_doQuery("SELECT RELEASE_LOCK('sinchimport_{$current_vhost}')");
