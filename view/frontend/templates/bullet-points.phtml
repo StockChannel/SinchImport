@@ -1,0 +1,13 @@
+<?php
+	$product = $block->getProduct();
+	$bulletPoints = $product->getData('sinch_bullet_points');
+	$bulletPointsArray = explode("|||", $bulletPoints);
+	if ( !empty($bulletPoints) ) :
+		echo "<div class='sitc-bullet-points'><ul>";
+		foreach($bulletPointsArray as $bulletPoint)
+		{
+			echo "<li>" . $bulletPoint . "</li>";
+		}
+		echo "</ul></div>";
+	endif;
+?>

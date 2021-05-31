@@ -1,0 +1,24 @@
+<?php
+	$product = $block->getProduct();
+	$videos = $product->getData('sinch_videos');
+	$videosArray = explode(";", $videos);
+	$manuals = $product->getData('sinch_manuals');
+	$manualsArray = explode(";", $manuals);
+	echo "<div class='sitc-manuals'><ul>";
+
+	if ( !empty($videos)) :
+		foreach($videosArray as $video)
+		{
+			echo '<li><video controls><source src="' . $video . '" type="video/mp4">Your browser does not support the video tag.</video></li>';
+		}
+	endif;
+
+	if ( !empty($manuals)) :
+		foreach($manualsArray as $manual)
+		{
+			echo '<li><iframe src="' . $manual . '">Your browser does not support the iframe tag.</iframe></li>';
+		}
+	endif;
+
+	echo "</ul></div>";	
+?>

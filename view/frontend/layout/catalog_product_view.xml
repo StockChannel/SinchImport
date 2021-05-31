@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+		<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.bullet.points" as="bullet.points" before="-" template="SITC_Sinchimport::bullet-points.phtml"></block>
+							<!-- <referenceBlock name="product.info.details">
+								
+								<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.expert.reviews" as="expert.reviews" template="SITC_Sinchimport::expert-reviews.phtml" group="detailed_info">
+									<arguments>
+										<argument translate="true" name="title" xsi:type="string">Expert Reviews</argument>
+										<argument name="priority" xsi:type="string">35</argument>
+									</arguments>
+								</block>
+							</referenceBlock> -->
+		<referenceBlock name="product.info.details">
+			<block class="Magento\Catalog\Block\Product\View\Description" name="product.info.description" as="description" template="Magento_Catalog::product/view/attribute.phtml" group="detailed_info">
+				<arguments>
+					<argument name="at_call" xsi:type="string">getDescription</argument>
+					<argument name="at_code" xsi:type="string">description</argument>
+					<argument name="css_class" xsi:type="string">description</argument>
+					<argument name="at_label" xsi:type="string">none</argument>
+					<argument name="title" translate="true" xsi:type="string">Description</argument>
+				</arguments>
+			</block>
+			<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.attributes" as="additional" template="SITC_Sinchimport::attributes.phtml" group="detailed_info">
+				<arguments>
+					<argument translate="true" name="title" xsi:type="string">More Information</argument>
+				</arguments>
+			</block>
+			<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.specification.custom" as="specification.custom" template="SITC_Sinchimport::specification.phtml" group="detailed_info">
+				<arguments>
+					<argument translate="true" name="title" xsi:type="string">Specifications</argument>
+				</arguments>
+			</block>
+			<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.reasons.custom" as="reasons.custom" template="SITC_Sinchimport::reasons-to-buy.phtml" group="detailed_info">
+				<arguments>
+					<argument translate="true" name="title" xsi:type="string">Reasons To Buy</argument>
+				</arguments>
+			</block>
+			<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.videos.custom" as="videos.custom" template="SITC_Sinchimport::videos.phtml" group="detailed_info">
+				<arguments>
+					<argument translate="true" name="title" xsi:type="string">Videos</argument>
+				</arguments>
+			</block>
+		</referenceBlock>
+		<move element="product.bullet.points" destination="product.info.main" before="product.info.price"/>
+		
+    </body>
+</page>
