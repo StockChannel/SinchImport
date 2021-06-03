@@ -33,6 +33,7 @@ use SITC\Sinchimport\Model\Import\Multimedia;
 use SITC\Sinchimport\Model\Import\Popularity;
 use SITC\Sinchimport\Model\Import\ProductDates;
 use SITC\Sinchimport\Model\Import\ReasonsToBuy;
+use SITC\Sinchimport\Model\Import\RelatedProducts;
 use SITC\Sinchimport\Model\Import\Reviews;
 use SITC\Sinchimport\Model\Import\StockPrice;
 use SITC\Sinchimport\Model\Import\UNSPSC;
@@ -130,6 +131,7 @@ class Sinch {
     private Popularity $popularityImport;
     private VirtualCategory $virtualCategoryImport;
     private Reviews $reviewImport;
+    private RelatedProducts $relatedProductsImport;
 
     private Download $dlHelper;
     private Data $dataHelper;
@@ -164,6 +166,7 @@ class Sinch {
         Popularity $popularityImport,
         VirtualCategory $virtualCategoryImport,
         Reviews $reviewImport,
+        RelatedProducts $relatedProductsImport,
         Download $dlHelper,
         Data $dataHelper
     )
@@ -185,6 +188,7 @@ class Sinch {
         $this->popularityImport = $popularityImport;
         $this->virtualCategoryImport = $virtualCategoryImport;
         $this->reviewImport = $reviewImport;
+        $this->relatedProductsImport = $relatedProductsImport;
 
         $this->dlHelper = $dlHelper;
         $this->dataHelper = $dataHelper;
@@ -353,7 +357,9 @@ class Sinch {
                 }
 
                 $this->addImportStatus('Parse Related Products');
-                $this->parseRelatedProducts();
+                if ($this->relatedProductsImport->haveRequiredFiles()) {
+                    $this->relatedProductsImport->parse();
+                }
                 $this->addImportStatus('Parse Related Products', true);
 
 
@@ -1862,52 +1868,6 @@ class Sinch {
         $this->_doQuery($q);
     }
 
-    private function parseRelatedProducts()
-    {
-        $parseFile = $this->dlHelper->getSavePath(Download::FILE_RELATED_PRODUCTS);
-        if (filesize($parseFile) || $this->_ignore_product_related) {
-            $this->_log("Start parse " . Download::FILE_RELATED_PRODUCTS);
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'related_products_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->getTableName('related_products_temp') . "(
-                         sinch_product_id int(11),
-                         related_sinch_product_id int(11),
-                         store_related_product_id int(11) default null,
-                         entity_id int(11),
-                         related_entity_id int(11),
-                         KEY(sinch_product_id),
-                         KEY(related_sinch_product_id)
-                )DEFAULT CHARSET=utf8"
-            );
-            if (!$this->_ignore_product_related) {
-                $this->_doQuery(
-                    "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                              INTO TABLE " . $this->getTableName('related_products_temp') . "
-                              FIELDS TERMINATED BY '" . $this->field_terminated_char . "'
-                              OPTIONALLY ENCLOSED BY '\"'
-                              LINES TERMINATED BY \"\r\n\"
-                              IGNORE 1 LINES
-                              (sinch_product_id, related_sinch_product_id)"
-                );
-            }
-            $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName('sinch_related_products')
-            );
-            $this->_doQuery(
-                "RENAME TABLE " . $this->getTableName('related_products_temp')
-                . " TO " . $this->getTableName('sinch_related_products')
-            );
-
-            $this->_log("Finish parse " . Download::FILE_RELATED_PRODUCTS);
-        } else {
-            $this->_log("Wrong file " . $parseFile);
-        }
-    }
-
     private function parseProductCategories()
     {
         $parseFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCT_CATEGORIES);
@@ -2615,119 +2575,6 @@ class Sinch {
         );
     }
 
-    private function addRelatedProducts()
-    {
-        $sinch_related_products = $this->getTableName('sinch_related_products');
-        $catalog_product_entity = $this->getTableName('catalog_product_entity');
-        $catalog_product_link = $this->getTableName('catalog_product_link');
-        $catalog_product_link_type = $this->getTableName('catalog_product_link_type');
-
-        //Update the entity id's for the products in sinch_related_products
-        $this->_doQuery(
-            "UPDATE $sinch_related_products srp
-                      LEFT JOIN $catalog_product_entity cpe
-                        ON srp.sinch_product_id = cpe.sinch_product_id
-                      SET srp.entity_id = cpe.entity_id"
-        );
-
-        //Update the entity id's for the related products in sinch_related_products
-        $this->_doQuery(
-            "UPDATE $sinch_related_products srp
-                      LEFT JOIN $catalog_product_entity cpe
-                        ON srp.related_sinch_product_id = cpe.sinch_product_id
-                      SET srp.related_entity_id = cpe.entity_id"
-        );
-
-        $results = $this->_doQuery(
-            "SELECT link_type_id, code FROM $catalog_product_link_type"
-        )->fetchAll();
-
-        $link_type = [];
-
-        foreach ($results as $res) {
-            $link_type[$res['code']] = $res['link_type_id'];
-        }
-
-        //Inner joins on catalog product entity twice to ensure that both the main and related product exist (otherwise this query can crash out in merge mode with significant product changes)
-        $this->_doQuery(
-            "INSERT INTO $catalog_product_link (
-                product_id,
-                linked_product_id,
-                link_type_id
-            )(
-                SELECT
-                    srp.entity_id,
-                    srp.related_entity_id,
-                    {$link_type['relation']}
-                FROM $sinch_related_products srp
-                INNER JOIN $catalog_product_entity cpe_main
-                    ON srp.entity_id = cpe_main.entity_id
-                INNER JOIN $catalog_product_entity cpe_rel
-                    ON srp.related_entity_id = cpe_rel.entity_id
-                WHERE srp.sinch_product_id IS NOT NULL
-                    AND srp.related_sinch_product_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                product_id = VALUES(product_id),
-                linked_product_id = VALUES(linked_product_id)"
-        );
-
-        $link_attribute_int = $this->getTableName('catalog_product_link_attribute_int');
-        $link_attribute_tmp = $this->getTableName('catalog_product_link_attribute_int_tmp');
-
-        $this->_doQuery("DROP TABLE IF EXISTS $link_attribute_tmp");
-        $this->_doQuery(
-            "CREATE TEMPORARY TABLE $link_attribute_tmp (
-                `value_id` int(11) default NULL,
-                `product_link_attribute_id` smallint(6) unsigned default NULL,
-                `link_id` int(11) unsigned default NULL,
-                `value` int(11) NOT NULL default '0',
-                    KEY `FK_INT_PRODUCT_LINK_ATTRIBUTE` (`product_link_attribute_id`),
-                    KEY `FK_INT_PRODUCT_LINK` (`link_id`)
-            )"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO $link_attribute_tmp (
-                product_link_attribute_id,
-                link_id,
-                value
-            )(
-                SELECT
-                2,
-                cpl.link_id,
-                0
-                FROM $catalog_product_link cpl
-            )"
-        );
-
-        $this->_doQuery(
-            "UPDATE $link_attribute_tmp ct
-                JOIN $link_attribute_int c
-                    ON ct.link_id=c.link_id
-                SET ct.value_id=c.value_id
-                WHERE c.product_link_attribute_id=2"
-        );
-
-        $this->_doQuery(
-            "INSERT INTO $link_attribute_int (
-                value_id,
-                product_link_attribute_id,
-                link_id,
-                value
-            )(
-                SELECT
-                value_id,
-                product_link_attribute_id,
-                link_id,
-                value
-                FROM $link_attribute_tmp ct
-            )
-            ON DUPLICATE KEY UPDATE
-                link_id=ct.link_id"
-        );
-    }
-
     private function replaceMagentoProductsMultistore(bool $merge_mode)
     {
         $this->print("--Replace Magento Products Multistore 1...");
@@ -3294,7 +3141,9 @@ class Sinch {
 
         $this->print("--Replace Magento Multistore 35...");
 
-        $this->addRelatedProducts();
+        if ($this->relatedProductsImport->haveRequiredFiles()) {
+            $this->relatedProductsImport->apply();
+        }
     }
 
     private function parseProductsPicturesGallery()
