@@ -114,16 +114,19 @@ class QueryBuilder
 		}
 		unset($doubleTokens[0]);
 
+		$optionFilters = [];
 		$brandName = $this->getBrandName(array_merge($queryTokens, $doubleTokens));
 		if (!empty($brandName)) {
 			//Trim query text to ensure the category matches
-			$queryText = trim(str_ireplace("{$brandName}", '', $queryText));
+			$queryText = trim(str_ireplace("{$brandName['value']}", '', $queryText));
+			$optionFilters[] = $brandName;
 		}
 
 		$familyName = $this->getProductFamily(array_merge($queryTokens, $doubleTokens));
 		if (!empty($familyName)) {
 			//Trim query text to ensure the category matches
-			$queryText = trim(str_ireplace("{$familyName}", '', $queryText));
+			$queryText = trim(str_ireplace("{$familyName['value']}", '', $queryText));
+			$optionFilters[] = $familyName;
 		}
 
 		if (str_ends_with($queryText, 's')) {
@@ -146,7 +149,7 @@ class QueryBuilder
 		$this->logger->info($queryVariants);
 
 		//If category match is successful return early
-		if ($this->checkCategoryMatch($containerConfig, $queryVariants, $priceFilter, $brandName, $familyName)) {
+		if ($this->checkCategoryMatch($containerConfig, $queryVariants, $priceFilter, $optionFilters)) {
 			return null;
 		}
 
@@ -229,7 +232,7 @@ class QueryBuilder
 	 * @param $brandFilter
 	 * @return bool true if matched
 	 */
-	private function checkCategoryMatch(ContainerConfigurationInterface $containerConfig, array $queries, $priceFilter, string $brandFilter, string $familyFilter): bool
+	private function checkCategoryMatch(ContainerConfigurationInterface $containerConfig, array $queries, $priceFilter, array $optionFilters): bool
 	{
 		$start = microtime(true);
 
@@ -253,13 +256,12 @@ class QueryBuilder
 				$filterParams = "?price={$priceFilter['above']}-{$priceFilter['below']}";
 			}
 
-			//Check if brand name was included in query and apply filter if true
-			if (!empty($brandFilter)) {
-				$filterParams .= (empty($filterParams) ? "?" : "&") . "manufacturer=" . $brandFilter;
-			}
-
-			if (!empty($familyFilter)) {
-				$filterParams .= (empty($filterParams) ? "?" : "&") . "sinch_family=" . $familyFilter;
+			foreach ($optionFilters as $filter) {
+				$filterValue = $filter['value'];
+				if (!empty($filterValue)) {
+					$attributeCode = $filter['attribute_code'];
+					$filterParams .= (empty($filterParams) ? "?" : "&") . "{$attributeCode}=" . $filterValue;
+				}
 			}
 
 			try {
@@ -278,30 +280,31 @@ class QueryBuilder
 		return false;
 	}
 
-	/**
-	 * @param string[] $queryText
-	 * @return string
-	 */
-	private function getBrandName(array $queryText): string
+	private function getBrandName(array $queryText): array
 	{
 		return $this->getOptionAttributeValue('manufacturer', $queryText);
 	}
 
-	private function getProductFamily(array $queryText) : string
+	private function getProductFamily(array $queryText) : array
 	{
 		return $this->getOptionAttributeValue('sinch_family', $queryText);
 	}
 
-	private function getOptionAttributeValue(string $attributeCode, array $queryText) : string
+	private function getOptionAttributeValue(string $attributeCode, array $queryText) : array
 	{
 		$inClause = implode(",", array_fill(0, count($queryText), '?'));
 
-		return $this->connection->fetchOne(
+		$optionValue = $this->connection->fetchOne(
 			"SELECT eaov.value FROM eav_attribute_option_value eaov
 				INNER JOIN eav_attribute_option eao ON eao.option_id = eaov.option_id
 				INNER JOIN eav_attribute ea ON ea.attribute_id = eao.attribute_id
 				WHERE ea.attribute_code = '{$attributeCode}' AND eaov.value IN ({$inClause}) LIMIT 1",
 			$queryText
 		);
+
+		return [
+			'attribute_code' => $attributeCode,
+			'value' => $optionValue
+		];
 	}
 }
