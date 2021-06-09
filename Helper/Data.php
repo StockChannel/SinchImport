@@ -8,12 +8,6 @@ use Magento\Framework\Setup\SchemaSetupInterface;
 class Data extends \Magento\Framework\App\Helper\AbstractHelper
 {
 
-	const SYNONYM_FILE = 'es_synonyms.csv';
-
-	const THESAURUS_TABLE = 'smile_elasticsuite_thesaurus';
-	const THESAURUS_STORE_TABLE = 'smile_elasticsuite_thesaurus_store';
-	const THESAURUS_TERMS_TABLE = 'smile_elasticsuite_thesaurus_expanded_terms';
-
     /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
     private $resourceConn;
     /** @var \Magento\Customer\Model\Session\Proxy $customerSession */
