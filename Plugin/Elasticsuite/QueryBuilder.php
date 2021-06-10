@@ -39,6 +39,8 @@ class QueryBuilder
 	private $eavTable;
 	private $eavOptionValueTable;
 	private $eavOptionTable;
+	private $sinchCategoriesTable;
+	private $sinchCategoriesMappingTable;
 
 	/** @var Data */
 	private $helper;
@@ -74,6 +76,8 @@ class QueryBuilder
 		$this->eavTable = $this->connection->getTableName('eav_attribute');
 		$this->eavOptionTable = $this->connection->getTableName('eav_attribute_option');
 		$this->eavOptionValueTable = $this->connection->getTableName('eav_attribute_option_value');
+		$this->sinchCategoriesTable = $this->connection->getTableName('sinch_categories');
+		$this->sinchCategoriesMappingTable = $this->connection->getTableName('sinch_categories_mapping');
 		$this->helper = $helper;
 		$this->queryFactory = $queryFactory;
 		$this->customerSession = $customerSession;
@@ -112,13 +116,26 @@ class QueryBuilder
 		}
 		unset($doubleTokens[0]);
 
-		$brandName = $this->isBrandName(array_merge($queryTokens, $doubleTokens));
+		$optionFilters = [];
+		$brandName = $this->getBrandName(array_merge($queryTokens, $doubleTokens));
 		if (!empty($brandName)) {
 			//Trim query text to ensure the category matches
-			$queryText = trim(str_ireplace("{$brandName}", '', $queryText));
+			$queryText = trim(str_ireplace("{$brandName['value']}", '', $queryText));
+			$optionFilters[] = $brandName;
 		}
 
-		$pluralQueryText = $queryText . 's';
+		$familyName = $this->getProductFamily(array_merge($queryTokens, $doubleTokens));
+		if (!empty($familyName)) {
+			//Trim query text to ensure the category matches
+			$queryText = trim(str_ireplace("{$familyName['value']}", '', $queryText));
+			$optionFilters[] = $familyName;
+		}
+
+		if (str_ends_with($queryText, 's')) {
+			$pluralQueryText = substr($queryText, 0, -1);
+		} else {
+			$pluralQueryText = $queryText . 's';
+		}
 		//Process thesaurus rewrites for our query
 		$queryVariants = array_values(array_unique(array_merge(
 			[$queryText, $pluralQueryText],
@@ -134,7 +151,7 @@ class QueryBuilder
 		$this->logger->info($queryVariants);
 
 		//If category match is successful return early
-		if ($this->checkCategoryMatch($containerConfig, $queryVariants, $priceFilter, $brandName)) {
+		if ($this->checkCategoryMatch($containerConfig, $queryVariants, $priceFilter, $optionFilters)) {
 			return null;
 		}
 
@@ -238,30 +255,36 @@ class QueryBuilder
 	 * @param $brandFilter
 	 * @return bool true if matched
 	 */
-	private function checkCategoryMatch(ContainerConfigurationInterface $containerConfig, array $queries, $priceFilter, $brandFilter): bool
+	private function checkCategoryMatch(ContainerConfigurationInterface $containerConfig, array $queries, $priceFilter, array $optionFilters): bool
 	{
 		$start = microtime(true);
 
 		$inClause = implode(",", array_fill(0, count($queries), '?'));
 
+		//Arrays merged in bind to ensure the number of params matches number of tokens
 		$catId = $this->connection->fetchOne(
 			"SELECT ccev.entity_id FROM {$this->categoryTableVarchar} ccev 
                 JOIN {$this->eavTable} ea ON ea.attribute_id = ccev.attribute_id AND ea.attribute_code = 'name'
                 JOIN {$this->categoryTable} cce ON cce.attribute_set_id = ea.entity_type_id AND cce.entity_id = ccev.entity_id
-                WHERE ccev.value IN ($inClause)",
-			$queries
+				JOIN {$this->sinchCategoriesMappingTable} scm ON scm.shop_entity_id = cce.entity_id
+				JOIN {$this->sinchCategoriesTable} sc ON sc.store_category_id = scm.store_category_id
+                WHERE ccev.value IN ($inClause) OR sc.VirtualCategory IN ($inClause)",
+			array_merge($queries, $queries)
 		);
 
-		//Category name match, don't bother creating the ES query and instead redirect
+		//Category or virtual category name match, don't bother creating the ES query and instead redirect
 		if (!empty($catId)) {
 			$filterParams = '';
 			if ($priceFilter !== false && $priceFilter['below'] != -1) {
 				$filterParams = "?price={$priceFilter['above']}-{$priceFilter['below']}";
 			}
 
-			//Check if brand name was included in query and apply filter if true
-			if (!empty($brandFilter)) {
-				$filterParams .= (empty($filterParams) ? "?" : "&") . "manufacturer=" . $brandFilter;
+			foreach ($optionFilters as $filter) {
+				$filterValue = $filter['value'];
+				if (!empty($filterValue)) {
+					$attributeCode = $filter['attribute_code'];
+					$filterParams .= (empty($filterParams) ? "?" : "&") . "{$attributeCode}=" . $filterValue;
+				}
 			}
 
 			try {
@@ -280,20 +303,31 @@ class QueryBuilder
 		return false;
 	}
 
-	/**
-	 * @param string[] $queryText
-	 * @return string
-	 */
-	private function isBrandName(array $queryText): string
+	private function getBrandName(array $queryText): array
+	{
+		return $this->getOptionAttributeValue('manufacturer', $queryText);
+	}
+
+	private function getProductFamily(array $queryText) : array
+	{
+		return $this->getOptionAttributeValue('sinch_family', $queryText);
+	}
+
+	private function getOptionAttributeValue(string $attributeCode, array $queryText) : array
 	{
 		$inClause = implode(",", array_fill(0, count($queryText), '?'));
 
-		return $this->connection->fetchOne(
+		$optionValue = $this->connection->fetchOne(
 			"SELECT eaov.value FROM eav_attribute_option_value eaov
 				INNER JOIN eav_attribute_option eao ON eao.option_id = eaov.option_id
 				INNER JOIN eav_attribute ea ON ea.attribute_id = eao.attribute_id
-				WHERE ea.attribute_code = 'manufacturer' AND eaov.value IN ({$inClause}) LIMIT 1",
-				$queryText
+				WHERE ea.attribute_code = '{$attributeCode}' AND eaov.value IN ({$inClause}) LIMIT 1",
+			$queryText
 		);
+
+		return [
+			'attribute_code' => $attributeCode,
+			'value' => $optionValue
+		];
 	}
 }
