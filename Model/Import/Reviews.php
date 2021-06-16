@@ -67,7 +67,7 @@ class Reviews extends AbstractImportSection {
             "CREATE TABLE IF NOT EXISTS {$this->reviewsTable} (
                 review_id int(10) NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 product_id int(10) NOT NULL,
-                score decimal(4, 4) NOT NULL DEFAULT 0.0,
+                score decimal(10, 2) NOT NULL DEFAULT 0.0,
                 date timestamp NOT NULL DEFAULT NOW(),
                 url varchar(1024),                    
                 author_name varchar(100),
