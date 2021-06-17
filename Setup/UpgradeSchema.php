@@ -140,7 +140,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 price decimal(15,4) NOT NULL,
                 cost decimal(15,4),
                 distributor_id int(11)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
 
             //Now make sure the distributor stock price import table has the layout we want
             $distiTable = $installer->getTable(StockPrice::DISTI_TABLE);
@@ -152,7 +152,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 stock int(11) NOT NULL,
                 PRIMARY KEY (distributor_id, product_id),
                 FOREIGN KEY (distributor_id) REFERENCES {$distiTable} (distributor_id) ON DELETE CASCADE ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
         }
 
         if (version_compare($context->getVersion(), '2.4.0', '<')) {
@@ -203,7 +203,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 message varchar(255) NOT NULL UNIQUE,
                 finished tinyint(1) NOT NULL DEFAULT 0
-            )");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
         }
 
         $installer->endSetup();
@@ -221,7 +221,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     category_id INT NOT NULL COMMENT 'Sinch Category ID',
                     PRIMARY KEY (feature_id, category_id),
                     INDEX(category_id)
-                ) ENGINE=InnoDB"
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
             );
         }
     }
@@ -238,7 +238,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     account_group_id INT NOT NULL COMMENT 'Account Group ID',
                     PRIMARY KEY (category_id, account_group_id),
                     INDEX(category_id)
-                ) ENGINE=InnoDB"
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
             );
         }
         //Drop the sinch_filter_products procedure if it exists

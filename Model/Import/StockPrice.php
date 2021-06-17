@@ -155,7 +155,7 @@ class StockPrice extends AbstractImportSection
                 `distributor_id` int(11) NOT NULL,
                 PRIMARY KEY (`distributor_id`,`product_id`),
                 FOREIGN KEY (`distributor_id`) REFERENCES `{$distiTable}` (`distributor_id`) ON DELETE CASCADE ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
 
         //Copy the content into the temp table

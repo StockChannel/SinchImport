@@ -824,7 +824,7 @@ class Sinch {
                     is_anchor                      TINYINT(1) NOT NULL DEFAULT 1,
                     KEY(store_category_id),
                     KEY(parent_store_category_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
 
         //ID|ParentID|Name|Order|IsHidden|ProductCount|SubCategoryProductCount|ThumbImageURL|NestLevel|SubCategoryCount|UNSPSC|TypeID|MainImageURL|MetaTitle|MetaDescription|Description|VirtualCategory
@@ -1413,7 +1413,7 @@ class Sinch {
                     KEY store_category_id (store_category_id),
                     KEY parent_store_category_id (parent_store_category_id),
                     UNIQUE KEY(shop_entity_id)
-                )"
+                )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
 
         $this->_doQuery(
@@ -1881,40 +1881,28 @@ class Sinch {
                 )
             );
             $this->_doQuery(
-                "CREATE TABLE " . $this->getTableName(
-                    'product_categories_temp'
-                ) . "(
+                "CREATE TABLE " . $this->getTableName('product_categories_temp') . "(
                           store_product_id int(11),
                           store_category_id int(11),
                           key(store_product_id),
                           key(store_category_id)
-                          )"
+                )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
             );
 
             $this->_doQuery(
                 "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->getTableName(
-                    'product_categories_temp'
-                ) . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
+                          INTO TABLE " . $this->getTableName('product_categories_temp') . "
+                          FIELDS TERMINATED BY '" . $this->field_terminated_char . "'
                           OPTIONALLY ENCLOSED BY '\"'
                           LINES TERMINATED BY \"\r\n\"
                           IGNORE 1 LINES "
             );
 
             $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->getTableName(
-                    'sinch_product_categories'
-                )
+                "DROP TABLE IF EXISTS " . $this->getTableName('sinch_product_categories')
             );
             $this->_doQuery(
-                "RENAME TABLE " . $this->getTableName(
-                    'product_categories_temp'
-                ) . "
-                          TO " . $this->getTableName(
-                    'sinch_product_categories'
-                )
+                "RENAME TABLE " . $this->getTableName('product_categories_temp') . " TO " . $this->getTableName('sinch_product_categories')
             );
 
             $this->_log("Finish parse " . Download::FILE_PRODUCT_CATEGORIES);
@@ -1964,7 +1952,7 @@ class Sinch {
                          KEY pt_sinch_product_id (`sinch_product_id`),
                          KEY pt_sinch_manufacturer_id (`sinch_manufacturer_id`),
                          KEY pt_manufacturer_name (`manufacturer_name`)
-                      ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+                      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
             );
             $this->print("--Parse Products 2");
 
@@ -2103,7 +2091,7 @@ class Sinch {
                     `website_id` int(11) default NULL,
                     PRIMARY KEY  (`id`),
                     KEY sinch_product_id (`sinch_product_id`)
-                )"
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
         $result = $this->_doQuery(
             "SELECT
@@ -2150,7 +2138,7 @@ class Sinch {
                 KEY sinch_product_id (sinch_product_id),
                 KEY sku (sku),
                 UNIQUE KEY(entity_id)
-            )"
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
 
         $productEntityTable = $this->getTableName('catalog_product_entity');
@@ -3163,7 +3151,7 @@ class Sinch {
                     image_url varchar(255),
                     thumb_image_url varchar(255),
                     KEY(sinch_product_id)
-                )"
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
             );
 
             $this->_doQuery(

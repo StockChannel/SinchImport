@@ -84,7 +84,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
                 product_id int(11) unsigned NOT NULL PRIMARY KEY COMMENT 'Sinch Product ID',
                 whitelist tinyint(1) NOT NULL COMMENT 'Is Whitelisted product',
                 INDEX (whitelist)
-            )"
+            )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
         $this->getConnection()->query(
             "CREATE TABLE {$this->tmpTable} (
@@ -92,13 +92,13 @@ class CustomCatalogVisibility extends AbstractImportSection {
                 product_id int(11) unsigned NOT NULL COMMENT 'Sinch Product ID',
                 group_id int(11) unsigned NOT NULL COMMENT 'Group ID',
                 INDEX (product_id)
-            )"
+            )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
         $this->getConnection()->query(
             "CREATE TABLE {$this->finalRulesTable} (
                 product_id int(11) unsigned NOT NULL PRIMARY KEY COMMENT 'Product Entity ID',
                 rule varchar(255) NOT NULL
-            )"
+            )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
     }
 

@@ -50,7 +50,7 @@ class Brands extends AbstractImportSection {
                 KEY(sinch_manufacturer_id),
                 KEY(shop_option_id),
                 KEY(manufacturer_name)
-            )"
+            )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
         $this->endTimingStep();
 
