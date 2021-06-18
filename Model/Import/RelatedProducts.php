@@ -246,14 +246,17 @@ class RelatedProducts extends AbstractImportSection
         $this->startTimingStep('Update relation position/ordering');
         //This insert used to use the magic value '2', which corresponds to the up_sell position attribute as far as I can tell on normal installations
         //However given the links were inserted as relation, and relation has its own position attribute, it was probably a bug, so we should probably use the correct position attribute instead
+        //The previous iteration of this query took a long time (over an hour on the sandbox test feed). In my manual testing, this version runs between 50 and 100% faster than the previous iteration
+        // For some reason it also seems to produce ~6k less rows (5,564,676 vs 5,571,386), but I think this one should be correct
         $conn->query(
             "INSERT INTO $catalog_product_link_attribute_int (product_link_attribute_id, link_id, value) (
-                SELECT link_attr.product_link_attribute_id, cpl.link_id, srp.position FROM $catalog_product_link cpl
+                SELECT link_attr.product_link_attribute_id, cpl.link_id, srp.position FROM catalog_product_link cpl
+                    INNER JOIN $catalog_product_link_type link_type
+                        ON cpl.link_type_id = link_type.link_type_id
                     INNER JOIN {$this->relatedProductsTable} srp
                         ON cpl.product_id = srp.entity_id
                         AND cpl.linked_product_id = srp.related_entity_id
-                    INNER JOIN $catalog_product_link_type link_type
-                        ON srp.link_type = link_type.code
+                        AND srp.link_type = link_type.code
                     INNER JOIN $catalog_product_link_attribute link_attr
                         ON link_type.link_type_id = link_attr.link_type_id
                         AND link_attr.product_link_attribute_code = :linkAttrCode
