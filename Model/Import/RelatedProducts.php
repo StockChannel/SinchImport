@@ -148,36 +148,28 @@ class RelatedProducts extends AbstractImportSection
         //Update the entity id's for the products in sinch_related_products
         $this->startTimingStep('Map main products to Magento products');
         //The previous iteration of this was far too slow (likely due to the use of sinch_product_id on cpe, an unindexed field)
-//        $conn->query(
-//            "UPDATE {$this->relatedProductsTable} srp
-//                      LEFT JOIN $catalog_product_entity cpe
-//                        ON srp.sinch_product_id = cpe.sinch_product_id
-//                      SET srp.entity_id = cpe.entity_id"
-//        );
         //So now we'll just use the mapping table (where it is indexed)
+        //Making sure to explicitly compare with null as srp.entity_id != spm.entity_id doesn't include any rows where one side is null
+        //https://dev.mysql.com/doc/refman/8.0/en/working-with-null.html
         $conn->query(
             "UPDATE {$this->relatedProductsTable} srp
                       INNER JOIN $sinch_products_mapping spm
                         ON srp.sinch_product_id = spm.sinch_product_id
                       SET srp.entity_id = spm.entity_id
-                      WHERE srp.entity_id != spm.entity_id"
+                      WHERE srp.entity_id != spm.entity_id
+                        OR (srp.entity_id IS NULL XOR spm.entity_id IS NULL)"
         );
         $this->endTimingStep();
 
         //Update the entity id's for the related products in sinch_related_products
         $this->startTimingStep('Map related products to Magento products');
-//        $conn->query(
-//            "UPDATE {$this->relatedProductsTable} srp
-//                      LEFT JOIN $catalog_product_entity cpe
-//                        ON srp.related_sinch_product_id = cpe.sinch_product_id
-//                      SET srp.related_entity_id = cpe.entity_id"
-//        );
         $conn->query(
             "UPDATE {$this->relatedProductsTable} srp
                       INNER JOIN $sinch_products_mapping spm
                         ON srp.related_sinch_product_id = spm.sinch_product_id
                       SET srp.related_entity_id = spm.entity_id
-                      WHERE srp.related_entity_id != spm.entity_id"
+                      WHERE srp.related_entity_id != spm.entity_id
+                        OR (srp.related_entity_id IS NULL XOR spm.entity_id IS NULL)"
         );
         $this->endTimingStep();
 
@@ -193,7 +185,8 @@ class RelatedProducts extends AbstractImportSection
             )
             ON DUPLICATE KEY UPDATE
                 product_id = VALUES(product_id),
-                linked_product_id = VALUES(linked_product_id)"
+                linked_product_id = VALUES(linked_product_id),
+                link_type_id = VALUES(link_type_id)"
         );
         $this->endTimingStep();
 

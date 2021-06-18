@@ -229,4 +229,23 @@ class Data extends AbstractHelper
     {
 	    return $this->moduleReader->getModuleDir($type, 'SITC_Sinchimport');
     }
+
+    /**
+     * @return bool The value of the "Indexing Separately" config option
+     */
+    public function indexSeparately(): bool
+    {
+        return $this->getStoreConfig('sinchimport/sinch_import_fullstatus/indexing_separately') == 1;
+    }
+
+    /**
+     * @return string|null The current import type ('FULL' or 'PRICE STOCK') or null if no import is running
+     */
+    public function currentImportType(): ?string
+    {
+        $sinch_import_status_statistic = $this->resourceConn->getTableName('sinch_import_status_statistic');
+        return $this->resourceConn->getConnection()->fetchOne(
+            "SELECT import_type FROM $sinch_import_status_statistic WHERE global_status_import = 'Run' AND id = (SELECT MAX(id) FROM $sinch_import_status_statistic) ORDER BY start_import DESC LIMIT 1"
+        );
+    }
 }

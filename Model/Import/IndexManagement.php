@@ -121,8 +121,12 @@ class IndexManagement {
      */
     public function runIndex(string $indexerName)
     {
-        $indexer = $this->indexerRegistry->get($indexerName);
-        $indexActions = $this->indexActionFactory->create($indexer->getActionClass());
-        $indexActions->executeFull();
+        //Only actually run the index if "Indexing separately" is off and the current import is not a full import
+        // (as the full import runs a full reindex at the end anyway and its just a waste of time to do the index twice)
+        if (!$this->helper->indexSeparately() && $this->helper->currentImportType() != 'FULL') {
+            $indexer = $this->indexerRegistry->get($indexerName);
+            $indexActions = $this->indexActionFactory->create($indexer->getActionClass());
+            $indexActions->executeFull();
+        }
     }
 }

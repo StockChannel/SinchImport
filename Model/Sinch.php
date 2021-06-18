@@ -254,11 +254,6 @@ class Sinch {
      */
     public function runSinchImport()
     {
-        $indexingSeparately = $this->scopeConfig->getValue(
-            'sinchimport/sinch_import_fullstatus/indexing_separately',
-            ScopeInterface::SCOPE_STORE
-        );
-
         $this->_categoryMetaTitleAttrId = $this->dataHelper->getCategoryAttributeId('meta_title');
         $this->_categoryMetadescriptionAttrId = $this->dataHelper->getCategoryAttributeId('meta_description');
         $this->_categoryDescriptionAttrId = $this->dataHelper->getCategoryAttributeId('description');
@@ -384,6 +379,13 @@ class Sinch {
                 $this->parseProductsPicturesGallery();
                 $this->addImportStatus('Parse Pictures Gallery', true);
 
+                //Moved here (from the end of replaceMagentoProductsMultistore) to make the flow easier to follow
+                // (and to make sure it runs after the full mapping)
+                $this->addImportStatus('Apply Related Products');
+                if ($this->relatedProductsImport->haveRequiredFiles()) {
+                    $this->relatedProductsImport->apply();
+                }
+                $this->addImportStatus('Apply Related Products', true);
 
                 if ($this->attributesImport->haveRequiredFiles()) {
                     $this->addImportStatus('Parse Restricted Values');
@@ -504,9 +506,8 @@ class Sinch {
                     $this->print("Caught exception while running post import hooks: " . $e->getMessage());
                 }
 
-                if (!$indexingSeparately) {
+                if (!$this->dataHelper->indexSeparately()) {
                     $this->addImportStatus('Run indexing');
-                    $this->_cleanCateoryProductFlatTable();
                     $this->runIndexer();
                     $this->addImportStatus('Run indexing', true);
                 } else {
@@ -946,11 +947,7 @@ class Sinch {
 
     private function tableHasData($table): bool
     {
-        $tableRowCount = $this->_doQuery(
-            "SELECT *
-            FROM $table"
-        )->rowCount();
-
+        $tableRowCount = (int)$this->conn->fetchOne("SELECT COUNT(*) FROM $table");
         return $tableRowCount > 0;
     }
 
@@ -2145,11 +2142,8 @@ class Sinch {
 
         // backup Product ID in REWRITE mode
         $productsBackupTable = $this->getTableName('sinch_product_backup');
-        if ($mode == 'REWRITE' && !$mapping_again
-            && $this->tableHasData(
-                $productsBackupTable
-            )
-        ) {
+        if ($mode == 'REWRITE' && !$mapping_again && $this->tableHasData($productsBackupTable)) {
+            $this->print("Using $productsBackupTable in place of $productEntityTable for this mapping");
             $productEntityTable = $productsBackupTable;
         }
         // (end) backup Product ID in REWRITE mode
@@ -3129,10 +3123,6 @@ class Sinch {
         );
 
         $this->print("--Replace Magento Multistore 35...");
-
-        if ($this->relatedProductsImport->haveRequiredFiles()) {
-            $this->relatedProductsImport->apply();
-        }
     }
 
     private function parseProductsPicturesGallery()
@@ -3174,28 +3164,6 @@ class Sinch {
         } else {
             $this->_log("Wrong file" . $parseFile);
         }
-    }
-
-    private function _cleanCateoryProductFlatTable()
-    {
-        $q = 'SHOW TABLES LIKE "' . $this->getTableName('catalog_product_flat_') . '%"';
-        $quer = $this->_doQuery($q)->fetchAll();
-        $result = false;
-        foreach ($quer as $res) {
-            if (is_array($res)) {
-                $catalog_product_flat = array_pop($res);
-                $this->_doQuery('DELETE pf1 FROM ' . $catalog_product_flat . ' pf1
-                    LEFT JOIN ' . $this->getTableName('catalog_product_entity') . ' p
-                        ON pf1.entity_id = p.entity_id
-                    WHERE p.entity_id IS NULL'
-                );
-                $this->_log(
-                    'cleaned wrong rows from ' . $catalog_product_flat
-                );
-            }
-        }
-
-        return $result;
     }
 
     private function runIndexer()
