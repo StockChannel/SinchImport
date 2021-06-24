@@ -1183,7 +1183,7 @@ class Sinch {
         $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
         $categories_temp = $this->getTableName('categories_temp');
 
-        $this->createMappingSinchTables();
+        $this->createCategoryMappingSinchTables();
 
         $rootCategories = $this->conn->fetchAll(
             "SELECT DISTINCT
@@ -1385,7 +1385,7 @@ class Sinch {
         $this->_doQuery("RENAME TABLE $sinch_categories_mapping_temp TO $sinch_categories_mapping");
     }
 
-    private function createMappingSinchTables()
+    private function createCategoryMappingSinchTables()
     {
         $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
         $sinch_categories_mapping_temp = $this->getTableName('sinch_categories_mapping_temp');
@@ -1405,9 +1405,9 @@ class Sinch {
                     order_number                  INT(11),
                     products_within_this_category INT(11),
 
-                    KEY shop_entity_id (shop_entity_id),
+                    UNIQUE KEY shop_entity_id (shop_entity_id),
                     KEY shop_parent_id (shop_parent_id),
-                    KEY store_category_id (store_category_id),
+                    UNIQUE KEY store_category_id (store_category_id),
                     KEY parent_store_category_id (parent_store_category_id),
                     UNIQUE KEY(shop_entity_id)
                 )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
