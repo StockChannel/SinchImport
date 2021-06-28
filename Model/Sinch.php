@@ -1204,6 +1204,16 @@ class Sinch {
             $catalog_category_entity_source = $catalog_category_entity;
         }
 
+        //Ensure that only the lowest ID category for a given store_category_id exists
+        $this->_doQuery(
+            "DELETE cce FROM $catalog_category_entity_source cce
+                WHERE cce.store_category_id IS NOT NULL
+                  AND entity_id != (
+                      SELECT MIN(entity_id) FROM (SELECT * FROM $catalog_category_entity_source) cce2
+                      WHERE cce2.store_category_id = cce.store_category_id
+                  )"
+        );
+
         $this->_doQuery(
             "INSERT IGNORE INTO $sinch_categories_mapping_temp
                 (
