@@ -72,7 +72,6 @@ class RelatedProducts extends AbstractImportSection
         $sinch_products = $this->getTableName('sinch_products');
         $sinch_products_mapping = $this->getTableName('sinch_products_mapping');
 
-        $catalog_product_entity = $this->getTableName('catalog_product_entity');
         $catalog_product_link = $this->getTableName('catalog_product_link');
         $catalog_product_link_type = $this->getTableName('catalog_product_link_type');
         $catalog_product_link_attribute = $this->getTableName('catalog_product_link_attribute');
@@ -190,20 +189,6 @@ class RelatedProducts extends AbstractImportSection
         );
         $this->endTimingStep();
 
-
-//        $link_attribute_tmp = $this->getTableName('catalog_product_link_attribute_int_tmp');
-//        $conn->query("DROP TABLE IF EXISTS $link_attribute_tmp");
-//        $conn->query(
-//            "CREATE TEMPORARY TABLE $link_attribute_tmp (
-//                `value_id` int(11) default NULL,
-//                `product_link_attribute_id` smallint(6) unsigned default NULL,
-//                `link_id` int(11) unsigned default NULL,
-//                `value` int(11) NOT NULL default '0',
-//                    KEY `FK_INT_PRODUCT_LINK_ATTRIBUTE` (`product_link_attribute_id`),
-//                    KEY `FK_INT_PRODUCT_LINK` (`link_id`)
-//            )"
-//        );
-
         $this->startTimingStep('Increase relation positions based on popularity');
         //Increase the position of relationships based on popularity score
         $conn->query(
@@ -266,39 +251,6 @@ class RelatedProducts extends AbstractImportSection
         );
         $this->endTimingStep();
 
-//        $conn->query(
-//            "INSERT INTO $link_attribute_tmp (product_link_attribute_id, link_id, value) (
-//                SELECT :linkAttr, cpl.link_id, 0 FROM $catalog_product_link cpl
-//            )",
-//            [":linkAttr" => $relationPosAttr]
-//        );
-//
-//        $conn->query(
-//            "UPDATE $link_attribute_tmp ct
-//                JOIN $link_attribute_int c
-//                    ON ct.link_id = c.link_id
-//                SET ct.value_id = c.value_id
-//                WHERE c.product_link_attribute_id = :linkAttr",
-//            [":linkAttr" => $relationPosAttr]
-//        );
-//
-//        $conn->query(
-//            "INSERT INTO $catalog_product_link_attribute_int (
-//                value_id,
-//                product_link_attribute_id,
-//                link_id,
-//                value
-//            )(
-//                SELECT
-//                value_id,
-//                product_link_attribute_id,
-//                link_id,
-//                value
-//                FROM $link_attribute_tmp ct
-//            )
-//            ON DUPLICATE KEY UPDATE
-//                link_id=ct.link_id"
-//        );
         $this->timingPrint();
     }
 
