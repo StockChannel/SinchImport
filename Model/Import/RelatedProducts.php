@@ -49,6 +49,8 @@ class RelatedProducts extends AbstractImportSection
         $this->endTimingStep();
 
         $this->startTimingStep('Load data');
+        //Currently we insert the related products with the link type "unused", so they won't be mapped by the rest of this process.
+        // This is primarily as the related products provided by icecat suck, and we intend to override the set ourselves
         $conn->query(
             "LOAD DATA LOCAL INFILE :relatedProductsCsv
                       INTO TABLE {$this->relatedProductsTable}
@@ -56,7 +58,8 @@ class RelatedProducts extends AbstractImportSection
                       OPTIONALLY ENCLOSED BY '\"'
                       LINES TERMINATED BY \"\r\n\"
                       IGNORE 1 LINES
-                      (sinch_product_id, related_sinch_product_id)",
+                      (sinch_product_id, related_sinch_product_id)
+                      SET link_type = 'unused'",
             [":relatedProductsCsv" => $relatedProductsCsv]
         );
         $this->endTimingStep();
@@ -109,11 +112,11 @@ class RelatedProducts extends AbstractImportSection
         );
         $this->endTimingStep();
 
-        $this->startTimingStep('Generate cross-sell products');
+        $this->startTimingStep('Generate related products');
         //The main determining factor for speed here is the family_id != 0 (as otherwise all products without family match all other products without family)
         $conn->query(
             "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type) (
-                SELECT spc.store_product_id, spc2.store_product_id, 'cross_sell' FROM $sinch_product_categories spc
+                SELECT spc.store_product_id, spc2.store_product_id, 'relation' FROM $sinch_product_categories spc
                     INNER JOIN $sinch_product_categories spc2    
                         ON spc.store_product_id != spc2.store_product_id
                         AND spc.store_category_id NOT IN (
