@@ -10,6 +10,16 @@ class RelatedProducts extends AbstractImportSection
     const LOG_PREFIX = "RelatedProducts: ";
     const LOG_FILENAME = "related_products";
 
+    const FAMILY_BOOST = 10;
+    const SERIES_BOOST = 20;
+    const PROFIT_BOOST = 5;
+    const POPULARITY_BOOST_MAX = 5;
+
+    const UPSELL_CHEAPER_ABOVE = 0.8;
+    const UPSELL_CHEAPER_MIN_RELATIVE_PROFIT = 0.95;
+    const UPSELL_DEARER_BELOW = 1.5;
+    const UPSELL_DEARER_MIN_RELATIVE_PROFIT = 0.9;
+
     private string $relatedProductsTable;
 
     public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper)
@@ -84,10 +94,16 @@ class RelatedProducts extends AbstractImportSection
 
         $this->startTimingStep('Generate upsell products');
         //Join every product to every other product in every category it's in under the following conditions:
-        //  The category they share has 0 < products < 20k and is a leaf
-        //  The reference products public price is higher than the main products public price and neither of them are 0 (which would indicate a private product)
-        //  Both products are currently in stock
-        //  Products which share more than 1 category have their position increased by 1 for each additional category (not really a condition but it is something this query does)
+        //  - The category they share has 0 < products < 10k and is a leaf
+        //  - Neither the main nor reference product can have a public price of 0 (it would indicate a private product)
+        //  - Both products are currently in stock
+        //  - Products which share more than 1 category have their position increased by 1 for each additional category (not really a condition but it is something this query does)
+        //  - The reference product public price must be dearer than UPSELL_CHEAPER_ABOVE * the main products public price
+        //  - The reference product public price must be cheaper than UPSELL_DEARER_BELOW * the main products public price
+        //  - If the reference product is cheaper than the main product, it must have a profit ratio at least
+        //      UPSELL_CHEAPER_MIN_RELATIVE_PROFIT * the main product profit ratio
+        //  - If the reference product is dearer than the main product, it must have a profit ratio at least
+        //      UPSELL_DEARER_MIN_RELATIVE_PROFIT * the main product profit ratio
         $conn->query(
             "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type) (
                 SELECT spc.store_product_id, spc2.store_product_id, 'up_sell' FROM $sinch_product_categories spc
@@ -103,12 +119,44 @@ class RelatedProducts extends AbstractImportSection
                     WHERE ssp_main.stock > 0
                         AND ssp_main.price != 0
                         AND ssp_ref.stock > 0
-                        AND ssp_ref.price > ssp_main.price
+                        AND ssp_ref.price != 0
+                        AND (
+                            (
+                                ssp_ref.price >= ssp_main.price * :upsellCheaperAbove AND ssp_ref.price < ssp_main.price
+                                AND (
+                                    ssp_ref.cost IS NULL
+                                    OR ssp_main.cost IS NULL
+                                    OR (
+                                        ssp_ref.cost IS NOT NULL
+                                        AND ssp_main.cost IS NOT NULL
+                                        AND ssp_ref.price / ssp_ref.cost >= (ssp_main.price / ssp_main.cost) * :upsellCheaperMinRelativeProfit
+                                    )
+                                )
+                            )
+                            OR (
+                                ssp_ref.price >= ssp_main.price AND ssp_ref.price < ssp_main.price * :upsellDearerBelow
+                                AND (
+                                    ssp_ref.cost IS NULL
+                                    OR ssp_main.cost IS NULL
+                                    OR (
+                                        ssp_ref.cost IS NOT NULL
+                                        AND ssp_main.cost IS NOT NULL
+                                        AND ssp_ref.price / ssp_ref.cost >= (ssp_main.price / ssp_ref.cost) * :upsellDearerMinRelativeProfit
+                                    )
+                                )
+                            )
+                        )
                         AND sc.children_count = 0
                         AND sc.products_within_this_category > 0
                         AND sc.products_within_this_category < 10000
             ) ON DUPLICATE KEY UPDATE
-                position = position + 1"
+                position = position + 1",
+            [
+                ":upsellCheaperAbove" => self::UPSELL_CHEAPER_ABOVE,
+                ":upsellCheaperMinRelativeProfit" => self::UPSELL_CHEAPER_MIN_RELATIVE_PROFIT,
+                ":upsellDearerBelow" => self::UPSELL_DEARER_BELOW,
+                ":upsellDearerMinRelativeProfit" => self::UPSELL_DEARER_MIN_RELATIVE_PROFIT
+            ]
         );
         $this->endTimingStep();
 
@@ -198,8 +246,33 @@ class RelatedProducts extends AbstractImportSection
             "UPDATE {$this->relatedProductsTable} srp
                     INNER JOIN $sinch_products sp
                         ON srp.related_sinch_product_id = sp.sinch_product_id
-                    SET position = position + sp.score
-                    WHERE sp.score > 0"
+                    INNER JOIN (
+                        SELECT srp2.sinch_product_id, MIN(sp2.score) AS min, MAX(sp2.score) AS max FROM {$this->relatedProductsTable} srp2
+                            INNER JOIN $sinch_products sp2
+                                ON srp2.related_sinch_product_id = sp2.sinch_product_id
+                        WHERE sp2.score != 0
+                        GROUP BY srp2.sinch_product_id
+                    ) scores
+                        ON srp.sinch_product_id = scores.sinch_product_id
+                    SET position = position + (((sp.score - scores.min) * :popularityBoostMax) / (scores.max - scores.min))
+                    WHERE sp.score > scores.min",
+            [":popularityBoostMax" => self::POPULARITY_BOOST_MAX]
+        );
+        //TODO: Do a similar thing to the above with implied sales data (with different boost levels for 1m and 1y) when it becomes available
+        $this->endTimingStep();
+
+        $this->startTimingStep('Increase relation positions based on price/cost ratio');
+        $conn->query(
+            "UPDATE {$this->relatedProductsTable} srp
+                    INNER JOIN $sinch_stock_and_prices ssp_main
+                        ON srp.sinch_product_id = ssp_main.product_id
+                    INNER JOIN $sinch_stock_and_prices ssp_ref
+                        ON srp.related_sinch_product_id = ssp_ref.product_id
+                    SET position = position + :profitBoost
+                    WHERE ssp_main.cost IS NOT NULL
+                      AND ssp_ref.cost IS NOT NULL
+                      AND ssp_ref.price / ssp_ref.cost > ssp_main.price / ssp_main.cost",
+            [":profitBoost" => self::PROFIT_BOOST]
         );
         $this->endTimingStep();
 
@@ -211,9 +284,10 @@ class RelatedProducts extends AbstractImportSection
                         ON srp.sinch_product_id = sp1.sinch_product_id
                     INNER JOIN $sinch_products sp2
                         ON srp.related_sinch_product_id = sp2.sinch_product_id
-                    SET position = position + 10
+                    SET position = position + :familyBoost
                     WHERE sp1.family_id = sp2.family_id
-                        AND sp1.family_id IS NOT NULL"
+                        AND sp1.family_id IS NOT NULL",
+            [":familyBoost" => self::FAMILY_BOOST]
         );
 
         //Further increase the position of relationships between products in the same family and family series
@@ -223,11 +297,12 @@ class RelatedProducts extends AbstractImportSection
                         ON srp.sinch_product_id = sp1.sinch_product_id
                     INNER JOIN $sinch_products sp2
                         ON srp.related_sinch_product_id = sp2.sinch_product_id
-                    SET position = position + 20
+                    SET position = position + :seriesBoost
                     WHERE sp1.family_id = sp2.family_id
                         AND sp1.series_id = sp2.series_id
                         AND sp1.family_id IS NOT NULL
-                        AND sp1.series_id IS NOT NULL"
+                        AND sp1.series_id IS NOT NULL",
+            [":seriesBoost" => self::SERIES_BOOST]
         );
         $this->endTimingStep();
 

@@ -459,6 +459,64 @@ class UpgradeData implements UpgradeDataInterface
             ]
         );
 
+        //Implied Sales (1m)
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_popularity_month',
+            [
+                'label' => 'Monthly Popularity',
+                'note' => 'Stockinthechannel Implied Monthly Sales',
+                'type' => 'int',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'frontend_class' => 'validate-digits-range digits-range-0-99999999',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'is_visible_in_grid' => true,
+                'is_filterable_in_grid' => true,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
+        //Implied Sales (1y)
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_popularity_year',
+            [
+                'label' => 'Yearly Popularity',
+                'note' => 'Stockinthechannel Implied Yearly Sales',
+                'type' => 'int',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'frontend_class' => 'validate-digits-range digits-range-0-99999999',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'is_visible_in_grid' => true,
+                'is_filterable_in_grid' => true,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+
         //Virtual Category (category attribute)
         $eavSetup->addAttribute(
             Category::ENTITY,
