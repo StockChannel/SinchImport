@@ -130,20 +130,6 @@ class QueryBuilder
 			}
 		}
 
-//		$brandName = $this->getBrandName(array_merge($queryTokens, $doubleTokens));
-//		if (!empty($brandName)) {
-//			//Trim query text to ensure the category matches
-//			$queryText = trim(str_ireplace("{$brandName['value']}", '', $queryText));
-//			$optionFilters[] = $brandName;
-//		}
-//
-//		$familyName = $this->getProductFamily(array_merge($queryTokens, $doubleTokens));
-//		if (!empty($familyName)) {
-//			//Trim query text to ensure the category matches
-//			$queryText = trim(str_ireplace("{$familyName['value']}", '', $queryText));
-//			$optionFilters[] = $familyName;
-//		}
-
 		if (str_ends_with($queryText, 's')) {
 			$pluralQueryText = substr($queryText, 0, -1);
 		} else {
@@ -272,7 +258,6 @@ class QueryBuilder
 				JOIN {$this->productFamilyTable} pf ON pf.id = sp.family_id
 				WHERE pf.name IN ({$inClause})",
 			$queries);
-			$this->logger->info("Product family match cat ID: {$catId}");
 		}
 
 		//Category or virtual category name match, don't bother creating the ES query and instead redirect
