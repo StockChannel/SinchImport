@@ -26,6 +26,8 @@ class QueryBuilder
 
 	const PRICE_REGEXP = "/(?(DEFINE)(?<price>[0-9]+(?:.[0-9]+)?)(?<cur>(?:\p{Sc}|[A-Z]{3})\s?))(?<query>.+?)\s+(?J:(?:below|under|(?:cheaper|less)\sthan)\s+(?&cur)?(?<below>(?&price))|(?:between|from)?\s*(?&cur)?(?<above>(?&price))\s*(?:and|to|-)\s*(?&cur)?(?<below>(?&price)))/u";
 
+	const FILTERABLE_OPTIONS = [ 'manufacturer', 'sinch_family' ];
+
 	/** @var CategoryRepositoryInterface */
 	private $categoryRepository;
 	/** @var HttpResponse */
@@ -41,6 +43,8 @@ class QueryBuilder
 	private $eavOptionTable;
 	private $sinchCategoriesTable;
 	private $sinchCategoriesMappingTable;
+	private $productFamilyTable;
+	private $sinchProductsTable;
 
 	/** @var Data */
 	private $helper;
@@ -78,6 +82,8 @@ class QueryBuilder
 		$this->eavOptionValueTable = $this->connection->getTableName('eav_attribute_option_value');
 		$this->sinchCategoriesTable = $this->connection->getTableName('sinch_categories');
 		$this->sinchCategoriesMappingTable = $this->connection->getTableName('sinch_categories_mapping');
+		$this->productFamilyTable = $this->connection->getTableName('sinch_family');
+		$this->sinchProductsTable = $this->connection->getTableName('sinch_products');
 		$this->helper = $helper;
 		$this->queryFactory = $queryFactory;
 		$this->customerSession = $customerSession;
@@ -117,18 +123,13 @@ class QueryBuilder
 		unset($doubleTokens[0]);
 
 		$optionFilters = [];
-		$brandName = $this->getBrandName(array_merge($queryTokens, $doubleTokens));
-		if (!empty($brandName)) {
-			//Trim query text to ensure the category matches
-			$queryText = trim(str_ireplace("{$brandName['value']}", '', $queryText));
-			$optionFilters[] = $brandName;
-		}
-
-		$familyName = $this->getProductFamily(array_merge($queryTokens, $doubleTokens));
-		if (!empty($familyName)) {
-			//Trim query text to ensure the category matches
-			$queryText = trim(str_ireplace("{$familyName['value']}", '', $queryText));
-			$optionFilters[] = $familyName;
+		foreach (self::FILTERABLE_OPTIONS as $filterOptionCode) {
+			$optionValue = $this->getOptionAttributeValue($filterOptionCode, array_merge($queryTokens, $doubleTokens));
+			if (!empty($optionValue)) {
+				if ($optionValue['attribute_code'] != 'sinch_family')
+					$queryText = trim(str_ireplace("{$optionValue['value']}", '', $queryText));
+				$optionFilters[] = $optionValue;
+			}
 		}
 
 		if (str_ends_with($queryText, 's')) {
@@ -151,7 +152,7 @@ class QueryBuilder
 		$this->logger->info($queryVariants);
 
 		//If category match is successful return early
-		if ($this->checkCategoryMatch($containerConfig, $queryVariants, $priceFilter, $optionFilters)) {
+		if ($this->checkCategoryOrFamilyMatch($containerConfig, $queryVariants, $priceFilter, $optionFilters)) {
 			return null;
 		}
 
@@ -252,10 +253,10 @@ class QueryBuilder
 	 * @param ContainerConfigurationInterface $containerConfig
 	 * @param string[] $queries
 	 * @param $priceFilter
-	 * @param $brandFilter
+	 * @param array $optionFilters
 	 * @return bool true if matched
 	 */
-	private function checkCategoryMatch(ContainerConfigurationInterface $containerConfig, array $queries, $priceFilter, array $optionFilters): bool
+	private function checkCategoryOrFamilyMatch(ContainerConfigurationInterface $containerConfig, array $queries, $priceFilter, array $optionFilters): bool
 	{
 		$start = microtime(true);
 
@@ -271,6 +272,16 @@ class QueryBuilder
                 WHERE ccev.value IN ($inClause) OR sc.VirtualCategory IN ($inClause)",
 			array_merge($queries, $queries)
 		);
+
+		//Product family match if no category match detected
+		if (empty($catId)) {
+			$catId = $this->connection->fetchOne(
+				"SELECT cce.entity_id FROM {$this->categoryTable} cce
+				JOIN {$this->sinchProductsTable} sp ON sp.store_category_id = cce.store_category_id
+				JOIN {$this->productFamilyTable} pf ON pf.id = sp.family_id
+				WHERE pf.name IN ({$inClause})",
+			$queries);
+		}
 
 		//Category or virtual category name match, don't bother creating the ES query and instead redirect
 		if (!empty($catId)) {

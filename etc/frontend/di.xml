@@ -24,5 +24,9 @@
         <!-- Specify sort order to ensure that optimizers run as expected -->
         <plugin name="sitc_query_builder" type="SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder" sortOrder="0"/>
     </type>
+    <type name="Smile\ElasticsuiteCore\Model\Autocomplete\Terms\DataProvider">
+        <!-- Specify sort order to ensure that optimizers run as expected -->
+        <plugin name="sitc_data_provider" type="SITC\Sinchimport\Plugin\Elasticsuite\DataProvider" sortOrder="0"/>
+    </type>
     <!-- End search stuff-->
 </config>
