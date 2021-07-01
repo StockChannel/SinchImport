@@ -26,7 +26,11 @@
     </type>
     <type name="Smile\ElasticsuiteCore\Model\Autocomplete\Terms\DataProvider">
         <!-- Specify sort order to ensure that optimizers run as expected -->
-        <plugin name="sitc_data_provider" type="SITC\Sinchimport\Plugin\Elasticsuite\DataProvider" sortOrder="0"/>
+        <plugin name="sitc_data_provider" type="SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete\TermsDataProvider" sortOrder="0"/>
+    </type>
+    <!-- Override Elasticsuite's Product attribute autocomplete DataProvider to change suggestion ordering -->
+    <type name="Smile\ElasticsuiteCatalog\Model\Autocomplete\Product\Attribute\DataProvider">
+        <plugin name="sitc_attribute_autocomplete_reorder" type="SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete\ProductAttributeDataProvider" sortOrder="0"/>
     </type>
     <!-- End search stuff-->
 </config>

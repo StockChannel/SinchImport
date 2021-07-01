@@ -212,6 +212,14 @@
                     <label>Popularity Boost Factor</label>
                     <comment><![CDATA[The factor to use when Popularity boosting]]></comment>
                 </field>
+                <field id="monthly_sales_boost_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Monthly Popularity Boost Factor</label>
+                    <comment><![CDATA[The factor to use when Popularity boosting on the monthly Stockinthechannel implied sales]]></comment>
+                </field>
+                <field id="yearly_sales_boost_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Yearly Popularity Boost Factor</label>
+                    <comment><![CDATA[The factor to use when Popularity boosting on the yearly Stockinthechannel implied sales]]></comment>
+                </field>
             </group>
         </section>
     </system>

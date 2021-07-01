@@ -1,6 +1,6 @@
 <?php
 
-namespace SITC\Sinchimport\Plugin\Elasticsuite;
+namespace SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete;
 
 use Magento\Framework\App\ResourceConnection;
 use Magento\Search\Model\Autocomplete\ItemInterface;
@@ -12,7 +12,7 @@ use Smile\ElasticsuiteCore\Helper\Autocomplete as ESConfigurationHelper;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
 
-class DataProvider {
+class TermsDataProvider {
 
 	const AUTOCOMPLETE_TYPE = 'term';
 

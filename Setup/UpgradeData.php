@@ -243,6 +243,8 @@ class UpgradeData implements UpgradeDataInterface
                 'user_defined' => false,
                 'searchable' => true,
                 'filterable' => true,
+                'filterable_in_search' => true,
+                'is_displayed_in_autocomplete' => true, //Enable Elasticsuite autocomplete suggestions
                 'comparable' => false,
                 'visible_on_front' => true,
                 'visible_in_advanced_search' => false,
@@ -268,6 +270,8 @@ class UpgradeData implements UpgradeDataInterface
                 'user_defined' => false,
                 'searchable' => true,
                 'filterable' => true,
+                'filterable_in_search' => true,
+                'is_displayed_in_autocomplete' => true, //Enable Elasticsuite autocomplete suggestions
                 'comparable' => false,
                 'visible_on_front' => true,
                 'visible_in_advanced_search' => false,
@@ -546,6 +550,9 @@ class UpgradeData implements UpgradeDataInterface
         $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
         //Make specification not visible so Michael can make it its own product tab
         $eavSetup->updateAttribute($entityTypeId, 'specification', 'is_visible_on_front', 0);
+
+        $eavSetup->updateAttribute($entityTypeId, 'manufacturer', 'is_filterable_in_search', 1);
+        $eavSetup->updateAttribute($entityTypeId, 'manufacturer', 'is_displayed_in_autocomplete', 1);
     }
 
     private function getConnection(): AdapterInterface

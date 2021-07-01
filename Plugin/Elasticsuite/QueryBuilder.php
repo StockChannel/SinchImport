@@ -28,6 +28,9 @@ class QueryBuilder
 
 	const FILTERABLE_OPTIONS = [ 'manufacturer', 'sinch_family' ];
 
+	const QUERY_TYPE_PRODUCT_AUTOCOMPLETE = 'catalog_product_autocomplete';
+	const QUERY_TYPE_QUICKSEARCH = 'quick_search_container';
+
 	/** @var CategoryRepositoryInterface */
 	private $categoryRepository;
 	/** @var HttpResponse */
@@ -96,31 +99,57 @@ class QueryBuilder
 	 * @param \Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject
 	 * @param callable $proceed
 	 * @param ContainerConfigurationInterface $containerConfig
-	 * @param string $queryText
+	 * @param string|string[] $queryText
 	 * @param string $spellingType
 	 * @param float $boost
 	 * @return QueryInterface
 	 * @SuppressWarnings("unused")
 	 */
-	public function aroundCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, callable $proceed, ContainerConfigurationInterface $containerConfig, string $queryText, string $spellingType, float $boost = 1): ?QueryInterface
+	public function aroundCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, callable $proceed, ContainerConfigurationInterface $containerConfig, $queryText, string $spellingType, float $boost = 1): ?QueryInterface
 	{
 		if (!$this->helper->experimentalSearchEnabled()) {
 			return $proceed($containerConfig, $queryText, $spellingType, $boost);
 		}
 
-		$priceFilter = $this->getPriceFiltersFromQuery($queryText);
+		//Only attempt to do special handling of the quick search and the quick search's product suggestions (skip category_search_container)
+		if ($containerConfig->getName() !== self::QUERY_TYPE_QUICKSEARCH && $containerConfig->getName() !== self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE) {
+		    return $proceed($containerConfig, $queryText, $spellingType, $boost);
+        }
+
+		//Assume we only need to check the first query text for price filters (the additional query texts should just be synonyms and expansions)
+		$priceFilter = is_array($queryText) ? $this->getPriceFiltersFromQuery($queryText[0]) : $this->getPriceFiltersFromQuery($queryText);
 		if ($priceFilter !== false) {
-			$queryText = $priceFilter['query'];
+		    if (is_string($queryText)) {
+		        $queryText = $priceFilter['query'];
+            } else if (is_array($queryText)) {
+                $queryText[0] = $priceFilter['query'];
+                //If the price filter matched then also try to match on the other query texts (so we get the versions of those with the stripped price terms too)
+                foreach ($queryText as $id => $query) {
+                    if ($id == 0) continue;
+                    $dummyFilter = $this->getPriceFiltersFromQuery($query);
+                    if ($dummyFilter !== false) {
+                        $queryText[$id] = $dummyFilter['query'];
+                    }
+                }
+            }
 		}
 
-		$queryTokens = explode(' ', $queryText);
-		$firstWord = '';
+		$queryTokens = [];
 		$doubleTokens = [];
-		foreach ($queryTokens as $token) {
-			$doubleTokens[] = $firstWord . ' ' . $token;
-			$firstWord = $token;
-		}
-		unset($doubleTokens[0]);
+		if (is_string($queryText)) {
+		    $queryTokens = explode(' ', $queryText);
+		    $doubleTokens = $this->doubleTokenize($queryText);
+        } else if (is_array($queryText)) {
+		    foreach ($queryText as $query) {
+                $queryTokens = array_merge($queryTokens, explode(' ', $query));
+                $doubleTokens = array_merge($doubleTokens, $this->doubleTokenize($query));
+            }
+        }
+
+		if (is_array($queryText)) {
+            $this->logger->warn("Query Text was array: " . print_r($queryText, true));
+            $queryText = $queryText[0];
+        }
 
 		$optionFilters = [];
 		foreach (self::FILTERABLE_OPTIONS as $filterOptionCode) {
@@ -151,8 +180,8 @@ class QueryBuilder
 		}
 		$this->logger->info($queryVariants);
 
-		//If category match is successful return early
-		if ($this->checkCategoryOrFamilyMatch($containerConfig, $queryVariants, $priceFilter, $optionFilters)) {
+		//If this isn't a product autocomplete suggestion and category match is successful return early
+		if ($containerConfig->getName() !== self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE && $this->checkCategoryOrFamilyMatch($containerConfig, $queryVariants, $priceFilter, $optionFilters)) {
 			return null;
 		}
 
@@ -195,15 +224,36 @@ class QueryBuilder
                 [
                     'query' => $this->queryFactory->create(QueryInterface::TYPE_FILTER), //Filtered with no args is a match_all
                     'functions' => [
-                        [
+                        [ //Boost on Popularity Score
                             FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
                                 'field' => 'sinch_score', //TODO: Seems like field names for non-option int attributes are just their attribute code, confirm
                                 'factor' => $this->helper->popularityBoostFactor(),
-                                'modifier' => 'none',
+                                'modifier' => 'log1p',
                                 'missing' => 0
-                            ]
+                            ],
+                            'weight' => 5
+                        ],
+                        [ //Boost on Monthly BI data
+                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                                'field' => 'sinch_popularity_month',
+                                'factor' => $this->helper->monthlyPopularityBoostFactor(),
+                                'modifier' => 'log1p',
+                                'missing' => 0
+                            ],
+                            'weight' => 10
+                        ],
+                        [ //Boost on Yearly BI data
+                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                                'field' => 'sinch_popularity_year',
+                                'factor' => $this->helper->yearlyPopularityBoostFactor(),
+                                'modifier' => 'log1p',
+                                'missing' => 0
+                            ],
+                            'weight' => 8
                         ]
-                    ]
+                    ],
+                    'scoreMode' => FunctionScore::SCORE_MODE_MAX,
+                    'boostMode' => FunctionScore::BOOST_MODE_SUM
                 ]
             );
         }
@@ -268,7 +318,7 @@ class QueryBuilder
                 JOIN {$this->eavTable} ea ON ea.attribute_id = ccev.attribute_id AND ea.attribute_code = 'name'
                 JOIN {$this->categoryTable} cce ON cce.attribute_set_id = ea.entity_type_id AND cce.entity_id = ccev.entity_id
 				JOIN {$this->sinchCategoriesMappingTable} scm ON scm.shop_entity_id = cce.entity_id
-				JOIN {$this->sinchCategoriesTable} sc ON sc.store_category_id = scm.store_category_id
+				JOIN {$this->sinchCategoriesTable} sc ON sc.store_category_id = scm.store_category_id AND sc.products_within_this_category < 100000
                 WHERE ccev.value IN ($inClause) OR sc.VirtualCategory IN ($inClause)",
 			array_merge($queries, $queries)
 		);
@@ -341,4 +391,21 @@ class QueryBuilder
 			'value' => $optionValue
 		];
 	}
+
+    /**
+     * Return all double tokens from the query text
+     * @return string[]
+     */
+	private function doubleTokenize(string $queryText): array
+    {
+        $queryTokens = explode(' ', $queryText);
+        $firstWord = '';
+        $doubleTokens = [];
+        foreach ($queryTokens as $token) {
+            $doubleTokens[] = $firstWord . ' ' . $token;
+            $firstWord = $token;
+        }
+        unset($doubleTokens[0]);
+        return $doubleTokens;
+    }
 }
