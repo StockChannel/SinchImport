@@ -1844,6 +1844,8 @@ class Sinch {
                          score int(11),
                          release_date datetime,
                          eol_date datetime,
+                         implied_sales_month int(11) NOT NULL DEFAULT 0,
+                         implied_sales_year int(11) NOT NULL DEFAULT 0,
                          manufacturer_name varchar(255) default NULL,
                          store_category_id int(11),
                          KEY pt_store_category_product_id (`store_category_id`),

@@ -14,6 +14,8 @@ class RelatedProducts extends AbstractImportSection
     const SERIES_BOOST = 20;
     const PROFIT_BOOST = 5;
     const POPULARITY_BOOST_MAX = 5;
+    const MONTHLY_SALES_BOOST_MAX = 4;
+    const YEARLY_SALES_BOOST_MAX = 3;
 
     const UPSELL_CHEAPER_ABOVE = 0.8;
     const UPSELL_CHEAPER_MIN_RELATIVE_PROFIT = 0.95;
@@ -258,7 +260,42 @@ class RelatedProducts extends AbstractImportSection
                     WHERE sp.score > scores.min",
             [":popularityBoostMax" => self::POPULARITY_BOOST_MAX]
         );
-        //TODO: Do a similar thing to the above with implied sales data (with different boost levels for 1m and 1y) when it becomes available
+
+        //Increase the position of relationships based on monthly implied sales
+        $conn->query(
+            "UPDATE {$this->relatedProductsTable} srp
+                    INNER JOIN $sinch_products sp
+                        ON srp.related_sinch_product_id = sp.sinch_product_id
+                    INNER JOIN (
+                        SELECT srp2.sinch_product_id, MIN(sp2.implied_sales_month) AS min, MAX(sp2.implied_sales_month) AS max FROM {$this->relatedProductsTable} srp2
+                            INNER JOIN $sinch_products sp2
+                                ON srp2.related_sinch_product_id = sp2.sinch_product_id
+                        WHERE sp2.implied_sales_month != 0
+                        GROUP BY srp2.sinch_product_id
+                    ) implied_sales
+                        ON srp.sinch_product_id = implied_sales.sinch_product_id
+                    SET position = position + (((sp.implied_sales_month - implied_sales.min) * :monthlySalesBoostMax) / (implied_sales.max - implied_sales.min))
+                    WHERE sp.implied_sales_month > implied_sales.min",
+            [":monthlySalesBoostMax" => self::MONTHLY_SALES_BOOST_MAX]
+        );
+
+        //Increase the position of relationships based on yearly implied sales
+        $conn->query(
+            "UPDATE {$this->relatedProductsTable} srp
+                    INNER JOIN $sinch_products sp
+                        ON srp.related_sinch_product_id = sp.sinch_product_id
+                    INNER JOIN (
+                        SELECT srp2.sinch_product_id, MIN(sp2.implied_sales_year) AS min, MAX(sp2.implied_sales_year) AS max FROM {$this->relatedProductsTable} srp2
+                            INNER JOIN $sinch_products sp2
+                                ON srp2.related_sinch_product_id = sp2.sinch_product_id
+                        WHERE sp2.implied_sales_year != 0
+                        GROUP BY srp2.sinch_product_id
+                    ) implied_sales
+                        ON srp.sinch_product_id = implied_sales.sinch_product_id
+                    SET position = position + (((sp.implied_sales_year - implied_sales.min) * :yearlySalesBoostMax) / (implied_sales.max - implied_sales.min))
+                    WHERE sp.implied_sales_year > implied_sales.min",
+            [":yearlySalesBoostMax" => self::YEARLY_SALES_BOOST_MAX]
+        );
         $this->endTimingStep();
 
         $this->startTimingStep('Increase relation positions based on price/cost ratio');

@@ -7,7 +7,7 @@ use SITC\Sinchimport\Helper\Download;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 /**
- * Class Popularity applies Product Popularity Score
+ * Class Popularity applies Product Popularity Score as well as the BI data (implied monthly and yearly sales)
  * @package SITC\Sinchimport\Model\Import
  */
 class Popularity extends AbstractImportSection {
@@ -29,6 +29,8 @@ class Popularity extends AbstractImportSection {
         $sinch_products = $this->getTableName('sinch_products');
 
         $scoreAttr = $this->dataHelper->getProductAttributeId('sinch_score');
+        $impliedSalesMonth = $this->dataHelper->getProductAttributeId('sinch_popularity_month');
+        $impliedSalesYear = $this->dataHelper->getProductAttributeId('sinch_popularity_year');
 
         //Insert global values for Popularity Score
         $this->startTimingStep('Insert Popularity Score values');
@@ -42,6 +44,34 @@ class Popularity extends AbstractImportSection {
             ON DUPLICATE KEY UPDATE
                 value = VALUES(value)",
             [":scoreAttr" => $scoreAttr]
+        );
+        $this->endTimingStep();
+
+        $this->startTimingStep('Insert Implied Sales values (1m)');
+        $this->getConnection()->query(
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
+                SELECT :impliedMonth, 0, cpe.entity_id, sp.implied_sales_month
+                FROM {$catalog_product_entity} cpe
+                INNER JOIN {$sinch_products} sp
+                    ON cpe.sinch_product_id = sp.sinch_product_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = VALUES(value)",
+            [":impliedMonth" => $impliedSalesMonth]
+        );
+        $this->endTimingStep();
+
+        $this->startTimingStep('Insert Implied Sales values (1y)');
+        $this->getConnection()->query(
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
+                SELECT :impliedYear, 0, cpe.entity_id, sp.implied_sales_year
+                FROM {$catalog_product_entity} cpe
+                INNER JOIN {$sinch_products} sp
+                    ON cpe.sinch_product_id = sp.sinch_product_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = VALUES(value)",
+            [":impliedYear" => $impliedSalesYear]
         );
         $this->endTimingStep();
 
