@@ -11,12 +11,11 @@ use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
  */
 class CategoryBoostFilter implements QueryInterface
 {
-    /** @var string Query Name */
-    private $name;
+    private ?string $name;
     /** @var string[] Query to match Category Name */
-    private $categories;
-    /** @var boolean */
-    private $cached;
+    private array $categories;
+    private bool $filter;
+    private bool $cached;
 
     /**
      * Constructor.
@@ -29,10 +28,12 @@ class CategoryBoostFilter implements QueryInterface
      */
     public function __construct(
         array $queries,
+        bool $filter = false,
         $name = null,
         $cached = false
     ) {
         $this->categories = $queries;
+        $this->filter = $filter;
         $this->name = $name;
         $this->cached = $cached;
     }
@@ -64,11 +65,16 @@ class CategoryBoostFilter implements QueryInterface
     /**
      * Category name to match
      *
-     * @return string
+     * @return string[]
      */
-    public function getCategories()
+    public function getCategories(): array
     {
         return $this->categories;
+    }
+
+    public function getMinShouldMatch(): int
+    {
+        return $this->filter ? 1 : 0;
     }
 
     /**
@@ -76,7 +82,7 @@ class CategoryBoostFilter implements QueryInterface
      *
      * @return boolean
      */
-    public function isCached()
+    public function isCached(): bool
     {
         return $this->cached;
     }

@@ -9,15 +9,13 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\Response\Http as HttpResponse;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Framework\Module\Dir;
-use Magento\Framework\Setup\SchemaSetupInterface;
 use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Helper\SearchProcessing;
+use SITC\Sinchimport\Search\Request\Query\PriceRangeQuery;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
 use Smile\ElasticsuiteCore\Search\Request\Query\FunctionScore;
-use Smile\ElasticsuiteCore\Search\Request\Query\Nested;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
-use Smile\ElasticsuiteThesaurus\Model\Index;
 use Zend\Log\Logger;
 use Zend\Log\Writer\Stream;
 
@@ -57,8 +55,7 @@ class QueryBuilder
 	private $priceFilterMode = false;
 	/** @var Session $customerSession */
 	private $customerSession;
-	/** @var Index $thesaurus */
-	private $thesaurus;
+	private SearchProcessing $spHelper;
 
 
 	public function __construct(
@@ -68,7 +65,7 @@ class QueryBuilder
 		Data $helper,
 		QueryFactory\Proxy $queryFactory,
 		Session\Proxy $customerSession,
-		Index $thesaurus
+        SearchProcessing $spHelper
 	)
 	{
 		$this->categoryRepository = $categoryRepository;
@@ -90,7 +87,7 @@ class QueryBuilder
 		$this->helper = $helper;
 		$this->queryFactory = $queryFactory;
 		$this->customerSession = $customerSession;
-		$this->thesaurus = $thesaurus;
+		$this->spHelper = $spHelper;
 	}
 
 	/**
@@ -116,41 +113,18 @@ class QueryBuilder
 		    return $proceed($containerConfig, $queryText, $spellingType, $boost);
         }
 
-		//Assume we only need to check the first query text for price filters (the additional query texts should just be synonyms and expansions)
-		$priceFilter = is_array($queryText) ? $this->getPriceFiltersFromQuery($queryText[0]) : $this->getPriceFiltersFromQuery($queryText);
-		if ($priceFilter !== false) {
-		    if (is_string($queryText)) {
-		        $queryText = $priceFilter['query'];
-            } else if (is_array($queryText)) {
-                $queryText[0] = $priceFilter['query'];
-                //If the price filter matched then also try to match on the other query texts (so we get the versions of those with the stripped price terms too)
-                foreach ($queryText as $id => $query) {
-                    if ($id == 0) continue;
-                    $dummyFilter = $this->getPriceFiltersFromQuery($query);
-                    if ($dummyFilter !== false) {
-                        $queryText[$id] = $dummyFilter['query'];
-                    }
-                }
-            }
-		}
-
-		$queryTokens = [];
-		$doubleTokens = [];
-		if (is_string($queryText)) {
-		    $queryTokens = explode(' ', $queryText);
-		    $doubleTokens = $this->doubleTokenize($queryText);
-        } else if (is_array($queryText)) {
-		    foreach ($queryText as $query) {
-                $queryTokens = array_merge($queryTokens, explode(' ', $query));
-                $doubleTokens = array_merge($doubleTokens, $this->doubleTokenize($query));
-            }
-        }
-
-		if (is_array($queryText)) {
-            $this->logger->warn("Query Text was array: " . print_r($queryText, true));
+		//Fix compat with autosuggestions (which for some reason pass $queryText as an array with a single element)
+        if (is_array($queryText) && count($queryText) >= 1 && is_string($queryText[0])) {
             $queryText = $queryText[0];
         }
 
+		//TODO: New SearchProcessing use
+        //This call can modify query text if one or more filters match
+        $queryFilters = $this->spHelper->getFiltersFromQuery($containerConfig, $queryText);
+
+        //Check eav attribute values for FILTERABLE_OPTIONS
+        $queryTokens = explode(' ', $queryText);
+        $doubleTokens = $this->doubleTokenize($queryText);
 		$optionFilters = [];
 		foreach (self::FILTERABLE_OPTIONS as $filterOptionCode) {
 			$optionValue = $this->getOptionAttributeValue($filterOptionCode, array_merge($queryTokens, $doubleTokens));
@@ -161,27 +135,11 @@ class QueryBuilder
 			}
 		}
 
-		if (str_ends_with($queryText, 's')) {
-			$pluralQueryText = substr($queryText, 0, -1);
-		} else {
-			$pluralQueryText = $queryText . 's';
-		}
-		//Process thesaurus rewrites for our query
-		$queryVariants = array_values(array_unique(array_merge(
-			[$queryText, $pluralQueryText],
-			array_keys($this->thesaurus->getQueryRewrites($containerConfig, $queryText)),
-			array_keys($this->thesaurus->getQueryRewrites($containerConfig, $pluralQueryText))
-		)));
-		
-
-		//Pluralise each of the synonyms in thesaurus to prevent having to add plural versions to dictionary
-		foreach ($queryVariants as $queryVariant) {
-			$queryVariants[] = $queryVariant . 's';
-		}
+		$queryVariants = $this->spHelper->getQueryTextRewrites($containerConfig, $queryText);
 		$this->logger->info($queryVariants);
 
 		//If this isn't a product autocomplete suggestion and category match is successful return early
-		if ($containerConfig->getName() !== self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE && $this->checkCategoryOrFamilyMatch($containerConfig, $queryVariants, $priceFilter, $optionFilters)) {
+		if ($containerConfig->getName() !== self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE && $this->checkCategoryOrFamilyMatch($containerConfig, $queryVariants, $queryFilters, $optionFilters)) {
 			return null;
 		}
 
@@ -302,11 +260,11 @@ class QueryBuilder
 	/**
 	 * @param ContainerConfigurationInterface $containerConfig
 	 * @param string[] $queries
-	 * @param $priceFilter
+	 * @param $queryFilters
 	 * @param array $optionFilters
 	 * @return bool true if matched
 	 */
-	private function checkCategoryOrFamilyMatch(ContainerConfigurationInterface $containerConfig, array $queries, $priceFilter, array $optionFilters): bool
+	private function checkCategoryOrFamilyMatch(ContainerConfigurationInterface $containerConfig, array $queries, $queryFilters, array $optionFilters): bool
 	{
 		$start = microtime(true);
 
@@ -336,9 +294,13 @@ class QueryBuilder
 		//Category or virtual category name match, don't bother creating the ES query and instead redirect
 		if (!empty($catId)) {
 			$filterParams = '';
-			if ($priceFilter !== false && $priceFilter['below'] != -1) {
-				$filterParams = "?price={$priceFilter['above']}-{$priceFilter['below']}";
-			}
+			if (!empty($queryFilters[SearchProcessing::FILTER_TYPE_PRICE]) && $queryFilters[SearchProcessing::FILTER_TYPE_PRICE] instanceof PriceRangeQuery) {
+			    $bounds = $queryFilters[SearchProcessing::FILTER_TYPE_PRICE]->getBounds();
+			    if (!empty($bounds['lte']) && is_numeric($bounds['lte'])) {
+			        $min = $bounds['gte'] ?? '0';
+                    $filterParams = "?price={$min}-{$bounds['lte']}";
+                }
+            }
 
 			foreach ($optionFilters as $filter) {
 				$filterValue = $filter['value'];
@@ -382,8 +344,8 @@ class QueryBuilder
 			"SELECT eaov.value FROM eav_attribute_option_value eaov
 				INNER JOIN eav_attribute_option eao ON eao.option_id = eaov.option_id
 				INNER JOIN eav_attribute ea ON ea.attribute_id = eao.attribute_id
-				WHERE ea.attribute_code = '{$attributeCode}' AND eaov.value IN ({$inClause}) LIMIT 1",
-			$queryText
+				WHERE ea.attribute_code = ? AND eaov.value IN ({$inClause}) LIMIT 1",
+			array_merge($attributeCode, $queryText)
 		);
 
 		return [
