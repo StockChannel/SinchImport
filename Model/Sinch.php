@@ -1885,7 +1885,9 @@ class Sinch {
                             series_id,
                             score,
                             release_date,
-                            eol_date
+                            eol_date,
+                            implied_sales_year,
+                            implied_sales_month
                           )"
             );
 
