@@ -1846,6 +1846,11 @@ class Sinch {
                          eol_date datetime,
                          implied_sales_month int(11) NOT NULL DEFAULT 0,
                          implied_sales_year int(11) NOT NULL DEFAULT 0,
+                         searches int(11) NOT NULL DEFAULT 0,
+                         list_summary1 varchar(255),
+                         list_summary2 varchar(255),
+                         list_summary3 varchar(255),
+                         list_summary4 varchar(255),
                          manufacturer_name varchar(255) default NULL,
                          store_category_id int(11),
                          KEY pt_store_category_product_id (`store_category_id`),
@@ -1857,7 +1862,7 @@ class Sinch {
             );
             $this->print("--Parse Products 2");
 
-            //Products CSV is ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate
+            //Products CSV is ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|LastYearSales|LastMonthSales|Searches|Feature1|Feature2|Feature3|Feature4
             $this->_doQuery(
                 "LOAD DATA LOCAL INFILE '" . $productsCsv . "'
                           INTO TABLE " . $this->getTableName('products_temp') . "
@@ -1887,7 +1892,12 @@ class Sinch {
                             release_date,
                             eol_date,
                             implied_sales_year,
-                            implied_sales_month
+                            implied_sales_month,
+                            searches,
+                            list_summary1,
+                            list_summary2,
+                            list_summary3,
+                            list_summary4
                           )"
             );
 

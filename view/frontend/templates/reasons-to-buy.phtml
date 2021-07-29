@@ -1,13 +1,10 @@
 <?php
 	$product = $block->getProduct();
-	$reasonsToBuy = $product->getData('sinch_reasons_to_buy');
-	$reasonsToBuyArray = explode("|||", $reasonsToBuy);
-	if ( !empty($reasonsToBuy) ) :
-		echo "<div class='sitc-reasons-to-buy'><ul>";
-		foreach($reasonsToBuyArray as $reason)
-		{
-			echo "<li>" . $reason . "</li>";
-		}
-		echo "</ul></div>";
-	endif;
-?>
+	$reasonsToBuy = json_decode($product->getData('sinch_reasons_to_buy') ?? '[]', true);
+	if (!empty($reasonsToBuy) && is_array($reasonsToBuy)) {
+        echo "<div class='sitc-reasons-to-buy'><ul>";
+        foreach ($reasonsToBuy as $reason) {
+            echo "<li>" . $reason["value"] . "</li>";
+        }
+        echo "</ul></div>";
+    }

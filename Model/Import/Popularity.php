@@ -31,6 +31,7 @@ class Popularity extends AbstractImportSection {
         $scoreAttr = $this->dataHelper->getProductAttributeId('sinch_score');
         $impliedSalesMonth = $this->dataHelper->getProductAttributeId('sinch_popularity_month');
         $impliedSalesYear = $this->dataHelper->getProductAttributeId('sinch_popularity_year');
+        $searches = $this->dataHelper->getProductAttributeId('sinch_searches');
 
         //Insert global values for Popularity Score
         $this->startTimingStep('Insert Popularity Score values');
@@ -72,6 +73,20 @@ class Popularity extends AbstractImportSection {
             ON DUPLICATE KEY UPDATE
                 value = VALUES(value)",
             [":impliedYear" => $impliedSalesYear]
+        );
+        $this->endTimingStep();
+
+        $this->startTimingStep('Insert Sinch Searches');
+        $this->getConnection()->query(
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
+                SELECT :searches, 0, cpe.entity_id, sp.searches
+                FROM {$catalog_product_entity} cpe
+                INNER JOIN {$sinch_products} sp
+                    ON cpe.sinch_product_id = sp.sinch_product_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = VALUES(value)",
+            [":searches" => $searches]
         );
         $this->endTimingStep();
 

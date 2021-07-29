@@ -553,6 +553,76 @@ class UpgradeData implements UpgradeDataInterface
 
         $eavSetup->updateAttribute($entityTypeId, 'manufacturer', 'is_filterable_in_search', 1);
         $eavSetup->updateAttribute($entityTypeId, 'manufacturer', 'is_displayed_in_autocomplete', 1);
+
+        //Add the attributes for the list summary fields
+        $summaryOpts = [
+            'note' => 'Part of Stockinthechannel summary features',
+            'type' => 'text',
+            'input' => 'text',
+            'backend' => '',
+            'frontend' => '',
+            'source' => '',
+            'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+            'visible' => true,
+            'required' => false,
+            'user_defined' => false,
+            'searchable' => false,
+            'filterable' => false,
+            'comparable' => false,
+            'visible_on_front' => true,
+            'visible_in_advanced_search' => false,
+            'unique' => false,
+            'group' => 'General'
+        ];
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_summary_1',
+            array_merge($summaryOpts, ['label' => 'Summary Feature 1'])
+        );
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_summary_2',
+            array_merge($summaryOpts, ['label' => 'Summary Feature 2'])
+        );
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_summary_3',
+            array_merge($summaryOpts, ['label' => 'Summary Feature 3'])
+        );
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_summary_4',
+            array_merge($summaryOpts, ['label' => 'Summary Feature 4'])
+        );
+
+        //Sinch searches
+        $eavSetup->addAttribute(
+            Product::ENTITY,
+            'sinch_searches',
+            [
+                'label' => 'Searches',
+                'note' => 'Number of searches for this product on Stockinthechannel',
+                'type' => 'int',
+                'input' => 'text',
+                'backend' => '',
+                'frontend' => '',
+                'frontend_class' => 'validate-digits-range digits-range-0-99999999',
+                'source' => '',
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => false,
+                'comparable' => false,
+                'visible_on_front' => false,
+                'visible_in_advanced_search' => false,
+                'is_visible_in_grid' => true,
+                'is_filterable_in_grid' => true,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
     }
 
     private function getConnection(): AdapterInterface

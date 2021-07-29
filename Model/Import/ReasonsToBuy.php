@@ -43,7 +43,7 @@ class ReasonsToBuy extends AbstractImportSection {
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (id, number, value)"
+                (id, number, value, title, pic)"
         );
         $this->endTimingStep();
     }
@@ -55,20 +55,47 @@ class ReasonsToBuy extends AbstractImportSection {
 
         $reasonsToBuyAttr = $this->dataHelper->getProductAttributeId('sinch_reasons_to_buy');
 
+        $conn = $this->getConnection();
         //Insert global values for Reasons to Buy
         $this->startTimingStep('Insert Reasons to Buy values');
-        //Triple pipe delimited to reduce the likelihood of colliding with text in the value
-        $this->getConnection()->query(
-            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
-                SELECT :reasonsToBuyAttr, 0, cpe.entity_id, GROUP_CONCAT(srtb.value ORDER BY srtb.number SEPARATOR '|||')
-                FROM {$this->reasonsToBuyTable} srtb
-                INNER JOIN {$catalog_product_entity} cpe
-                    ON srtb.id = cpe.sinch_product_id
-                GROUP BY srtb.id, cpe.entity_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
-            [":reasonsToBuyAttr" => $reasonsToBuyAttr]
+        //Fetch all product entity IDs which have values for reasons to buy
+        $ids = $conn->fetchCol(
+            "SELECT DISTINCT cpe.entity_id
+                    FROM {$catalog_product_entity} cpe
+                    INNER JOIN {$this->reasonsToBuyTable} srtb
+                        ON cpe.sinch_product_id = srtb.id
+                    WHERE srtb.value IS NOT NULL"
+        );
+        //Now select the values for each product and JSON encode them for storage in the attribute
+        foreach ($ids as $productEntityId) {
+            $prodReasonsToBuy = $conn->fetchAll(
+                "SELECT srtb.title, srtb.pic, srtb.value
+                        FROM {$this->reasonsToBuyTable} srtb
+                        WHERE srtb.id = :entityId
+                        ORDER BY srtb.number",
+                [':entityId' => $productEntityId]
+            );
+            //Is inserting row by row too slow? (seems to be fast enough, but we should keep an eye on this)
+            $conn->query(
+                "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value)
+                        VALUES (:reasonsToBuyAttr, 0, :entityId, :reasons)",
+                [
+                    ':reasonsToBuyAttr' => $reasonsToBuyAttr,
+                    ':entityId' => $productEntityId,
+                    ':reasons' => json_encode($prodReasonsToBuy)
+                ]
+            );
+        }
+        //Now clear the reasons to buy for any other products we haven't seen in the reasons to buy table
+        $conn->query(
+            "UPDATE {$catalog_product_entity_text}
+                    SET value = NULL
+                    WHERE entity_id NOT IN (
+                        SELECT DISTINCT cpe.entity_id
+                            FROM {$this->reasonsToBuyTable} srtb
+                            INNER JOIN {$catalog_product_entity} cpe
+                                ON srtb.id = cpe.sinch_product_id
+                    )"
         );
         $this->endTimingStep();
 
@@ -85,5 +112,17 @@ class ReasonsToBuy extends AbstractImportSection {
                 PRIMARY KEY (id, number)
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
+
+        if (!$this->getConnection()->tableColumnExists($this->reasonsToBuyTable, "title")) {
+            $this->getConnection()->query(
+                "ALTER TABLE {$this->reasonsToBuyTable} ADD COLUMN title varchar(255) NOT NULL DEFAULT '' AFTER value"
+            );
+        }
+
+        if (!$this->getConnection()->tableColumnExists($this->reasonsToBuyTable, "pic")) {
+            $this->getConnection()->query(
+                "ALTER TABLE {$this->reasonsToBuyTable} ADD COLUMN pic varchar(255) NOT NULL DEFAULT '' AFTER title"
+            );
+        }
     }
 }

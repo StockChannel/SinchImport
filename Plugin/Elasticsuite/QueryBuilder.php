@@ -123,16 +123,19 @@ class QueryBuilder
         $queryFilters = $this->spHelper->getFiltersFromQuery($containerConfig, $queryText);
 
         //Check eav attribute values for FILTERABLE_OPTIONS
-        $queryTokens = explode(' ', $queryText);
-        $doubleTokens = $this->doubleTokenize($queryText);
+        //TODO: Should be largely legacy now
 		$optionFilters = [];
-		foreach (self::FILTERABLE_OPTIONS as $filterOptionCode) {
-			$optionValue = $this->getOptionAttributeValue($filterOptionCode, array_merge($queryTokens, $doubleTokens));
-			if (!empty($optionValue)) {
-				if ($optionValue['attribute_code'] != 'sinch_family')
-					$queryText = trim(str_ireplace("{$optionValue['value']}", '', $queryText));
-				$optionFilters[] = $optionValue;
-			}
+		foreach (SearchProcessing::FILTERABLE_ATTRIBUTES as $filterOptionCode) {
+		    $matchedValues = $this->spHelper->queryTextContainsAttributeValue($filterOptionCode, $queryText);
+		    if (!empty($matchedValues)) {
+		        if ($filterOptionCode !== 'sinch_family') {
+                    $queryText = $this->spHelper->stripFromQueryText($queryText, $matchedValues[0]);
+                }
+		        $optionFilters[] = [
+		            'attribute_code' => $filterOptionCode,
+                    'value' => $matchedValues[0]
+                ];
+            }
 		}
 
 		$queryVariants = $this->spHelper->getQueryTextRewrites($containerConfig, $queryText);
@@ -155,25 +158,9 @@ class QueryBuilder
 		$shouldClauses = [$this->queryFactory->create('sitcCategoryBoostQuery', ['queries' => $queryVariants])];
 		$minShouldMatch = 0;
 
-		//Check if we should do price filtering/boost
-		if ($priceFilter !== false) {
-		    $bounds = [];
-		    if (!empty($priceFilter['above']) && is_numeric($priceFilter['above'])) {
-		        $bounds['gte'] = $priceFilter['above'];
-            }
-		    if (!empty($priceFilter['below']) && is_numeric($priceFilter['below']) && $priceFilter['below'] != -1) {
-		        $bounds['lte'] = $priceFilter['below'];
-            }
-
-		    if(!empty($bounds)) {
-				$groupId = Group::NOT_LOGGED_IN_ID;
-				try {
-					$groupId = $this->customerSession->getCustomerGroupId();
-				} catch (NoSuchEntityException | LocalizedException $e) {}
-
-				$shouldClauses[] = $this->queryFactory->create('sitcPriceRangeQuery', ['bounds' => $bounds, 'account_group' => $groupId]);
-                $minShouldMatch += $this->priceFilterMode ? 1 : 0;
-            }
+		//Add the filters that SearchProcessing returned us
+		foreach ($queryFilters as $filter) {
+		    $shouldClauses[] = $filter;
         }
 
 		if ($this->helper->popularityBoostEnabled()) {
@@ -232,32 +219,6 @@ class QueryBuilder
 
 
     /**
-     * Get price bounds from query text
-     *
-     * @param string $queryText
-     *
-     * @return array|bool
-     */
-	private function getPriceFiltersFromQuery(string $queryText)
-	{
-		$matches = [];
-		if (preg_match_all(self::PRICE_REGEXP, $queryText, $matches, PREG_SET_ORDER)) {
-			$matches = $matches[0];
-			$query = $matches['query'] ?? '';
-			$below = $matches['below'] ?? -1;
-			$above = $matches['above'] ?? 0;
-
-			return [
-				'query' => $query,
-				'below' => $below,
-				'above' => $above,
-			];
-		}
-
-		return false;
-	}
-
-	/**
 	 * @param ContainerConfigurationInterface $containerConfig
 	 * @param string[] $queries
 	 * @param $queryFilters
@@ -326,48 +287,4 @@ class QueryBuilder
 		return false;
 	}
 
-	private function getBrandName(array $queryText): array
-	{
-		return $this->getOptionAttributeValue('manufacturer', $queryText);
-	}
-
-	private function getProductFamily(array $queryText) : array
-	{
-		return $this->getOptionAttributeValue('sinch_family', $queryText);
-	}
-
-	private function getOptionAttributeValue(string $attributeCode, array $queryText) : array
-	{
-		$inClause = implode(",", array_fill(0, count($queryText), '?'));
-
-		$optionValue = $this->connection->fetchOne(
-			"SELECT eaov.value FROM eav_attribute_option_value eaov
-				INNER JOIN eav_attribute_option eao ON eao.option_id = eaov.option_id
-				INNER JOIN eav_attribute ea ON ea.attribute_id = eao.attribute_id
-				WHERE ea.attribute_code = ? AND eaov.value IN ({$inClause}) LIMIT 1",
-			array_merge($attributeCode, $queryText)
-		);
-
-		return [
-			'attribute_code' => $attributeCode,
-			'value' => $optionValue
-		];
-	}
-
-    /**
-     * Return all double tokens from the query text
-     * @return string[]
-     */
-	private function doubleTokenize(string $queryText): array
-    {
-        $queryTokens = explode(' ', $queryText);
-        $firstWord = '';
-        $doubleTokens = [];
-        foreach ($queryTokens as $token) {
-            $doubleTokens[] = $firstWord . ' ' . $token;
-            $firstWord = $token;
-        }
-        unset($doubleTokens[0]);
-        return $doubleTokens;
-    }
 }

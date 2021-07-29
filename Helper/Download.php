@@ -49,7 +49,7 @@ class Download extends AbstractHelper
         self::FILE_PRODUCTS_GALLERY_PICTURES => 'ProductID|MainImageURL|ThumbImageURL',
         self::FILE_PRODUCT_CATEGORIES => 'ProductID|CategoryID',
         self::FILE_PRODUCT_FEATURES => 'ID|ProductID|RestrictedValueID',
-        self::FILE_PRODUCTS => 'ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|LastYearSales|LastMonthSales|Searches',
+        self::FILE_PRODUCTS => 'ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|LastYearSales|LastMonthSales|Searches|Feature1|Feature2|Feature3|Feature4',
         self::FILE_REASONS_TO_BUY => 'ID|No|Value|Title|HighPic',
         self::FILE_RELATED_PRODUCTS => 'ProductID|RelatedProductID',
         self::FILE_RESTRICTED_VALUES => 'ID|CategoryFeatureID|Text|Order',
@@ -57,25 +57,22 @@ class Download extends AbstractHelper
         self::FILE_REVIEWS => 'ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageUrl|AwardImage80Url|AwardImage200Url'
     ];
 
-    /** @var ConsoleOutput $output */
-    private $output;
-    /** @var Logger $logger */
-    private $logger;
-
+    private ConsoleOutput $output;
+    private Logger $logger;
     
     /** @var string $server The FTP server to use */
-    private $server;
+    private string $server;
     /** @var string $username The username to login to FTP as */
-    private $username;
+    private string $username;
     /** @var string $password The password for logging in to FTP */
-    private $password;
+    private string $password;
 
     /** @var resource $ftpConn The active FTP connection, if any */
     private $ftpConn = null;
     /** @var string $pendingLog Data waiting for newline to write to log */
-    private $pendingLog = "";
+    private string $pendingLog = "";
     /** @var string $saveDir The directory within var to save files to */
-    private $saveDir;
+    private string $saveDir;
 
     public function __construct(
         Context $context,
@@ -92,9 +89,9 @@ class Download extends AbstractHelper
             'sinchimport/sinch_ftp',
             ScopeInterface::SCOPE_STORE
         );
-        $this->username = isset($ftp_data['username']) ? $ftp_data['username'] : "";
-        $this->password = isset($ftp_data['password']) ? $ftp_data['password'] : "";
-        $this->server = isset($ftp_data['ftp_server']) ? $ftp_data['ftp_server'] : "";
+        $this->username = $ftp_data['username'] ?? "";
+        $this->password = $ftp_data['password'] ?? "";
+        $this->server = $ftp_data['ftp_server'] ?? "";
     }
 
     /**
