@@ -223,7 +223,7 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, 0, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.store_product_id = st.product_id AND st.price != 0
         ) ON DUPLICATE KEY UPDATE value = st.price");
         $this->endTimingStep();
 
@@ -231,7 +231,7 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, w.website, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.store_product_id = st.product_id  AND st.price != 0
                 INNER JOIN {$prodWebTemp} w
                     ON cpe.store_product_id = w.store_product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
