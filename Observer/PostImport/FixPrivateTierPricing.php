@@ -82,10 +82,8 @@ class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterfac
             $this->logger->info("Product {$change['entity_id']} has {$change['val_count']} group prices, with an adjusted ceiling of {$change['adjusted_ceil']}");
             //Now adjust the base price (in catalog_product_entity_decimal) to be the adjusted ceiling, so tier prices apply properly
             $this->getConn()->query(
-               "UPDATE {$this->cpeDecimalTable} SET value = :adjustedCeil
-                    WHERE attribute_id = :priceAttr
-                    AND entity_id = :entityId
-                    AND store_id = 0",
+                "INSERT INTO {$this->cpeDecimalTable} (attribute_id, entity_id, store_id, value) VALUES (:priceAttr, :entityId, 0, :adjustedCeil)
+                    ON DUPLICATE KEY UPDATE value = :adjustedCeil",
                 [
                     ':priceAttr' => $this->prodPriceAttr,
                     ':entityId' => $change['entity_id'],
