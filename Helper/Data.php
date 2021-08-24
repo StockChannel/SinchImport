@@ -206,6 +206,11 @@ class Data extends AbstractHelper
         return (float)$this->getStoreConfig('sinchimport/search/yearly_sales_boost_factor');
     }
 
+    public function searchesBoostFactor(): float
+    {
+        return (float)$this->getStoreConfig('sinchimport/search/searches_boost_factor');
+    }
+
     public function getProductAttributeId(string $attributeCode): ?int
     {
         return $this->getAttributeId(Product::ENTITY, $attributeCode);

@@ -46,6 +46,7 @@
                 <popularity_boost_factor>0.5</popularity_boost_factor>
                 <monthly_sales_boost_factor>1.5</monthly_sales_boost_factor>
                 <yearly_sales_boost_factor>1.2</yearly_sales_boost_factor>
+                <searches_boost_factor>1.2</searches_boost_factor>
             </search>
         </sinchimport>
     </default>

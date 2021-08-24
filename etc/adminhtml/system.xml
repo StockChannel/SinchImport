@@ -220,6 +220,10 @@
                     <label>Yearly Popularity Boost Factor</label>
                     <comment><![CDATA[The factor to use when Popularity boosting on the yearly Stockinthechannel implied sales]]></comment>
                 </field>
+                <field id="searches_boost_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Search Data Boost Factor</label>
+                    <comment><![CDATA[The factor to use when Popularity boosting on the Stockinthechannel search data]]></comment>
+                </field>
             </group>
         </section>
     </system>
