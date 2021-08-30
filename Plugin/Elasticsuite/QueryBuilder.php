@@ -3,11 +3,11 @@
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 use Magento\Catalog\Api\CategoryRepositoryInterface;
-use Magento\Customer\Model\Group;
 use Magento\Customer\Model\Session;
+use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\Response\Http as HttpResponse;
-use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\SearchProcessing;
@@ -29,45 +29,34 @@ class QueryBuilder
 	const QUERY_TYPE_PRODUCT_AUTOCOMPLETE = 'catalog_product_autocomplete';
 	const QUERY_TYPE_QUICKSEARCH = 'quick_search_container';
 
-	/** @var CategoryRepositoryInterface */
-	private $categoryRepository;
-	/** @var HttpResponse */
-	private $response;
-	/** @var Logger */
-	private $logger;
-	private $resourceConnection;
-	private $connection;
-	private $categoryTableVarchar;
-	private $categoryTable;
-	private $eavTable;
-	private $eavOptionValueTable;
-	private $eavOptionTable;
-	private $sinchCategoriesTable;
-	private $sinchCategoriesMappingTable;
-	private $productFamilyTable;
-	private $sinchProductsTable;
+	private CategoryRepositoryInterface $categoryRepository;
+	private HttpResponse $response;
+	private Logger $logger;
+	private ResourceConnection $resourceConnection;
+	private AdapterInterface $connection;
+	private string $categoryTableVarchar;
+	private string $categoryTable;
+	private string $eavTable;
+    private string $sinchCategoriesTable;
+	private string $sinchCategoriesMappingTable;
+	private string $productFamilyTable;
+	private string $sinchProductsTable;
 
-	/** @var Data */
-	private $helper;
+	private Data $helper;
 	/** @var QueryFactory $queryFactory */
 	private $queryFactory;
-	/** @var bool $priceFilterMode True if we should be filtering based on price constraints or just boosting */
-	private $priceFilterMode = false;
-	/** @var Session $customerSession */
-	private $customerSession;
-	private SearchProcessing $spHelper;
-
+    private SearchProcessing $spHelper;
+    private RequestInterface $request;
 
 	public function __construct(
 		CategoryRepositoryInterface $categoryRepository,
-		HttpResponse $response,
-		ResourceConnection $resourceConnection,
-		Data $helper,
-		QueryFactory\Proxy $queryFactory,
-		Session\Proxy $customerSession,
-        SearchProcessing $spHelper
-	)
-	{
+        HttpResponse $response,
+        ResourceConnection $resourceConnection,
+        Data $helper,
+        QueryFactory\Proxy $queryFactory,
+        SearchProcessing $spHelper,
+        RequestInterface $request
+	){
 		$this->categoryRepository = $categoryRepository;
 		$this->response = $response;
 		$writer = new Stream(BP . '/var/log/joe_search_stuff.log');
@@ -78,16 +67,14 @@ class QueryBuilder
 		$this->categoryTableVarchar = $this->connection->getTableName('catalog_category_entity_varchar');
 		$this->categoryTable = $this->connection->getTableName('catalog_category_entity');
 		$this->eavTable = $this->connection->getTableName('eav_attribute');
-		$this->eavOptionTable = $this->connection->getTableName('eav_attribute_option');
-		$this->eavOptionValueTable = $this->connection->getTableName('eav_attribute_option_value');
 		$this->sinchCategoriesTable = $this->connection->getTableName('sinch_categories');
 		$this->sinchCategoriesMappingTable = $this->connection->getTableName('sinch_categories_mapping');
 		$this->productFamilyTable = $this->connection->getTableName('sinch_family');
 		$this->sinchProductsTable = $this->connection->getTableName('sinch_products');
 		$this->helper = $helper;
 		$this->queryFactory = $queryFactory;
-		$this->customerSession = $customerSession;
 		$this->spHelper = $spHelper;
+        $this->request = $request;
 	}
 
 	/**
@@ -141,8 +128,8 @@ class QueryBuilder
 		$queryVariants = $this->spHelper->getQueryTextRewrites($containerConfig, $queryText);
 		$this->logger->info($queryVariants);
 
-		//If this isn't a product autocomplete suggestion and category match is successful return early
-		if ($containerConfig->getName() !== self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE && $this->checkCategoryOrFamilyMatch($containerConfig, $queryVariants, $queryFilters, $optionFilters)) {
+		//If this isn't a product autocomplete suggestion or an AJAX call and category match is successful return early
+		if ($containerConfig->getName() !== self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE && !$this->request->isAjax() && $this->checkCategoryOrFamilyMatch($containerConfig, $queryVariants, $queryFilters, $optionFilters)) {
 			return null;
 		}
 

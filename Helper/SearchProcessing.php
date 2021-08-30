@@ -2,6 +2,7 @@
 
 namespace SITC\Sinchimport\Helper;
 
+use Magento\Catalog\Model\Category;
 use Magento\Customer\Model\Group;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\Helper\AbstractHelper;
@@ -9,7 +10,16 @@ use Magento\Framework\App\Helper\Context;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Search\Model\Autocomplete\ItemFactory;
+use Magento\Search\Model\Autocomplete\ItemInterface;
+use Magento\Search\Model\SearchEngine;
+use Magento\Store\Model\StoreManagerInterface;
+use SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete\TermsDataProvider;
+use SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder;
+use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfiguration\AggregationResolverInterface;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
+use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterfaceFactory;
+use Smile\ElasticsuiteCore\Search\Request\Builder;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Smile\ElasticsuiteThesaurus\Model\Index;
@@ -39,14 +49,39 @@ class SearchProcessing extends AbstractHelper
     private QueryFactory $queryFactory;
     private Index $thesaurus;
     private ResourceConnection $resourceConn;
+    private Builder $requestBuilder;
+    private SearchEngine $searchEngine;
+    private ContainerConfigurationInterfaceFactory $containerConfigFactory;
+    private StoreManagerInterface $storeManager;
+    private \Zend\Log\Logger $logger;
+    private ItemFactory $itemFactory;
 
-    public function __construct(Context $context, Session $customerSession, QueryFactory\Proxy $queryFactory, Index\Proxy $thesaurus, ResourceConnection\Proxy $resourceConn)
-    {
+    public function __construct(
+        Context $context,
+        Session $customerSession,
+        QueryFactory\Proxy $queryFactory,
+        Index\Proxy $thesaurus,
+        ResourceConnection\Proxy $resourceConn,
+        Builder\Proxy $requestBuilder,
+        SearchEngine\Proxy $searchEngine,
+        ContainerConfigurationInterfaceFactory $containerConfigFactory,
+        StoreManagerInterface\Proxy $storeManager,
+        ItemFactory $itemFactory
+    ){
         parent::__construct($context);
         $this->customerSession = $customerSession;
         $this->queryFactory = $queryFactory;
         $this->thesaurus = $thesaurus;
         $this->resourceConn = $resourceConn;
+        $this->requestBuilder = $requestBuilder;
+        $this->searchEngine = $searchEngine;
+        $this->containerConfigFactory = $containerConfigFactory;
+        $this->storeManager = $storeManager;
+        $this->itemFactory = $itemFactory;
+
+        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/search_processing.log');
+        $this->logger = new \Zend\Log\Logger();
+        $this->logger->addWriter($writer);
     }
 
     public function getQueryTextRewrites(ContainerConfigurationInterface $containerConfig, string $queryText): array
@@ -129,7 +164,7 @@ class SearchProcessing extends AbstractHelper
         $matches = [];
         //Attribute is a special case as it requires runtime generation
         if ($filterType == self::FILTER_TYPE_ATTRIBUTE) {
-            //Return a dummy "match" with the original queryText so we can do it dynamically
+            //Return a dummy "match" with the original queryText, so we can do it dynamically
             return ['query' => $queryText];
         }
         if (preg_match(self::QUERY_REGEXES[$filterType], $queryText, $matches) >= 1) {
@@ -234,5 +269,94 @@ class SearchProcessing extends AbstractHelper
     public function stripFromQueryText(string $queryText, string $strip): string
     {
         return trim(str_ireplace($strip, '', $queryText));
+    }
+
+    /**
+     * @param string $queryText
+     * @return ItemInterface[]
+     */
+    public function getAutocompleteSuggestions(string $queryText): array
+    {
+        $suggestions = [];
+
+        //Get an instance of the quick_search_container (so we can ask it for the aggregations it would add in that view)
+        /** @var ContainerConfigurationInterface $containerConfig */
+        $containerConfig = $this->containerConfigFactory->create(['storeId' => $this->getCurrentStoreId(), 'containerName' => QueryBuilder::QUERY_TYPE_QUICKSEARCH]);
+        $aggParams = $containerConfig->getAggregations($queryText);
+
+        $searchRequest = $this->requestBuilder->create(
+            $this->getCurrentStoreId(),
+            QueryBuilder::QUERY_TYPE_PRODUCT_AUTOCOMPLETE,
+            0,
+            0,
+            $queryText,
+            [],
+            [],
+            $containerConfig->getFilters(),
+            ['categories' => $aggParams['categories']]
+        );
+
+        $searchResult = $this->searchEngine->search($searchRequest);
+        $categoryBucket = $searchResult->getAggregations()->getBucket('categories');
+        if (!empty($categoryBucket)) {
+            $catToCountMapping = [];
+            foreach ($categoryBucket->getValues() as $value) {
+                $valueCount = $value->getMetrics()['count'];
+                if ($valueCount == 0) continue;
+                $catToCountMapping[$value->getValue()] = $valueCount;
+            }
+            asort($catToCountMapping, SORT_NUMERIC);
+            //asort puts the lowest count first, so flip it in the foreach
+            foreach (array_reverse($catToCountMapping, true) as $cat => $count) {
+                $this->logger->info("Category aggregate {$cat} has {$count} results");
+                //Add a suggestion for the aggregate
+                $suggestions[] = $this->itemFactory->create([
+                    'title' => $this->formatCategoryTerm($queryText, $cat),
+                    'type' => TermsDataProvider::AUTOCOMPLETE_TYPE
+                ]);
+            }
+        }
+
+        return $suggestions;
+    }
+
+    private function getCurrentStoreId(): int
+    {
+        $storeId = 0;
+        try {
+            $storeId = $this->storeManager->getStore()->getId();
+        } catch (NoSuchEntityException $e) {}
+        if ($storeId == 0) {
+            $storeId = $this->storeManager->getDefaultStoreView()->getId();
+        }
+        return $storeId;
+    }
+
+    private function formatCategoryTerm(string $queryText, int $categoryId): string
+    {
+        return $queryText . " in " . $this->getCategoryName($categoryId);
+    }
+
+    private function getCategoryName(int $categoryId): string
+    {
+        $catalog_category_entity_varchar = $this->resourceConn->getTableName('catalog_category_entity_varchar');
+        $eav_attribute = $this->resourceConn->getTableName('eav_attribute');
+        $eav_entity_type = $this->resourceConn->getTableName('eav_entity_type');
+        return $this->resourceConn->getConnection()->fetchOne(
+            "SELECT ccev.value FROM {$catalog_category_entity_varchar} ccev
+                INNER JOIN {$eav_attribute} ea
+                    ON ccev.attribute_id = ea.attribute_id
+                INNER JOIN {$eav_entity_type} eet
+                    ON ea.entity_type_id = eet.entity_type_id
+                WHERE ccev.entity_id = :categoryId
+                  AND ea.attribute_code = 'name'
+                  AND eet.entity_type_code = :catEntityType
+                  AND ccev.store_id = :storeId",
+            [
+                ':catEntityType' => Category::ENTITY,
+                ':categoryId' => $categoryId,
+                ':storeId' => $this->getCurrentStoreId()
+            ]
+        );
     }
 }
