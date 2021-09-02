@@ -40,6 +40,11 @@ class TermsDataProvider {
             $queryText = $this->queryFactory->get()->getQueryText();
             $suggestions = $this->searchProcessing->getAutocompleteSuggestions($queryText);
 		}
-		return array_merge($suggestions, $result);
+
+		$results = array_merge($result, $suggestions);
+        if (count($results) > 5) {
+            return array_slice($results, 0, 5);
+        }
+        return $results;
 	}
 }

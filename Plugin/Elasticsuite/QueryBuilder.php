@@ -3,14 +3,16 @@
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 use Magento\Catalog\Api\CategoryRepositoryInterface;
-use Magento\Customer\Model\Session;
 use Magento\Framework\App\RequestInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\App\Response\Http as HttpResponse;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\UrlInterface;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\SearchProcessing;
+use SITC\Sinchimport\Search\Request\Query\AttributeValueFilter;
+use SITC\Sinchimport\Search\Request\Query\CategoryBoostFilter;
 use SITC\Sinchimport\Search\Request\Query\PriceRangeQuery;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
 use Smile\ElasticsuiteCore\Search\Request\Query\FunctionScore;
@@ -22,11 +24,7 @@ use Zend\Log\Writer\Stream;
 class QueryBuilder
 {
 
-	const PRICE_REGEXP = "/(?(DEFINE)(?<price>[0-9]+(?:.[0-9]+)?)(?<cur>(?:\p{Sc}|[A-Z]{3})\s?))(?<query>.+?)\s+(?J:(?:below|under|(?:cheaper|less)\sthan)\s+(?&cur)?(?<below>(?&price))|(?:between|from)?\s*(?&cur)?(?<above>(?&price))\s*(?:and|to|-)\s*(?&cur)?(?<below>(?&price)))/u";
-
-	const FILTERABLE_OPTIONS = [ 'manufacturer', 'sinch_family' ];
-
-	const QUERY_TYPE_PRODUCT_AUTOCOMPLETE = 'catalog_product_autocomplete';
+    const QUERY_TYPE_PRODUCT_AUTOCOMPLETE = 'catalog_product_autocomplete';
 	const QUERY_TYPE_QUICKSEARCH = 'quick_search_container';
 
 	private CategoryRepositoryInterface $categoryRepository;
@@ -47,6 +45,7 @@ class QueryBuilder
 	private $queryFactory;
     private SearchProcessing $spHelper;
     private RequestInterface $request;
+    private UrlInterface $urlBuilder;
 
 	public function __construct(
 		CategoryRepositoryInterface $categoryRepository,
@@ -55,11 +54,12 @@ class QueryBuilder
         Data $helper,
         QueryFactory\Proxy $queryFactory,
         SearchProcessing $spHelper,
-        RequestInterface $request
+        RequestInterface $request,
+        UrlInterface $urlBuilder
 	){
 		$this->categoryRepository = $categoryRepository;
 		$this->response = $response;
-		$writer = new Stream(BP . '/var/log/joe_search_stuff.log');
+		$writer = new Stream(BP . '/var/log/search_processing.log');
 		$this->logger = new Logger();
 		$this->logger->addWriter($writer);
 		$this->resourceConnection = $resourceConnection;
@@ -75,6 +75,7 @@ class QueryBuilder
 		$this->queryFactory = $queryFactory;
 		$this->spHelper = $spHelper;
         $this->request = $request;
+        $this->urlBuilder = $urlBuilder;
 	}
 
 	/**
@@ -106,30 +107,13 @@ class QueryBuilder
         }
 
 		//TODO: New SearchProcessing use
+        $this->logger->info("Original query text: " . $queryText);
         //This call can modify query text if one or more filters match
         $queryFilters = $this->spHelper->getFiltersFromQuery($containerConfig, $queryText);
-
-        //Check eav attribute values for FILTERABLE_OPTIONS
-        //TODO: Should be largely legacy now
-		$optionFilters = [];
-		foreach (SearchProcessing::FILTERABLE_ATTRIBUTES as $filterOptionCode) {
-		    $matchedValues = $this->spHelper->queryTextContainsAttributeValue($filterOptionCode, $queryText);
-		    if (!empty($matchedValues)) {
-		        if ($filterOptionCode !== 'sinch_family') {
-                    $queryText = $this->spHelper->stripFromQueryText($queryText, $matchedValues[0]);
-                }
-		        $optionFilters[] = [
-		            'attribute_code' => $filterOptionCode,
-                    'value' => $matchedValues[0]
-                ];
-            }
-		}
-
-		$queryVariants = $this->spHelper->getQueryTextRewrites($containerConfig, $queryText);
-		$this->logger->info($queryVariants);
+        $this->logger->info("Query text after filter extraction: " . $queryText);
 
 		//If this isn't a product autocomplete suggestion or an AJAX call and category match is successful return early
-		if ($containerConfig->getName() !== self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE && !$this->request->isAjax() && $this->checkCategoryOrFamilyMatch($containerConfig, $queryVariants, $queryFilters, $optionFilters)) {
+		if ($this->checkRedirect($containerConfig, $queryText, $queryFilters)) {
 			return null;
 		}
 
@@ -142,13 +126,15 @@ class QueryBuilder
 		);
 
 		//Pass in a list of synonyms for the category boost
-		$shouldClauses = [$this->queryFactory->create('sitcCategoryBoostQuery', ['queries' => $queryVariants])];
+		$shouldClauses = [
+            $this->queryFactory->create(
+                'sitcCategoryBoostQuery',
+                [
+                    'queries' => $this->spHelper->getQueryTextRewrites($containerConfig, $queryText)
+                ]
+            )
+        ];
 		$minShouldMatch = 0;
-
-		//Add the filters that SearchProcessing returned us
-		foreach ($queryFilters as $filter) {
-		    $shouldClauses[] = $filter;
-        }
 
 		if ($this->helper->popularityBoostEnabled()) {
 		    $shouldClauses[] = $this->queryFactory->create(
@@ -190,11 +176,12 @@ class QueryBuilder
             );
         }
 
-		if (!empty($shouldClauses)) {
+        //If we have any boosts to add (the should clauses) or any query filters (the additional must clauses), add them to the final result
+		if (!empty($shouldClauses) || !empty($queryFilters)) {
 		    return $this->queryFactory->create(
                 QueryInterface::TYPE_BOOL,
                 [
-                    'must' => [$originalResult],
+                    'must' => array_merge([$originalResult], array_values($queryFilters)),
                     'should' => $shouldClauses,
                     'minimumShouldMatch' => $minShouldMatch
                 ]
@@ -206,72 +193,93 @@ class QueryBuilder
 
 
     /**
-	 * @param ContainerConfigurationInterface $containerConfig
-	 * @param string[] $queries
-	 * @param $queryFilters
-	 * @param array $optionFilters
-	 * @return bool true if matched
-	 */
-	private function checkCategoryOrFamilyMatch(ContainerConfigurationInterface $containerConfig, array $queries, $queryFilters, array $optionFilters): bool
+     * @param ContainerConfigurationInterface $containerConfig
+     * @param string $queryText
+     * @param QueryInterface[] $queryFilters
+     * @return bool true if we're redirecting
+     */
+	private function checkRedirect(ContainerConfigurationInterface $containerConfig, string $queryText, array $queryFilters): bool
 	{
-		$start = microtime(true);
+        if ($containerConfig->getName() === self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE || $this->request->isAjax()) {
+            return false;
+        }
 
-		$inClause = implode(",", array_fill(0, count($queries), '?'));
-
-		//Arrays merged in bind to ensure the number of params matches number of tokens
-		$catId = $this->connection->fetchOne(
-			"SELECT ccev.entity_id FROM {$this->categoryTableVarchar} ccev 
-                JOIN {$this->eavTable} ea ON ea.attribute_id = ccev.attribute_id AND ea.attribute_code = 'name'
-                JOIN {$this->categoryTable} cce ON cce.attribute_set_id = ea.entity_type_id AND cce.entity_id = ccev.entity_id
-				JOIN {$this->sinchCategoriesMappingTable} scm ON scm.shop_entity_id = cce.entity_id
-				JOIN {$this->sinchCategoriesTable} sc ON sc.store_category_id = scm.store_category_id AND sc.products_within_this_category < 100000
-                WHERE ccev.value IN ($inClause) OR sc.VirtualCategory IN ($inClause)",
-			array_merge($queries, $queries)
-		);
-
-		//Product family match if no category match detected
-		if (empty($catId)) {
-			$catId = $this->connection->fetchOne(
-				"SELECT cce.entity_id FROM {$this->categoryTable} cce
-				JOIN {$this->sinchProductsTable} sp ON sp.store_category_id = cce.store_category_id
-				JOIN {$this->productFamilyTable} pf ON pf.id = sp.family_id
-				WHERE pf.name IN ({$inClause})",
-			$queries);
-		}
-
-		//Category or virtual category name match, don't bother creating the ES query and instead redirect
-		if (!empty($catId)) {
-			$filterParams = '';
-			if (!empty($queryFilters[SearchProcessing::FILTER_TYPE_PRICE]) && $queryFilters[SearchProcessing::FILTER_TYPE_PRICE] instanceof PriceRangeQuery) {
-			    $bounds = $queryFilters[SearchProcessing::FILTER_TYPE_PRICE]->getBounds();
-			    if (!empty($bounds['lte']) && is_numeric($bounds['lte'])) {
-			        $min = $bounds['gte'] ?? '0';
-                    $filterParams = "?price={$min}-{$bounds['lte']}";
+        $queryParams = [];
+        if (isset($queryFilters[SearchProcessing::FILTER_TYPE_CATEGORY]) && $queryFilters[SearchProcessing::FILTER_TYPE_CATEGORY] instanceof CategoryBoostFilter) {
+            $cats = $queryFilters[SearchProcessing::FILTER_TYPE_CATEGORY]->getCategories();
+            if (!empty($cats)) {
+                $catId = $this->spHelper->getCategoryIdByName($containerConfig, $cats);
+                if (!empty($catId)) {
+                    $queryParams['cat'] = $catId;
                 }
             }
+        }
 
-			foreach ($optionFilters as $filter) {
-				$filterValue = $filter['value'];
-				if (!empty($filterValue)) {
-					$attributeCode = $filter['attribute_code'];
-					$filterParams .= (empty($filterParams) ? "?" : "&") . "{$attributeCode}=" . $filterValue;
-				}
-			}
+        if (isset($queryFilters[SearchProcessing::FILTER_TYPE_PRICE]) && $queryFilters[SearchProcessing::FILTER_TYPE_PRICE] instanceof PriceRangeQuery) {
+            $bounds = $queryFilters[SearchProcessing::FILTER_TYPE_PRICE]->getBounds();
+            if (!empty($bounds['lte']) && is_numeric($bounds['lte'])) {
+                $min = $bounds['gte'] ?? '0';
+                $queryParams['price'] = "{$min}-{$bounds['lte']}";
+            }
+        }
 
-			try {
-				$category = $this->categoryRepository->get((int)$catId);
-				$url = $category->getUrl() . $filterParams;
+        if (isset($queryFilters[SearchProcessing::FILTER_TYPE_ATTRIBUTE]) && $queryFilters[SearchProcessing::FILTER_TYPE_ATTRIBUTE] instanceof AttributeValueFilter) {
+            $attrCode = $queryFilters[SearchProcessing::FILTER_TYPE_ATTRIBUTE]->getAttribute();
+            $attrValue = $queryFilters[SearchProcessing::FILTER_TYPE_ATTRIBUTE]->getValue();
+            $queryParams[$attrCode] = $attrValue;
+        }
 
-				$this->response->setRedirect($url)->sendResponse();
-
-				$elapsed = abs(microtime(true) - $start) * 1000;
-				$this->logger->info("Total execution time: " . strval($elapsed) . "ms");
-				return true;
-				//Silently ignore NoSuchEntity, which is very unlikely since we asked the database for the id in the first place
-			} catch (NoSuchEntityException $e) {
-			}
-		}
+        if (!empty($queryParams)) {
+            if (!empty(trim($queryText))) {
+                //This is still a search query, so redirect to search results with relevant filters set
+//                $redirectUrl = $this->urlBuilder->getUrl('catalogsearch/result/index', ['_query' => array_merge(['q' => $queryText], $queryParams)]);
+//                $this->response->setRedirect($redirectUrl)->sendResponse();
+//                return true;
+                return false;
+            }
+            //Query text is empty, so we should redirect to a category if one was specified
+            if (!empty($queryParams['cat'])) {
+                $catId = $queryParams['cat'];
+                unset($queryParams['cat']);
+                $catUrl = $this->getCategoryUrl($catId, $queryParams);
+                if (!empty($catUrl)) {
+                    $this->response->setRedirect($catUrl)->sendResponse();
+                    return true;
+                }
+            }
+            //Query text is empty but we have no target category, try to find one based on product family
+            if (isset($queryParams['sinch_family'])) {
+                $catId = $this->connection->fetchOne(
+                    "SELECT cce.entity_id FROM {$this->categoryTable} cce
+                    JOIN {$this->sinchProductsTable} sp
+                        ON cce.store_category_id = sp.store_category_id
+                    JOIN {$this->productFamilyTable} pf
+                        ON sp.family_id = pf.id
+                    WHERE pf.name = :family
+                    GROUP BY cce.entity_id
+                    ORDER BY COUNT(cce.entity_id) DESC
+                    LIMIT 1",
+                    [':family' => $queryParams['sinch_family']]
+                );
+                if (!empty($catId)) {
+                    $catUrl = $this->getCategoryUrl($catId, $queryParams);
+                    $this->response->setRedirect($catUrl)->sendResponse();
+                    return true;
+                }
+            }
+            //We still have no query text, but we've run out of ways to filter, so just run it through normally?
+        }
 		return false;
 	}
 
+    private function getCategoryUrl(int $categoryId, array $queryParams): ?string
+    {
+        try {
+            $queryString = http_build_query($queryParams);
+            return $this->categoryRepository->get($categoryId)->getUrl() . !empty($queryString) ? ("?" . $queryString) : "";
+        } catch (NoSuchEntityException $e) {
+            $this->logger->warning("Got no such entity retrieving category");
+        }
+        return null;
+    }
 }
