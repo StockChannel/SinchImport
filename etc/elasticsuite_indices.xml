@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<indices xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Smile_ElasticsuiteCore:etc/elasticsuite_indices.xsd">
+    <index identifier="catalog_product" defaultSearchType="product">
+        <type name="product" idFieldName="entity_id">
+            <mapping>
+                <field name="sinch_restrict" type="keyword" />
+            </mapping>
+        </type>
+    </index>
+</indices>

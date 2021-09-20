@@ -39,6 +39,9 @@ class CronSchedule {
     {
         foreach ($this->cronConfig->getJobs() as $jobGroupCode => $jobGroup) {
             foreach ($jobGroup as $job) {
+                //The following if is a fix for a rare bug (only ever seen it on a single site)
+                if (!isset($job['name'])) continue;
+
                 if ($job['name'] == $jobCode) {
                     $job['group'] = $jobGroupCode;
                     return $job;
