@@ -471,7 +471,7 @@ class StockPrice extends AbstractImportSection
                     SELECT cpe.entity_id, 1, ssp.stock, :threshold, IF(ssp.stock > (0 + :threshold), 1, 0), 1, {$stockItemScope} FROM {$catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
                             ON cpe.sinch_product_id = ssp.product_id
-                ) ON DUPLICATE KEY UPDATE qty = ssp.stock, is_in_stock = IF(ssp.stock > 0, 1, 0), manage_stock = 1, min_qty = VALUES(min_qty)",
+                ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = 1, min_qty = VALUES(min_qty)",
 		        [':threshold' => $this->outOfStockThreshold]
 	        );
             $this->endTimingStep();
