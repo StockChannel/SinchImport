@@ -2,6 +2,7 @@
 
 namespace SITC\Sinchimport\Helper;
 
+use Magento\Catalog\Model\Category;
 use Magento\Customer\Model\Group;
 use Magento\Customer\Model\Session;
 use Magento\Framework\App\Helper\AbstractHelper;
@@ -9,7 +10,16 @@ use Magento\Framework\App\Helper\Context;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\UrlInterface;
+use Magento\Search\Model\Autocomplete\ItemFactory;
+use Magento\Search\Model\Autocomplete\ItemInterface;
+use Magento\Search\Model\SearchEngine;
+use Magento\Store\Model\StoreManagerInterface;
+use SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete\TermsDataProvider;
+use SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
+use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterfaceFactory;
+use Smile\ElasticsuiteCore\Search\Request\Builder;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Smile\ElasticsuiteThesaurus\Model\Index;
@@ -39,14 +49,51 @@ class SearchProcessing extends AbstractHelper
     private QueryFactory $queryFactory;
     private Index $thesaurus;
     private ResourceConnection $resourceConn;
+    private Builder $requestBuilder;
+    private SearchEngine $searchEngine;
+    private ContainerConfigurationInterfaceFactory $containerConfigFactory;
+    private StoreManagerInterface $storeManager;
+    private \Zend\Log\Logger $logger;
+    private ItemFactory $itemFactory;
 
-    public function __construct(Context $context, Session $customerSession, QueryFactory\Proxy $queryFactory, Index\Proxy $thesaurus, ResourceConnection\Proxy $resourceConn)
-    {
+    private string $categoryTableVarchar;
+    private string $categoryTable;
+    private string $eavTable;
+    private string $sinchCategoriesTable;
+    private string $sinchCategoriesMappingTable;
+
+    public function __construct(
+        Context $context,
+        Session $customerSession,
+        QueryFactory\Proxy $queryFactory,
+        Index\Proxy $thesaurus,
+        ResourceConnection\Proxy $resourceConn,
+        Builder\Proxy $requestBuilder,
+        SearchEngine\Proxy $searchEngine,
+        ContainerConfigurationInterfaceFactory $containerConfigFactory,
+        StoreManagerInterface\Proxy $storeManager,
+        ItemFactory $itemFactory
+    ){
         parent::__construct($context);
         $this->customerSession = $customerSession;
         $this->queryFactory = $queryFactory;
         $this->thesaurus = $thesaurus;
         $this->resourceConn = $resourceConn;
+        $this->requestBuilder = $requestBuilder;
+        $this->searchEngine = $searchEngine;
+        $this->containerConfigFactory = $containerConfigFactory;
+        $this->storeManager = $storeManager;
+        $this->itemFactory = $itemFactory;
+
+        $this->categoryTableVarchar = $this->resourceConn->getTableName('catalog_category_entity_varchar');
+        $this->categoryTable = $this->resourceConn->getTableName('catalog_category_entity');
+        $this->eavTable = $this->resourceConn->getTableName('eav_attribute');
+        $this->sinchCategoriesTable = $this->resourceConn->getTableName('sinch_categories');
+        $this->sinchCategoriesMappingTable = $this->resourceConn->getTableName('sinch_categories_mapping');
+
+        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/search_processing.log');
+        $this->logger = new \Zend\Log\Logger();
+        $this->logger->addWriter($writer);
     }
 
     public function getQueryTextRewrites(ContainerConfigurationInterface $containerConfig, string $queryText): array
@@ -78,8 +125,10 @@ class SearchProcessing extends AbstractHelper
     {
         $filters = [];
         foreach (self::QUERY_REGEXES as $filterType => $_regex) {
+
             $match = $this->getRegexMatchesRaw($filterType, $queryText);
             if (!empty($match)) {
+                $this->logger->info("Query text is: '{$queryText}' and filter type is {$filterType}");
                 switch ($filterType) {
                     case self::FILTER_TYPE_PRICE:
                         $filter = $this->parsePriceRegex($match);
@@ -89,11 +138,12 @@ class SearchProcessing extends AbstractHelper
                         $filters[self::FILTER_TYPE_PRICE] = $filter;
                         break;
                     case self::FILTER_TYPE_CATEGORY:
-                        if (empty($match['query'])) {
-                            //There isn't a query left, so don't add a filter or change the query text
-                            // (This case should be handled by the direct category name match logic instead)
-                            continue 2;
-                        }
+//                        if (empty($match['query'])) {
+//                            //There isn't a query left, so don't add a filter or change the query text
+//                            // (This case should be handled by the direct category name match logic instead)
+//                            $this->logger->info("No query left after category filter");
+//                            continue 2;
+//                        }
                         //Add category filter to $filters
                         $filters[self::FILTER_TYPE_CATEGORY] = $this->queryFactory->create(
                             'sitcCategoryBoostQuery',
@@ -105,8 +155,9 @@ class SearchProcessing extends AbstractHelper
                         break;
                     case self::FILTER_TYPE_ATTRIBUTE:
                         $filter = $this->checkAttributeValueMatch($match['query']); //In FILTER_TYPE_ATTRIBUTE $match['query'] is the original queryText for our runtime matching
-                        if (empty($filter) || empty($match['query'])) {
+                        if (empty($filter) /*|| empty($match['query'])*/) {
                             //If we didn't get a filter, or the query text is empty, don't filter
+                            $this->logger->info("Filter is empty in attribute match");
                             continue 2;
                         }
                         $filters[self::FILTER_TYPE_ATTRIBUTE] = $filter;
@@ -116,6 +167,8 @@ class SearchProcessing extends AbstractHelper
                 $queryText = $match['query'] ?? '';
             }
         }
+        $this->logger->info("Final query text is: " . $queryText);
+        $this->logger->info("Returning filters of type: " . implode(", ", array_keys($filters)));
         return $filters;
     }
 
@@ -129,11 +182,12 @@ class SearchProcessing extends AbstractHelper
         $matches = [];
         //Attribute is a special case as it requires runtime generation
         if ($filterType == self::FILTER_TYPE_ATTRIBUTE) {
-            //Return a dummy "match" with the original queryText so we can do it dynamically
+            //Return a dummy "match" with the original queryText, so we can do it dynamically
             return ['query' => $queryText];
         }
         if (preg_match(self::QUERY_REGEXES[$filterType], $queryText, $matches) >= 1) {
-            return $matches[0];
+            $this->logger->info("Regex match for filter type {$filterType}: " . print_r($matches, true));
+            return $matches;
         }
         return false;
     }
@@ -234,5 +288,160 @@ class SearchProcessing extends AbstractHelper
     public function stripFromQueryText(string $queryText, string $strip): string
     {
         return trim(str_ireplace($strip, '', $queryText));
+    }
+
+    /**
+     * @param string $queryText
+     * @return ItemInterface[]
+     */
+    public function getAutocompleteSuggestions(string $queryText): array
+    {
+        $suggestions = [];
+
+        //Get an instance of the quick_search_container (so we can ask it for the aggregations it would add in that view)
+        /** @var ContainerConfigurationInterface $containerConfig */
+        $containerConfig = $this->containerConfigFactory->create(['storeId' => $this->getCurrentStoreId(), 'containerName' => QueryBuilder::QUERY_TYPE_QUICKSEARCH]);
+        $aggParams = $containerConfig->getAggregations($queryText);
+
+        $searchRequest = $this->requestBuilder->create(
+            $this->getCurrentStoreId(),
+            QueryBuilder::QUERY_TYPE_PRODUCT_AUTOCOMPLETE,
+            0,
+            0,
+            $queryText,
+            [],
+            [],
+            $containerConfig->getFilters(),
+            ['categories' => $aggParams['categories']]
+        );
+
+        $searchResult = $this->searchEngine->search($searchRequest);
+        $categoryBucket = $searchResult->getAggregations()->getBucket('categories');
+        if (!empty($categoryBucket)) {
+            $catToCountMapping = [];
+            foreach ($categoryBucket->getValues() as $value) {
+                $valueCount = $value->getMetrics()['count'];
+                if ($valueCount == 0) continue;
+                $catToCountMapping[$value->getValue()] = $valueCount;
+            }
+
+            if (empty($catToCountMapping)) {
+                return $suggestions;
+            }
+
+            //Filter the aggregates to what we consider to be meaningful (i.e. exclude things like "Uncategorised Products")
+            $inClause = implode(",", array_fill(0, count($catToCountMapping), '?'));
+            $this->logger->info(implode(", ", array_keys($catToCountMapping)));
+            //The left join on the subquery combined with the IFNULL allows us to prioritize leaf categories without excluding parents
+            // as the subquery only determines direct child counts, and thus parents (without products) are assumed to have the max viable (50k) product count
+            $validCatSuggestions = $this->resourceConn->getConnection()->fetchPairs(
+                "SELECT scm.shop_entity_id, IFNULL(cpc.product_count, 50000) FROM sinch_categories_mapping scm
+                    INNER JOIN sinch_categories sc
+                        ON scm.store_category_id = sc.store_category_id
+                    -- TODO: Better determine how to read product counts
+                    LEFT JOIN (SELECT category_id, COUNT(product_id) as product_count FROM catalog_category_product GROUP BY category_id) cpc
+                        ON scm.shop_entity_id = cpc.category_id
+                    WHERE sc.include_in_menu = 1
+                        AND sc.products_within_this_category + sc.products_within_sub_categories > 1
+                        AND sc.products_within_this_category + sc.products_within_sub_categories < 50000
+                        AND scm.shop_entity_id IN ($inClause)",
+                array_keys($catToCountMapping)
+            );
+            //Our adjusted map only holds results we've deemed viable, and values as a percentage coverage of the category
+            $adjustedCatMap = [];
+            foreach ($catToCountMapping as $cat => $count) {
+                if (isset($validCatSuggestions[$cat])) {
+                    $adjustedCatMap[$cat] = ($count * 100) / $validCatSuggestions[$cat];
+                }
+            }
+
+            asort($adjustedCatMap, SORT_NUMERIC);
+            //asort puts the lowest count first, so flip it in the foreach
+            foreach (array_reverse($adjustedCatMap, true) as $cat => $coverage) {
+                $this->logger->info("Category {$cat} has {$coverage}% product coverage for query");
+                //Add a suggestion for the aggregate
+                $suggestions[] = $this->itemFactory->create([
+                    'title' => $this->formatCategoryTerm($queryText, $cat),
+                    'type' => TermsDataProvider::AUTOCOMPLETE_TYPE,
+                    'num_results' => $catToCountMapping[$cat],
+                ]);
+            }
+        }
+
+        return $suggestions;
+    }
+
+    private function getCurrentStoreId(): int
+    {
+        $storeId = 0;
+        try {
+            $storeId = $this->storeManager->getStore()->getId();
+        } catch (NoSuchEntityException $e) {}
+        if ($storeId == 0) {
+            $storeId = $this->storeManager->getDefaultStoreView()->getId();
+        }
+        return $storeId;
+    }
+
+    private function formatCategoryTerm(string $queryText, int $categoryId): string
+    {
+        return $queryText . " in " . $this->getCategoryName($categoryId);
+    }
+
+    private function getCategoryName(int $categoryId): string
+    {
+        $eav_entity_type = $this->resourceConn->getTableName('eav_entity_type');
+        return $this->resourceConn->getConnection()->fetchOne(
+            "SELECT ccev.value FROM {$this->categoryTableVarchar} ccev
+                INNER JOIN {$this->eavTable} ea
+                    ON ccev.attribute_id = ea.attribute_id
+                INNER JOIN {$eav_entity_type} eet
+                    ON ea.entity_type_id = eet.entity_type_id
+                WHERE ccev.entity_id = :categoryId
+                  AND ea.attribute_code = 'name'
+                  AND eet.entity_type_code = :catEntityType
+                  AND ccev.store_id = :storeId",
+            [
+                ':catEntityType' => Category::ENTITY,
+                ':categoryId' => $categoryId,
+                ':storeId' => $this->getCurrentStoreId()
+            ]
+        );
+    }
+
+    /**
+     * @param ContainerConfigurationInterface $containerConfig
+     * @param string|string[] $categoryName
+     * @param bool $processVariants
+     * @return int|null
+     */
+    public function getCategoryIdByName(ContainerConfigurationInterface $containerConfig, $categoryName, bool $processVariants = true): ?int
+    {
+        if (!is_array($categoryName)) {
+            $categoryName = [$categoryName];
+        }
+
+        $inClause = implode(",", array_fill(0, count($categoryName), '?'));
+        //Arrays merged in bind to ensure the number of params matches number of tokens
+        $categoryId = $this->resourceConn->getConnection()->fetchOne(
+            "SELECT ccev.entity_id FROM {$this->categoryTableVarchar} ccev 
+                JOIN {$this->eavTable} ea ON ea.attribute_id = ccev.attribute_id AND ea.attribute_code = 'name'
+                JOIN {$this->categoryTable} cce ON cce.attribute_set_id = ea.entity_type_id AND cce.entity_id = ccev.entity_id
+				JOIN {$this->sinchCategoriesMappingTable} scm ON scm.shop_entity_id = cce.entity_id
+				JOIN {$this->sinchCategoriesTable} sc ON sc.store_category_id = scm.store_category_id AND sc.products_within_this_category < 100000
+                WHERE ccev.value IN ($inClause) OR sc.VirtualCategory IN ($inClause)",
+            array_merge($categoryName, $categoryName)
+        );
+
+        if (!empty($categoryId)) {
+            return $categoryId;
+        }
+        if ($processVariants) {
+            $rewrites = $this->getQueryTextRewrites($containerConfig, $categoryName[0]);
+            if (!empty($rewrites)) {
+                return $this->getCategoryIdByName($containerConfig, $rewrites, false);
+            }
+        }
+        return null;
     }
 }
