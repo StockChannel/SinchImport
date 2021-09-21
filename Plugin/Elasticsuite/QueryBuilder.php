@@ -168,6 +168,15 @@ class QueryBuilder
                                 'missing' => 0
                             ],
                             'weight' => 8
+                        ],
+                        [ //Boost on sinch search data
+                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                                'field' => 'sinch_searches',
+                                'factor' => $this->helper->searchesBoostFactor(),
+                                'modifier' => 'log1p',
+                                'missing' => 0
+                            ],
+                            'weight' => 8
                         ]
                     ],
                     'scoreMode' => FunctionScore::SCORE_MODE_MAX,

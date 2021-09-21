@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<indices xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="urn:magento:module:Smile_ElasticsuiteCore:etc/elasticsuite_indices.xsd">
+    <index identifier="catalog_product" defaultSearchType="product">
+        <type name="product" idFieldName="entity_id">
+            <mapping>
+                <field name="sinch_restrict" type="keyword" />
+                <field name="sinch_score" type="double">
+                    <isSearchable>1</isSearchable>
+                </field>
+                <field name="sinch_popularity_month" type="double">
+                    <isSearchable>1</isSearchable>
+                </field>
+                <field name="sinch_popularity_year" type="double">
+                    <isSearchable>1</isSearchable>
+                </field>
+                <field name="sinch_searches" type="double">
+                    <isSearchable>1</isSearchable>
+                </field>
+            </mapping>
+        </type>
+    </index>
+</indices>

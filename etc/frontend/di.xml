@@ -33,7 +33,7 @@
         <plugin name="sitc_attribute_autocomplete_reorder" type="SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete\ProductAttributeDataProvider" sortOrder="0"/>
     </type>
     <!-- Interceptor on the category page load query -->
-    <type name="Smile\ElasticsuiteCatalog\Model\Category\Filter\Provider">
+    <type name="Smile\ElasticsuiteCore\Search\Request\Query\Builder">
         <plugin name="sitc_category_provider" type="SITC\Sinchimport\Plugin\Elasticsuite\Provider" sortOrder="0"/>
     </type>
     <!-- End search stuff-->

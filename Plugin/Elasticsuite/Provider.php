@@ -7,15 +7,15 @@ use SITC\Sinchimport\Helper\Data;
 use Smile\ElasticsuiteCore\Search\Request\Query\FunctionScore;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
+use Smile\ElasticsuiteCore\Search\Request\Query\Builder as QueryBuilder;
 
 class Provider
 {
     private $logger;
 
-    private $helper;
+    private Data $helper;
 
-    /** @var QueryFactory $queryFactory */
-    private $queryFactory;
+    private QueryFactory $queryFactory;
 
     /**
      * Provider constructor.
@@ -35,24 +35,33 @@ class Provider
     }
 
     /**
-     * @param \Smile\ElasticsuiteCatalog\Model\Category\Filter\Provider $subject
+     * @param QueryBuilder $subject
      * @param QueryInterface $result
      *
      * @return QueryInterface
      */
-    public function afterGetQueryFilter(
-        \Smile\ElasticsuiteCatalog\Model\Category\Filter\Provider $subject,
+    public function afterCreateQuery(
+        QueryBuilder $subject,
         QueryInterface $result
     ){
-//        $toReturn = $this->queryFactory->create(
-//            QueryInterface::TYPE_BOOL,
-//            [
-//                'must' => [$result],
-//                'should' => $this->getBoostQuery(),
-//                'minimumShouldMatch' => 0
-//            ]
-//        );
-        return $result;
+
+        if ($this->getBoostQuery() == null) {
+            return $result;
+        }
+
+        $boostQuery = $this->queryFactory->create(
+            QueryInterface::TYPE_BOOL,
+            [
+                'must' => [$result],
+                'should' => [$this->getBoostQuery()],
+                'minimumShouldMatch' => 0,
+                'boost' => 10
+            ]
+        );
+//        $query = $this->queryBuilder->buildQuery($boostQuery);
+//        $this->logger->info(json_encode($query));
+
+        return $boostQuery;
     }
 
 

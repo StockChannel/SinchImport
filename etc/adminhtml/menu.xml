@@ -4,8 +4,11 @@
     <menu>
         <add id="SITC_Sinchimport::sinchimport" title="Stock In The Channel" module="SITC_Sinchimport"
              sortOrder="50" resource="SITC_Sinchimport::sinchimport"/>
-        <add id="SITC_Sinchimport::importdata" title="Import Data" module="SITC_Sinchimport" sortOrder="0"
-             parent="SITC_Sinchimport::sinchimport" action="adminhtml/system_config/edit/section/sinchimport"
+
+        <add id="SITC_Sinchimport::product_import_title" sortOrder="3" title="Products Import" translate="title" module="SITC_Sinchimport" resource="Magento_Backend::content" parent="SITC_Sinchimport::sinchimport"/>
+
+        <add id="SITC_Sinchimport::importdata" title="Configuration" module="SITC_Sinchimport" sortOrder="4"
+             parent="SITC_Sinchimport::product_import_title" action="adminhtml/system_config/edit/section/sinchimport"
              resource="SITC_Sinchimport::importdata"/>
     </menu>
 </config>

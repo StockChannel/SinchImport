@@ -26,6 +26,7 @@ class StockPrice extends AbstractImportSection
     const STOCK_IMPORT_TABLE = 'sinch_stock_and_prices';
     const DISTI_TABLE = 'sinch_distributors';
     const DISTI_STOCK_IMPORT_TABLE = 'sinch_distributors_stock_and_price';
+    const SINCH_PRODUCTS_TABLE = 'sinch_products';
 
     /** @var Data */
     private $helper;
@@ -42,8 +43,12 @@ class StockPrice extends AbstractImportSection
     private $distiTable;
     private $distiStockImportTable;
     private $importStatsTable;
+    private $sinchProductsTable;
 
-    public function __construct(
+	private $outOfStockThreshold;
+
+
+	public function __construct(
         ResourceConnection $resourceConn,
         ConsoleOutput $output,
         Download $dlHelper,
@@ -64,7 +69,9 @@ class StockPrice extends AbstractImportSection
         $this->distiTable = $this->getTableName(self::DISTI_TABLE);
         $this->distiStockImportTable = $this->getTableName(self::DISTI_STOCK_IMPORT_TABLE);
         $this->importStatsTable = $this->getTableName('sinch_import_status_statistic');
-    }
+        $this->sinchProductsTable = $this->getTableName(self::SINCH_PRODUCTS_TABLE);
+		$this->outOfStockThreshold = (int)$this->helper->getStoreConfig('cataloginventory/item_options/min_qty') ?? 0;
+	}
 
     public function getRequiredFiles(): array
     {
@@ -241,7 +248,7 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, 0, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.sinch_product_id = st.product_id
+                    ON cpe.sinch_product_id = st.product_id AND st.price != 0
         ) ON DUPLICATE KEY UPDATE value = st.price");
         $this->endTimingStep();
 
@@ -249,7 +256,7 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$catalogProductEntityDecimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, w.website, cpe.entity_id, st.price FROM {$catalogProductEntity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.sinch_product_id = st.product_id
+                    ON cpe.sinch_product_id = st.product_id  AND st.price != 0
                 INNER JOIN {$prodWebTemp} w
                     ON cpe.sinch_product_id = w.sinch_product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
@@ -376,8 +383,22 @@ class StockPrice extends AbstractImportSection
 //            );
             //Much faster than the above query (for roughly the same job)
             //$conn->query("UPDATE {$inventory_source_item} SET quantity = 0, status = 0 WHERE sku IN (SELECT sku FROM {$catalog_product_entity} WHERE sinch_product_id IS NOT NULL)");
-            $conn->query(
-                "UPDATE {$inventory_source_item}
+
+	        //We want to delete if backorders are enabled (i.e. out of stock threshold is < 0)
+	        if ($this->outOfStockThreshold < 0) {
+	            $conn->query(
+		            "DELETE FROM {$inventory_source_item}
+                    WHERE sku IN (
+                        SELECT cpe.sku FROM {$catalog_product_entity} cpe
+                        LEFT JOIN {$this->stockImportTable} ssp
+                            ON cpe.store_product_id = ssp.product_id
+                        WHERE cpe.store_product_id IS NOT NULL
+                          AND ssp.stock IS NULL
+                	)"
+	            );
+            } else {
+	            $conn->query(
+		            "UPDATE {$inventory_source_item}
                     SET quantity = 0, status = 0
                     WHERE sku IN (
                         SELECT cpe.sku FROM {$catalog_product_entity} cpe
@@ -385,27 +406,49 @@ class StockPrice extends AbstractImportSection
                             ON cpe.sinch_product_id = ssp.product_id
                         WHERE cpe.sinch_product_id IS NOT NULL
                           AND (ssp.stock IS NULL OR ssp.stock < 1)
-                )"
-            );
+                	)"
+	            );
+            }
+            $this->endTimingStep();
+
+            $this->startTimingStep('Remove non-existent stock records (MSI)');
+
+            $distributorIds = $conn->fetchCol("SELECT DISTINCT source_code FROM {$inventory_source_item}");
+
+            foreach ($distributorIds as $distributorId) {
+                $distributorId = (int)str_replace('sinch_', '', $distributorId);
+                $conn->query(
+                    "UPDATE {$inventory_source_item} isi SET isi.quantity = 0, isi.status = 0 
+                    WHERE isi.source_code = CONCAT('sinch_', :distiId) 
+                    AND isi.sku NOT IN 
+                        (SELECT sp.product_sku FROM {$sinch_distributors_stock_and_price} sdsp 
+                            INNER JOIN {$this->sinchProductsTable} sp ON sdsp.product_id = sp.sinch_product_id 
+                        WHERE sdsp.distributor_id = :distiId AND sdsp.stock > 0) AND (isi.quantity > 0 OR isi.status = 1)",
+                    ['distiId' => $distributorId]
+                    );
+            }
+
             $this->endTimingStep();
 
             //Create stock records per distributor
             $this->startTimingStep('Insert new stock levels (MSI)');
-            $conn->query(
-                "INSERT INTO {$inventory_source_item} (source_code, sku, quantity, status) (
-                    SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock > 0, 1, 0) FROM {$sinch_distributors_stock_and_price} sdsp  
+	        $conn->query(
+		        "INSERT INTO {$inventory_source_item} (source_code, sku, quantity, status) (
+                    SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock > (0 + :threshold), 1, 0) FROM {$sinch_distributors_stock_and_price} sdsp  
                         INNER JOIN {$catalog_product_entity} cpe ON sdsp.product_id = cpe.sinch_product_id
-                ) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), status = VALUES(status)"
-            );
+                ) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), status = VALUES(status)",
+		        [':threshold' => $this->outOfStockThreshold]
+	        );
             $this->endTimingStep();
 
             $this->startTimingStep('Insert marker records in single-source stock tables');
             //We associate the record into stock_id = 1 to mark the "default source" as containing no stock
-            $conn->query("INSERT INTO {$cataloginventory_stock_item} (product_id, stock_id, qty, is_in_stock, manage_stock, website_id) (
-                    SELECT cpe.entity_id, 1, NULL, 0, 1, {$stockItemScope} FROM {$catalog_product_entity} cpe
+            $conn->query("INSERT INTO {$cataloginventory_stock_item} (product_id, stock_id, qty, min_qty, is_in_stock, manage_stock, website_id) (
+                    SELECT cpe.entity_id, 1, NULL, :threshold, 0, 1, {$stockItemScope} FROM {$catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
                             ON cpe.sinch_product_id = ssp.product_id
-                ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = VALUES(manage_stock)"
+                ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = VALUES(manage_stock), min_qty = VALUES(min_qty)",
+                [':threshold' => $this->outOfStockThreshold]
             );
             $this->endTimingStep();
 
@@ -445,12 +488,13 @@ class StockPrice extends AbstractImportSection
             $this->endTimingStep();
 
             $this->startTimingStep('Insert new stock levels');
-            $conn->query("INSERT INTO {$cataloginventory_stock_item} (product_id, stock_id, qty, is_in_stock, manage_stock, website_id) (
-                    SELECT cpe.entity_id, 1, ssp.stock, IF(ssp.stock > 0, 1, 0), 1, {$stockItemScope} FROM {$catalog_product_entity} cpe
+	        $conn->query("INSERT INTO {$cataloginventory_stock_item} (product_id, stock_id, qty, min_qty, is_in_stock, manage_stock, website_id) (
+                    SELECT cpe.entity_id, 1, ssp.stock, :threshold, IF(ssp.stock > (0 + :threshold), 1, 0), 1, {$stockItemScope} FROM {$catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
                             ON cpe.sinch_product_id = ssp.product_id
-                ) ON DUPLICATE KEY UPDATE qty = ssp.stock, is_in_stock = IF(ssp.stock > 0, 1, 0), manage_stock = 1"
-            );
+                ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = 1, min_qty = VALUES(min_qty)",
+		        [':threshold' => $this->outOfStockThreshold]
+	        );
             $this->endTimingStep();
 
             if ($conn->isTableExists($inventory_source_item)) {

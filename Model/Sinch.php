@@ -2272,7 +2272,7 @@ class Sinch {
     {
         // product short description for all web sites
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
+            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
                 attribute_id,
                 store_id,
                 entity_id,
@@ -2294,7 +2294,7 @@ class Sinch {
         );
         // product short description for all web sites
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
+            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
                 attribute_id,
                 store_id,
                 entity_id,

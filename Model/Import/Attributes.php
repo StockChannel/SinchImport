@@ -210,11 +210,13 @@ class Attributes extends AbstractImportSection {
         $this->log("Figuring out which attributes have been removed");
         $this->startTimingStep("Removals");
         $replacement = \implode(",", \array_fill(0, \count($attrNames), '?'));
-        $removedAttributes = $this->getConnection()->fetchCol(
-            "SELECT attribute_code FROM {$this->eavAttrTable} WHERE attribute_code LIKE '" . self::ATTRIBUTE_PREFIX . "%' AND attribute_code NOT IN ({$replacement})",
-            $attrNames
-        );
-
+        $removedAttributes = [];
+        if (!empty($replacement)) {
+            $removedAttributes = $this->getConnection()->fetchCol(
+                "SELECT attribute_code FROM {$this->eavAttrTable} WHERE attribute_code LIKE '" . self::ATTRIBUTE_PREFIX . "%' AND attribute_code NOT IN ({$replacement})",
+                $attrNames
+            );
+        }
         if (count($removedAttributes) > 0) {
             $this->log("Removing " . count($removedAttributes) . " old filterable attributes");
             $replacement = \implode(",", \array_fill(0, \count($removedAttributes), '?'));

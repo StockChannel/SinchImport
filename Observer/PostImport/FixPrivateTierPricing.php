@@ -13,6 +13,7 @@ class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterfac
     private $cpeTable;
     private $cpeDecimalTable;
     private $tierPriceTable;
+    private $stockImportTable;
     /**
      * Holds the attribute_id for Product Price
      * @var int
@@ -31,6 +32,7 @@ class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterfac
         $this->cpeTable = $this->resourceConn->getTableName('catalog_product_entity');
         $this->cpeDecimalTable = $this->resourceConn->getTableName('catalog_product_entity_decimal');
         $this->tierPriceTable = $this->resourceConn->getTableName('catalog_product_entity_tier_price');
+        $this->stockImportTable = $this->resourceConn->getTableName('sinch_stock_and_prices');
 
         $eavAttr = $this->resourceConn->getTableName('eav_attribute');
         $this->prodPriceAttr = $this->getConn()->fetchOne(
@@ -60,18 +62,17 @@ class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterfac
         //TODO: This may need to check whether the products are sinch products (with a join on catalog_product_entity or sinch_products_mapping)
         $changes = $this->getConn()->fetchAll(
             "SELECT tier.entity_id, MAX(tier.value) * :adjustRatio AS adjusted_ceil, COUNT(tier.value) AS val_count FROM {$this->tierPriceTable} tier
-                INNER JOIN {$this->cpeDecimalTable} price
-                    ON tier.entity_id = price.entity_id
-                    AND price.attribute_id = :priceAttr
-                    AND price.store_id = 0
+                INNER JOIN {$this->cpeTable} cpe 
+                    ON cpe.entity_id = tier.entity_id
+                INNER JOIN {$this->stockImportTable} price
+                    ON price.product_id = cpe.sinch_product_id
                 WHERE tier.qty = 1
                     AND tier.all_groups = 0
                     AND tier.website_id = 0
-                    AND price.value = 0
+                    AND price.price = 0
                 GROUP BY tier.entity_id
                 HAVING MAX(tier.value) > 0",
             [
-                ':priceAttr' => $this->prodPriceAttr,
                 ':adjustRatio' => $adjustRatio
             ]
         );
@@ -81,10 +82,8 @@ class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterfac
             $this->logger->info("Product {$change['entity_id']} has {$change['val_count']} group prices, with an adjusted ceiling of {$change['adjusted_ceil']}");
             //Now adjust the base price (in catalog_product_entity_decimal) to be the adjusted ceiling, so tier prices apply properly
             $this->getConn()->query(
-               "UPDATE {$this->cpeDecimalTable} SET value = :adjustedCeil
-                    WHERE attribute_id = :priceAttr
-                    AND entity_id = :entityId
-                    AND store_id = 0",
+                "INSERT INTO {$this->cpeDecimalTable} (attribute_id, entity_id, store_id, value) VALUES (:priceAttr, :entityId, 0, :adjustedCeil)
+                    ON DUPLICATE KEY UPDATE value = :adjustedCeil",
                 [
                     ':priceAttr' => $this->prodPriceAttr,
                     ':entityId' => $change['entity_id'],
