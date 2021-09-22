@@ -136,53 +136,9 @@ class QueryBuilder
         ];
 		$minShouldMatch = 0;
 
-		if ($this->helper->popularityBoostEnabled()) {
-		    $shouldClauses[] = $this->queryFactory->create(
-		        QueryInterface::TYPE_FUNCTIONSCORE,
-                [
-                    'query' => $this->queryFactory->create(QueryInterface::TYPE_FILTER), //Filtered with no args is a match_all
-                    'functions' => [
-                        [ //Boost on Popularity Score
-                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
-                                'field' => 'sinch_score', //TODO: Seems like field names for non-option int attributes are just their attribute code, confirm
-                                'factor' => $this->helper->popularityBoostFactor(),
-                                'modifier' => 'log1p',
-                                'missing' => 0
-                            ],
-                            'weight' => 5
-                        ],
-                        [ //Boost on Monthly BI data
-                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
-                                'field' => 'sinch_popularity_month',
-                                'factor' => $this->helper->monthlyPopularityBoostFactor(),
-                                'modifier' => 'log1p',
-                                'missing' => 0
-                            ],
-                            'weight' => 10
-                        ],
-                        [ //Boost on Yearly BI data
-                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
-                                'field' => 'sinch_popularity_year',
-                                'factor' => $this->helper->yearlyPopularityBoostFactor(),
-                                'modifier' => 'log1p',
-                                'missing' => 0
-                            ],
-                            'weight' => 8
-                        ],
-                        [ //Boost on sinch search data
-                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
-                                'field' => 'sinch_searches',
-                                'factor' => $this->helper->searchesBoostFactor(),
-                                'modifier' => 'log1p',
-                                'missing' => 0
-                            ],
-                            'weight' => 8
-                        ]
-                    ],
-                    'scoreMode' => FunctionScore::SCORE_MODE_MAX,
-                    'boostMode' => FunctionScore::BOOST_MODE_SUM
-                ]
-            );
+		$boostQuery = $this->spHelper->getBoostQuery();
+		if ($boostQuery != null) {
+		    $shouldClauses[] = $boostQuery;
         }
 
         //If we have any boosts to add (the should clauses) or any query filters (the additional must clauses), add them to the final result

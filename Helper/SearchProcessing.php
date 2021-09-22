@@ -20,6 +20,7 @@ use SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterfaceFactory;
 use Smile\ElasticsuiteCore\Search\Request\Builder;
+use Smile\ElasticsuiteCore\Search\Request\Query\FunctionScore;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Smile\ElasticsuiteThesaurus\Model\Index;
@@ -55,6 +56,7 @@ class SearchProcessing extends AbstractHelper
     private StoreManagerInterface $storeManager;
     private \Zend\Log\Logger $logger;
     private ItemFactory $itemFactory;
+    private Data $helper;
 
     private string $categoryTableVarchar;
     private string $categoryTable;
@@ -72,7 +74,8 @@ class SearchProcessing extends AbstractHelper
         SearchEngine\Proxy $searchEngine,
         ContainerConfigurationInterfaceFactory $containerConfigFactory,
         StoreManagerInterface\Proxy $storeManager,
-        ItemFactory $itemFactory
+        ItemFactory $itemFactory,
+        Data $helper
     ){
         parent::__construct($context);
         $this->customerSession = $customerSession;
@@ -84,6 +87,7 @@ class SearchProcessing extends AbstractHelper
         $this->containerConfigFactory = $containerConfigFactory;
         $this->storeManager = $storeManager;
         $this->itemFactory = $itemFactory;
+        $this->helper = $helper;
 
         $this->categoryTableVarchar = $this->resourceConn->getTableName('catalog_category_entity_varchar');
         $this->categoryTable = $this->resourceConn->getTableName('catalog_category_entity');
@@ -441,6 +445,62 @@ class SearchProcessing extends AbstractHelper
             if (!empty($rewrites)) {
                 return $this->getCategoryIdByName($containerConfig, $rewrites, false);
             }
+        }
+        return null;
+    }
+
+    /**
+     * @return QueryInterface|null
+     */
+    public function getBoostQuery(): ?QueryInterface
+    {
+        if ($this->helper->popularityBoostEnabled()) {
+            return $this->queryFactory->create(
+                QueryInterface::TYPE_FUNCTIONSCORE,
+                [
+                    'query' => $this->queryFactory->create(QueryInterface::TYPE_FILTER), //Filtered with no args is a match_all
+                    'functions' => [
+                        [ //Boost on Popularity Score
+                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                                'field' => 'sinch_score', //TODO: Seems like field names for non-option int attributes are just their attribute code, confirm
+                                'factor' => $this->helper->popularityBoostFactor(),
+                                'modifier' => 'log1p',
+                                'missing' => 0
+                            ],
+                            'weight' => 5
+                        ],
+                        [ //Boost on Monthly BI data
+                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                                'field' => 'sinch_popularity_month',
+                                'factor' => $this->helper->monthlyPopularityBoostFactor(),
+                                'modifier' => 'log1p',
+                                'missing' => 0
+                            ],
+                            'weight' => 10
+                        ],
+                        [ //Boost on Yearly BI data
+                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                                'field' => 'sinch_popularity_year',
+                                'factor' => $this->helper->yearlyPopularityBoostFactor(),
+                                'modifier' => 'log1p',
+                                'missing' => 0
+                            ],
+                            'weight' => 8
+                        ],
+                        [ //Boost on sinch search data
+                            FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
+                                'field' => 'sinch_searches',
+                                'factor' => $this->helper->searchesBoostFactor(),
+                                'modifier' => 'log1p',
+                                'missing' => 0
+                            ],
+                            'weight' => 8
+                        ]
+                    ],
+                    'scoreMode' => FunctionScore::SCORE_MODE_MAX,
+                    'boostMode' => FunctionScore::BOOST_MODE_SUM
+                ]
+            );
         }
         return null;
     }

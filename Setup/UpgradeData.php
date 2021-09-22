@@ -80,6 +80,10 @@ class UpgradeData implements UpgradeDataInterface
             $this->nileUpgrade($eavSetup);
         }
 
+        if (version_compare($context->getVersion(),'2.5.2', '<')) {
+            $this->nileUpgrade252($eavSetup);
+        }
+
         $installer->endSetup();
     }
 
@@ -623,6 +627,22 @@ class UpgradeData implements UpgradeDataInterface
                 'group' => 'General'
             ]
         );
+    }
+
+    /**
+     * Marks the BI data attributes as 'is_used_for_promo_rules' so they are indexed into ES
+     * (meaning they do not have to be marked as 'searchable' which could have side effects)
+     *
+     * @param EavSetup $eavSetup
+     * @throws LocalizedException
+     */
+    private function nileUpgrade252(EavSetup $eavSetup)
+    {
+        $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
+        $attrArr = ['sinch_score', 'sinch_popularity_month', 'sinch_popularity_year', 'sinch_searches'];
+        foreach ($attrArr as $attr) {
+            $eavSetup->updateAttribute($entityTypeId, $attr, 'is_used_for_promo_rules', 1);
+        }
     }
 
     private function getConnection(): AdapterInterface
