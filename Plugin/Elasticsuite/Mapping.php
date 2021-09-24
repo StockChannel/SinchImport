@@ -45,8 +45,6 @@ class Mapping {
         $brandMapping = [
             self::BRAND_SEARCH_FIELD => $boost * $this->brandSearchWeight
         ];
-        $result = array_merge($result, $brandMapping);
-        
-        return $result;
+        return array_merge($result, $brandMapping);
     }
 }

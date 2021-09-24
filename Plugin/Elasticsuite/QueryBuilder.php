@@ -241,7 +241,8 @@ class QueryBuilder
     {
         try {
             $queryString = http_build_query($queryParams);
-            return $this->categoryRepository->get($categoryId)->getUrl() . !empty($queryString) ? ("?" . $queryString) : "";
+            $urlParams = empty($queryString) ? "" : "?{$queryString}";
+            return $this->categoryRepository->get($categoryId)->getUrl() . $urlParams;
         } catch (NoSuchEntityException $e) {
             $this->logger->warning("Got no such entity retrieving category");
         }

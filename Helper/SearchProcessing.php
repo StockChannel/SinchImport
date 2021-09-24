@@ -205,7 +205,6 @@ class SearchProcessing extends AbstractHelper
         if (!empty($match['below']) && is_numeric($match['below']) && $match['below'] != -1) {
             $bounds['lte'] = $match['below'];
         }
-
         if(empty($bounds)) {
             return null;
         }
@@ -296,9 +295,10 @@ class SearchProcessing extends AbstractHelper
 
     /**
      * @param string $queryText
+     * @param bool $debug
      * @return ItemInterface[]
      */
-    public function getAutocompleteSuggestions(string $queryText): array
+    public function getAutocompleteSuggestions(string $queryText, bool $debug = false): array
     {
         $suggestions = [];
 
@@ -362,7 +362,9 @@ class SearchProcessing extends AbstractHelper
             asort($adjustedCatMap, SORT_NUMERIC);
             //asort puts the lowest count first, so flip it in the foreach
             foreach (array_reverse($adjustedCatMap, true) as $cat => $coverage) {
-                $this->logger->info("Category {$cat} has {$coverage}% product coverage for query");
+                if ($debug) {
+                    $this->logger->info("Category {$cat} has {$coverage}% product coverage for query");
+                }
                 //Add a suggestion for the aggregate
                 $suggestions[] = $this->itemFactory->create([
                     'title' => $this->formatCategoryTerm($queryText, $cat),
