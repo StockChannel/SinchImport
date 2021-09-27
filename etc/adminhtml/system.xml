@@ -225,6 +225,30 @@
                     <comment><![CDATA[The factor to use when Popularity boosting on the Stockinthechannel search data]]></comment>
                 </field>
             </group>
+
+            <group id="badges" translate="label" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Search</label>
+                <field id="bestseller" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Best seller badge image URL</label>
+                    <comment><![CDATA[URL to image used for best seller product badge]]></comment>
+                </field>
+                <field id="hot_product" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Hot product badge image URL</label>
+                    <comment><![CDATA[URL to image used for hot product badge]]></comment>
+                </field>
+                <field id="new" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>New product badge image URL</label>
+                    <comment><![CDATA[URL to image used for new product badge]]></comment>
+                </field>
+                <field id="popular" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Popular product badge image URL</label>
+                    <comment><![CDATA[URL to image used for popular product product badge]]></comment>
+                </field>
+                <field id="recommended" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Recommended product badge image URL</label>
+                    <comment><![CDATA[URL to image used for recommended product product badge]]></comment>
+                </field>
+            </group>
         </section>
     </system>
 </config>

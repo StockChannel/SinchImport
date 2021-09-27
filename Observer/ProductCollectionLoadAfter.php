@@ -1,31 +1,51 @@
 <?php
 namespace SITC\Sinchimport\Observer;
 
+use Magento\Catalog\Model\Product;
+use Magento\Catalog\Model\ProductRepository;
+use Magento\Framework\Exception\NoSuchEntityException;
+use SITC\Sinchimport\Helper\Badges;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Logger\Logger;
+
 class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInterface
 {
-    private $helper;
+    private Data $helper;
+    private Badges $badgeHelper;
+    private Logger $logger;
 
     public function __construct(
-        \SITC\Sinchimport\Helper\Data $helper
+        Data $helper,
+        Badges $badgeHelper,
+        Logger $logger
     ) {
         $this->helper = $helper;
+        $this->badgeHelper = $badgeHelper;
+        $this->logger = $logger;
     }
 
 
     public function execute(\Magento\Framework\Event\Observer $observer)
     {
+        /** @var \Magento\Catalog\Model\ResourceModel\Product\Collection $filteredProductCollection */
+        $filteredProductCollection = $observer->getCollection();
+        $productCollection = clone $filteredProductCollection;
+        if ($this->helper->experimentalSearchEnabled()) {
+            $badgeProducts = $this->badgeHelper->getProductsForBadges($productCollection);
+            /** @var Product $product */
+            foreach ($badgeProducts as $value) {
+                $this->badgeHelper->flagBadgeProduct($value[0], $value[1]);
+            }
+        }
+
         if(!$this->helper->isProductVisibilityEnabled() || $this->helper->isModuleEnabled('Smile_ElasticsuiteCatalog')){
             return; //No filtering if the feature isn't enabled or with Elasticsuite enabled (as thats handled by Plugin\Elasticsuite\ContainerConfiguration)
         }
 
         $account_group_id = $this->helper->getCurrentAccountGroupId();
-
-        /** @var \Magento\Catalog\Model\ResourceModel\Product\Collection $filteredProductCollection */
-        $filteredProductCollection = $observer->getCollection();
-        $productCollection = clone $filteredProductCollection;
         $filteredProductCollection->removeAllItems();
 
-        /** @var \Magento\Catalog\Model\Product $product */
+        /** @var Product $product */
         foreach ($productCollection as $product) {
             $sinch_restrict = $product->getSinchRestrict();
             
