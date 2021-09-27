@@ -116,30 +116,6 @@ class Badges
             $returnArr[] = [$prodId, $badgeType];
         }
         return $returnArr;
-
-//        switch ($badgeType) {
-//
-//            case self::BADGE_BESTSELLER:
-//                arsort($attributeCollection[self::BADGE_BESTSELLER][1]);
-//                $prodId = $attributeCollection[self::BADGE_RECOMMENDED][0];
-//                return $this->productRepository->getById($prodId);
-//            case self::BADGE_HOT_PRODUCT:
-//                arsort($attributeCollection[self::BADGE_HOT_PRODUCT][1]);
-//                $prodId = $attributeCollection[self::BADGE_RECOMMENDED][0];
-//                return $this->productRepository->getById($prodId);
-//            case self::BADGE_NEW:
-//                arsort($attributeCollection[self::BADGE_NEW][1]);
-//                $prodId = $attributeCollection[self::BADGE_RECOMMENDED][0];
-//                return $this->productRepository->getById($prodId);
-//            case self::BADGE_POPULAR:
-//                arsort($attributeCollection[self::BADGE_POPULAR][1]);
-//                $prodId = $attributeCollection[self::BADGE_RECOMMENDED][0];
-//                return $this->productRepository->getById($prodId);
-//            case self::BADGE_RECOMMENDED:
-//                arsort($attributeCollection[self::BADGE_RECOMMENDED][1]);
-//                $prodId = $attributeCollection[self::BADGE_RECOMMENDED][0];
-//                return $this->productRepository->getById($prodId);
-//        }
     }
 
     /**

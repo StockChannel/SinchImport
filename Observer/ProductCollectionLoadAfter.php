@@ -30,6 +30,7 @@ class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInt
         /** @var \Magento\Catalog\Model\ResourceModel\Product\Collection $filteredProductCollection */
         $filteredProductCollection = $observer->getCollection();
         $productCollection = clone $filteredProductCollection;
+        
         if ($this->helper->experimentalSearchEnabled()) {
             $badgeProducts = $this->badgeHelper->getProductsForBadges($productCollection);
             /** @var Product $product */
