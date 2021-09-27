@@ -94,6 +94,7 @@ class Badges
     /**
      * @param ProductCollection $products
      * @return array
+     * @throws NoSuchEntityException
      */
     public function getProductsForBadges(ProductCollection $products): array
     {

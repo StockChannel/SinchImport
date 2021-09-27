@@ -30,12 +30,17 @@ class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInt
         /** @var \Magento\Catalog\Model\ResourceModel\Product\Collection $filteredProductCollection */
         $filteredProductCollection = $observer->getCollection();
         $productCollection = clone $filteredProductCollection;
-        
+
         if ($this->helper->experimentalSearchEnabled()) {
             $badgeProducts = $this->badgeHelper->getProductsForBadges($productCollection);
             /** @var Product $product */
             foreach ($badgeProducts as $value) {
-                $this->badgeHelper->flagBadgeProduct($value[0], $value[1]);
+                $productId = $value[0];
+                $badgeType = $value[1];
+                if (!empty($product->getData($badgeType)) && $product->getData($badgeType)) {
+                    $product->unsetData($badgeType);
+                }
+                $this->badgeHelper->flagBadgeProduct($productId, $badgeType);
             }
         }
 
