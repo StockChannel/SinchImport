@@ -10,7 +10,6 @@ use Magento\Framework\App\Helper\Context;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
-use Magento\Framework\UrlInterface;
 use Magento\Search\Model\Autocomplete\ItemFactory;
 use Magento\Search\Model\Autocomplete\ItemInterface;
 use Magento\Search\Model\SearchEngine;

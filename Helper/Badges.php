@@ -84,10 +84,11 @@ class Badges
      */
     public function getProductsForBadges(ProductCollection $products): array
     {
-        $returnArr = [];
+        $badgeProducts = [];
         $productArr = array_column($products->getData(), 'entity_id');
 
         foreach (self::BADGE_TYPES as $badgeType => $attrCode) {
+            $productArr = array_merge([], $productArr);
             usort($productArr, function ($a, $b) use ($attrCode) {
                 $productA = $this->productRepository->getById($a);
                 $productB = $this->productRepository->getById($b);
@@ -99,9 +100,9 @@ class Badges
 
             $prodId = $productArr[0];
             $product = $this->productRepository->getById($prodId);
-            $returnArr[] = [$product, $badgeType];
+            $badgeProducts[] = [$product, $badgeType];
 
         }
-        return $returnArr;
+        return $badgeProducts;
     }
 }

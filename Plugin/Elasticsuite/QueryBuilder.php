@@ -15,7 +15,6 @@ use SITC\Sinchimport\Search\Request\Query\AttributeValueFilter;
 use SITC\Sinchimport\Search\Request\Query\CategoryBoostFilter;
 use SITC\Sinchimport\Search\Request\Query\PriceRangeQuery;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
-use Smile\ElasticsuiteCore\Search\Request\Query\FunctionScore;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Zend\Log\Logger;
@@ -194,13 +193,20 @@ class QueryBuilder
             $queryParams[$attrCode] = $attrValue;
         }
 
+        //Check whether the query text directly matches a category name & redirect if true
+        if (!empty(trim($queryText)) && ($catId = $this->spHelper->getCategoryIdByName($containerConfig, trim($queryText), true)) != null) {
+            $catUrl = $this->getCategoryUrl($catId, $queryParams);
+            $redirectUrl = $this->urlBuilder->getUrl($catUrl);
+            $this->response->setRedirect($redirectUrl)->sendResponse();
+            return true;
+        }
+
         if (!empty($queryParams)) {
             if (!empty(trim($queryText))) {
                 //This is still a search query, so redirect to search results with relevant filters set
-//                $redirectUrl = $this->urlBuilder->getUrl('catalogsearch/result/index', ['_query' => array_merge(['q' => $queryText], $queryParams)]);
-//                $this->response->setRedirect($redirectUrl)->sendResponse();
-//                return true;
-                return false;
+                $redirectUrl = $this->urlBuilder->getUrl('catalogsearch/result/index', ['_query' => array_merge(['q' => $queryText], $queryParams)]);
+                $this->response->setRedirect($redirectUrl)->sendResponse();
+                return true;
             }
             //Query text is empty, so we should redirect to a category if one was specified
             if (!empty($queryParams['cat'])) {
