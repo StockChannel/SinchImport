@@ -46,16 +46,21 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
         return $this->_moduleManager->isEnabled($moduleName);
     }
 
-    public function isCategoryVisibilityEnabled()
+    public function isCategoryVisibilityEnabled(): bool
     {
         return $this->isModuleEnabled("Tigren_CompanyAccount") &&
             $this->getStoreConfig('sinchimport/category_visibility/enable') == 1;
     }
 
-    public function isProductVisibilityEnabled()
+    public function isProductVisibilityEnabled(): bool
     {
         return $this->isModuleEnabled("Tigren_CompanyAccount") &&
             $this->getStoreConfig('sinchimport/product_visibility/enable') == 1;
+    }
+
+    public function clearStockReservations(): bool
+    {
+        return $this->getStoreConfig('sinchimport/stock/clear_reservations') == 1;
     }
 
     /**
@@ -136,7 +141,7 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     }
 
     /**
-     * Returns the customer group ID for the given account group ID. 
+     * Returns the customer group ID for the given account group ID.
      * Returns null if there is no corresponding group
      * @param int $accountGroupId
      * @return int|null

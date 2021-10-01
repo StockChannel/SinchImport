@@ -158,6 +158,20 @@
                 </field>
             </group>
 
+            <group id="stock" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Stock handling</label>
+                <field id="clear_reservations" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Clear reservations on imported products</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <depends>
+                        <!-- The inventory_reservations table doesn't exist and isn't used unless MSI is enabled, so no point showing non-MSI users the option -->
+                        <field id="sinchimport/general/multisource_stock">1</field>
+                    </depends>
+                    <comment>If enabled, clear inventory reservations for affected products when importing new stock levels, and calculate stock status based on stock + backorder limit.
+                        When disabled, the saleable quantity (stock + backorder limit - reservations) is used to determine stock status</comment>
+                </field>
+            </group>
+
             <group id="misc" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Miscellaneous</label>
                 <field id="quotes_fix_verify_name" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">

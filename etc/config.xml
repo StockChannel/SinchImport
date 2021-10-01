@@ -35,6 +35,9 @@
             <group_pricing>
                 <private_product_markup_pct>0</private_product_markup_pct>
             </group_pricing>
+            <stock>
+                <clear_reservations>1</clear_reservations>
+            </stock>
             <misc>
                 <quotes_fix_verify_name>1</quotes_fix_verify_name>
             </misc>
