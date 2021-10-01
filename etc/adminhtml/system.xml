@@ -11,63 +11,53 @@
             <tab>sitc</tab>
             <resource>SITC_Sinchimport::system_config</resource>
 
-            <group id="general" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1"
-                   showInStore="1">
+            <group id="general" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>General Settings</label>
-                <field id="meta_title" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1"
-                       showInStore="1">
+                <field id="meta_title" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Use the product name as the meta title for the product detail</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>If your product data already has Meta Title leave it as (No)</comment>
                 </field>
-                <field id="index_tonerfinder" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1"
-                       showInStore="1">
+                <field id="index_tonerfinder" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Index tonerfinder</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="wait_for_index_completion" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="wait_for_index_completion" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Wait for index completion</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>If enabled, the import will wait for any running indexers to complete before starting the import process. With this setting off, the import will fail/cancel if any indexers are running when it starts. (Waits a maximum of 30 minutes for indexers to complete)</comment>
                 </field>
-                <field id="multisource_stock" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="multisource_stock" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Multi-source Stock</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>If enabled, the import will process stock with one source per distributor, otherwise all stock will be provided by the default source. Enabling this has no effect unless the MSI modules are active</comment>
                 </field>
             </group>
 
-            <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1"
-                   showInStore="1">
+            <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>FTP Login Details</label>
                 <comment>Get these details from Stock in the Channel for the pricelist you want this store to use. This
                     is not your Stock in the Channel username and password.
                 </comment>
-                <field id="ftp_server" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1"
-                       showInStore="1">
+                <field id="ftp_server" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>FTP Server</label>
                     <source_model>SITC\Sinchimport\Model\Config\Source\Serverlist</source_model>
                 </field>
-                <field id="username" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1"
-                       showInStore="1">
+                <field id="username" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>FTP User Name</label>
                 </field>
-                <field id="password" translate="label" type="password" sortOrder="20" showInDefault="1"
-                       showInWebsite="1" showInStore="1">
+                <field id="password" translate="label" type="password" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>FTP Password</label>
                 </field>
-                <field id="replace_category" translate="label" type="select" sortOrder="30" showInDefault="1"
-                       showInWebsite="1" showInStore="1">
+                <field id="replace_category" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Merge or Overwrite Categories</label>
                     <source_model>SITC\Sinchimport\Model\Config\Source\Caterewrite</source_model>
                 </field>
-                <field id="replace_product" translate="label" type="select" sortOrder="40" showInDefault="1"
-                       showInWebsite="1" showInStore="1">
+                <field id="replace_product" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Merge or Overwrite Products</label>
                     <source_model>SITC\Sinchimport\Model\Config\Source\Prodrewrite</source_model>
                 </field>
-                <field id="backup_data" translate="label" type="select" sortOrder="50" showInDefault="1"
-                       showInWebsite="1" showInStore="1">
+                <field id="backup_data" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Backup Data</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Backup current Ids of products and categories to re-use when importing in overwrite mode.
@@ -75,52 +65,45 @@
                 </field>
             </group>
 
-            <group id="sinch_import_fullstatus" translate="label" type="text" sortOrder="20" showInDefault="1"
-                   showInWebsite="1" showInStore="1">
+            <group id="sinch_import_fullstatus" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>Import Full Catalogue</label>
                 <comment>An import of 100000 products will take approximately 1 hour.Larger catalogues will take
                     substantially longer. (It may take up to a minute before the import starts)
                 </comment>
-                <field id="indexing_separately" translate="label" type="select" sortOrder="20" showInDefault="1"
-                       showInWebsite="1" showInStore="1">
+                <field id="indexing_separately" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Run the Indexing Separately</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Run the re-indexing as a separate task.</comment>
                 </field>
-                <field id="indexing_data" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="indexing_data" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Indexingbutton</frontend_model>
                     <depends>
                         <field id="indexing_separately">1</field>
                     </depends>
                 </field>
-                <field id="start_sinch_import" translate="label" type="button" sortOrder="40" showInDefault="1"
-                       showInWebsite="1" showInStore="1">
+                <field id="start_sinch_import" translate="label" type="button" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Importbutton</frontend_model>
                 </field>
             </group>
 
-            <group id="sinch_import_stockpricestatus" translate="label" type="text" sortOrder="30" showInDefault="1"
-                   showInWebsite="1" showInStore="1">
+            <group id="sinch_import_stockpricestatus" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>Import Stock &amp; Prices</label>
                 <comment>This will import stock and prices ONLY. This process should not take longer 5 minutes. (It may take up to a minute before the import starts)
                 </comment>
-                <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1"
-                       showInWebsite="1" showInStore="1">
+                <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0">
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Stockpriceimportbutton</frontend_model>
                 </field>
             </group>
-            <group id="sinch_import_history" translate="label" type="text" sortOrder="40" showInDefault="1"
-                   showInWebsite="1" showInStore="1">
+            <group id="sinch_import_history" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>Import History</label>
-                <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1"
-                       showInWebsite="1" showInStore="1">
+                <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0">
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Importhistory</frontend_model>
                 </field>
             </group>
 
-            <group id="seo" translate="label" type="text" sortOrder="45" showInDefault="1" showInWebsite="1" showInStore="1">
+            <group id="seo" translate="label" type="text" sortOrder="45" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>SEO</label>
-                <field id="product_name_template" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="product_name_template" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Product URL Template</label>
                     <comment><![CDATA[Provides the template that URL rewrite generation uses for products. The following markers are replaced during generation:<br>
                     {name} - Replaced with product Name<br>
@@ -135,7 +118,7 @@
 
             <group id="attributes" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Attributes</label>
-                <field id="visible_in_admin" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="visible_in_admin" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Visible in Admin</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Enable this if you want to check/edit attribute values within the Admin panel. It is applied on import</comment>
@@ -154,7 +137,7 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Requires disabling the "Blocks HTML output" cache (block_html) for the menu to update correctly</comment>
                 </field>
-                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Disable import section</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>If you have no intention of using the Category visibility functionality in the near future, enable this option to skip this section of the import</comment>
@@ -168,7 +151,7 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Requires disabling the "Page Cache" cache (full_page). Recommended to be using Smile ElasticSuite for full functionality</comment>
                 </field>
-                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Disable import section</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>If you have no intention of using the Product visibility functionality in the near future, enable this option to skip this section of the import</comment>
@@ -177,7 +160,7 @@
 
             <group id="misc" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Miscellaneous</label>
-                <field id="quotes_fix_verify_name" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="quotes_fix_verify_name" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Verify name match when fixing quote items</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment><![CDATA[When disabled, SKU is assumed to be GLOBALLY UNIQUE (i.e. a product with a given SKU always represents the same product, even if the names differ)<br>
