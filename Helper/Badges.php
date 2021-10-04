@@ -84,6 +84,9 @@ class Badges
      */
     public function getProductsForBadges(ProductCollection $products): array
     {
+        if ($products->getCurPage() > 1) {
+            return [];
+        }
         $badgeProducts = [];
         $productArr = array_column($products->getData(), 'entity_id');
 
