@@ -99,9 +99,10 @@ class Badges
             });
 
             $prodId = $productArr[0];
+            //Pop first element off the array, so we don't mark the same product for multiple badges
+            array_shift($productArr);
             $product = $this->productRepository->getById($prodId);
             $badgeProducts[] = [$product, $badgeType];
-
         }
         return $badgeProducts;
     }
