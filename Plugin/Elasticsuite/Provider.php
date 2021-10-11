@@ -23,6 +23,7 @@ class Provider
      *
      * @param Data $helper
      * @param QueryFactory $queryFactory
+     * @param SearchProcessing $searchHelper
      */
     public function __construct(Data $helper, QueryFactory $queryFactory, SearchProcessing $searchHelper)
     {

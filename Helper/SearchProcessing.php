@@ -370,7 +370,6 @@ class SearchProcessing extends AbstractHelper
                 $suggestions[] = $this->itemFactory->create([
                     'title' => $this->formatCategoryTerm($queryText, $cat),
                     'type' => TermsDataProvider::AUTOCOMPLETE_TYPE,
-                    'num_results' => $catToCountMapping[$cat],
                 ]);
             }
         }
