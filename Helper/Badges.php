@@ -165,7 +165,7 @@ class Badges extends AbstractHelper
                 $attrValueA = is_array($productA->getData($attrCode)) ? $productA->getData($attrCode)[0] : (string)$productA->getData($attrCode);
                 $attrValueB = is_array($productB->getData($attrCode)) ? $productB->getData($attrCode)[0] : (string)$productB->getData($attrCode);
                 if (intval($attrValueA) == intval($attrValueB)) return 0;
-                return (intval($attrValueA) > intval($attrValueB)) ? 1 : -1;
+                return (intval($attrValueA) < intval($attrValueB)) ? 1 : -1;
             });
 
             $prodId = $productArr[0] ?? null;
