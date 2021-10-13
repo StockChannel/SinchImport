@@ -228,7 +228,7 @@
             </group>
 
             <group id="badges" translate="label" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
-                <label>Search</label>
+                <label>Product Badges</label>
                 <field id="bestseller" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Best seller badge image URL</label>
                     <comment><![CDATA[URL to image used for best seller product badge]]></comment>

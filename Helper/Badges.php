@@ -100,7 +100,7 @@ class Badges extends AbstractHelper
      */
     public function getFormattedBadgeTitle(string $badgeName): string
     {
-        $badgeTitle = str_replace('sinch', '', $badgeName);
+        $badgeTitle = str_replace('sinch_', '', $badgeName);
         $badgeTitle = str_replace('_', ' ', $badgeTitle);
         return ucwords($badgeTitle);
     }
@@ -152,11 +152,6 @@ class Badges extends AbstractHelper
             usort($productArr, function ($a, $b) use ($attrCode) {
                 try {
                     $productA = $this->productRepository->getById($a);
-                } catch (NoSuchEntityException $e) {
-                    $this->logger->info($e->getMessage());
-                    return 0;
-                }
-                try {
                     $productB = $this->productRepository->getById($b);
                 } catch (NoSuchEntityException $e) {
                     $this->logger->info($e->getMessage());

@@ -44,8 +44,8 @@ class SearchProcessing extends AbstractHelper
         'manufacturer',
         'sinch_family'
     ];
-    //Only match attribute values at least this long
-    private const ATTRIBUTE_VALUE_MIN_LENGTH = 3;
+    //Only match attribute values at least this long (changed to 2 to match on "HP")
+    private const ATTRIBUTE_VALUE_MIN_LENGTH = 2;
 
     private Session $customerSession;
     private QueryFactory $queryFactory;

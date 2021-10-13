@@ -71,7 +71,9 @@ $badgeProducts = $badgeHelper->loadCachedBadgeProducts($_productCollection);
                             <?php foreach (array_keys(Badges::BADGE_TYPES) as $badgeType):?>
                                 <?php $badgeTypeProductId = $badgeProducts[$badgeType] ?? -1; ?>
                                 <?php if ($badgeTypeProductId != -1 && $_product->getId() == $badgeTypeProductId): ?>
-                                    <div class="badge-1 badge-custom"><?= $badgeHelper->getFormattedBadgeTitle($badgeType) ?></div>
+                                    <div class="badge-1 badge-custom">
+                                        <img src="<?= $badgeHelper->getBadgeImageUrl($badgeType) ?? '' ?>" alt="<?= $badgeHelper->getFormattedBadgeTitle($badgeType)?>" />
+                                    </div>
                                 <?php endif; ?>
                             <?php endforeach; ?>
                         </a>
@@ -180,29 +182,19 @@ $badgeProducts = $badgeHelper->loadCachedBadgeProducts($_productCollection);
 <?php endif; ?>
 <style>
     .badge-custom{
-        width: auto;
+        width: 75px;
         display: inline;
         position: absolute;
         left: 0;
         color: #fff;
         padding: 7px 10px;
         z-index: 2;
-    }
-    .badge-custom::after {
-        content: '';
-        width: 0;
-        height: 0;
-        border-top: 16px solid transparent;
-        border-bottom: 16px solid transparent;
-        border-left: 18px solid;
-        position: absolute;
         top: 0;
-        right: -13px;
     }
     .badge-1 {
-        background: #11a924;
+        /*background: #11a924; */
     }
-    .badge-1.badge-custom::after {
-        border-left: 13px solid #11a924;
+    a.product-item-photo {
+        position: relative;
     }
 </style>
