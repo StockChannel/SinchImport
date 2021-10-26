@@ -39,6 +39,12 @@
       "email": "nick.anstee@stockinthechannel.com",
       "homepage": "https://stockinthechannel.com/",
       "role": "Developer"
+    },
+    {
+      "name": "Joe Metcalfe",
+      "email": "joseph.metcalfe@stockinthechannel.com",
+      "homepage": "https://stockinthechannel.com/",
+      "role": "Developer"
     }
   ],
   "autoload": {
