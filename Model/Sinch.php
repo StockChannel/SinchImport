@@ -8525,14 +8525,18 @@ class Sinch
 
     private function getStoreProductIdByEntity($entity_id)
     {
-        $res = $this->_doQuery(
+        $res = $this->_connection->query(
             "SELECT store_product_id
                 FROM " . $this->_getTableName('sinch_products_mapping') . "
-                WHERE entity_id = " . $entity_id,
-            true
+                WHERE entity_id = ?" ,
+                [ $entity_id ]
         )->fetch();
 
-        return ($res['store_product_id']);
+        if (!empty($res)) {
+            return ($res['store_product_id']);
+        } else {
+            return false;
+        }
     }
 
     /**
