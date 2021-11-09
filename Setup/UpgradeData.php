@@ -62,6 +62,10 @@ class UpgradeData implements UpgradeDataInterface
             $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'is_used_for_promo_rules', 1);
         }
 
+        if (version_compare($context->getVersion(), '2.3.1', '<')){
+            $this->upgrade231($eavSetup);
+        }
+
         $installer->endSetup();
     }
 
@@ -145,6 +149,35 @@ class UpgradeData implements UpgradeDataInterface
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'is_visible_on_front', 0);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'used_in_product_listing', 1);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'note', "Enter a comma separated list of Account Group IDs. An exclamation mark before the group ID negates the match");
+    }
+
+
+    private function upgrade231($eavSetup)
+    {
+        $eavSetup->addAttribute(
+            \Magento\Catalog\Model\Product::ENTITY,
+            'sinch_in_stock',
+            [
+                'label' => 'In Stock/Out of Stock filter',
+                'type' => 'int',
+                'input' => 'text',
+                'frontend_class' => 'validate-digits-range digits-range-0-99999999',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => true,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
     }
 
     private function getConnection()
