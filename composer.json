@@ -2,7 +2,7 @@
   "name": "stockinthechannel/import",
   "description": "Stockinthechannel Import",
   "type": "magento2-module",
-  "version": "3.2.10",
+  "version": "3.2.15",
   "require": {
     "php": ">=7.4.0",
     "ext-ftp": "*",

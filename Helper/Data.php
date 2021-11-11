@@ -68,6 +68,11 @@ class Data extends AbstractHelper
             $this->getStoreConfig('sinchimport/product_visibility/enable') == 1;
     }
 
+    public function clearStockReservations(): bool
+    {
+        return $this->getStoreConfig('sinchimport/stock/clear_reservations') == 1;
+    }
+
     /**
      * Return the current account group ID, or false if not logged in
      * @return int|bool

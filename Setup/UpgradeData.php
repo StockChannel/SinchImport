@@ -12,6 +12,7 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Setup\UpgradeDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
+use SITC\Sinchimport\Plugin\Elasticsuite\InventoryData;
 use Zend_Validate_Exception;
 
 /**
@@ -43,7 +44,7 @@ class UpgradeData implements UpgradeDataInterface
     {
         $installer = $setup;
         $installer->startSetup();
-
+        /** @var EavSetup $eavSetup */
         $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
 
         if (version_compare($context->getVersion(), '2.1.1', '<' )) {
@@ -68,6 +69,10 @@ class UpgradeData implements UpgradeDataInterface
             //Make sinch_restrict useable for promo rules (causing Elasticsuite to include it in the indexed documents)
             $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'is_used_for_promo_rules', 1);
+        }
+
+        if (version_compare($context->getVersion(), '2.3.1', '<')){
+            $this->upgrade231($eavSetup);
         }
 
         if (version_compare($context->getVersion(), '2.4.0', '<')) {
@@ -168,6 +173,44 @@ class UpgradeData implements UpgradeDataInterface
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'is_visible_on_front', 0);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'used_in_product_listing', 1);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'note', "Enter a comma separated list of Account Group IDs. An exclamation mark before the group ID negates the match");
+    }
+
+
+    private function upgrade231(EavSetup $eavSetup)
+    {
+        $eavSetup->addAttribute(
+            \Magento\Catalog\Model\Product::ENTITY,
+            InventoryData::IN_STOCK_FILTER_CODE,
+            [
+                'label' => 'In Stock/Out of Stock filter',
+                'type' => 'int',
+                'input' => 'text',
+                'frontend_class' => 'validate-digits-range digits-range-0-99999999',
+                'backend' => '',
+                'frontend' => '',
+                'source' => '',
+                'global' => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                'visible' => true,
+                'required' => false,
+                'user_defined' => false,
+                'searchable' => false,
+                'filterable' => true,
+                'comparable' => false,
+                'visible_on_front' => true,
+                'visible_in_advanced_search' => false,
+                'unique' => false,
+                'group' => 'General'
+            ]
+        );
+//        $attrId = $eavSetup->getAttributeId('catalog_product', InventoryData::IN_STOCK_FILTER_CODE);
+//        $options = [
+//            'values' => [
+//                'Y',
+//                'N'
+//            ],
+//            'attribute_id' => $attrId
+//        ];
+//        $eavSetup->addAttributeOption($options);
     }
 
     /**

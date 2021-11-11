@@ -95,4 +95,10 @@
         </arguments>
     </type>
     <!-- End extended query types -->
+
+    <!-- In Stock Filter -->
+    <type name="Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\InventoryData">
+        <plugin name="sitc_in_stock_filter" type="SITC\Sinchimport\Plugin\Elasticsuite\InventoryData" />
+    </type>
+    <!-- End Stock Filter -->
 </config>

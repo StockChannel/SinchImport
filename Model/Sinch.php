@@ -19,7 +19,6 @@ use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
-use SITC\Sinchimport\Helper\UrlFactory;
 use SITC\Sinchimport\Logger\Logger;
 use SITC\Sinchimport\Model\Import\AccountGroupCategories;
 use SITC\Sinchimport\Model\Import\AccountGroupPrice;
@@ -39,6 +38,7 @@ use SITC\Sinchimport\Model\Import\Reviews;
 use SITC\Sinchimport\Model\Import\StockPrice;
 use SITC\Sinchimport\Model\Import\UNSPSC;
 use SITC\Sinchimport\Model\Import\VirtualCategory;
+use SITC\Sinchimport\Model\Product\UrlFactory;
 use Symfony\Component\Console\Output\ConsoleOutput;
 use Zend_Db_Statement_Exception;
 use Zend_Db_Statement_Interface;
@@ -1834,7 +1834,7 @@ class Sinch {
                          specifications text,
                          description text,
                          description_type varchar(50),
-                         short_description varchar(255),
+                         short_description mediumtext,
                          Title varchar(255),
                          Weight decimal(15,4),
                          family_id int(11),

@@ -56,6 +56,10 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
                 'label' => 'Canada - ftp.ca.stockinthechannel.com'
             ],
             [
+                'value' => 'ftp.pl.stockinthechannel.com',
+                'label' => 'Poland - ftp.pl.stockinthechannel.com'
+            ],
+            [
                 'value' => 'ftpdemo.stockinthechannel.com',
                 'label' => 'Demo - ftpdemo.stockinthechannel.com'
             ],
@@ -82,7 +86,8 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
             'ftpse.stockinthechannel.com'   => 'Sweden - ftpse.stockinthechannel.com',
             'ftp.ca.stockinthechannel.com' => 'Canada - ftp.ca.stockinthechannel.com',
             'ftpdemo.stockinthechannel.com' => 'Demo - ftpdemo.stockinthechannel.com',
-            'ftp.sandbox.stockinthechannel.com' => 'Sandbox - ftp.sandbox.stockinthechannel.com'
+            'ftp.sandbox.stockinthechannel.com' => 'Sandbox - ftp.sandbox.stockinthechannel.com',
+            'ftp.pl.stockinthechannel.com' => 'Poland - ftp.pl.stockinthechannel.com'
         ];
     }
 }
