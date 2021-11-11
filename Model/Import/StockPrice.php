@@ -35,7 +35,8 @@ class StockPrice extends AbstractImportSection
     private $importStatsTable;
     private $sinchProductsTable;
 
-	private $outOfStockThreshold;
+    private $backordersEnabled;
+    private $outOfStockThreshold;
 
     //Magento tables
 
@@ -56,15 +57,16 @@ class StockPrice extends AbstractImportSection
     private $inventory_source_stock_link;
     private $inventory_reservation;
 
-	public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \SITC\Sinchimport\Helper\Data $helper,
-        \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfiguration,
-        IndexManagement $indexManagement,
-        \Magento\InventoryApi\Api\StockRepositoryInterface\Proxy $stockRepo,
+    public function __construct(
+        \Magento\Framework\App\ResourceConnection                  $resourceConn,
+        \Symfony\Component\Console\Output\ConsoleOutput            $output,
+        \SITC\Sinchimport\Helper\Data                              $helper,
+        \Magento\CatalogInventory\Api\StockConfigurationInterface  $stockConfiguration,
+        IndexManagement                                            $indexManagement,
+        \Magento\InventoryApi\Api\StockRepositoryInterface\Proxy   $stockRepo,
         \Magento\InventoryApi\Api\Data\StockInterfaceFactory\Proxy $stockFactory
-    ){
+    )
+    {
         parent::__construct($resourceConn, $output);
         $this->helper = $helper;
         $this->stockConfiguration = $stockConfiguration;
@@ -77,7 +79,9 @@ class StockPrice extends AbstractImportSection
         $this->distiStockImportTable = $this->getTableName(self::DISTI_STOCK_IMPORT_TABLE);
         $this->importStatsTable = $this->getTableName('sinch_import_status_statistic');
         $this->sinchProductsTable = $this->getTableName(self::SINCH_PRODUCTS_TABLE);
-		$this->outOfStockThreshold = (int)$this->helper->getStoreConfig('cataloginventory/item_options/min_qty') ?? 0;
+
+        $this->backordersEnabled = ($this->helper->getStoreConfig('cataloginventory/item_options/backorders') ?? 0) > 0;
+        $this->outOfStockThreshold = (int)$this->helper->getStoreConfig('cataloginventory/item_options/min_qty') ?? 0;
 
         $this->eav_entity_type = $this->getTableName('eav_entity_type');
         $this->eav_attribute = $this->getTableName('eav_attribute');
@@ -91,7 +95,7 @@ class StockPrice extends AbstractImportSection
         $this->inventory_source = $this->getTableName('inventory_source');
         $this->inventory_source_stock_link = $this->getTableName('inventory_source_stock_link');
         $this->inventory_reservation = $this->getTableName('inventory_reservation');
-	}
+    }
 
     /**
      * Parse the stock files
@@ -357,24 +361,17 @@ class StockPrice extends AbstractImportSection
             $this->endTimingStep();
 
             $this->startTimingStep('Set stock to 0 for sinch products not present in new data (MSI)');
-            //ISI.status is the same as CSI.is_in_stock
-//            $conn->query("UPDATE {$inventory_source_item} isi
-//                INNER JOIN {$catalog_product_entity} cpe
-//                    ON isi.sku = cpe.sku
-//                LEFT JOIN {$sinch_distributors_stock_and_price} sdsp
-//                    ON cpe.store_product_id = sdsp.product_id
-//                SET isi.quantity = 0,
-//                    isi.status = 0
-//                WHERE cpe.store_product_id IS NOT NULL
-//                    AND sdsp.stock IS NULL"
-//            );
-            //Much faster than the above query (for roughly the same job)
-            //$conn->query("UPDATE {$inventory_source_item} SET quantity = 0, status = 0 WHERE sku IN (SELECT sku FROM {$catalog_product_entity} WHERE store_product_id IS NOT NULL)");
-
-	        //We want to delete if backorders are enabled (i.e. out of stock threshold is < 0)
-	        if ($this->outOfStockThreshold < 0) {
-	            $conn->query(
-		            "DELETE FROM {$this->inventory_source_item}
+            //We want to delete if backorders are enabled (i.e. out of stock threshold is < 0)
+            if ($this->backordersEnabled) {
+                //If OOS threshold is 0 (indicating infinite backorders), set its value to -1000 just for the purposes of our calculations,
+                // This way it will treat products as in stock
+                if ($this->outOfStockThreshold == 0) {
+                    $this->outOfStockThreshold = -1000;
+                }
+                //This variant is needed so that when backorders are enabled, and the corresponding feed is exporting
+                // out of stock products, products with 0 stock are not set to out of stock immediately
+                $conn->query(
+                    "DELETE FROM {$this->inventory_source_item}
                     WHERE sku IN (
                         SELECT cpe.sku FROM {$this->catalog_product_entity} cpe
                         LEFT JOIN {$this->stockImportTable} ssp
@@ -382,10 +379,10 @@ class StockPrice extends AbstractImportSection
                         WHERE cpe.store_product_id IS NOT NULL
                           AND ssp.stock IS NULL
                 	)"
-	            );
+                );
             } else {
-	            $conn->query(
-		            "UPDATE {$this->inventory_source_item}
+                $conn->query(
+                    "UPDATE {$this->inventory_source_item}
                     SET quantity = 0, status = 0
                     WHERE sku IN (
                         SELECT cpe.sku FROM {$this->catalog_product_entity} cpe
@@ -394,7 +391,7 @@ class StockPrice extends AbstractImportSection
                         WHERE cpe.store_product_id IS NOT NULL
                           AND (ssp.stock IS NULL OR ssp.stock < 1)
                 	)"
-	            );
+                );
             }
             $this->endTimingStep();
 
@@ -410,7 +407,7 @@ class StockPrice extends AbstractImportSection
                             INNER JOIN {$this->sinchProductsTable} sp ON sdsp.product_id = sp.sinch_product_id 
                         WHERE sdsp.distributor_id = :distiId AND sdsp.stock > 0) AND (isi.quantity > 0 OR isi.status = 1)",
                     ['distiId' => $distributorId]
-                    );
+                );
             }
             $this->endTimingStep();
 
@@ -433,7 +430,7 @@ class StockPrice extends AbstractImportSection
              */
             /** @noinspection SqlAggregates as it incorrectly categorizes reserved as not being aggregate */
             $conn->query(
-		        "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status) (
+                "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status) (
                     SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock - COALESCE(reserv.reserved, 0) > (0 + :threshold), 1, 0) FROM {$this->distiStockImportTable} sdsp  
                     INNER JOIN {$this->catalog_product_entity} cpe
                         ON sdsp.product_id = cpe.sinch_product_id
@@ -461,11 +458,11 @@ class StockPrice extends AbstractImportSection
                     ) reserv
                         ON cpe.sku = reserv.sku
                 ) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), status = VALUES(status)",
-		        [
+                [
                     ':threshold' => $this->outOfStockThreshold,
                     ':sinchStockId' => $stockId
                 ]
-	        );
+            );
             $this->endTimingStep();
 
             $this->startTimingStep('Insert marker records in single-source stock tables');
@@ -502,13 +499,13 @@ class StockPrice extends AbstractImportSection
             $this->endTimingStep();
 
             $this->startTimingStep('Insert new stock levels');
-	        $conn->query("INSERT INTO {$this->cataloginventory_stock_item} (product_id, stock_id, qty, min_qty, is_in_stock, manage_stock, website_id) (
+            $conn->query("INSERT INTO {$this->cataloginventory_stock_item} (product_id, stock_id, qty, min_qty, is_in_stock, manage_stock, website_id) (
                     SELECT cpe.entity_id, 1, ssp.stock, :threshold, IF(ssp.stock > (0 + :threshold), 1, 0), 1, {$stockItemScope} FROM {$this->catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
                             ON cpe.sinch_product_id = ssp.product_id
                 ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = 1, min_qty = VALUES(min_qty)",
-		        [':threshold' => $this->outOfStockThreshold]
-	        );
+                [':threshold' => $this->outOfStockThreshold]
+            );
             $this->endTimingStep();
 
             if ($conn->isTableExists($this->inventory_source_item)) {
