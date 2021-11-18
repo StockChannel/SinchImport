@@ -2,6 +2,8 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Laminas\Log\Logger;
+use Laminas\Log\Writer\Stream;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use SITC\Sinchimport\Helper\Download;
@@ -12,7 +14,7 @@ abstract class AbstractImportSection {
     const LOG_FILENAME = "unknown";
 
     protected ResourceConnection $resourceConn;
-    protected \Zend\Log\Logger $logger;
+    protected Logger $logger;
     protected ConsoleOutput $output;
     protected Download $dlHelper;
 
@@ -28,8 +30,8 @@ abstract class AbstractImportSection {
     ){
         $this->resourceConn = $resourceConn;
 
-        $writer = new \Zend\Log\Writer\Stream(BP . "/var/log/sinch_" . static::LOG_FILENAME . ".log");
-        $logger = new \Zend\Log\Logger();
+        $writer = new Stream(BP . "/var/log/sinch_" . static::LOG_FILENAME . ".log");
+        $logger = new Logger();
         $logger->addWriter($writer);
         $this->logger = $logger;
         $this->output = $output;

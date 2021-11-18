@@ -3,9 +3,10 @@
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 
+use Laminas\Log\Logger;
+use Laminas\Log\Writer\Stream;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\SearchProcessing;
-use Smile\ElasticsuiteCore\Search\Request\Query\FunctionScore;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Smile\ElasticsuiteCore\Search\Request\Query\Builder as QueryBuilder;
@@ -25,8 +26,8 @@ class Provider
      */
     public function __construct(Data $helper, QueryFactory $queryFactory, SearchProcessing $searchHelper)
     {
-        $writer = new \Zend\Log\Writer\Stream(BP . '/var/log/joe_search_stuff.log');
-        $logger = new \Zend\Log\Logger();
+        $writer = new Stream(BP . '/var/log/joe_search_stuff.log');
+        $logger = new Logger();
         $logger->addWriter($writer);
         $this->logger = $logger;
 

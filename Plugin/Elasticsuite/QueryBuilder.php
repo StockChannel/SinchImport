@@ -17,8 +17,8 @@ use SITC\Sinchimport\Search\Request\Query\PriceRangeQuery;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
-use Zend\Log\Logger;
-use Zend\Log\Writer\Stream;
+use Laminas\Log\Logger;
+use Laminas\Log\Writer\Stream;
 
 class QueryBuilder
 {
