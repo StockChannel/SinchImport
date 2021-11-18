@@ -2,7 +2,7 @@
   "name": "stockinthechannel/import",
   "description": "Stockinthechannel Import",
   "type": "magento2-module",
-  "version": "3.2.15",
+  "version": "3.3.0",
   "require": {
     "ext-ftp": "*",
     "ext-json": "*",
@@ -13,7 +13,8 @@
     "magento/module-indexer": ">=100.2.0",
     "magento/module-inventory-api": ">=1.0.0",
     "magento/module-store": ">=100.2.2",
-    "php": ">=7.0.0"
+    "php": ">=7.0.0",
+    "laminas/laminas-log": "^2.13.1"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "^2.6",

@@ -2,6 +2,9 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Laminas\Log\Logger;
+use Laminas\Log\Writer\Stream;
+
 abstract class AbstractImportSection {
     const LOG_PREFIX = "AbstractImportSection: ";
     const LOG_FILENAME = "unknown";
@@ -11,7 +14,7 @@ abstract class AbstractImportSection {
      */
     protected $resourceConn;
     /**
-     * @var \Zend\Log\Logger
+     * @var Logger
      */
     protected $logger;
     /**
@@ -28,8 +31,8 @@ abstract class AbstractImportSection {
     ){
         $this->resourceConn = $resourceConn;
 
-        $writer = new \Zend\Log\Writer\Stream(BP . "/var/log/sinch_" . static::LOG_FILENAME . ".log");
-        $logger = new \Zend\Log\Logger();
+        $writer = new Stream(BP . "/var/log/sinch_" . static::LOG_FILENAME . ".log");
+        $logger = new Logger();
         $logger->addWriter($writer);
         $this->logger = $logger;
         $this->output = $output;
