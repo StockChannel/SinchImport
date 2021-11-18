@@ -2,11 +2,9 @@
 
 namespace SITC\Sinchimport\Setup;
 
-use Magento\Eav\Setup\EavSetup;
 use Magento\Framework\Setup\UpgradeDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
-use SITC\Sinchimport\Plugin\Elasticsuite\InventoryData;
 
 /**
  * @codeCoverageIgnore
@@ -37,7 +35,7 @@ class UpgradeData implements UpgradeDataInterface
     {
         $installer = $setup;
         $installer->startSetup();
-        /** @var EavSetup $eavSetup */
+
         $eavSetup = $this->eavSetupFactory->create(['setup' => $setup]);
 
         if (version_compare($context->getVersion(), '2.1.1', '<' )) {
@@ -85,7 +83,7 @@ class UpgradeData implements UpgradeDataInterface
 
     /**
      * Adds the UNSPSC and product restriction attributes
-     * @var EavSetup $eavSetup
+     * @var \Magento\Eav\Setup\EavSetup $eavSetup
      */
     private function upgrade218($eavSetup)
     {
@@ -154,11 +152,11 @@ class UpgradeData implements UpgradeDataInterface
     }
 
 
-    private function upgrade231(EavSetup $eavSetup)
+    private function upgrade231($eavSetup)
     {
         $eavSetup->addAttribute(
             \Magento\Catalog\Model\Product::ENTITY,
-            InventoryData::IN_STOCK_FILTER_CODE,
+            'sinch_in_stock',
             [
                 'label' => 'In Stock/Out of Stock filter',
                 'type' => 'int',
@@ -180,15 +178,6 @@ class UpgradeData implements UpgradeDataInterface
                 'group' => 'General'
             ]
         );
-//        $attrId = $eavSetup->getAttributeId('catalog_product', InventoryData::IN_STOCK_FILTER_CODE);
-//        $options = [
-//            'values' => [
-//                'Y',
-//                'N'
-//            ],
-//            'attribute_id' => $attrId
-//        ];
-//        $eavSetup->addAttributeOption($options);
     }
 
     private function getConnection()
