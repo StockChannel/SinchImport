@@ -176,10 +176,15 @@ class UpgradeSchema implements UpgradeSchemaInterface
 
             //sinch_distributors - DROP website column
             $sinch_distributors = $installer->getTable('sinch_distributors');
-            $connection->query("ALTER TABLE {$sinch_distributors} DROP COLUMN website");
+            if ($installer->getConnection()->tableColumnExists($sinch_distributors, 'website')) {
+                $connection->query("ALTER TABLE {$sinch_distributors} DROP COLUMN website");
+            }
+
             //sinch_stock_and_prices - DROP distributor_id
             $sinch_stock_and_prices = $installer->getTable('sinch_stock_and_prices');
-            $connection->query("ALTER TABLE {$sinch_stock_and_prices} DROP COLUMN distributor_id");
+            if ($installer->getConnection()->tableColumnExists($sinch_stock_and_prices, 'distributor_id')) {
+                $connection->query("ALTER TABLE {$sinch_stock_and_prices} DROP COLUMN distributor_id");
+            }
 
             //sinch_customer_group_price_{cur,nxt} - DROP price_type
             $sinch_customer_group_price_cur = $installer->getTable('sinch_customer_group_price_cur');
@@ -188,8 +193,12 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
             $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
             //Drop price_type
-            $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
-            $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
+            if ($connection->tableColumnExists($sinch_customer_group_price_cur, 'price_type')) {
+                $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
+            }
+            if ($connection->tableColumnExists($sinch_customer_group_price_nxt, 'price_type')) {
+                $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
+            }
             //Add Synonyms
             $this->insertSynonyms($installer);
         }
@@ -458,7 +467,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
 	    $row = 1;
 	    foreach ($csvLines as $line) {
 	    	foreach ($line as $synonym) {
-			    $conn->query("INSERT INTO {$thesaurusTermsTable} VALUES (:id, :rowId, :term)",
+			    $conn->query("INSERT IGNORE INTO {$thesaurusTermsTable} VALUES (:id, :rowId, :term)",
 				    ['id' => $thesaurusId, 'rowId' => $row, 'term' => $synonym]);
 		    }
 	    	$row++;
