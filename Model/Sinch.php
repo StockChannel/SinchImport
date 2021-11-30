@@ -1253,9 +1253,9 @@ class Sinch
             FROM " . $this->_getTableName('catalog_category_entity_varchar') . "
             WHERE
                 value='default-category'";
-            $res = $this->_doQuery($q)->fetch();
-            if ($res['entity_id'] > 0) {
-                return $res['entity_id'];
+            $entityId = $this->_connection->fetchOne($q);
+            if ($entityId > 0) {
+                return $entityId;
             } else {
                 $q
                     = "SELECT entity_id
