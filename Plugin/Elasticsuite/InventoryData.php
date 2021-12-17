@@ -83,7 +83,7 @@ class InventoryData
         $storeId = $this->storeManager->getDefaultStoreView()->getId();
         $productStatuses = [];
         foreach ($result as $prodId => $indexData) {
-            $isInStock = $indexData['stock']['is_in_stock'] ? 'Y' : 'N';
+            $isInStock = isset($indexData['stock']) && isset($indexData['stock']['is_in_stock']) && $indexData['stock']['is_in_stock'] ? 'Y' : 'N';
             $productStatuses[] = [
                 'attribute_id' => $this->attrId,
                 'store_id' => $storeId,
