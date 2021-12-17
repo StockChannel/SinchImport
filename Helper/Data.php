@@ -175,4 +175,9 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     {
         return $this->isModuleEnabled('Magento_Inventory') && $this->getStoreConfig('sinchimport/general/multisource_stock');
     }
+
+    public function isInStockFilterEnabled()
+    {
+        return $this->getStoreConfig('sinchimport/stock/in_stock_filter_enable');
+    }
 }
