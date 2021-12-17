@@ -14,7 +14,8 @@
     "magento/module-inventory-api": ">=1.0.0",
     "magento/module-store": ">=100.2.2",
     "php": ">=7.0.0",
-    "laminas/laminas-log": "^2.13.1"
+    "laminas/laminas-log": "^2.13.1",
+    "smile/elasticsuite": "*"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "^2.6",

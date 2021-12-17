@@ -160,10 +160,10 @@ class UpgradeData implements UpgradeDataInterface
             \Magento\Catalog\Model\Product::ENTITY,
             InventoryData::IN_STOCK_FILTER_CODE,
             [
-                'label' => 'In Stock/Out of Stock filter',
-                'type' => 'int',
+                'label' => 'In Stock',
+                'type' => 'varchar',
                 'input' => 'text',
-                'frontend_class' => 'validate-digits-range digits-range-0-99999999',
+                'frontend_class' => '',
                 'backend' => '',
                 'frontend' => '',
                 'source' => '',
@@ -177,7 +177,8 @@ class UpgradeData implements UpgradeDataInterface
                 'visible_on_front' => true,
                 'visible_in_advanced_search' => false,
                 'unique' => false,
-                'group' => 'General'
+                'group' => 'General',
+                'facet_min_coverage_rate' => 10
             ]
         );
 //        $attrId = $eavSetup->getAttributeId('catalog_product', InventoryData::IN_STOCK_FILTER_CODE);
