@@ -2,7 +2,6 @@
 
 namespace SITC\Sinchimport\Helper;
 
-use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\ProductRepository;
 use Magento\Catalog\Model\ResourceModel\Product\Collection as ProductCollection;
 use Magento\Framework\App\CacheInterface;
@@ -76,7 +75,7 @@ class Badges extends AbstractHelper
      * @param string $badgeType
      * @return string|null
      */
-    public function getBadgeImageUrl(string $badgeType)
+    public function getBadgeImageUrl(string $badgeType): ?string
     {
         switch ($badgeType) {
             case self::BADGE_BESTSELLER:
@@ -163,16 +162,11 @@ class Badges extends AbstractHelper
                 return (intval($attrValueA) < intval($attrValueB)) ? 1 : -1;
             });
 
-            $prodId = $productArr[0] ?? null;
+            $prodId = $productArr[0] ?? 0;
             //Pop first element off the array, so we don't mark the same product for multiple badges
             array_shift($productArr);
-            try {
-                $product = $this->productRepository->getById($prodId);
-            } catch(NoSuchEntityException $e) {
-                $this->logger->info($e->getMessage());
-                continue;
-            }
-            $badgeProducts[$badgeType] = $product->getId();
+
+            $badgeProducts[$badgeType] = $prodId;
         }
         $this->saveBadgeProducts($badgeProducts, $products->getLoadedIds());
     }
