@@ -23,9 +23,16 @@ use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Exception\StateException;
 use Magento\Framework\File\Csv;
 use Magento\Store\Model\ScopeInterface;
+use PDO;
 use SITC\Sinchimport\Helper\Download;
 use SITC\Sinchimport\Model\Sinch;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Throwable;
+use function array_fill;
+use function array_keys;
+use function count;
+use function implode;
+use function in_array;
 
 class Attributes extends AbstractImportSection {
     const LOG_PREFIX = "Attributes: ";
@@ -202,14 +209,14 @@ class Attributes extends AbstractImportSection {
 
         //Establish attribute names
         $attrNames = [];
-        foreach (\array_keys($this->attributes) as $sinchAttrId) {
+        foreach (array_keys($this->attributes) as $sinchAttrId) {
             $attrNames[] = self::ATTRIBUTE_PREFIX . $sinchAttrId;
         }
 
 
         $this->log("Figuring out which attributes have been removed");
         $this->startTimingStep("Removals");
-        $replacement = \implode(",", \array_fill(0, \count($attrNames), '?'));
+        $replacement = implode(",", array_fill(0, count($attrNames), '?'));
         $removedAttributes = [];
         if (!empty($replacement)) {
             $removedAttributes = $this->getConnection()->fetchCol(
@@ -219,7 +226,7 @@ class Attributes extends AbstractImportSection {
         }
         if (count($removedAttributes) > 0) {
             $this->log("Removing " . count($removedAttributes) . " old filterable attributes");
-            $replacement = \implode(",", \array_fill(0, \count($removedAttributes), '?'));
+            $replacement = implode(",", array_fill(0, count($removedAttributes), '?'));
             $this->getConnection()->query("DELETE FROM {$this->eavAttrTable} WHERE attribute_code IN ({$replacement})", $removedAttributes);
             $this->attributesDeleted = count($removedAttributes);
         }
@@ -230,14 +237,14 @@ class Attributes extends AbstractImportSection {
         $existingAttributes = $this->getConnection()->fetchCol("SELECT attribute_code FROM {$this->eavAttrTable} WHERE attribute_code LIKE '". self::ATTRIBUTE_PREFIX ."%'");
         $missingAttributes = [];
         foreach ($attrNames as $attrName) {
-            if (!\in_array($attrName, $existingAttributes)) {
+            if (!in_array($attrName, $existingAttributes)) {
                 $missingAttributes[] = $attrName;
             }
         }
 
         $this->log("Creating missing attributes");
         foreach ($this->attributes as $sinch_id => $data) {
-            if (!\in_array(self::ATTRIBUTE_PREFIX . $sinch_id, $missingAttributes)) {
+            if (!in_array(self::ATTRIBUTE_PREFIX . $sinch_id, $missingAttributes)) {
                 continue;
             }
             $this->createAttribute($sinch_id, $data);
@@ -490,9 +497,9 @@ class Attributes extends AbstractImportSection {
             );
         }
 
-        $this->mappingInsert->bindValue(":sinch_id", $sinch_id, \PDO::PARAM_INT);
-        $this->mappingInsert->bindValue(":sinch_feature_id", $sinch_feature_id, \PDO::PARAM_INT);
-        $this->mappingInsert->bindValue(":option_id", $option_id, \PDO::PARAM_INT);
+        $this->mappingInsert->bindValue(":sinch_id", $sinch_id, PDO::PARAM_INT);
+        $this->mappingInsert->bindValue(":sinch_feature_id", $sinch_feature_id, PDO::PARAM_INT);
+        $this->mappingInsert->bindValue(":option_id", $option_id, PDO::PARAM_INT);
         $this->mappingInsert->execute();
         $this->mappingInsert->closeCursor();
     }
@@ -505,9 +512,9 @@ class Attributes extends AbstractImportSection {
             );
         }
 
-        $this->mappingQuery->bindValue(":rv_id", $rv_id, \PDO::PARAM_INT);
+        $this->mappingQuery->bindValue(":rv_id", $rv_id, PDO::PARAM_INT);
         $this->mappingQuery->execute();
-        $result = $this->mappingQuery->fetch(\PDO::FETCH_ASSOC);
+        $result = $this->mappingQuery->fetch(PDO::FETCH_ASSOC);
         $this->mappingQuery->closeCursor();
         return $result;
     }
@@ -519,7 +526,7 @@ class Attributes extends AbstractImportSection {
             "SELECT entity_id FROM {$this->cpeTable} WHERE sinch_product_id IN ($placeholders)"
         );
         $entIdQuery->execute($sinch_prod_ids);
-        return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
+        return $entIdQuery->fetchAll(PDO::FETCH_COLUMN, 0);
     }
 
     /**
@@ -553,7 +560,7 @@ class Attributes extends AbstractImportSection {
                     [self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] => $attrData['option_id']],
                     0 //store id (dummy value as they're global attributes)
                 );
-            } catch (\Throwable $t) {
+            } catch (Throwable $t) {
                 $this->logger->err("Caught error during apply for " . self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] . ", assuming attribute doesn't exist for some reason");
                 if ($this->getConnection()->getTransactionLevel() != 0) {
                     $this->logger->err("The error we caught crashed out of an open transaction, make sure we roll it back so it doesn't affect other sections of the import");
@@ -577,8 +584,8 @@ class Attributes extends AbstractImportSection {
             );
         }
 
-        $this->filterMappingInsert->bindValue(":feature_id", $sinch_feature_id, \PDO::PARAM_INT);
-        $this->filterMappingInsert->bindValue(":category_id", $sinch_category_id, \PDO::PARAM_INT);
+        $this->filterMappingInsert->bindValue(":feature_id", $sinch_feature_id, PDO::PARAM_INT);
+        $this->filterMappingInsert->bindValue(":category_id", $sinch_category_id, PDO::PARAM_INT);
         $this->filterMappingInsert->execute();
         $this->filterMappingInsert->closeCursor();
     }

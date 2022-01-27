@@ -2,7 +2,9 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Console\Cli;
 use SITC\Sinchimport\Model\Import\AccountGroupPrice;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -44,11 +46,11 @@ class DeltaPricingResetCommand extends Command
                 "DROP TABLE IF EXISTS {$nextTable}"
             );
             $output->writeln("done");
-            return \Magento\Framework\Console\Cli::RETURN_SUCCESS;
-        } catch (\Exception $e) {
+            return Cli::RETURN_SUCCESS;
+        } catch (Exception $e) {
             $output->writeln("failed");
             $output->writeln("<error>{$e->getMessage()}</error>");
         }
-        return \Magento\Framework\Console\Cli::RETURN_FAILURE;
+        return Cli::RETURN_FAILURE;
     }
 }

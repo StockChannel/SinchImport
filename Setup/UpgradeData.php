@@ -4,8 +4,10 @@ namespace SITC\Sinchimport\Setup;
 
 use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\Product;
+use Magento\CatalogInventory\Api\StockConfigurationInterface;
 use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
 use Magento\Eav\Setup\EavSetup;
+use Magento\Eav\Setup\EavSetupFactory;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\Exception\LocalizedException;
@@ -20,17 +22,17 @@ use Zend_Validate_Exception;
  */
 class UpgradeData implements UpgradeDataInterface
 {
-    /** @var \Magento\Eav\Setup\EavSetupFactory */
+    /** @var EavSetupFactory */
     private $eavSetupFactory;
     /** @var ResourceConnection */
     private $resourceConn;
-    /** @var \Magento\CatalogInventory\Api\StockConfigurationInterface */
+    /** @var StockConfigurationInterface */
     private $stockConfig;
 
     public function __construct(
-        \Magento\Eav\Setup\EavSetupFactory $eavSetupFactory,
+        EavSetupFactory $eavSetupFactory,
         ResourceConnection $resourceConn,
-        \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig
+        StockConfigurationInterface $stockConfig
     ){
         $this->eavSetupFactory = $eavSetupFactory;
         $this->resourceConn = $resourceConn;
@@ -179,7 +181,7 @@ class UpgradeData implements UpgradeDataInterface
     private function upgrade231(EavSetup $eavSetup)
     {
         $eavSetup->addAttribute(
-            \Magento\Catalog\Model\Product::ENTITY,
+            Product::ENTITY,
             InventoryData::IN_STOCK_FILTER_CODE,
             [
                 'label' => 'In Stock',
@@ -189,7 +191,7 @@ class UpgradeData implements UpgradeDataInterface
                 'backend' => '',
                 'frontend' => '',
                 'source' => '',
-                'global' => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
                 'visible' => true,
                 'required' => false,
                 'user_defined' => false,

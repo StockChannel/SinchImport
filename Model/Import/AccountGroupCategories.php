@@ -3,6 +3,7 @@ namespace SITC\Sinchimport\Model\Import;
 
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\File\Csv;
+use PDO;
 use SITC\Sinchimport\Helper\Download;
 use SITC\Sinchimport\Model\Sinch;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -78,8 +79,8 @@ class AccountGroupCategories extends AbstractImportSection {
             );
         }
 
-        $this->insertMapping->bindValue(":category_id", $category_id, \PDO::PARAM_INT);
-        $this->insertMapping->bindValue(":account_group_id", $account_group_id, \PDO::PARAM_INT);
+        $this->insertMapping->bindValue(":category_id", $category_id, PDO::PARAM_INT);
+        $this->insertMapping->bindValue(":account_group_id", $account_group_id, PDO::PARAM_INT);
         $this->insertMapping->execute();
         $this->insertMapping->closeCursor();
     }

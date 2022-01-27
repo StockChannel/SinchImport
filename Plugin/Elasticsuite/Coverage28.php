@@ -2,15 +2,20 @@
 
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
+use Magento\Catalog\Model\ResourceModel\Product\Attribute;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Model\Import\Attributes;
+use Smile\ElasticsuiteCatalog\Search\Request\Product\Aggregation\Provider\FilterableAttributes\Modifier\Coverage;
+
 /**
  * This class implements compatibility for the Sinch filters to be excluded from Elasticsuite 2.8.x's "Facet Min Coverage"
  */
 class Coverage28 {
-    /** @var \SITC\Sinchimport\Helper\Data $helper */
+    /** @var Data $helper */
     private $helper;
 
     public function __construct(
-        \SITC\Sinchimport\Helper\Data $helper
+        Data $helper
     ){
         $this->helper = $helper;
     }
@@ -20,15 +25,15 @@ class Coverage28 {
      * The original method also accepts $query, $filters and $queryFilters, which we dont use
      * 
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
-     * @param \Smile\ElasticsuiteCatalog\Search\Request\Product\Aggregation\Provider\FilterableAttributes\Modifier\Coverage $subject
-     * @param \Magento\Catalog\Model\ResourceModel\Product\Attribute[] $result The original result
+     * @param Coverage $subject
+     * @param Attribute[] $result The original result
      * @param int $storeId
      * @param string $requestName
-     * @param \Magento\Catalog\Model\ResourceModel\Product\Attribute[] $attributes
-     * @return \Magento\Catalog\Model\ResourceModel\Product\Attribute[]
+     * @param Attribute[] $attributes
+     * @return Attribute[]
      */
     public function afterModifyAttributes(
-        \Smile\ElasticsuiteCatalog\Search\Request\Product\Aggregation\Provider\FilterableAttributes\Modifier\Coverage $subject,
+        Coverage $subject,
         $result,
         $storeId,
         $requestName,
@@ -40,7 +45,7 @@ class Coverage28 {
         }
 
         foreach($attributes as $attribute){
-            if(strpos($attribute->getAttributeCode(), \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) === 0 &&
+            if(strpos($attribute->getAttributeCode(), Attributes::ATTRIBUTE_PREFIX) === 0 &&
                 !in_array($attribute, $result)) {
                 $result[] = $attribute;
             }

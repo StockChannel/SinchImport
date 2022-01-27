@@ -2,52 +2,60 @@
 
 namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
+use Magento\Backend\App\Action;
+use Magento\Backend\App\Action\Context;
+use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Framework\Filesystem\DirectoryList;
+use Magento\Framework\Json\EncoderInterface;
+use SITC\Sinchimport\Logger\Logger;
+use SITC\Sinchimport\Model\Sinch;
+
 /**
  * Class CustomerGroupsPrice
  * @package SITC\Sinchimport\Controller\Adminhtml\Ajax
  */
-class CustomerGroupsPrice extends \Magento\Backend\App\Action
+class CustomerGroupsPrice extends Action
 {
     /**
-     * @var \Magento\Framework\Controller\Result\JsonFactory
+     * @var JsonFactory
      */
     protected $resultJsonFactory;
 
     /**
      * Logging instance
      *
-     * @var \SITC\Sinchimport\Logger\Logger
+     * @var Logger
      */
     protected $_logger;
 
     /**
-     * @var \Magento\Framework\Json\EncoderInterface
+     * @var EncoderInterface
      */
     protected $_jsonEncoder;
 
     /**
-     * @var \SITC\Sinchimport\Model\Sinch
+     * @var Sinch
      */
     protected $sinch;
 
     /**
-     * @var \Magento\Framework\Filesystem\DirectoryList
+     * @var DirectoryList
      */
     protected $_directory;
 
     /**
-     * @param \Magento\Backend\App\Action\Context $context
-     * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\Json\EncoderInterface $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger $logger
+     * @param Context $context
+     * @param JsonFactory $resultJsonFactory
+     * @param EncoderInterface $jsonEncoder
+     * @param Logger $logger
      */
     public function __construct(
-        \Magento\Backend\App\Action\Context $context,
-        \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
-        \Magento\Framework\Json\EncoderInterface $jsonEncoder,
-        \SITC\Sinchimport\Model\Sinch $sinch,
-        \SITC\Sinchimport\Logger\Logger $logger,
-        \Magento\Framework\Filesystem\DirectoryList $directoryList
+        Context $context,
+        JsonFactory $resultJsonFactory,
+        EncoderInterface $jsonEncoder,
+        Sinch $sinch,
+        Logger $logger,
+        DirectoryList $directoryList
     ) {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;

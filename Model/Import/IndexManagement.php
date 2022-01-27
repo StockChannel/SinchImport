@@ -10,6 +10,7 @@ use Magento\Framework\Indexer\StateInterfaceFactory;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Logger\Logger;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use function time;
 
 class IndexManagement {
     /** @var StateInterfaceFactory $stateFactory */
@@ -86,10 +87,10 @@ class IndexManagement {
      */
     private function waitForIndexCompletion()
     {
-        $waitStart = \time();
+        $waitStart = time();
         while(!$this->noIndexersRunning()) {
             sleep(5);
-            $now = \time();
+            $now = time();
             if($now - $waitStart > 1800) {
                 $this->print("Waited 30 minutes for index completion, abandoning...");
                 break;

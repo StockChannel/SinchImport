@@ -2,6 +2,7 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Console\Cli;
 use SITC\Sinchimport\Model\Import\Attributes;
@@ -39,7 +40,7 @@ class AttributesResetCommand extends Command
             $conn = $this->resourceConn->getConnection()->query("DELETE FROM {$eavAttr} WHERE attribute_code LIKE '" . Attributes::ATTRIBUTE_PREFIX . "%'");
             $output->writeln("done");
             return Cli::RETURN_SUCCESS;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $output->writeln("failed");
             $output->writeln("<error>{$e->getMessage()}</error>");
         }

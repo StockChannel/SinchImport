@@ -2,7 +2,10 @@
 
 namespace SITC\Sinchimport\Util;
 
-class CsvIterator extends \Magento\Framework\File\Csv {
+use Exception;
+use Magento\Framework\File\Csv;
+
+class CsvIterator extends Csv {
 
     /**
      * @var string $currentFilename
@@ -17,16 +20,16 @@ class CsvIterator extends \Magento\Framework\File\Csv {
     /**
      * Open a file ready for iteration
      * @var string $file
-     * @throws \Exception
+     * @throws Exception
      */
     public function openIter($file)
     {
         if(!is_null($this->fh) || $this->currentFilename != null){
-            throw new \Exception("A file is already open for iteration");
+            throw new Exception("A file is already open for iteration");
         }
 
         if (!file_exists($file)) {
-            throw new \Exception('File "' . $file . '" does not exist');
+            throw new Exception('File "' . $file . '" does not exist');
         }
         $this->fh = fopen($file, 'r');
         $this->currentFilename = $file;
@@ -48,12 +51,12 @@ class CsvIterator extends \Magento\Framework\File\Csv {
      * Retrieve CSV file data row by row
      *
      * @return  array
-     * @throws \Exception
+     * @throws Exception
      */
     public function getIter()
     {
         if(is_null($this->fh) && is_null($this->currentFilename)){
-            throw new \Exception("No file is currently open for iteration");
+            throw new Exception("No file is currently open for iteration");
         }
 
         $rowData = fgetcsv($this->fh, $this->_lineLength, $this->_delimiter, $this->_enclosure);
@@ -67,7 +70,7 @@ class CsvIterator extends \Magento\Framework\File\Csv {
      * 
      * @param string $file
      * @param int $count
-     * @throws \Exception
+     * @throws Exception
      */
     public function take($count)
     {

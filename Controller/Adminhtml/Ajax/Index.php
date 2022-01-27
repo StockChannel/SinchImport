@@ -1,30 +1,39 @@
 <?php
 namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
-class Index extends \Magento\Backend\App\Action
+use Magento\Backend\App\Action;
+use Magento\Backend\App\Action\Context;
+use Magento\Framework\Controller\Result\Json;
+use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Framework\Json\EncoderInterface;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Logger\Logger;
+use SITC\Sinchimport\Model\Sinch;
+
+class Index extends Action
 {
-    /** @var \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory */
+    /** @var JsonFactory $resultJsonFactory */
     protected $resultJsonFactory;
 
-    /** @var \Magento\Framework\Json\EncoderInterface $_jsonEncoder */
+    /** @var EncoderInterface $_jsonEncoder */
     protected $_jsonEncoder;
 
-    /** @var \SITC\Sinchimport\Model\Sinch $sinch */
+    /** @var Sinch $sinch */
     protected $sinch;
 
-    /** @var \SITC\Sinchimport\Logger\Logger $logger */
+    /** @var Logger $logger */
     protected $logger;
 
-    /** @var \SITC\Sinchimport\Helper\Data $helper */
+    /** @var Data $helper */
     private $helper;
 
     public function __construct(
-        \Magento\Backend\App\Action\Context $context,
-        \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
-        \Magento\Framework\Json\EncoderInterface $jsonEncoder,
-        \SITC\Sinchimport\Model\Sinch $sinch,
-        \SITC\Sinchimport\Logger\Logger $logger,
-        \SITC\Sinchimport\Helper\Data $helper
+        Context $context,
+        JsonFactory $resultJsonFactory,
+        EncoderInterface $jsonEncoder,
+        Sinch $sinch,
+        Logger $logger,
+        Data $helper
     ) {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
@@ -39,7 +48,7 @@ class Index extends \Magento\Backend\App\Action
         $this->logger->info('Schedule Full Import');
 
         /**
-        * @var \Magento\Framework\Controller\Result\Json $resultJson
+        * @var Json $resultJson
         */
         $resultJson = $this->resultJsonFactory->create();
         $lastImportData = $this->sinch->getDataOfLatestImport();

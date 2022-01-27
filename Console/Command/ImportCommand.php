@@ -2,9 +2,11 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
 use Magento\Framework\App\Area;
 use Magento\Framework\App\State as AppState;
 use Magento\Framework\Console\Cli;
+use SITC\Sinchimport\Model\Sinch;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -21,14 +23,14 @@ class ImportCommand extends Command
     protected $_appState;
     
     /**
-     * @var \SITC\Sinchimport\Model\Sinch
+     * @var Sinch
      */
     protected $sinch;
     
     
     public function __construct(
         AppState $appState,
-        \SITC\Sinchimport\Model\Sinch $sinch
+        Sinch $sinch
     ) {
         $this->_appState = $appState;
         $this->sinch     = $sinch;
@@ -72,7 +74,7 @@ class ImportCommand extends Command
                 $output->writeln("<error>Unknown import type '{$importType}', select one of: 'full', 'stockprice'</error>");
                 return Cli::RETURN_FAILURE;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
             
             return Cli::RETURN_FAILURE;

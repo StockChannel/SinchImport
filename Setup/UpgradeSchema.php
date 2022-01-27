@@ -6,13 +6,16 @@
 
 namespace SITC\Sinchimport\Setup;
 
+use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\Module\Dir;
 use Magento\Framework\Setup\UpgradeSchemaInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\SchemaSetupInterface;
 use Magento\Framework\DB\Ddl\Table;
 use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Model\Import\AccountGroupCategories;
 use SITC\Sinchimport\Model\Import\StockPrice;
+use Zend_Db_Exception;
 
 /**
  * @codeCoverageIgnore
@@ -238,7 +241,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
     private function upgrade216($installer)
     {
         $connection = $installer->getConnection();
-        $catVisTable = $installer->getTable(\SITC\Sinchimport\Model\Import\AccountGroupCategories::MAPPING_TABLE); //sinch_cat_visibility at the time of adding
+        $catVisTable = $installer->getTable(AccountGroupCategories::MAPPING_TABLE); //sinch_cat_visibility at the time of adding
         if ($connection->isTableExists($catVisTable) != true) {
             //Ditto of upgrade215
             $connection->query(
@@ -263,7 +266,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
 
     /**
      * @param SchemaSetupInterface $setup
-     * @throws \Zend_Db_Exception
+     * @throws Zend_Db_Exception
      */
     private function createTableCustomerGroup(SchemaSetupInterface $setup)
     {
@@ -291,10 +294,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     $setup->getIdxName(
                         'sinch_customer_group',
                         ['group_id', 'group_name'],
-                        \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                        AdapterInterface::INDEX_TYPE_UNIQUE
                     ),
                     ['group_id', 'group_name'],
-                    ['type' => \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE]
+                    ['type' => AdapterInterface::INDEX_TYPE_UNIQUE]
                 )
                 ->setComment('Sinch Customer Group');
             $setup->getConnection()->createTable($customerGroupTable);
@@ -303,7 +306,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
 
     /**
      * @param SchemaSetupInterface $setup
-     * @throws \Zend_Db_Exception
+     * @throws Zend_Db_Exception
      */
     private function createTableCustomerGroupPrice(SchemaSetupInterface $setup)
     {
@@ -344,10 +347,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     $setup->getIdxName(
                         'sinch_customer_group_price',
                         ['group_id', 'product_id', 'sinch_product_id', 'customer_group_price'],
-                        \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                        AdapterInterface::INDEX_TYPE_UNIQUE
                     ),
                     ['group_id', 'product_id','sinch_product_id', 'customer_group_price'],
-                    ['type' => \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE]
+                    ['type' => AdapterInterface::INDEX_TYPE_UNIQUE]
                 )
                 ->setComment('Sinch Customer Group Price');
             $setup->getConnection()->createTable($customerGroupTablePrice);
@@ -395,7 +398,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $setup->getIdxName(
                 'sinch_customer_group_price',
                 ['group_id', 'product_id', 'sinch_product_id', 'customer_group_price'],
-                \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                AdapterInterface::INDEX_TYPE_UNIQUE
             )
         );
         $setup->getConnection()->dropColumn($customerGroupPrice, 'sinch_product_id');
@@ -404,10 +407,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $setup->getIdxName(
                 'sinch_customer_group_price',
                 ['group_id', 'product_id', 'price_type_id'],
-                \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                AdapterInterface::INDEX_TYPE_UNIQUE
             ),
             ['group_id', 'product_id','price_type_id'],
-            \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+            AdapterInterface::INDEX_TYPE_UNIQUE
         );
     }
 

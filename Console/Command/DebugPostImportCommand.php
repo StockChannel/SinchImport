@@ -2,7 +2,10 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
 use Magento\Framework\App\State as AppState;
+use Magento\Framework\Console\Cli;
+use Magento\Framework\Event\ManagerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -15,14 +18,14 @@ class DebugPostImportCommand extends Command
     protected $_appState;
     
     /**
-     * @var \Magento\Framework\Event\ManagerInterface
+     * @var ManagerInterface
      */
     protected $eventManager;
     
     
     public function __construct(
         AppState $appState,
-        \Magento\Framework\Event\ManagerInterface $eventManager
+        ManagerInterface $eventManager
     ) {
         parent::__construct();
         $this->_appState = $appState;
@@ -53,10 +56,10 @@ class DebugPostImportCommand extends Command
                 ]
             );
             $output->writeln("Ran post import hooks without error, see log for more details");
-            return \Magento\Framework\Console\Cli::RETURN_SUCCESS;
-        } catch (\Exception $e) {
+            return Cli::RETURN_SUCCESS;
+        } catch (Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
         }
-        return \Magento\Framework\Console\Cli::RETURN_FAILURE;
+        return Cli::RETURN_FAILURE;
     }
 }

@@ -9,6 +9,7 @@ use Magento\Customer\Api\Data\GroupInterfaceFactory;
 use Magento\Customer\Api\GroupRepositoryInterface;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Exception\State\InvalidTransitionException;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
 use SITC\Sinchimport\Util\CsvIterator;
@@ -379,7 +380,7 @@ class AccountGroupPrice extends AbstractImportSection {
         try {
             $group = $this->groupRepository->save($group);
             $this->insertMapping($sinchGroupId, $group->getId());
-        } catch(\Magento\Framework\Exception\State\InvalidTransitionException $e){
+        } catch(InvalidTransitionException $e){
             $this->log("Group unexpectedly exists, trying to remap it: {$groupName} ({$sinchGroupId})");
             $criteria = $this->searchCriteriaBuilder
                 ->addFilter('code', $fullGroupName, 'eq')

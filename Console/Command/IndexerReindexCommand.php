@@ -2,19 +2,27 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Magento\Framework\App\ObjectManagerFactory;
+use Magento\Framework\Console\Cli;
+use Magento\Framework\Indexer\Config\DependencyInfoProvider;
+use Magento\Framework\Indexer\IndexerRegistry;
+use SITC\Sinchimport\Helper\Data;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+
 /**
  * This class prevents the indexers from being manually reindexed from command line while an import is running.
  */
 class IndexerReindexCommand extends \Magento\Indexer\Console\Command\IndexerReindexCommand {
-    /** @var \SITC\Sinchimport\Helper\Data $helper */
+    /** @var Data $helper */
     private $helper;
 
 
     public function __construct(
-        \Magento\Framework\App\ObjectManagerFactory $objectManagerFactory,
-        \Magento\Framework\Indexer\IndexerRegistry $indexerRegistry = null,
-        \Magento\Framework\Indexer\Config\DependencyInfoProvider $dependencyInfoProvider = null,
-        \SITC\Sinchimport\Helper\Data $helper
+        ObjectManagerFactory $objectManagerFactory,
+        IndexerRegistry $indexerRegistry = null,
+        DependencyInfoProvider $dependencyInfoProvider = null,
+        Data $helper
     ){
         parent::__construct($objectManagerFactory, $indexerRegistry, $dependencyInfoProvider);
         $this->helper = $helper;
@@ -23,19 +31,19 @@ class IndexerReindexCommand extends \Magento\Indexer\Console\Command\IndexerRein
     /**
      * Override the execute method to prevent indexes from running when the index lock is held
      * 
-     * @param \Symfony\Component\Console\Input\InputInterface $input The input interface to pass to the original function
-     * @param \Symfony\Component\Console\Output\OutputInterface $output The output interface to pass to the original function
+     * @param InputInterface $input The input interface to pass to the original function
+     * @param OutputInterface $output The output interface to pass to the original function
      * 
      * @return int|null null or 0 if everything went fine, or an error code
      * @throws LogicException when the index lock is held
      */
     protected function execute(
-        \Symfony\Component\Console\Input\InputInterface $input,
-        \Symfony\Component\Console\Output\OutputInterface $output
+        InputInterface $input,
+        OutputInterface $output
     ){
         if($this->helper->isIndexLockHeld()){
             $output->writeln("Reindexing is disabled while the Sinchimport index lock is held");
-            return \Magento\Framework\Console\Cli::RETURN_FAILURE;
+            return Cli::RETURN_FAILURE;
         }
         return parent::execute($input, $output);
     }

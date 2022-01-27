@@ -2,7 +2,10 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
 use Magento\Framework\App\State as AppState;
+use Magento\Framework\Console\Cli;
+use SITC\Sinchimport\Model\Sinch;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -15,14 +18,14 @@ class GenerateCommand extends Command
     protected $_appState;
     
     /**
-     * @var \SITC\Sinchimport\Model\Sinch
+     * @var Sinch
      */
     protected $sinch;
     
     
     public function __construct(
         AppState $appState,
-        \SITC\Sinchimport\Model\Sinch $sinch
+        Sinch $sinch
     ) {
         $this->_appState = $appState;
         $this->sinch     = $sinch;
@@ -46,9 +49,9 @@ class GenerateCommand extends Command
         try {
             $this->_appState->setAreaCode('adminhtml');
             $this->sinch->runReindexUrlRewrite();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
         }
-        return \Magento\Framework\Console\Cli::RETURN_FAILURE;
+        return Cli::RETURN_FAILURE;
     }
 }

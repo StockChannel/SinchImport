@@ -566,8 +566,8 @@ class StockPrice extends AbstractImportSection
 
     /**
      * Get or create the sinch MSI stock source, returning it's ID
-     * @throws \Magento\Framework\Validation\ValidationException
-     * @throws \Magento\Framework\Exception\CouldNotSaveException
+     * @throws ValidationException
+     * @throws CouldNotSaveException
      */
     private function getOrCreateStockSource(): int
     {

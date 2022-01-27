@@ -6,6 +6,7 @@ use Magento\Catalog\Model\ResourceModel\Product\Action;
 use Magento\Framework\App\Cache\TypeListInterface;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\StateException;
+use PDO;
 use SITC\Sinchimport\Helper\Download;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
@@ -124,7 +125,7 @@ class UNSPSC extends AbstractImportSection {
             "SELECT entity_id FROM {$this->cpeTable} WHERE sinch_product_id IN ($placeholders)"
         );
         $entIdQuery->execute($sinch_prod_ids);
-        return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
+        return $entIdQuery->fetchAll(PDO::FETCH_COLUMN, 0);
     }
 
     protected function log($msg, $print = true)

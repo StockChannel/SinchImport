@@ -30,7 +30,7 @@ class Mapping {
     /**
      * Add category boost to ES mapping
      *
-     * @param \Smile\ElasticsuiteCore\Api\Index\MappingInterface $_subject
+     * @param MappingInterface $_subject
      * @param float[] $result
      * @param null $analyzer
      * @param null $defaultField

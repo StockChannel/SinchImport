@@ -2,6 +2,8 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
+use Magento\Framework\Console\Cli;
 use SITC\Sinchimport\Model\CronCleanup;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -33,10 +35,10 @@ class CronCleanupCommand extends Command
     {
         try {
             $this->cleaner->cleanup($output);
-            return \Magento\Framework\Console\Cli::RETURN_SUCCESS;
-        } catch (\Exception $e) {
+            return Cli::RETURN_SUCCESS;
+        } catch (Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
         }
-        return \Magento\Framework\Console\Cli::RETURN_FAILURE;
+        return Cli::RETURN_FAILURE;
     }
 }

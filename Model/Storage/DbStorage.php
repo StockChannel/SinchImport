@@ -1,6 +1,7 @@
 <?php
 namespace SITC\Sinchimport\Model\Storage;
 
+use Exception;
 use Magento\Framework\DB\Select;
 use Magento\UrlRewrite\Service\V1\Data\UrlRewrite;
 use Magento\UrlRewrite\Service\V1\Data\UrlRewriteFactory;
@@ -93,7 +94,7 @@ class DbStorage extends \Magento\UrlRewrite\Model\Storage\DbStorage
             if( count($data) > 0 ){
                 $this->insertMultiple($data);
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Nothing
         }
 

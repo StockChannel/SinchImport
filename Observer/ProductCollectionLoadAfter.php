@@ -3,12 +3,15 @@ namespace SITC\Sinchimport\Observer;
 
 use Magento\Catalog\Model\Product;
 use Magento\Catalog\Model\ProductRepository;
+use Magento\Catalog\Model\ResourceModel\Product\Collection;
+use Magento\Framework\Event\Observer;
+use Magento\Framework\Event\ObserverInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use SITC\Sinchimport\Helper\Badges;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Logger\Logger;
 
-class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInterface
+class ProductCollectionLoadAfter implements ObserverInterface
 {
     private Data $helper;
     private Badges $badgeHelper;
@@ -25,9 +28,9 @@ class ProductCollectionLoadAfter implements \Magento\Framework\Event\ObserverInt
     }
 
 
-    public function execute(\Magento\Framework\Event\Observer $observer)
+    public function execute(Observer $observer)
     {
-        /** @var \Magento\Catalog\Model\ResourceModel\Product\Collection $filteredProductCollection */
+        /** @var Collection $filteredProductCollection */
         $filteredProductCollection = $observer->getCollection();
         $productCollection = clone $filteredProductCollection;
 

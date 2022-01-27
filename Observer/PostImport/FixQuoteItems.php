@@ -1,10 +1,17 @@
 <?php
 namespace SITC\Sinchimport\Observer\PostImport;
 
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Event\Observer;
+use Magento\Framework\Event\ObserverInterface;
+use PDO;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Logger\Logger;
+
 /**
  * Fixes quote items for products which have changed ID
  */
-class FixQuoteItems implements \Magento\Framework\Event\ObserverInterface
+class FixQuoteItems implements ObserverInterface
 {
     private $resourceConn;
     private $logger;
@@ -20,9 +27,9 @@ class FixQuoteItems implements \Magento\Framework\Event\ObserverInterface
     private $prodNameAttr;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \SITC\Sinchimport\Logger\Logger $logger,
-        \SITC\Sinchimport\Helper\Data $helper
+        ResourceConnection $resourceConn,
+        Logger $logger,
+        Data $helper
     ) {
         $this->resourceConn = $resourceConn;
         $this->logger = $logger->withName("FixQuoteItems");
@@ -38,7 +45,7 @@ class FixQuoteItems implements \Magento\Framework\Event\ObserverInterface
     }
 
 
-    public function execute(\Magento\Framework\Event\Observer $observer)
+    public function execute(Observer $observer)
     {
         $this->logger->info("Fixing quote items");
         $affected_items = $this->getConn()->fetchAll(
@@ -70,8 +77,8 @@ class FixQuoteItems implements \Magento\Framework\Event\ObserverInterface
                 $this->logger->warn("Found candidate product for quote_item {$row['item_id']}, but candidate name doesn't match, skipping: {$row['name']} != {$candidateName}");
                 continue;
             }
-            $update->bindValue(":itemId", $row['item_id'], \PDO::PARAM_INT);
-            $update->bindValue(":prodId", $row['entity_id'], \PDO::PARAM_INT);
+            $update->bindValue(":itemId", $row['item_id'], PDO::PARAM_INT);
+            $update->bindValue(":prodId", $row['entity_id'], PDO::PARAM_INT);
             $update->execute();
             $update->closeCursor();
             $updatedItems++;

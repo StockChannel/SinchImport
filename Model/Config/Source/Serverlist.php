@@ -2,7 +2,9 @@
 
 namespace SITC\Sinchimport\Model\Config\Source;
 
-class Serverlist implements \Magento\Framework\Option\ArrayInterface
+use Magento\Framework\Option\ArrayInterface;
+
+class Serverlist implements ArrayInterface
 {
     public function toOptionArray()
     {

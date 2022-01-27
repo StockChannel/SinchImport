@@ -2,7 +2,10 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
 use Magento\Framework\App\State as AppState;
+use Magento\Framework\Console\Cli;
+use SITC\Sinchimport\Model\Sinch;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -14,7 +17,7 @@ class TonerFinderCommand extends Command {
 
     public function __construct(
         AppState $appState,
-        \SITC\Sinchimport\Model\Sinch $sinch
+        Sinch $sinch
     ) {
         parent::__construct();
         $this->appState  = $appState;
@@ -31,14 +34,14 @@ class TonerFinderCommand extends Command {
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $returnValue = \Magento\Framework\Console\Cli::RETURN_FAILURE;
+        $returnValue = Cli::RETURN_FAILURE;
         try {
             $this->appState->setAreaCode('adminhtml');
             $this->sinch->insertCategoryIdForFinder();
             $this->sinch->runCleanCache();
             $output->writeln('Setup for Product part finder multi-store completed successfully.');
-            $returnValue = \Magento\Framework\Console\Cli::RETURN_SUCCESS;
-        } catch (\Exception $e) {
+            $returnValue = Cli::RETURN_SUCCESS;
+        } catch (Exception $e) {
             $output->writeln($e->getMessage());
         }
         return $returnValue;

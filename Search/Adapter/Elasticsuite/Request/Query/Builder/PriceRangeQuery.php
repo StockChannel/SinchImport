@@ -13,6 +13,7 @@
  */
 namespace SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder;
 
+use InvalidArgumentException;
 use Magento\Customer\Model\Group;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
@@ -54,7 +55,7 @@ class PriceRangeQuery extends AbstractComplexBuilder implements BuilderInterface
     public function buildQuery(QueryInterface $query)
     {
         if ($query->getType() !== 'sitcPriceRangeQuery') {
-            throw new \InvalidArgumentException("Query builder : invalid query type {$query->getType()}");
+            throw new InvalidArgumentException("Query builder : invalid query type {$query->getType()}");
         }
 
 	    $rangeQuery = $this->queryFactory->create(

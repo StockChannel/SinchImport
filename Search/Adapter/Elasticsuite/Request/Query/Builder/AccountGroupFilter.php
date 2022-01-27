@@ -13,6 +13,7 @@
  */
 namespace SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder;
 
+use InvalidArgumentException;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\BuilderInterface;
 
@@ -31,7 +32,7 @@ class AccountGroupFilter implements BuilderInterface
     public function buildQuery(QueryInterface $query)
     {
         if ($query->getType() !== 'sitcAccountGroupQuery') {
-            throw new \InvalidArgumentException("Query builder : invalid query type {$query->getType()}");
+            throw new InvalidArgumentException("Query builder : invalid query type {$query->getType()}");
         }
 
         // {

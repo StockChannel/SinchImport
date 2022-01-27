@@ -2,7 +2,9 @@
 
 namespace SITC\Sinchimport\Model\Config\Source;
 
-class Caterewrite implements \Magento\Framework\Option\ArrayInterface
+use Magento\Framework\Option\ArrayInterface;
+
+class Caterewrite implements ArrayInterface
 {
     public function toOptionArray()
     {

@@ -2,12 +2,16 @@
 
 namespace SITC\Sinchimport\Plugin;
 
+use Magento\Catalog\Model\Product\Attribute\Source\Status;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Model\Helper;
+
 class Product {
-    /** @var \SITC\Sinchimport\Model\Helper $helper */
+    /** @var Helper $helper */
     private $helper;
     
     public function __construct(
-        \SITC\Sinchimport\Helper\Data $helper
+        Data $helper
     )
     {
         $this->helper = $helper;
@@ -25,7 +29,7 @@ class Product {
         $result
     ){
         if(!$this->canSeeProduct($subject)) {
-            return \Magento\Catalog\Model\Product\Attribute\Source\Status::STATUS_DISABLED;
+            return Status::STATUS_DISABLED;
         }
         return $result;
     }

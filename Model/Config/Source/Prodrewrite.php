@@ -2,7 +2,9 @@
 
 namespace SITC\Sinchimport\Model\Config\Source;
 
-class Prodrewrite implements \Magento\Framework\Option\ArrayInterface
+use Magento\Framework\Option\ArrayInterface;
+
+class Prodrewrite implements ArrayInterface
 {
     public function toOptionArray()
     {

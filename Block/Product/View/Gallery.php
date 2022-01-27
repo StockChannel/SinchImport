@@ -2,12 +2,14 @@
 
 namespace SITC\Sinchimport\Block\Product\View;
 
+use SITC\Sinchimport\Model\Sinch;
+
 class Gallery
 {
     protected $sinch;
     
     public function __construct(
-        \SITC\Sinchimport\Model\Sinch $sinch
+        Sinch $sinch
     ) {
         $this->sinch = $sinch;
     }

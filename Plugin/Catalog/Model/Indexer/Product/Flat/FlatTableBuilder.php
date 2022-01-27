@@ -2,30 +2,35 @@
 
 namespace SITC\Sinchimport\Plugin\Catalog\Model\Indexer\Product\Flat;
 
+use Closure;
+use Magento\Catalog\Helper\Product\Flat\Indexer;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\DB\Adapter\AdapterInterface;
+
 class FlatTableBuilder
 {
 
     /**
-     * @var \Magento\Framework\DB\Adapter\AdapterInterface
+     * @var AdapterInterface
      */
     protected $_connection;
 
     /**
-     * @var \Magento\Framework\App\ResourceConnection
+     * @var ResourceConnection
      */
     protected $_resource;
 
     /**
-     * @var \Magento\Catalog\Helper\Product\Flat\Indexer
+     * @var Indexer
      */
     protected $_productIndexerHelper;
 
     /**
-     * @param \Magento\Framework\App\ResourceConnection $resource
+     * @param ResourceConnection $resource
      */
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resource,
-        \Magento\Catalog\Helper\Product\Flat\Indexer $productIndexerHelper
+        ResourceConnection $resource,
+        Indexer $productIndexerHelper
     ) {
         $this->_resource = $resource;
         $this->_productIndexerHelper = $productIndexerHelper;
@@ -39,7 +44,7 @@ class FlatTableBuilder
      */
     public function aroundBuild(
         \Magento\Catalog\Model\Indexer\Product\Flat\FlatTableBuilder $subject,
-        \Closure $proceed,
+        Closure $proceed,
         $storeId,
         $changedIds,
         $valueFieldSuffix,
