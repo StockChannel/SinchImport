@@ -268,4 +268,9 @@ class Data extends AbstractHelper
             "SELECT import_type FROM $sinch_import_status_statistic WHERE global_status_import = 'Run' AND id = (SELECT MAX(id) FROM $sinch_import_status_statistic) ORDER BY start_import DESC LIMIT 1"
         );
     }
+
+    public function isInStockFilterEnabled()
+    {
+        return $this->getStoreConfig('sinchimport/stock/in_stock_filter_enable');
+    }
 }

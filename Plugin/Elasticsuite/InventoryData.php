@@ -5,10 +5,11 @@ namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 use Exception;
 use Magento\Catalog\Api\ProductRepositoryInterface;
-use Magento\Catalog\Model\Product;
-use Magento\Catalog\Model\Product\Action as ProductAction;
-use Magento\Store\Model\Store;
+use Magento\Eav\Model\Attribute;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Store\Model\StoreManagerInterface;
+use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Logger\Logger;
 
 
@@ -19,65 +20,86 @@ use SITC\Sinchimport\Logger\Logger;
  */
 class InventoryData
 {
+
+    const LOG_PREFIX = 'InStockFilter: ';
+    /**
+     * Filter attribute code
+     */
     const IN_STOCK_FILTER_CODE = 'sinch_in_stock';
 
     /**
-     * @var ProductRepositoryInterface
+     * @var Data
      */
-    private  $productRepository;
-
+    private $helper;
     /**
      * @var Logger
      */
     private $logger;
-
     /**
      * @var StoreManagerInterface
      */
     private $storeManager;
-
     /**
-     * InventoryData constructor.
-     * @param ProductRepositoryInterface $productRepository
-     * @param Logger $logger
-     * @param StoreManagerInterface $storeManager
+     * @var AdapterInterface
      */
+    private $connection;
+    /**
+     * @var string
+     */
+    private $catalog_product_entity_varchar;
+    /**
+     * @var int
+     */
+    private $attrId;
+
     public function __construct(
-        ProductRepositoryInterface $productRepository,
         Logger $logger,
-        StoreManagerInterface $storeManager
+        StoreManagerInterface $storeManager,
+        ResourceConnection $resourceConnection,
+        Attribute $eavAttribute,
+        Data $helper
     ){
-        $this->productRepository = $productRepository;
         $this->logger = $logger;
         $this->storeManager = $storeManager;
+        $this->connection = $resourceConnection->getConnection();
+        $this->helper = $helper;
+
+        $this->catalog_product_entity_varchar = $this->connection->getTableName('catalog_product_entity_varchar');
+        $this->attrId = $eavAttribute->getIdByCode('catalog_product', self::IN_STOCK_FILTER_CODE);
     }
 
     /**
-     * Add stock status to product data so we can filter on it
+     * Add stock status to product data, so we can filter on it
      *
      * @param \Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\InventoryData $subject
      * @param $result
+     * @return mixed
      */
     public function afterAddData(\Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\InventoryData $subject, $result)
     {
-        $count = 0;
-        if (empty($result)) {
-            $this->logger->info("Result is empty");
+        if (empty($this->helper->isInStockFilterEnabled())) {
+            return $result;
         }
-        foreach ($result as $key => $value) {
-            $prodId = $key;
-            try {
-                /** @var Product $product */
-                $product = $this->productRepository->getById($prodId);
-                $isInStock = $value['is_in_stock'];
-                $product->setData(self::IN_STOCK_FILTER_CODE, $isInStock);
-                $this->productRepository->save($product);
-                $count++;
-            } catch (Exception $e) {
-                $this->logger->info("Couldn't find product with ID $prodId");
-            }
+        $storeId = $this->storeManager->getDefaultStoreView()->getId();
+        $productStatuses = [];
+        foreach ($result as $prodId => $indexData) {
+            $isInStock = isset($indexData['stock']) && isset($indexData['stock']['is_in_stock']) && $indexData['stock']['is_in_stock'] ? 'Y' : 'N';
+            $productStatuses[] = [
+                'attribute_id' => $this->attrId,
+                'store_id' => $storeId,
+                'entity_id' => $prodId,
+                'value' => $isInStock
+            ];
         }
+        $count = sizeof($productStatuses);
+        $this->log("Processed stock filter for $count products");
+        $rows = $this->connection->insertOnDuplicate($this->catalog_product_entity_varchar, $productStatuses);
+        $this->log("Inserted $rows status rows into database");
+        return $result;
+    }
 
-        $this->logger->info("Processed stock filter for $count products");
+    private function log($msg)
+    {
+        $this->logger->info(self::LOG_PREFIX . $msg);
     }
 }

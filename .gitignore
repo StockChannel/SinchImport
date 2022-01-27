@@ -3,3 +3,5 @@ composer.phar
 .idea
 composer.lock
 .vscode
+#smile/elasticsuite puts some fonts under /lib/, so ignore that directly explicitly so we don't accidentally commit them here
+/lib/

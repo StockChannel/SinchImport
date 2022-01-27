@@ -173,6 +173,10 @@
                     <comment>If enabled, clear inventory reservations for affected products when importing new stock levels, and calculate stock status based on stock + backorder limit.
                         When disabled, the saleable quantity (stock + backorder limit - reservations) is used to determine stock status</comment>
                 </field>
+                <field id="in_stock_filter_enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Enable in stock filter</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
             </group>
 
             <group id="misc" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
