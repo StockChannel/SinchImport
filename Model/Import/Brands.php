@@ -70,40 +70,34 @@ class Brands extends AbstractImportSection {
 
         $this->startTimingStep('Delete manufacturer values that no longer feature in the new file');
         $conn->query(
-            "DELETE aov
-                FROM {$eav_attribute_option} ao
-                JOIN {$eav_attribute_option_value} aov
-                    ON ao.option_id = aov.option_id
-                LEFT JOIN {$manufacturers_temp} mt
-                    ON aov.value = mt.manufacturer_name
+            "DELETE eao, eaov
+                FROM {$eav_attribute_option} eao
+                JOIN {$eav_attribute_option_value} eaov
+                    ON eao.option_id = eaov.option_id
+                LEFT JOIN {$manufacturers_temp} smt
+                    ON eaov.value = smt.manufacturer_name
                 WHERE
-                    ao.attribute_id = :manufacturerAttr AND
-                    mt.manufacturer_name IS NULL",
-            [':manufacturerAttr' => $manufacturerAttr]
-        );
-        $this->endTimingStep();
-
-        $this->startTimingStep('Delete manufacturer options that have no values');
-        $conn->query(
-            "DELETE ao
-                FROM {$eav_attribute_option} ao
-                LEFT JOIN {$eav_attribute_option_value} aov
-                    ON ao.option_id = aov.option_id
-                WHERE
-                    attribute_id = :manufacturerAttr AND
-                    aov.option_id IS NULL",
+                    eao.attribute_id = :manufacturerAttr AND
+                    smt.manufacturer_name IS NULL",
             [':manufacturerAttr' => $manufacturerAttr]
         );
         $this->endTimingStep();
 
         $this->startTimingStep('Insert missing manufacturers');
         //Get manufacturers with missing values
+        // Previously this was:
+        // SELECT smt.sinch_manufacturer_id, smt.manufacturer_name FROM {$manufacturers_temp} smt LEFT JOIN {$eav_attribute_option_value} eaov ON smt.manufacturer_name = eaov.value WHERE eaov.value IS NULL
+        // Which presented issues, as the value may have been (and definitely was on at least 1 site) present as an option for another attribute
         $res = $conn->fetchAll(
-            "SELECT mt.sinch_manufacturer_id, mt.manufacturer_name
-                FROM {$manufacturers_temp} mt
-                LEFT JOIN {$eav_attribute_option_value} aov
-                    ON mt.manufacturer_name = aov.value
-                WHERE aov.value IS NULL"
+            "SELECT smt.sinch_manufacturer_id, smt.manufacturer_name
+                FROM {$eav_attribute_option} eao
+                INNER JOIN {$eav_attribute_option_value} eaov
+                    ON eao.option_id = eaov.option_id
+                    AND eao.attribute_id = :manufacturerAttr
+                RIGHT JOIN {$manufacturers_temp} smt
+                    ON smt.manufacturer_name = eaov.value
+                WHERE eaov.value IS NULL",
+            [':manufacturerAttr' => $manufacturerAttr]
         );
 
         //Insert missing Manufacturer names
@@ -120,14 +114,24 @@ class Brands extends AbstractImportSection {
         $this->endTimingStep();
 
         $this->startTimingStep('Store option IDs ready for apply');
+        //The following SQL can be used to quickly identify any brands for which the mapping is missing or incorrect:
+        // SELECT smt.manufacturer_name, eaov.option_id, smt.shop_option_id
+        //  FROM eav_attribute_option_value eaov
+        //  INNER JOIN eav_attribute_option eao
+        //      ON eaov.option_id = eao.option_id
+        //      AND eao.attribute_id = 83
+        //  RIGHT JOIN sinch_manufacturers smt
+        //      ON eaov.value = smt.manufacturer_name
+        //  WHERE smt.shop_option_id IS NULL
+        //      OR smt.shop_option_id != eaov.option_id;
         $conn->query(
-            "UPDATE {$manufacturers_temp} mt
-                JOIN {$eav_attribute_option_value} aov
-                    ON mt.manufacturer_name = aov.value
-                JOIN {$eav_attribute_option} ao
-                    ON ao.option_id = aov.option_id
-                SET mt.shop_option_id = aov.option_id
-                WHERE ao.attribute_id = :manufacturerAttr",
+            "UPDATE {$manufacturers_temp} smt
+                JOIN {$eav_attribute_option_value} eaov
+                    ON mt.manufacturer_name = eaov.value
+                JOIN {$eav_attribute_option} eao
+                    ON eao.option_id = eaov.option_id
+                SET smt.shop_option_id = eaov.option_id
+                WHERE eao.attribute_id = :manufacturerAttr",
             [':manufacturerAttr' => $manufacturerAttr]
         );
         $this->endTimingStep();
