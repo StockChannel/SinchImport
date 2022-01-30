@@ -4185,122 +4185,91 @@ class Sinch
     {
         $parseFile = $this->varDir . FILE_MANUFACTURERS;
         if (filesize($parseFile)) {
+            $manufacturers_temp = $this->_getTableName('manufacturers_temp');
+            $eav_attribute_option = $this->_getTableName('eav_attribute_option');
+            $eav_attribute_option_value = $this->_getTableName('eav_attribute_option_value');
+
+            $manufacturerAttr = $this->_getProductAttributeId('manufacturer');
+
             $this->_log("Start parse " . FILE_MANUFACTURERS);
+            $this->_doQuery("DROP TABLE IF EXISTS {$manufacturers_temp}");
             $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'manufacturers_temp'
-                )
-            );
-            $this->_doQuery(
-                "CREATE TABLE " . $this->_getTableName('manufacturers_temp') . "(
-                                      sinch_manufacturer_id int(11),
-                                      manufacturer_name varchar(255),
-                                      manufacturers_image varchar(255),
-                                      shop_option_id int(11),
-                                      KEY(sinch_manufacturer_id),
-                                      KEY(shop_option_id),
-                                      KEY(manufacturer_name)
-                          )"
+                "CREATE TABLE {$manufacturers_temp} (
+                    sinch_manufacturer_id int(11),
+                    manufacturer_name varchar(255),
+                    manufacturers_image varchar(255),
+                    shop_option_id int(11),
+                    KEY(sinch_manufacturer_id),
+                    KEY(shop_option_id),
+                    KEY(manufacturer_name)
+                )"
             );
 
             $this->_doQuery(
                 "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->_getTableName(
-                    'manufacturers_temp'
-                ) . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
+                          INTO TABLE {$manufacturers_temp}
+                          FIELDS TERMINATED BY '" . $this->field_terminated_char . "'
                           OPTIONALLY ENCLOSED BY '\"'
                           LINES TERMINATED BY \"\r\n\"
                           IGNORE 1 LINES "
             );
 
-            $q
-                = "DELETE aov
-                FROM " . $this->_getTableName('eav_attribute_option') . " ao
-                JOIN " . $this->_getTableName('eav_attribute_option_value') . " aov
-                    ON ao.option_id=aov.option_id left
-                JOIN " . $this->_getTableName('manufacturers_temp') . " mt
-                    ON aov.value=mt.manufacturer_name
+            $this->_connection->query(
+                "DELETE eao, eaov
+                FROM {$eav_attribute_option} eao
+                JOIN {$eav_attribute_option_value} eaov
+                    ON eao.option_id = eaov.option_id
+                LEFT JOIN {$manufacturers_temp} smt
+                    ON eaov.value = smt.manufacturer_name
                 WHERE
-                    ao.attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                ) . " AND
-                    mt.manufacturer_name is null";
-            $this->_doQuery($q);
+                    eao.attribute_id = :manufacturerAttr AND
+                    smt.manufacturer_name IS NULL",
+                [':manufacturerAttr' => $manufacturerAttr]
+            );
 
-            $q
-                = "DELETE ao
-                FROM " . $this->_getTableName('eav_attribute_option') . " ao
-                LEFT JOIN " . $this->_getTableName('eav_attribute_option_value')
-                . " aov
-                    ON ao.option_id=aov.option_id
-                WHERE
-                    attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                ) . " AND
-                    aov.option_id is null";
-            $this->_doQuery($q);
-
-            $q
-                = "SELECT
-                    m.sinch_manufacturer_id,
-                    m.manufacturer_name,
-                    m.manufacturers_image
-                FROM " . $this->_getTableName('manufacturers_temp') . " m
-                LEFT JOIN " . $this->_getTableName('eav_attribute_option_value')
-                . " aov
-                    ON m.manufacturer_name=aov.value
-                WHERE aov.value  IS NULL";
-            $res = $this->_doQuery($q)->fetchAll();
+            //Get manufacturers with missing values
+            // Previously this was:
+            // SELECT smt.sinch_manufacturer_id, smt.manufacturer_name FROM {$manufacturers_temp} smt LEFT JOIN {$eav_attribute_option_value} eaov ON smt.manufacturer_name = eaov.value WHERE eaov.value IS NULL
+            // Which presented issues, as the value may have been (and definitely was on at least 1 site) present as an option for another attribute
+            $res = $this->_connection->fetchAll(
+                "SELECT smt.sinch_manufacturer_id, smt.manufacturer_name
+                FROM {$eav_attribute_option} eao
+                INNER JOIN {$eav_attribute_option_value} eaov
+                    ON eao.option_id = eaov.option_id
+                    AND eao.attribute_id = :manufacturerAttr
+                RIGHT JOIN {$manufacturers_temp} smt
+                    ON smt.manufacturer_name = eaov.value
+                WHERE eaov.value IS NULL",
+                [':manufacturerAttr' => $manufacturerAttr]
+            );
 
             foreach ($res as $row) {
-                $q0 = "INSERT INTO " . $this->_getTableName(
-                        'eav_attribute_option'
-                    ) . "
-                        (attribute_id)
-                     VALUES(" . $this->_getProductAttributeId('manufacturer')
-                    . ")";
-                $this->_doQuery($q0);
-
-                $q2 = "INSERT INTO " . $this->_getTableName(
-                        'eav_attribute_option_value'
-                    ) . "(
-                        option_id,
-                        value
-                     )(
-                       SELECT
-                        max(option_id) as option_id,
-                        " . $this->_connection->quote($row['manufacturer_name'])
-                    . "
-                       FROM " . $this->_getTableName('eav_attribute_option') . "
-                       WHERE attribute_id=" . $this->_getProductAttributeId(
-                        'manufacturer'
-                    ) . "
-                     )
-                    ";
-                $this->_doQuery($q2);
+                $this->_connection->query(
+                    "INSERT INTO {$eav_attribute_option} (attribute_id) VALUES(:manufacturerAttr)",
+                    [':manufacturerAttr' => $manufacturerAttr]
+                );
+                $this->_connection->query(
+                    "INSERT INTO {$eav_attribute_option_value} (option_id, value) VALUES(LAST_INSERT_ID(), :manufacturerName)",
+                    [':manufacturerName' => $row['manufacturer_name']]
+                );
             }
 
-            $q = "UPDATE " . $this->_getTableName('manufacturers_temp') . " mt
-                JOIN  " . $this->_getTableName('eav_attribute_option_value') . " aov
-                    ON mt.manufacturer_name=aov.value
-                JOIN " . $this->_getTableName('eav_attribute_option') . " ao
-                    ON ao.option_id=aov.option_id
-                SET mt.shop_option_id=aov.option_id
-                WHERE ao.attribute_id=" . $this->_getProductAttributeId(
-                    'manufacturer'
-                );
-            $this->_doQuery($q);
+            $this->_connection->query(
+                "UPDATE {$manufacturers_temp} smt
+                JOIN {$eav_attribute_option_value} eaov
+                    ON mt.manufacturer_name = eaov.value
+                JOIN {$eav_attribute_option} eao
+                    ON eao.option_id = eaov.option_id
+                SET smt.shop_option_id = eaov.option_id
+                WHERE eao.attribute_id = :manufacturerAttr",
+                [':manufacturerAttr' => $manufacturerAttr]
+            );
 
             $this->_doQuery(
-                "DROP TABLE IF EXISTS " . $this->_getTableName(
-                    'sinch_manufacturers'
-                )
+                "DROP TABLE IF EXISTS " . $this->_getTableName('sinch_manufacturers')
             );
             $this->_doQuery(
-                "RENAME TABLE " . $this->_getTableName('manufacturers_temp') . "
-                          TO " . $this->_getTableName('sinch_manufacturers')
+                "RENAME TABLE {$manufacturers_temp} TO " . $this->_getTableName('sinch_manufacturers')
             );
             $this->_log("Finish parse " . FILE_MANUFACTURERS);
         } else {
