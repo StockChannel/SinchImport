@@ -4257,7 +4257,7 @@ class Sinch
             $this->_connection->query(
                 "UPDATE {$manufacturers_temp} smt
                 JOIN {$eav_attribute_option_value} eaov
-                    ON mt.manufacturer_name = eaov.value
+                    ON smt.manufacturer_name = eaov.value
                 JOIN {$eav_attribute_option} eao
                     ON eao.option_id = eaov.option_id
                 SET smt.shop_option_id = eaov.option_id
