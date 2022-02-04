@@ -170,7 +170,9 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 'sinch_related_products' //int(11) DEFAULT NULL
             ];
             foreach ($affectedTables as $table) {
-                $this->removeStoreProductId($installer, $table);
+                if ($installer->getConnection()->isTableExists($table)) {
+                    $this->removeStoreProductId($installer, $table);
+                }
             }
         }
 
@@ -193,14 +195,17 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $sinch_customer_group_price_cur = $installer->getTable('sinch_customer_group_price_cur');
             $sinch_customer_group_price_nxt = $installer->getTable('sinch_customer_group_price_nxt');
             //Alter the primary keys to not include price type
-            $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
-            $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
-            //Drop price_type
-            if ($connection->tableColumnExists($sinch_customer_group_price_cur, 'price_type')) {
-                $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
+            if ($connection->isTableExists($sinch_customer_group_price_cur)) {
+                $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
+                if ($connection->tableColumnExists($sinch_customer_group_price_cur, 'price_type')) {
+                    $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
+                }
             }
-            if ($connection->tableColumnExists($sinch_customer_group_price_nxt, 'price_type')) {
-                $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
+            if ($connection->isTableExists($sinch_customer_group_price_nxt)) {
+                $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
+                if ($connection->tableColumnExists($sinch_customer_group_price_nxt, 'price_type')) {
+                    $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
+                }
             }
             //Add Synonyms
             $this->insertSynonyms($installer);
@@ -210,7 +215,9 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $connection = $installer->getConnection();
             $sinch_import_status = $installer->getTable('sinch_import_status');
 
-            $connection->query("DROP TABLE $sinch_import_status");
+            if ($connection->isTableExists($sinch_import_status)) {
+                $connection->query("DROP TABLE $sinch_import_status");
+            }
             $connection->query("CREATE TABLE IF NOT EXISTS $sinch_import_status (
                 id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
                 message varchar(255) NOT NULL UNIQUE,
