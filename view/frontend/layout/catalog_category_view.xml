@@ -8,9 +8,7 @@
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" layout="2columns-left" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
 	<body>
 		<referenceBlock name="category.products.list">
-			<action method="setTemplate">
-				<argument name="template" xsi:type="string">SITC_Sinchimport::product/list.phtml</argument>
-			</action>
+			<block class="Magento\Catalog\Block\Product\ListProduct" name="category.product.list.overlay" as="overlay" template="product/image_overlay.phtml" />
 		</referenceBlock>
 	</body>
 </page>

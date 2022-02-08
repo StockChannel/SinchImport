@@ -101,4 +101,8 @@
         <plugin name="sitc_in_stock_filter" type="SITC\Sinchimport\Plugin\Elasticsuite\InventoryData" />
     </type>
     <!-- End Stock Filter -->
+
+    <type name="Magento\Catalog\Block\Product\Image">
+        <plugin name="image_badge_overlay" type="SITC\Sinchimport\Helper\Badges" sortOrder="0" />
+    </type>
 </config>
