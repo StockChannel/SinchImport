@@ -200,7 +200,7 @@ class CustomerGroupPrice extends AbstractImportSection {
                 IGNORE 1 LINES
                 (sinch_group_id, sinch_product_id, price_type, price)"
         );
-        $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext} WHERE price <= 0 OR price_type != 1");
+        $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext} WHERE price < 0 OR price_type != 1");
         $this->endTimingStep();
         
         $this->log("New rules loaded, calculating delta");
