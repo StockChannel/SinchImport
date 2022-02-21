@@ -25,3 +25,16 @@
     width: 100%;
     min-height: 400px;
 }
+.badge-custom{
+    width: 75px;
+    display: inline;
+    position: absolute;
+    left: 0;
+    color: #fff;
+    padding: 7px 10px;
+    z-index: 2;
+    top: 0;
+}
+a.product-item-photo {
+    position: relative;
+}

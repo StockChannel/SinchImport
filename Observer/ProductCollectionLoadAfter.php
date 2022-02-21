@@ -10,21 +10,25 @@ use Magento\Framework\Exception\NoSuchEntityException;
 use SITC\Sinchimport\Helper\Badges;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Logger\Logger;
+use SITC\Sinchimport\Plugin\Catalog\CategoryView;
 
 class ProductCollectionLoadAfter implements ObserverInterface
 {
     private Data $helper;
     private Badges $badgeHelper;
     private Logger $logger;
+    private CategoryView $categoryViewPlugin;
 
     public function __construct(
         Data $helper,
         Badges $badgeHelper,
-        Logger $logger
+        Logger $logger,
+        CategoryView $categoryViewPlugin
     ) {
         $this->helper = $helper;
         $this->badgeHelper = $badgeHelper;
         $this->logger = $logger;
+        $this->categoryViewPlugin = $categoryViewPlugin;
     }
 
 
@@ -34,11 +38,14 @@ class ProductCollectionLoadAfter implements ObserverInterface
         $filteredProductCollection = $observer->getCollection();
         $productCollection = clone $filteredProductCollection;
 
-//        $isExperimentalSearch = $this->helper->experimentalSearchEnabled() && $filteredProductCollection->getSize() > 4;
-//
-//        if ($isExperimentalSearch) {
-//            $this->badgeHelper->loadCachedBadgeProducts($filteredProductCollection);
-//        }
+        //TODO: move up in method so the return on L36 doesn't prevent this code from running
+        $isExperimentalSearch = $this->helper->experimentalSearchEnabled() && $filteredProductCollection->getSize() > 4;
+
+        if ($isExperimentalSearch) {
+            $badgeProducts = $this->badgeHelper->loadCachedBadgeProducts($filteredProductCollection);
+            $this->categoryViewPlugin->setProductCollection($badgeProducts);
+        }
+
 
         if(!$this->helper->isProductVisibilityEnabled() || $this->helper->isModuleEnabled('Smile_ElasticsuiteCatalog')){
             return; //No filtering if the feature isn't enabled or with Elasticsuite enabled (as thats handled by Plugin\Elasticsuite\ContainerConfiguration)

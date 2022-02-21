@@ -117,10 +117,10 @@ class Badges extends AbstractHelper
     }
 
     /**
-     * @param ProductCollection $products
+     * @param ProductCollection|null $products
      * @return mixed
      */
-    public function loadCachedBadgeProducts(ProductCollection $products)
+    public function loadCachedBadgeProducts(ProductCollection $products = null)
     {
         $cacheId = self::CACHE_ID . '|' . implode("," ,$products->getLoadedIds());
         $cachedBadges = $this->cache->load($cacheId);

@@ -36,5 +36,8 @@
     <type name="Smile\ElasticsuiteCore\Search\Request\Query\Builder">
         <plugin name="sitc_category_provider" type="SITC\Sinchimport\Plugin\Elasticsuite\Provider" sortOrder="0"/>
     </type>
+    <type name="Magento\Catalog\Block\Product\Image">
+        <plugin name="sitc_product_badges" type="SITC\Sinchimport\Plugin\Catalog\CategoryView" sortOrder="0"/>
+    </type>
     <!-- End search stuff-->
 </config>
