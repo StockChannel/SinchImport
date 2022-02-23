@@ -38,9 +38,9 @@ class CategoryView
             }
 
             $badgeImageUrl = $this->badgeHelper->getBadgeImageUrl($badgeType) ?? '';
-            $productImageUrl = $product->getName();
+            $productName = $product->getName();
 
-            if ($productImageUrl == $subject->getLabel()) {
+            if ($productName == $subject->getLabel()) {
                 $html = "<div class='badge-1 badge-custom'>
                     <img src='$badgeImageUrl' />
                 </div>";

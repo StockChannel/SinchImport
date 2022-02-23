@@ -38,16 +38,8 @@ class ProductCollectionLoadAfter implements ObserverInterface
         $filteredProductCollection = $observer->getCollection();
         $productCollection = clone $filteredProductCollection;
 
-        //TODO: move up in method so the return on L36 doesn't prevent this code from running
-        $isExperimentalSearch = $this->helper->experimentalSearchEnabled() && $filteredProductCollection->getSize() > 4;
-
-        if ($isExperimentalSearch) {
-            $badgeProducts = $this->badgeHelper->loadCachedBadgeProducts($filteredProductCollection);
-            $this->categoryViewPlugin->setProductCollection($badgeProducts);
-        }
-
-
         if(!$this->helper->isProductVisibilityEnabled() || $this->helper->isModuleEnabled('Smile_ElasticsuiteCatalog')){
+            $this->loadCachedProducts($filteredProductCollection);
             return; //No filtering if the feature isn't enabled or with Elasticsuite enabled (as thats handled by Plugin\Elasticsuite\ContainerConfiguration)
         }
 
@@ -73,6 +65,16 @@ class ProductCollectionLoadAfter implements ObserverInterface
                 ($blacklist && !in_array($account_group_id, $product_account_groups))) { //Blacklist and account group not in list
                 $filteredProductCollection->addItem($product);
             }
+        }
+
+        $this->loadCachedProducts($filteredProductCollection);
+    }
+
+    private function loadCachedProducts(Collection $productCollection): void
+    {
+        if ($this->helper->experimentalSearchEnabled() && $productCollection->getSize() > 4) {
+            $badgeProducts = $this->badgeHelper->loadCachedBadgeProducts($productCollection);
+            $this->categoryViewPlugin->setProductCollection($badgeProducts);
         }
     }
 }
