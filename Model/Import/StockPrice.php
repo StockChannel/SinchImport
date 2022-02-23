@@ -442,16 +442,25 @@ class StockPrice extends AbstractImportSection
             //Create stock records per distributor
             $this->startTimingStep('Insert new stock levels (MSI)');
 
-            /* The way reservations are handled here with clearStockReservations off may be subject to slight stock status errors
-             if a significant portion of the stock is reserved, multiple distributors have stock for the item and the distributors
-            have equal numbers of stock.
-            For example: 2 distributors each with 1 stock presents a problem if 1 is reserved, as reserv.per_disti will be 0.5,
-            thus marking both the sources' statuses as in stock (technically correct, but 1 of them should really be marked OOS as otherwise
-            its unclear if Magento will change the state of both to OOS when the last stock is reserved).
-             */
-            /** @noinspection SqlAggregates as it incorrectly categorizes reserved as not being aggregate */
-            $conn->query(
-                "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status) (
+            if ($this->helper->clearStockReservations()) {
+                $conn->query(
+                    "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status) (
+                    SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock > (0 + :threshold), 1, 0) FROM {$this->distiStockImportTable} sdsp  
+                        INNER JOIN {$this->catalog_product_entity} cpe ON sdsp.product_id = cpe.sinch_product_id
+                ) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), status = VALUES(status)",
+                    [':threshold' => $this->outOfStockThreshold]
+                );
+            } else {
+                /* The way reservations are handled here with clearStockReservations off may be subject to slight stock status errors
+                   if a significant portion of the stock is reserved, multiple distributors have stock for the item and the distributors
+                  have equal numbers of stock.
+                  For example: 2 distributors each with 1 stock presents a problem if 1 is reserved, as reserv.per_disti will be 0.5,
+                  thus marking both the sources' statuses as in stock (technically correct, but 1 of them should really be marked OOS as otherwise
+                  its unclear if Magento will change the state of both to OOS when the last stock is reserved).
+                   */
+                /** @noinspection SqlAggregates as it incorrectly categorizes reserved as not being aggregate */
+                $conn->query(
+                    "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status) (
                     SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock - COALESCE(reserv.reserved, 0) > (0 + :threshold), 1, 0) FROM {$this->distiStockImportTable} sdsp  
                     INNER JOIN {$this->catalog_product_entity} cpe
                         ON sdsp.product_id = cpe.sinch_product_id
@@ -479,11 +488,13 @@ class StockPrice extends AbstractImportSection
                     ) reserv
                         ON cpe.sku = reserv.sku
                 ) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), status = VALUES(status)",
-                [
-                    ':threshold' => $this->outOfStockThreshold,
-                    ':sinchStockId' => $stockId
-                ]
-            );
+                    [
+                        ':threshold' => $this->outOfStockThreshold,
+                        ':sinchStockId' => $stockId
+                    ]
+                );
+            }
+
             $this->endTimingStep();
 
             $this->startTimingStep('Insert marker records in single-source stock tables');
