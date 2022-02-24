@@ -336,7 +336,6 @@ class SearchProcessing extends AbstractHelper
 
             //Filter the aggregates to what we consider to be meaningful (i.e. exclude things like "Uncategorised Products")
             $inClause = implode(",", array_fill(0, count($catToCountMapping), '?'));
-            $this->logger->info(implode(", ", array_keys($catToCountMapping)));
             //The left join on the subquery combined with the IFNULL allows us to prioritize leaf categories without excluding parents
             // as the subquery only determines direct child counts, and thus parents (without products) are assumed to have the max viable (50k) product count
             $validCatSuggestions = $this->resourceConn->getConnection()->fetchPairs(

@@ -89,7 +89,7 @@ class QueryBuilder
 	 * @return QueryInterface
 	 * @SuppressWarnings("unused")
 	 */
-	public function aroundCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, callable $proceed, ContainerConfigurationInterface $containerConfig, $queryText, string $spellingType, float $boost = 1): ?QueryInterface
+	public function aroundCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, callable $proceed, ContainerConfigurationInterface $containerConfig, $queryText, string $spellingType, float $boost = 1): QueryInterface
 	{
 		if (!$this->helper->experimentalSearchEnabled()) {
 			return $proceed($containerConfig, $queryText, $spellingType, $boost);
@@ -113,7 +113,7 @@ class QueryBuilder
 
 		//If this isn't a product autocomplete suggestion or an AJAX call and category match is successful return early
 		if ($this->checkRedirect($containerConfig, $queryText, $queryFilters)) {
-			return null;
+			return $this->queryFactory->create(QueryInterface::TYPE_BOOL, []);
 		}
 
 		//This results in modified query text if the query matched the price regex
