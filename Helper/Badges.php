@@ -44,7 +44,6 @@ class Badges extends AbstractHelper
     private Logger $logger;
     private CacheInterface $cache;
     private Json $serializer;
-    private Context $context;
 
     /**
      * @param Data $helper
