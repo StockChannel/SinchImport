@@ -24,7 +24,7 @@
             <?php foreach ($_additional as $_data) :?>
                 <?php 
                     $label = $block->escapeHtml($_data['label']);
-                    if($label == 'PDF URLs'):
+                    if($label == 'PDF URLs' || $label == 'Product Manuals (HTML)'):
                 ?>
                     <tr>
                         <th class="col label" scope="row"><?= $block->escapeHtml($_data['label']) ?></th>

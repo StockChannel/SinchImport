@@ -1,0 +1,19 @@
+<?php
+/** @var $block Magento\Catalog\Block\Product\ProductList\Item\Block */
+
+const SUMMARY_FEATURE_COUNT = 4;
+$product = $block->getProduct();
+if (!$product) return;
+
+$summaryFeatures = [];
+for ($i = 1; $i <= SUMMARY_FEATURE_COUNT; $i++) {
+    $summaryFeatures[] = $product->getData("sinch_summary_$i");
+}
+if ( !empty($summaryFeatures) ) :
+echo "<div class='sitc-summary-features'><ul>";
+        foreach($summaryFeatures as $feature)
+        {
+        echo "<li>" . $feature . "</li>";
+        }
+        echo "</ul></div>";
+endif;

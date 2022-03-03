@@ -25,12 +25,17 @@ class CategoryView
         $this->productRepository = $productRepository;
     }
 
+    /**
+     * @param Image $subject
+     * @param $result
+     *
+     * @return mixed|string
+     * @SuppressWarnings('unused')
+     */
     public function afterToHtml(Image $subject, $result)
     {
-        $badgeProducts = $this->productCollection;
-
         foreach (array_keys(Badges::BADGE_TYPES) as $badgeType) {
-            $badgeTypeProductId = $badgeProducts[$badgeType] ?? -1;
+            $badgeTypeProductId = $this->productCollection[$badgeType] ?? -1;
             try {
                 $product = $this->productRepository->getById($badgeTypeProductId);
             } catch (\Exception $e) {

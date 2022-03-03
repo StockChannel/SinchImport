@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
-    <body>
-		<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.bullet.points" as="bullet.points" before="-" template="SITC_Sinchimport::bullet-points.phtml"></block>
+	<body>
+		<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.bullet.points" as="bullet.points" before="-" template="SITC_Sinchimport::bullet-points.phtml"/>
 							<!-- <referenceBlock name="product.info.details">
 								
 								<block class="Magento\Catalog\Block\Product\View\Attributes" name="product.expert.reviews" as="expert.reviews" template="SITC_Sinchimport::expert-reviews.phtml" group="detailed_info">
@@ -42,7 +42,7 @@
 				</arguments>
 			</block>
 		</referenceBlock>
-		<move element="product.bullet.points" destination="product.info.main" before="product.info.price"/>
-		
+
+		<move element="product.bullet.points" destination="product.info.main" after="product.info.stock.sku"/>
     </body>
 </page>
