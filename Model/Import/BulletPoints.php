@@ -79,10 +79,11 @@ class BulletPoints extends AbstractImportSection {
 
         $this->startTimingStep('Insert Product Summary values');
         $summaryVals = [
-            "list_summary1" => $this->dataHelper->getProductAttributeId('sinch_summary_1'),
-            "list_summary2" => $this->dataHelper->getProductAttributeId('sinch_summary_2'),
-            "list_summary3" => $this->dataHelper->getProductAttributeId('sinch_summary_3'),
-            "list_summary4" => $this->dataHelper->getProductAttributeId('sinch_summary_4')
+            "list_summary_title_1" => $this->dataHelper->getProductAttributeId('sinch_summary_title_1'),
+            "list_summary_value_1" => $this->dataHelper->getProductAttributeId('sinch_summary_value_1'),
+            "list_summary_title_2" => $this->dataHelper->getProductAttributeId('sinch_summary_title_2'),
+            "list_summary_title_3" => $this->dataHelper->getProductAttributeId('sinch_summary_title_3'),
+            "list_summary_title_4" => $this->dataHelper->getProductAttributeId('sinch_summary_title_4')
         ];
         foreach ($summaryVals as $field => $attributeId) {
             $this->getConnection()->query(

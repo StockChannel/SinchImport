@@ -1847,10 +1847,14 @@ class Sinch {
                          implied_sales_month int(11) NOT NULL DEFAULT 0,
                          implied_sales_year int(11) NOT NULL DEFAULT 0,
                          searches int(11) NOT NULL DEFAULT 0,
-                         list_summary1 varchar(255),
-                         list_summary2 varchar(255),
-                         list_summary3 varchar(255),
-                         list_summary4 varchar(255),
+                         list_summary_title_1 varchar(255),
+                         list_summary_value_1 varchar(255),
+                         list_summary_title_2 varchar(255),
+                         list_summary_value_2 varchar(255),
+                         list_summary_title_3 varchar(255),
+                         list_summary_value_3 varchar(255),
+                         list_summary_title_4 varchar(255),
+                         list_summary_value_4 varchar(255),
                          manufacturer_name varchar(255) default NULL,
                          store_category_id int(11),
                          KEY pt_store_category_product_id (`store_category_id`),
@@ -1862,7 +1866,7 @@ class Sinch {
             );
             $this->print("--Parse Products 2");
 
-            //Products CSV is ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|LastYearSales|LastMonthSales|Searches|Feature1|Feature2|Feature3|Feature4
+            //Products CSV is ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|LastYearSales|LastMonthSales|Searches|Feature1|Value1|Feature2|Value2|Feature3|Value3|Feature4|Value4
             $this->_doQuery(
                 "LOAD DATA LOCAL INFILE '" . $productsCsv . "'
                           INTO TABLE " . $this->getTableName('products_temp') . "
@@ -1894,10 +1898,14 @@ class Sinch {
                             implied_sales_year,
                             implied_sales_month,
                             searches,
-                            list_summary1,
-                            list_summary2,
-                            list_summary3,
-                            list_summary4
+                            list_summary_title_1,
+                            list_summary_value_1,
+                            list_summary_title_2,
+                            list_summary_value_2,
+                            list_summary_title_3,
+                            list_summary_value_3,
+                            list_summary_title_4,
+                            list_summary_value_4
                           )"
             );
 

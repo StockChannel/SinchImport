@@ -91,6 +91,10 @@ class UpgradeData implements UpgradeDataInterface
             $this->nileUpgrade252($eavSetup);
         }
 
+        if (version_compare($context->getVersion(),'2.5.3', '<')) {
+            $this->nileUpgrade253($eavSetup);
+        }
+
         $installer->endSetup();
     }
 
@@ -688,6 +692,47 @@ class UpgradeData implements UpgradeDataInterface
         $attrArr = ['sinch_score', 'sinch_popularity_month', 'sinch_popularity_year', 'sinch_searches'];
         foreach ($attrArr as $attr) {
             $eavSetup->updateAttribute($entityTypeId, $attr, 'is_used_for_promo_rules', 1);
+        }
+    }
+
+    /**
+     * @param EavSetup $eavSetup
+     * @throws LocalizedException
+     * @throws Zend_Validate_Exception
+     */
+    private function nileUpgrade253(EavSetup $eavSetup)
+    {
+        //Add the attributes for the list summary fields
+        $summaryOpts = [
+            'note' => 'Part of Stockinthechannel summary features',
+            'type' => 'text',
+            'input' => 'text',
+            'backend' => '',
+            'frontend' => '',
+            'source' => '',
+            'global' => ScopedAttributeInterface::SCOPE_GLOBAL,
+            'visible' => true,
+            'required' => false,
+            'user_defined' => false,
+            'searchable' => false,
+            'filterable' => false,
+            'comparable' => false,
+            'visible_on_front' => true,
+            'visible_in_advanced_search' => false,
+            'unique' => false,
+            'group' => 'General'
+        ];
+
+        //4 summary attributes per product, so loop through 4 times
+        for ($i = 1; $i <= 4; $i++) {
+            foreach (['title', 'value'] as $attr) {
+                $attrCode = "sinch_summary_{$attr}_$i";
+                $eavSetup->addAttribute(
+                    Product::ENTITY,
+                    $attrCode,
+                    array_merge($summaryOpts, ['label' => "Summary Feature $attr $i"])
+                );
+            }
         }
     }
 
