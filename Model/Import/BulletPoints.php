@@ -78,16 +78,14 @@ class BulletPoints extends AbstractImportSection {
         $this->endTimingStep();
 
         $this->startTimingStep('Insert Product Summary values');
-        $summaryVals = [
-            "list_summary_title_1" => $this->dataHelper->getProductAttributeId('sinch_summary_title_1'),
-            "list_summary_value_1" => $this->dataHelper->getProductAttributeId('sinch_summary_value_1'),
-            "list_summary_title_2" => $this->dataHelper->getProductAttributeId('sinch_summary_title_2'),
-            "list_summary_value_2" => $this->dataHelper->getProductAttributeId('sinch_summary_value_2'),
-            "list_summary_title_3" => $this->dataHelper->getProductAttributeId('sinch_summary_title_3'),
-            "list_summary_value_3" => $this->dataHelper->getProductAttributeId('sinch_summary_value_3'),
-            "list_summary_title_4" => $this->dataHelper->getProductAttributeId('sinch_summary_title_4'),
-            "list_summary_value_4" => $this->dataHelper->getProductAttributeId('sinch_summary_value_4')
-        ];
+        $summaryVals = [];
+        for ($i = 1; $i <= 4; $i++) {
+            foreach (['title', 'value'] as $attr) {
+                $summaryVals[] = [
+                    "list_summary_{$attr}_{$i}" => $this->dataHelper->getProductAttributeId("sinch_summary_{$attr}_{$i}")
+                ];
+            }
+        }
         foreach ($summaryVals as $field => $attributeId) {
             $this->getConnection()->query(
                 "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
