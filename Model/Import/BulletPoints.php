@@ -82,8 +82,11 @@ class BulletPoints extends AbstractImportSection {
             "list_summary_title_1" => $this->dataHelper->getProductAttributeId('sinch_summary_title_1'),
             "list_summary_value_1" => $this->dataHelper->getProductAttributeId('sinch_summary_value_1'),
             "list_summary_title_2" => $this->dataHelper->getProductAttributeId('sinch_summary_title_2'),
+            "list_summary_value_2" => $this->dataHelper->getProductAttributeId('sinch_summary_value_2'),
             "list_summary_title_3" => $this->dataHelper->getProductAttributeId('sinch_summary_title_3'),
-            "list_summary_title_4" => $this->dataHelper->getProductAttributeId('sinch_summary_title_4')
+            "list_summary_value_3" => $this->dataHelper->getProductAttributeId('sinch_summary_value_3'),
+            "list_summary_title_4" => $this->dataHelper->getProductAttributeId('sinch_summary_title_4'),
+            "list_summary_value_4" => $this->dataHelper->getProductAttributeId('sinch_summary_value_4')
         ];
         foreach ($summaryVals as $field => $attributeId) {
             $this->getConnection()->query(
