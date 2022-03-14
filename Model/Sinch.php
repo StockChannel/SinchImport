@@ -4567,7 +4567,7 @@ class Sinch
             $this->print("--Parse Products 6");
 
             $this->addProductsWebsite();
-            $this->mapSinchProducts($replace_merge_product);
+            $this->mapProducts();
 
             $this->print("--Parse Products 7");
 
@@ -4586,8 +4586,7 @@ class Sinch
 
             $this->print("--Parse Products 8");
 
-            $this->mapSinchProducts($replace_merge_product, true);
-            $this->addManufacturer_attribute();
+            $this->mapProducts();
             $this->_doQuery(
                 "DROP TABLE IF EXISTS " . $this->_getTableName('sinch_products')
             );
@@ -4653,252 +4652,127 @@ class Sinch
         }
     }
 
-    private function mapSinchProducts($mode = 'MERGE', $mapping_again = false)
+    private function mapProducts()
     {
-        $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $this->_getTableName(
-                'sinch_products_mapping_temp'
-            )
+        $sinch_products_mapping_temp = $this->_getTableName('sinch_products_mapping_temp');
+        $catalog_product_entity = $this->_getTableName('catalog_product_entity');
+        $products_temp = $this->_getTableName('products_temp');
+        $sinch_manufacturers = $this->_getTableName('sinch_manufacturers');
+        $eav_attribute_option_value = $this->_getTableName('eav_attribute_option_value');
+
+        $this->_connection->query(
+            "DROP TABLE IF EXISTS $sinch_products_mapping_temp"
         );
-        $this->_doQuery(
-            "CREATE TABLE " . $this->_getTableName(
-                'sinch_products_mapping_temp'
-            ) . " (
-                      entity_id int(11) unsigned NOT NULL,
-                      manufacturer_option_id int(11),
-                      manufacturer_name varchar(255),
-                      shop_store_product_id int(11),
-                      shop_sinch_product_id int(11),
-                      sku varchar(64) default NULL,
-                      store_product_id int(11),
-                      sinch_product_id int(11),
-                      product_sku varchar(255),
-                      sinch_manufacturer_id int(11),
-                      sinch_manufacturer_name varchar(255),
-                      KEY entity_id (entity_id),
-                      KEY manufacturer_option_id (manufacturer_option_id),
-                      KEY manufacturer_name (manufacturer_name),
-                      KEY sinch_manufacturer_id (sinch_manufacturer_id),
-                      KEY sinch_manufacturer_name (sinch_manufacturer_name),
-                      KEY store_product_id (store_product_id),
-                      KEY sinch_product_id (sinch_product_id),
-                      KEY sku (sku),
-                      KEY product_sku (product_sku),
-                      UNIQUE KEY(entity_id)
-                          )
-                          "
-        );
-
-        $productEntityTable = $this->_getTableName('catalog_product_entity');
-
-        // backup Product ID in REWRITE mode
-        $productsBackupTable = $this->_getTableName('sinch_product_backup');
-        if ($mode == 'REWRITE' && !$mapping_again
-            && $this->_checkDataExist(
-                $productsBackupTable
-            )
-        ) {
-            $productEntityTable = $productsBackupTable;
-        }
-        // (end) backup Product ID in REWRITE mode
-
-        $this->_doQuery(
-            "
-                                INSERT ignore INTO " . $this->_getTableName(
-                'sinch_products_mapping_temp'
-            ) . " (
-                                    entity_id,
-                                    sku,
-                                    shop_store_product_id,
-                                    shop_sinch_product_id
-                                )(SELECT
-                                    entity_id,
-                                    sku,
-                                    store_product_id,
-                                    sinch_product_id
-                                  FROM " . $productEntityTable . "
-                                 )
-                              "
+        $this->_connection->query(
+            "CREATE TABLE $sinch_products_mapping_temp (
+                  entity_id int(11) unsigned NOT NULL,
+                  sku varchar(64) NOT NULL,
+                  manufacturer_option_id int(11),
+                  manufacturer_name varchar(255),
+                  shop_store_product_id int(11),
+                  shop_sinch_product_id int(11),
+                  store_product_id int(11),
+                  sinch_product_id int(11),
+                  product_sku varchar(255),
+                  sinch_manufacturer_id int(11),
+                  sinch_manufacturer_name varchar(255),
+                  KEY entity_id (entity_id),
+                  KEY manufacturer_option_id (manufacturer_option_id),
+                  KEY manufacturer_name (manufacturer_name),
+                  KEY sinch_manufacturer_id (sinch_manufacturer_id),
+                  KEY sinch_manufacturer_name (sinch_manufacturer_name),
+                  KEY store_product_id (store_product_id),
+                  KEY sinch_product_id (sinch_product_id),
+                  UNIQUE KEY sku (sku),
+                  UNIQUE KEY product_sku (product_sku),
+                  UNIQUE KEY(entity_id)
+            )"
         );
 
-        $this->addManufacturers(1);
-
-        $q = "UPDATE " . $this->_getTableName('sinch_products_mapping_temp') . " pmt
-            JOIN " . $this->_getTableName('catalog_product_index_eav') . " cpie
-                ON pmt.entity_id=cpie.entity_id
-            JOIN " . $this->_getTableName('eav_attribute_option_value') . " aov
-                ON cpie.value=aov.option_id
-            SET
-                manufacturer_option_id=cpie.value,
-                manufacturer_name=aov.value
-            WHERE cpie.attribute_id=" . $this->_getProductAttributeId(
-                'manufacturer'
-            );
-        $this->_doQuery($q);
-
-        $q = "UPDATE " . $this->_getTableName('sinch_products_mapping_temp') . " pmt
-            JOIN " . $this->_getTableName('products_temp') . " p
-                ON pmt.sku=p.product_sku
-            SET
-                pmt.store_product_id=p.store_product_id,
-                pmt.sinch_product_id=p.sinch_product_id,
-                pmt.product_sku=p.product_sku,
-                pmt.sinch_manufacturer_id=p.sinch_manufacturer_id,
-                pmt.sinch_manufacturer_name=p.manufacturer_name";
-
-        $this->_doQuery($q);
-
-        $q = "UPDATE " . $this->_getTableName('catalog_product_entity') . " cpe
-            JOIN " . $this->_getTableName('sinch_products_mapping_temp') . " pmt
-                ON cpe.entity_id=pmt.entity_id
-            SET cpe.store_product_id=pmt.store_product_id,
-                cpe.sinch_product_id=pmt.sinch_product_id
-            WHERE
-                cpe.sinch_product_id IS NULL
-                AND pmt.sinch_product_id IS NOT NULL
-                AND cpe.store_product_id IS NULL
-                AND pmt.store_product_id IS NOT NULL";
-        $this->_doQuery($q);
-
-        $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $this->_getTableName(
-                'sinch_products_mapping'
-            )
+        //Ignore to drop rows which break the unique key constraints silently
+        $this->_connection->query(
+            "INSERT ignore INTO $sinch_products_mapping_temp (
+                entity_id,
+                sku,
+                shop_store_product_id,
+                shop_sinch_product_id
+            )(
+                SELECT
+                entity_id,
+                sku,
+                store_product_id,
+                sinch_product_id
+              FROM $catalog_product_entity
+             )"
         );
-        $this->_doQuery(
-            "RENAME TABLE " . $this->_getTableName(
-                'sinch_products_mapping_temp'
-            ) . "
-                      TO " . $this->_getTableName('sinch_products_mapping')
+
+        $this->_connection->query(
+            "UPDATE $sinch_products_mapping_temp pmt
+                INNER JOIN $products_temp pt
+                    ON pmt.sinch_product_id = pt.sinch_product_id
+                INNER JOIN $sinch_manufacturers sm
+                    ON pt.sinch_manufacturer_id = sm.sinch_manufacturer_id
+                INNER JOIN $eav_attribute_option_value eaov
+                    ON sm.shop_option_id = eaov.option_id
+                SET
+                    pmt.manufacturer_option_id = sm.shop_option_id,
+                    pmt.manufacturer_name = pt.manufacturer_name"
         );
+
+        $this->_connection->query(
+            "UPDATE $sinch_products_mapping_temp pmt
+                INNER JOIN $products_temp pt
+                    ON pmt.sku = pt.product_sku
+                SET
+                    pmt.store_product_id = pt.store_product_id,
+                    pmt.sinch_product_id = pt.sinch_product_id,
+                    pmt.product_sku = pt.product_sku,
+                    pmt.sinch_manufacturer_id = pt.sinch_manufacturer_id,
+                    pmt.sinch_manufacturer_name = pt.manufacturer_name"
+        );
+
+        $this->_connection->query(
+            "UPDATE $catalog_product_entity cpe
+                INNER JOIN $sinch_products_mapping_temp pmt
+                    ON cpe.entity_id = pmt.entity_id
+                SET cpe.store_product_id = pmt.store_product_id,
+                    cpe.sinch_product_id = pmt.sinch_product_id
+                WHERE
+                    (cpe.sinch_product_id IS NULL
+                    AND pmt.sinch_product_id IS NOT NULL
+                    AND cpe.store_product_id IS NULL
+                    AND pmt.store_product_id IS NOT NULL)
+                    OR cpe.store_product_id != pmt.store_product_id
+                    OR cpe.sinch_product_id != pmt.sinch_product_id"
+        );
+
+        $sinch_products_mapping = $this->_getTableName('sinch_products_mapping');
+        $this->_connection->query("DROP TABLE IF EXISTS $sinch_products_mapping");
+        $this->_connection->query("RENAME TABLE $sinch_products_mapping_temp TO $sinch_products_mapping");
     }
 
-    private function addManufacturers($delete_eav = null)
+    private function addManufacturers()
     {
-        // this cleanup is not needed due to foreign keys
-        if (!$delete_eav) {
-            $this->_doQuery(
-                "
-                                    DELETE FROM " . $this->_getTableName(
-                    'catalog_product_index_eav'
-                ) . "
-                                    WHERE attribute_id = "
-                . $this->_getProductAttributeId(
-                    'manufacturer'
-                )//." AND store_id = ".$websiteId
-            );
-        }
-        $this->addManufacturer_attribute();
-
-        $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_index_eav'
-            ) . " (
-                                    entity_id,
-                                    attribute_id,
-                                    store_id,
-                                    value
-                                )(
-                                  SELECT
-                                    a.entity_id,
-                                    " . $this->_getProductAttributeId(
-                'manufacturer'
-            ) . ",
-                                    w.website,
-                                    mn.shop_option_id
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                'products_temp'
-            ) . " b
-                                    ON a.store_product_id = b.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'products_website_temp'
-            ) . " w
-                                    ON a.store_product_id=w.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'sinch_manufacturers'
-            ) . " mn
-                                    ON b.sinch_manufacturer_id=mn.sinch_manufacturer_id
-                                  WHERE mn.shop_option_id IS NOT NULL
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = mn.shop_option_id
-                              "
-        );
-
-        $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_index_eav'
-            ) . " (
-                                    entity_id,
-                                    attribute_id,
-                                    store_id,
-                                    value
-                                )(
-                                  SELECT
-                                    a.entity_id,
-                                    " . $this->_getProductAttributeId(
-                'manufacturer'
-            ) . ",
-                                    0,
-                                    mn.shop_option_id
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                'products_temp'
-            ) . " b
-                                    ON a.store_product_id = b.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'products_website_temp'
-            ) . " w
-                                    ON a.store_product_id=w.store_product_id
-                                  INNER JOIN " . $this->_getTableName(
-                'sinch_manufacturers'
-            ) . " mn
-                                    ON b.sinch_manufacturer_id=mn.sinch_manufacturer_id
-                                  WHERE mn.shop_option_id IS NOT NULL
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = mn.shop_option_id
-                              "
-        );
-    }
-
-    private function addManufacturer_attribute()
-    {
-        $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_int'
-            ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(
-                                  SELECT
-                                    " . $this->_getProductAttributeId(
-                'manufacturer'
-            ) . ",
-                                    0,
-                                    a.entity_id,
-                                    pm.manufacturer_option_id
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                'sinch_products_mapping'
-            ) . " pm
-                                    ON a.entity_id = pm.entity_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = pm.manufacturer_option_id
-                              "
+        $catalog_product_entity_int = $this->_getTableName('catalog_product_entity_int');
+        $this->_connection->query(
+            "INSERT INTO $catalog_product_entity_int (
+                attribute_id,
+                store_id,
+                entity_id,
+                value
+            )(
+              SELECT
+                :manufacturerAttr,
+                0,
+                a.entity_id,
+                pm.manufacturer_option_id
+              FROM catalog_product_entity a
+              INNER JOIN sinch_products_mapping pm
+                ON a.entity_id = pm.entity_id
+            )
+            ON DUPLICATE KEY UPDATE
+                value = pm.manufacturer_option_id",
+            [':manufacturerAttr' => $this->_getProductAttributeId('manufacturer')]
         );
     }
 
@@ -4991,20 +4865,6 @@ class Sinch
                               "
         );
 
-
-        //TODO: Why is this here, should be deleted by foreign key checks
-//        $this->_doQuery(
-//            "DELETE cpei
-//                                FROM  " . $this->_getTableName(
-//                'catalog_product_entity_int'
-//            ) . " cpei
-//                                LEFT JOIN " . $this->_getTableName(
-//                'catalog_product_entity'
-//            ) . " cpe
-//                                    ON cpei.entity_id=cpe.entity_id
-//                                WHERE cpe.entity_id IS NULL"
-//        );
-
         //Set enabled
         $this->_doQuery(
             "
@@ -5060,20 +4920,6 @@ class Sinch
                               "
         );
 
-        //Unifying products with categories.
-        //TODO: Why is this here, they should be deleted by foreign key checks when necessary
-//        $this->_doQuery(
-//            "DELETE ccp
-//                                FROM " . $this->_getTableName(
-//                'catalog_category_product'
-//            ) . " ccp
-//                                LEFT JOIN " . $this->_getTableName(
-//                'catalog_product_entity'
-//            ) . " cpe
-//                                    ON ccp.product_id=cpe.entity_id
-//                                WHERE cpe.entity_id IS NULL"
-//        );
-
         //TODO: This seems to change category mapping to the root category when the actual category doesn't exist
         $this->_doQuery(
             "UPDATE IGNORE " . $this->_getTableName('catalog_category_product')
@@ -5085,18 +4931,6 @@ class Sinch
                                 SET ccp.category_id=" . $this->_rootCat . "
                                 WHERE cce.entity_id IS NULL"
         );
-
-        //TODO: Why is this here, they should be deleted by foreign key checks when necessary
-//        $this->_doQuery(
-//            "DELETE ccp FROM " . $this->_getTableName(
-//                'catalog_category_product'
-//            ) . " ccp
-//                                LEFT JOIN " . $this->_getTableName(
-//                'catalog_category_entity'
-//            ) . " cce
-//                                    ON ccp.category_id=cce.entity_id
-//                                WHERE cce.entity_id IS NULL"
-//        );
 
         $this->_doQuery(
             " DROP TABLE IF EXISTS " . $this->_getTableName(
@@ -5174,33 +5008,6 @@ class Sinch
                                     AND ccp.category_id=ccpfd.category_id"
         );
 
-//        //TODO: This adds category mapping for the "primary" category of a product (i.e. the value present in products_temp.store_category_id). It only adds one row per product
-//        $this->_doQuery(
-//            "
-//                                INSERT INTO " . $this->_getTableName(
-//                'catalog_category_product'
-//            ) . " (
-//                                    category_id,
-//                                    product_id
-//                                )(SELECT
-//                                    scm.shop_entity_id,
-//                                    cpe.entity_id
-//                                  FROM " . $this->_getTableName(
-//                'catalog_product_entity'
-//            ) . " cpe
-//                                  JOIN " . $this->_getTableName('products_temp')
-//            . " p
-//                                    ON cpe.store_product_id=p.store_product_id
-//                                  JOIN " . $this->_getTableName(
-//                'sinch_categories_mapping'
-//            ) . " scm
-//                                    ON p.store_category_id=scm.store_category_id
-//                                )
-//                                ON DUPLICATE KEY UPDATE
-//                                    product_id = cpe.entity_id
-//                              "
-//        );
-        //add multi categories;
         $catalog_category_product = $this->_getTableName("catalog_category_product");
         $sinch_product_categories = $this->_getTableName("sinch_product_categories");
         $catalog_product_entity = $this->_getTableName("catalog_product_entity");
@@ -5214,108 +5021,6 @@ class Sinch
             INNER JOIN $sinch_categories_mapping scm
                 ON spc.store_category_id = scm.store_category_id
         ) ON DUPLICATE KEY UPDATE product_id = cpe.entity_id, category_id = scm.shop_entity_id");
-//        //TODO: This reads category mappings from sinch_product_categories and inserts them into catalog_category_product. Its even dumber than above, as it only reads a single mapping for each entry in catalog_product_entity
-//        $this->_doQuery(
-//            "
-//                                INSERT INTO " . $this->_getTableName(
-//                'catalog_category_product'
-//            ) . "
-//                                (category_id,  product_id)
-//                                (SELECT
-//                                 scm.shop_entity_id,
-//                                 cpe.entity_id
-//                                 FROM " . $this->_getTableName(
-//                'catalog_product_entity'
-//            ) . " cpe
-//                                 JOIN " . $this->_getTableName('products_temp')
-//            . " p
-//                                 ON cpe.store_product_id = p.store_product_id
-//                                 JOIN " . $this->_getTableName(
-//                'sinch_product_categories'
-//            ) . " spc
-//                                 ON p.store_product_id=spc.store_product_id
-//                                 JOIN " . $this->_getTableName(
-//                'sinch_categories_mapping'
-//            ) . " scm
-//                                 ON spc.store_category_id = scm.store_category_id
-//                                )
-//                                ON DUPLICATE KEY UPDATE
-//                                product_id = cpe.entity_id
-//                                "
-//        );
-        //Indexing products and categories in the shop
-        //TODO: Remove operations on index tables
-//        $this->_doQuery(
-//            "DELETE ccpi
-//                                FROM " . $this->_getTableName(
-//                'catalog_category_product_index'
-//            ) . " ccpi
-//                                LEFT JOIN " . $this->_getTableName(
-//                'catalog_product_entity'
-//            ) . " cpe
-//                                    ON ccpi.product_id=cpe.entity_id
-//                                WHERE cpe.entity_id IS NULL"
-//        );
-
-        //TODO: Remove operations on index tables
-//        $this->_doQuery(
-//            "
-//                                INSERT INTO " . $this->_getTableName(
-//                'catalog_category_product_index'
-//            ) . " (
-//                                    category_id,
-//                                    product_id,
-//                                    position,
-//                                    is_parent,
-//                                    store_id,
-//                                    visibility
-//                                )(
-//                                  SELECT
-//                                    a.category_id,
-//                                    a.product_id,
-//                                    a.position,
-//                                    1,
-//                                    b.store_id,
-//                                    4
-//                                  FROM " . $this->_getTableName(
-//                'catalog_category_product'
-//            ) . " a
-//                                  INNER JOIN " . $this->_getTableName('store') . " b
-//                                )
-//                                ON DUPLICATE KEY UPDATE
-//                                    visibility = 4
-//                              "
-//        );
-
-        //TODO: Remove operations on index tables
-//        $this->_doQuery(
-//            "
-//                                INSERT ignore INTO " . $this->_getTableName(
-//                'catalog_category_product_index'
-//            ) . " (
-//                                    category_id,
-//                                    product_id,
-//                                    position,
-//                                    is_parent,
-//                                    store_id,
-//                                    visibility
-//                                )(
-//                                  SELECT
-//                                    " . $this->_rootCat . ",
-//                                    a.product_id,
-//                                    a.position,
-//                                    1,
-//                                    b.store_id,
-//                                    4
-//                                  FROM " . $this->_getTableName(
-//                'catalog_category_product'
-//            ) . " a
-//                                  INNER JOIN " . $this->_getTableName('store') . " b
-//                                )
-//                                ON DUPLICATE KEY UPDATE
-//                                    visibility = 4
-//                              "
-//        );
 
         //Set product name for specific web sites
         $this->_doQuery(
@@ -6945,17 +6650,6 @@ class Sinch
         );
 
         $this->print("--Replace Magento Multistore 6...");
-
-        //TODO: Why is this here, should be deleted by foreign key checks
-//        $this->_doQuery(
-//            "
-//            DELETE ccp
-//            FROM $catalog_category_product ccp
-//            LEFT JOIN $catalog_product_entity cpe
-//                ON ccp.product_id = cpe.entity_id
-//            WHERE cpe.entity_id IS NULL"
-//        );
-
         $this->print("--Replace Magento Multistore 7...");
 
         $rootCats = $this->_getTableName('rootCats');
@@ -6990,17 +6684,6 @@ class Sinch
         );
 
         $this->print("--Replace Magento Multistore 9...");
-
-        //TODO: Why is this here, should be deleted by foreign key checks
-//        $this->_doQuery(
-//            "
-//            DELETE ccp
-//            FROM $catalog_category_product ccp
-//            LEFT JOIN $catalog_category_entity cce
-//                ON ccp.category_id = cce.entity_id
-//            WHERE cce.entity_id IS NULL"
-//        );
-
         $this->print("--Replace Magento Multistore 10...");
 
         $catalog_category_product_for_delete_temp = $catalog_category_product
@@ -7080,25 +6763,6 @@ class Sinch
         );
 
         $this->print("--Replace Magento Multistore 15...");
-
-//        //TODO: This adds category mapping for the "primary" category of a product (i.e. the value present in products_temp.store_category_id). It only adds one row per product
-//        $this->_doQuery(
-//            "
-//            INSERT INTO $catalog_category_product
-//                (category_id,  product_id)
-//            (SELECT
-//                scm.shop_entity_id,
-//                cpe.entity_id
-//            FROM $catalog_product_entity cpe
-//            JOIN $products_temp p
-//                ON cpe.store_product_id = p.store_product_id
-//            JOIN $sinch_categories_mapping scm
-//                ON p.store_category_id = scm.store_category_id
-//            )
-//            ON DUPLICATE KEY UPDATE
-//                product_id = cpe.entity_id"
-//        );
-//
         $this->print("--Replace Magento Multistore 16 (add multi categories)...");
         $sinch_product_categories = $this->_getTableName('sinch_product_categories');
 
@@ -7110,83 +6774,10 @@ class Sinch
             INNER JOIN $sinch_categories_mapping scm
                 ON spc.store_category_id = scm.store_category_id
         ) ON DUPLICATE KEY UPDATE product_id = cpe.entity_id, category_id = scm.shop_entity_id");
-//
-//        //TODO: This reads category mappings from sinch_product_categories and inserts them into catalog_category_product. Its even dumber than above, as it only reads a single mapping for each entry in catalog_product_entity
-//        $this->_doQuery(
-//            "
-//        INSERT INTO $catalog_category_product
-//        (category_id,  product_id)
-//        (SELECT
-//         scm.shop_entity_id,
-//         cpe.entity_id
-//         FROM $catalog_product_entity cpe
-//         JOIN $products_temp p
-//         ON cpe.store_product_id = p.store_product_id
-//         JOIN " . $this->_getTableName('sinch_product_categories') . " spc
-//         ON p.store_product_id=spc.store_product_id
-//         JOIN $sinch_categories_mapping scm
-//         ON spc.store_category_id = scm.store_category_id
-//        )
-//        ON DUPLICATE KEY UPDATE
-//        product_id = cpe.entity_id
-//        "
-//        );
 
         $this->print("--Replace Magento Multistore 17...");
-
-        //TODO: Remove operations on index tables
-//        $this->_doQuery(
-//            "
-//            DELETE ccpi
-//            FROM $catalog_category_product_index ccpi
-//            LEFT JOIN $catalog_product_entity cpe
-//                ON ccpi.product_id = cpe.entity_id
-//            WHERE cpe.entity_id IS NULL"
-//        );
-
         $this->print("--Replace Magento Multistore 18....");
-
-        //TODO: Remove operations on index tables
-//        $this->retriableQuery(
-//            "
-//            INSERT INTO $catalog_category_product_index
-//                (category_id, product_id, position, is_parent, store_id, visibility)
-//            (SELECT
-//                a.category_id,
-//                a.product_id,
-//                a.position,
-//                1,
-//                b.store_id,
-//                4
-//            FROM $catalog_category_product a
-//            JOIN $core_store b
-//            )
-//            ON DUPLICATE KEY UPDATE
-//                visibility = 4"
-//        );
         $this->print("--Replace Magento Multistore 19...");
-
-        //TODO: Remove operations on index tables
-//        $this->retriableQuery(
-//            "
-//            INSERT ignore INTO $catalog_category_product_index
-//                (category_id, product_id, position, is_parent, store_id, visibility)
-//            (SELECT
-//                rc.rootCat,
-//                a.product_id,
-//                a.position,
-//                1,
-//                b.store_id,
-//                4
-//            FROM $catalog_category_product a
-//            JOIN $rootCats rc
-//                ON a.category_id = rc.entity_id
-//            JOIN $core_store b
-//            )
-//            ON DUPLICATE KEY UPDATE
-//                visibility = 4"
-//        );
-
         $this->print("--Replace Magento Multistore 20...");
 
         //Set product name for specific web sites
@@ -7544,18 +7135,20 @@ class Sinch
         $this->print("--Replace Magento Multistore 2...");
 
         //clear products, inserting new products and updating old others.
-        $query
-            = "
-            DELETE cpe
+
+        //Delete products not present in the new feed
+        $this->_doQuery(
+            "DELETE cpe
             FROM $catalog_product_entity cpe
             JOIN $sinch_products_mapping pm
                 ON cpe.entity_id = pm.entity_id
             WHERE pm.shop_store_product_id IS NOT NULL
-                AND pm.store_product_id IS NULL";
-        $this->_doQuery($query);
+                AND pm.store_product_id IS NULL"
+        );
 
         $this->print("--Replace Magento Multistore 3...");
 
+        //Not null constraint means this is basically just UPDATE for store_product_id and sinch_product_id
         $this->_doQuery(
             "
             INSERT INTO $catalog_product_entity
@@ -7581,6 +7174,7 @@ class Sinch
                 sinch_product_id = a.sinch_product_id"
         );
 
+        //Create new products
         $this->_doQuery(
             "
             INSERT INTO $catalog_product_entity
@@ -7729,24 +7323,6 @@ class Sinch
         $this->_doQuery("DROP TABLE IF EXISTS $stinch_products_delete");
 
         $this->print("--Replace Magento Multistore 10...");
-
-//        //TODO: This adds category mapping for the "primary" category of a product (i.e. the value present in products_temp.store_category_id). It only adds one row per product
-//        $this->_doQuery(
-//            "INSERT INTO $catalog_category_product
-//                (category_id,  product_id)
-//            (SELECT
-//                scm.shop_entity_id,
-//                cpe.entity_id
-//            FROM $catalog_product_entity cpe
-//            JOIN $products_temp p
-//                ON cpe.store_product_id = p.store_product_id
-//            JOIN $sinch_categories_mapping scm
-//                ON p.store_category_id = scm.store_category_id
-//            )
-//            ON DUPLICATE KEY UPDATE
-//                product_id = cpe.entity_id"
-//        );
-//
         $this->print("--Replace Magento Multistore 11 (add multi categories)...");
         $sinch_product_categories = $this->_getTableName("sinch_product_categories");
 
@@ -7758,80 +7334,9 @@ class Sinch
             INNER JOIN $sinch_categories_mapping scm
                 ON spc.store_category_id = scm.store_category_id
         ) ON DUPLICATE KEY UPDATE product_id = cpe.entity_id, category_id = scm.shop_entity_id");
-//
-//        //TODO: This reads category mappings from sinch_product_categories and inserts them into catalog_category_product. Its even dumber than above, as it only reads a single mapping for each entry in catalog_product_entity
-//        $this->_doQuery(
-//            "INSERT INTO $catalog_category_product
-//                (category_id,  product_id)
-//            (SELECT
-//                scm.shop_entity_id,
-//                cpe.entity_id
-//            FROM $catalog_product_entity cpe
-//            JOIN $products_temp p
-//                ON cpe.store_product_id = p.store_product_id
-//            JOIN " . $this->_getTableName('sinch_product_categories') . " spc
-//                ON p.store_product_id=spc.store_product_id
-//            JOIN $sinch_categories_mapping scm
-//                ON spc.store_category_id = scm.store_category_id
-//            )
-//            ON DUPLICATE KEY UPDATE
-//            product_id = cpe.entity_id"
-//        );
-
         $this->print("--Replace Magento Multistore 12...");
-
-        //TODO: Remove operations on index tables
-//        $this->_doQuery(
-//            "DELETE ccpi
-//            FROM $catalog_category_product_index ccpi
-//            LEFT JOIN $catalog_product_entity cpe
-//                ON ccpi.product_id = cpe.entity_id
-//            WHERE cpe.entity_id IS NULL"
-//        );
-
         $this->print("--Replace Magento Multistore 13...");
-
-        //TODO: Remove operations on index tables
-//        $this->_doQuery(
-//            "INSERT INTO $catalog_category_product_index
-//                (category_id, product_id, position, is_parent, store_id, visibility)
-//            (SELECT
-//                a.category_id,
-//                a.product_id,
-//                a.position,
-//                1,
-//                b.store_id,
-//                4
-//            FROM $catalog_category_product a
-//            JOIN $core_store b
-//            )
-//            ON DUPLICATE KEY UPDATE
-//                visibility = 4"
-//        );
-
         $this->print("--Replace Magento Multistore 14...");
-
-        //TODO: Remove operations on index tables
-//        $rootCats = $this->_getTableName('rootCats');
-//        $this->_doQuery(
-//            "INSERT ignore INTO $catalog_category_product_index
-//                (category_id, product_id, position, is_parent, store_id, visibility)
-//            (SELECT
-//                rc.rootCat,
-//                a.product_id,
-//                a.position,
-//                1,
-//                b.store_id,
-//                4
-//            FROM $catalog_category_product a
-//            JOIN $rootCats rc
-//                ON a.category_id = rc.entity_id
-//            JOIN $core_store b
-//            )
-//            ON DUPLICATE KEY UPDATE
-//                visibility = 4"
-//        );
-
         $this->print("--Replace Magento Multistore 15...");
 
         //Set product name for specific web sites
