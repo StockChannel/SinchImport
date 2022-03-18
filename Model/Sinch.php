@@ -4657,8 +4657,6 @@ class Sinch
         $sinch_products_mapping_temp = $this->_getTableName('sinch_products_mapping_temp');
         $catalog_product_entity = $this->_getTableName('catalog_product_entity');
         $products_temp = $this->_getTableName('products_temp');
-        $sinch_manufacturers = $this->_getTableName('sinch_manufacturers');
-        $eav_attribute_option_value = $this->_getTableName('eav_attribute_option_value');
 
         $this->_connection->query(
             "DROP TABLE IF EXISTS $sinch_products_mapping_temp"
@@ -4666,24 +4664,14 @@ class Sinch
         $this->_connection->query(
             "CREATE TABLE $sinch_products_mapping_temp (
                   entity_id int(11) unsigned NOT NULL,
-                  sku varchar(64) NOT NULL,
-                  manufacturer_option_id int(11),
-                  manufacturer_name varchar(255),
+                  product_sku varchar(64) NOT NULL,
                   shop_store_product_id int(11),
                   shop_sinch_product_id int(11),
                   store_product_id int(11),
                   sinch_product_id int(11),
-                  product_sku varchar(255),
-                  sinch_manufacturer_id int(11),
-                  sinch_manufacturer_name varchar(255),
                   KEY entity_id (entity_id),
-                  KEY manufacturer_option_id (manufacturer_option_id),
-                  KEY manufacturer_name (manufacturer_name),
-                  KEY sinch_manufacturer_id (sinch_manufacturer_id),
-                  KEY sinch_manufacturer_name (sinch_manufacturer_name),
                   KEY store_product_id (store_product_id),
                   KEY sinch_product_id (sinch_product_id),
-                  UNIQUE KEY sku (sku),
                   UNIQUE KEY product_sku (product_sku),
                   UNIQUE KEY(entity_id)
             )"
@@ -4693,7 +4681,7 @@ class Sinch
         $this->_connection->query(
             "INSERT ignore INTO $sinch_products_mapping_temp (
                 entity_id,
-                sku,
+                product_sku,
                 shop_store_product_id,
                 shop_sinch_product_id
             )(
@@ -4709,26 +4697,10 @@ class Sinch
         $this->_connection->query(
             "UPDATE $sinch_products_mapping_temp pmt
                 INNER JOIN $products_temp pt
-                    ON pmt.sinch_product_id = pt.sinch_product_id
-                INNER JOIN $sinch_manufacturers sm
-                    ON pt.sinch_manufacturer_id = sm.sinch_manufacturer_id
-                INNER JOIN $eav_attribute_option_value eaov
-                    ON sm.shop_option_id = eaov.option_id
-                SET
-                    pmt.manufacturer_option_id = sm.shop_option_id,
-                    pmt.manufacturer_name = pt.manufacturer_name"
-        );
-
-        $this->_connection->query(
-            "UPDATE $sinch_products_mapping_temp pmt
-                INNER JOIN $products_temp pt
-                    ON pmt.sku = pt.product_sku
+                    ON pmt.product_sku = pt.product_sku
                 SET
                     pmt.store_product_id = pt.store_product_id,
-                    pmt.sinch_product_id = pt.sinch_product_id,
-                    pmt.product_sku = pt.product_sku,
-                    pmt.sinch_manufacturer_id = pt.sinch_manufacturer_id,
-                    pmt.sinch_manufacturer_name = pt.manufacturer_name"
+                    pmt.sinch_product_id = pt.sinch_product_id"
         );
 
         $this->_connection->query(
@@ -4754,6 +4726,10 @@ class Sinch
     private function addManufacturers()
     {
         $catalog_product_entity_int = $this->_getTableName('catalog_product_entity_int');
+        $catalog_product_entity = $this->_getTableName('catalog_product_entity');
+        $sinch_products = $this->_getTableName('sinch_products');
+        $sinch_manufacturers = $this->_getTableName('sinch_manufacturers');
+
         $this->_connection->query(
             "INSERT INTO $catalog_product_entity_int (
                 attribute_id,
@@ -4761,17 +4737,19 @@ class Sinch
                 entity_id,
                 value
             )(
-              SELECT
-                :manufacturerAttr,
-                0,
-                a.entity_id,
-                pm.manufacturer_option_id
-              FROM catalog_product_entity a
-              INNER JOIN sinch_products_mapping pm
-                ON a.entity_id = pm.entity_id
+                SELECT
+                    :manufacturerAttr,
+                    0,
+                    cpe.entity_id,
+                    sm.shop_option_id
+                FROM $catalog_product_entity cpe
+                INNER JOIN $sinch_products sp
+                    ON cpe.sinch_product_id = sp.sinch_product_id
+                LEFT JOIN $sinch_manufacturers sm
+                    ON sp.sinch_manufacturer_id = sm.sinch_manufacturer_id
             )
             ON DUPLICATE KEY UPDATE
-                value = pm.manufacturer_option_id",
+                value = VALUES(value)",
             [':manufacturerAttr' => $this->_getProductAttributeId('manufacturer')]
         );
     }
