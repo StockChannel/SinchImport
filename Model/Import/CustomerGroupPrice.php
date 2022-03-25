@@ -3,12 +3,13 @@ namespace SITC\Sinchimport\Model\Import;
 
 /**
  * Class CustomerGroupPrice
- * 
+ *
  * NOTE: ScopedProductTierPriceManagementInterface is avoided because its too slow
- * 
+ *
  * @package SITC\Sinchimport\Model\Import
  */
-class CustomerGroupPrice extends AbstractImportSection {
+class CustomerGroupPrice extends AbstractImportSection
+{
     const LOG_PREFIX = "CustomerGroupPrice: ";
     const LOG_FILENAME = "customer_groups_price";
 
@@ -81,7 +82,7 @@ class CustomerGroupPrice extends AbstractImportSection {
 
     /**
      * @var array Holds a cache of sinchGroup -> magentoGroupId conversions
-     * 
+     *
      */
     private $groupIdCache = [];
     /**
@@ -106,7 +107,7 @@ class CustomerGroupPrice extends AbstractImportSection {
         \Magento\Catalog\Api\TierPriceStorageInterface $tierPriceStorage,
         \Magento\Catalog\Api\Data\TierPriceInterfaceFactory $tierPriceFactory,
         \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
-    ){
+    ) {
         parent::__construct($resourceConn, $output);
         $this->helper = $helper;
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
@@ -154,14 +155,16 @@ class CustomerGroupPrice extends AbstractImportSection {
             FOREIGN KEY (magento_value_id) REFERENCES {$this->tierPriceTable} (value_id) ON UPDATE CASCADE ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
 
+        //Drop the table and make sure that the price column has a default negative value
+        // Should ensure that we don't end up reading NULL as 0
+        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->groupPriceTableNext}");
         $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->groupPriceTableNext} (
             sinch_group_id int(10) unsigned NOT NULL,
             sinch_product_id int(10) unsigned NOT NULL,
             price_type int(10) unsigned NOT NULL DEFAULT 1,
-            price decimal(12,4) NOT NULL,
+            price decimal(12,4) NOT NULL DEFAULT -1,
             PRIMARY KEY (sinch_group_id, sinch_product_id, price_type)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
-        $this->getConnection()->query("TRUNCATE TABLE {$this->groupPriceTableNext}");
     }
 
 
@@ -180,7 +183,7 @@ class CustomerGroupPrice extends AbstractImportSection {
         $customerGroupCsv = $this->csv->getData($customerGroupFile);
         unset($customerGroupCsv[0]);
 
-        foreach($customerGroupCsv as $groupData){
+        foreach ($customerGroupCsv as $groupData) {
             //Sinch Group ID, Group Name
             $this->createOrUpdateGroup($groupData[0], $groupData[1]);
         }
@@ -200,7 +203,11 @@ class CustomerGroupPrice extends AbstractImportSection {
                 IGNORE 1 LINES
                 (sinch_group_id, sinch_product_id, price_type, price)"
         );
-        $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext} WHERE price < 0 OR price_type != 1");
+        $permitZero = $this->helper->getStoreConfig('sinchimport/general/permit_zero_price');
+        $this->getConnection()->query(
+            "DELETE FROM {$this->groupPriceTableNext} WHERE price < 0 OR price_type != 1 OR (price = 0 AND :permitZero = 0)",
+            [':permitZero' => (int)$permitZero]
+        );
         $this->endTimingStep();
         
         $this->log("New rules loaded, calculating delta");
@@ -224,8 +231,8 @@ class CustomerGroupPrice extends AbstractImportSection {
             );
             $deletedCount = count($toDelete);
             $this->log("{$deletedCount} rules to be deleted");
-            foreach($toDelete as $rule) {
-                if(!empty($rule['magento_value_id'])) {
+            foreach ($toDelete as $rule) {
+                if (!empty($rule['magento_value_id'])) {
                     $this->getConnection()->query(
                         "DELETE FROM {$this->tierPriceTable} WHERE value_id = :value_id",
                         [':value_id' => $rule['magento_value_id']]
@@ -291,7 +298,7 @@ class CustomerGroupPrice extends AbstractImportSection {
             );
             $updatedCount = count($toUpdate);
             $this->log("{$updatedCount} rules to be updated");
-            foreach($toUpdate as $updatedRule) {
+            foreach ($toUpdate as $updatedRule) {
                 $this->getConnection()->query(
                     "UPDATE {$this->tierPriceTable} tp SET value = :price WHERE value_id = :value_id",
                     [
@@ -365,9 +372,9 @@ class CustomerGroupPrice extends AbstractImportSection {
             "SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id",
             [":sinch_id" => $sinchGroupId]
         );
-        if(!empty($magentoGroupId)){
+        if (!empty($magentoGroupId)) {
             $group = $this->groupRepository->getById($magentoGroupId);
-            if($group->getCode() != $fullGroupName && $groupName != "NOT LOGGED IN") {
+            if ($group->getCode() != $fullGroupName && $groupName != "NOT LOGGED IN") {
                 $group->setCode($fullGroupName);
                 $this->groupRepository->save($group);
             }
@@ -375,7 +382,7 @@ class CustomerGroupPrice extends AbstractImportSection {
         }
         
         //Special case, map a group named "NOT LOGGED IN" to the default Magento group with the same name
-        if($groupName == "NOT LOGGED IN") {
+        if ($groupName == "NOT LOGGED IN") {
             $this->insertMapping($sinchGroupId, 0); //0 is the Magento ID for "NOT LOGGED IN"
             return;
         }
@@ -387,13 +394,13 @@ class CustomerGroupPrice extends AbstractImportSection {
         try {
             $group = $this->groupRepository->save($group);
             $this->insertMapping($sinchGroupId, $group->getId());
-        } catch(\Magento\Framework\Exception\State\InvalidTransitionException $e){
+        } catch (\Magento\Framework\Exception\State\InvalidTransitionException $e) {
             $this->log("Group unexpectedly exists, trying to remap it: {$groupName} ({$sinchGroupId})");
             $criteria = $this->searchCriteriaBuilder
                 ->addFilter('code', $fullGroupName, 'eq')
                 ->create();
             $matchingGroups = $this->groupRepository->getList($criteria)->getItems();
-            if(count($matchingGroups) > 0) {
+            if (count($matchingGroups) > 0) {
                 $this->insertMapping($sinchGroupId, $matchingGroups[0]->getId());
                 return;
             }
