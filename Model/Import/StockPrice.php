@@ -336,12 +336,14 @@ class StockPrice extends AbstractImportSection
                     SELECT CONCAT('sinch_', distributor_id), distributor_name, 'GB', '?' FROM {$this->distiTable}
                 ) ON DUPLICATE KEY UPDATE name = distributor_name"
             );
-            $conn->query(
-                "INSERT INTO {$this->inventory_source_stock_link} (stock_id, source_code, priority) (
+            if (!$this->helper->getStoreConfig('sinchimport/stock/manual_source_assignment')) {
+                $conn->query(
+                    "INSERT INTO {$this->inventory_source_stock_link} (stock_id, source_code, priority) (
                     SELECT :stockId, CONCAT('sinch_', distributor_id), 1 FROM {$this->distiTable}
                 ) ON DUPLICATE KEY UPDATE priority = VALUES(priority)",
-                [":stockId" => $stockId]
-            );
+                    [":stockId" => $stockId]
+                );
+            }
             $this->endTimingStep();
 
             $this->startTimingStep('Delete stock entries for non-existent products (MSI)');
