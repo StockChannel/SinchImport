@@ -187,7 +187,7 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
         ];
 
         foreach($validReplacements as $k => $v) {
-            $productNameTemplate = str_replace($k, $v, $productNameTemplate);
+            $productNameTemplate = str_replace($k, $v ?? '', $productNameTemplate);
         }
         
         return $this->filter->translitUrl(
