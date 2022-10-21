@@ -5097,9 +5097,11 @@ class Sinch
         $this->addSpecification();
         $this->addManufacturers();
 
+        $ignore = $this->_dataConf['replace_product'] == "REWRITE" ? "" : "IGNORE";
+        $onDuplicate = $this->_dataConf['replace_product'] == "REWRITE" ? "ON DUPLICATE KEY UPDATE value = 4" : "";
+
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
+            "INSERT $ignore INTO " . $this->_getTableName(
                 'catalog_product_entity_int'
             ) . " (
                                     attribute_id,
@@ -5108,49 +5110,30 @@ class Sinch
                                     value
                                 )(
                                   SELECT
-                                    " . $this->_getProductAttributeId(
-                'visibility'
-            ) . ",
+                                    " . $this->_getProductAttributeId('visibility') . ",
                                     w.website,
                                     a.entity_id,
                                     4
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                  INNER JOIN " . $this->_getTableName(
-                'products_website_temp'
-            ) . " w
+                                  FROM " . $this->_getTableName('catalog_product_entity') . " a
+                                  INNER JOIN " . $this->_getTableName('products_website_temp') . " w
                                   ON a.store_product_id=w.store_product_id
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                value = 4
-                              "
+                                ) $onDuplicate"
         );
 
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_int'
-            ) . " (
+            "INSERT $ignore INTO " . $this->_getTableName('catalog_product_entity_int') . " (
                                     attribute_id,
                                     store_id,
                                     entity_id,
                                     value
                                 )(
                                   SELECT
-                                    " . $this->_getProductAttributeId(
-                'visibility'
-            ) . ",
+                                    " . $this->_getProductAttributeId('visibility') . ",
                                     0,
                                     a.entity_id,
                                     4
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value = 4
-                              "
+                                  FROM " . $this->_getTableName('catalog_product_entity') . " a
+                                ) $onDuplicate"
         );
 
         $this->_doQuery(
@@ -6856,6 +6839,7 @@ class Sinch
                 a.entity_id,
                 4
             FROM $catalog_product_entity a
+            WHERE sinch_product_id IS NOT NULL
             )
             ON DUPLICATE KEY UPDATE
                 value = 4"
@@ -7393,7 +7377,7 @@ class Sinch
         $this->print("--Replace Magento Multistore 18...");
 
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int
+            "INSERT IGNORE INTO $catalog_product_entity_int
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_visibility,
@@ -7403,15 +7387,13 @@ class Sinch
             FROM $catalog_product_entity a
             JOIN $products_website_temp w
                 ON a.store_product_id = w.store_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 4"
+            )"
         );
 
         $this->print("--Replace Magento Multistore 19...");
 
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int
+            "INSERT IGNORE INTO $catalog_product_entity_int
                 (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_visibility,
@@ -7419,9 +7401,8 @@ class Sinch
                 a.entity_id,
                 4
             FROM $catalog_product_entity a
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 4"
+            WHERE sinch_product_id IS NOT NULL
+            )"
         );
 
         $this->print("--Replace Magento Multistore 20...");

@@ -4,3 +4,4 @@ composer.phar
 composer.lock
 .vscode
 .php-cs-fixer.cache
+app/etc/vendor_path.php
