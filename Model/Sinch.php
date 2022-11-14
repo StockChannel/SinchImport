@@ -169,7 +169,10 @@ class Sinch
             FILE_PRODUCT_CONTRACTS,
             FILE_CUSTOMER_GROUP_CATEGORIES,
             FILE_CUSTOMER_GROUPS,
-            FILE_CUSTOMER_GROUP_PRICE
+            FILE_CUSTOMER_GROUP_PRICE,
+	        FILE_PRODUCT_TYPES,
+	        FILE_PRODUCT_FREQUENCIES,
+	        FILE_PRODUCT_TYPE_FREQUENCY
         ];
 
         $this->_dataConf = $this->scopeConfig->getValue(
@@ -322,6 +325,18 @@ class Sinch
                 $this->print("Parse EAN Codes...");
                 $this->parseEANCodes();
                 $this->addImportStatus('Parse EAN Codes');
+	
+	            $this->print("Parse Product Types...");
+	            $this->parseProductTypes();
+	            $this->addImportStatus('Parse Product Types');
+	
+	            $this->print("Parse Product Frequencies...");
+	            $this->parseProductFrequencies();
+	            $this->addImportStatus('Parse Product Frequencies');
+	
+	            $this->print("Parse Product Type Frequency");
+	            $this->parseProductTypeFrequency();
+	            $this->addImportStatus('Parse Product Type Frequency');
 
                 $this->print("Parse Manufacturers...");
                 $this->parseManufacturers();
@@ -8220,4 +8235,152 @@ class Sinch
             $this->_logImportInfo("-- Ignore the meta title for product configuration.");
         }
     }
+	
+	private function parseProductTypes()
+	{
+		$parseFile = $this->varDir . FILE_PRODUCT_TYPES;
+		if (filesize($parseFile)) {
+			$this->_log("Start parse " . FILE_PRODUCT_TYPES);
+			
+			$this->_doQuery(
+				"DROP TABLE IF EXISTS " . $this->_getTableName(
+					'sinch_product_types_temp'
+				)
+			);
+			$this->_doQuery(
+				"CREATE TABLE " . $this->_getTableName('sinch_product_types_temp')
+				. "(
+                          `product_type_id` int(11) DEFAULT NULL,
+                          `product_type_name` varchar(50) DEFAULT NULL,
+                          KEY `product_type_id` (product_type_id)
+                          )"
+			);
+			
+			$this->_doQuery(
+				"LOAD DATA LOCAL INFILE '" . $parseFile . "'
+                          INTO TABLE " . $this->_getTableName(
+					'sinch_product_types_temp'
+				) . "
+                          FIELDS TERMINATED BY '" . $this->field_terminated_char
+				. "'
+                          OPTIONALLY ENCLOSED BY '\"'
+                          LINES TERMINATED BY \"\r\n\"
+                          IGNORE 1 LINES "
+			);
+			
+			$this->_doQuery(
+				"DROP TABLE IF EXISTS " . $this->_getTableName(
+					'sinch_product_types'
+				)
+			);
+			$this->_doQuery(
+				"RENAME TABLE " . $this->_getTableName('sinch_product_types_temp')
+				. "
+                          TO " . $this->_getTableName('sinch_product_types')
+			);
+			$this->_log("Finish parse " . FILE_PRODUCT_TYPES);
+		} else {
+			$this->_log("Wrong file " . $parseFile);
+		}
+	}
+	
+	private function parseProductFrequencies()
+	{
+		$parseFile = $this->varDir . FILE_PRODUCT_FREQUENCIES;
+		if (filesize($parseFile)) {
+			$this->_log("Start parse " . FILE_PRODUCT_FREQUENCIES);
+			
+			$this->_doQuery(
+				"DROP TABLE IF EXISTS " . $this->_getTableName(
+					'sinch_product_frequencies_temp'
+				)
+			);
+			$this->_doQuery(
+				"CREATE TABLE " . $this->_getTableName('sinch_product_frequencies_temp')
+				. "(
+                          `product_frequency_id` int(11) DEFAULT NULL,
+                          `product_frequency_name` varchar(50) DEFAULT NULL,
+                          KEY `product_frequency_id` (product_frequency_id)
+                          )"
+			);
+			
+			$this->_doQuery(
+				"LOAD DATA LOCAL INFILE '" . $parseFile . "'
+                          INTO TABLE " . $this->_getTableName(
+					'sinch_product_frequencies_temp'
+				) . "
+                          FIELDS TERMINATED BY '" . $this->field_terminated_char
+				. "'
+                          OPTIONALLY ENCLOSED BY '\"'
+                          LINES TERMINATED BY \"\r\n\"
+                          IGNORE 1 LINES "
+			);
+			
+			$this->_doQuery(
+				"DROP TABLE IF EXISTS " . $this->_getTableName(
+					'sinch_product_frequencies'
+				)
+			);
+			$this->_doQuery(
+				"RENAME TABLE " . $this->_getTableName('sinch_product_frequencies_temp')
+				. "
+                          TO " . $this->_getTableName('sinch_product_frequencies')
+			);
+			$this->_log("Finish parse " . FILE_PRODUCT_FREQUENCIES);
+		} else {
+			$this->_log("Wrong file " . $parseFile);
+		}
+	}
+	
+	private function parseProductTypeFrequency()
+	{
+		$parseFile = $this->varDir . FILE_PRODUCT_TYPE_FREQUENCY;
+		if (filesize($parseFile)) {
+			$this->_log("Start parse " . FILE_PRODUCT_TYPE_FREQUENCY);
+			
+			$this->_doQuery(
+				"DROP TABLE IF EXISTS " . $this->_getTableName(
+					'sinch_product_type_frequency_temp'
+				)
+			);
+			$this->_doQuery(
+				"CREATE TABLE " . $this->_getTableName('sinch_product_type_frequency_temp')
+				. "(
+                          `sinch_product_id` int(11) DEFAULT NULL,
+                          `product_type_id`  int(11) DEFAULT NULL,
+                          `product_frequency_id`  int(11) DEFAULT NULL,
+                          KEY `sinch_product_id` (sinch_product_id),
+                          KEY `product_type_id` (product_type_id),
+                          KEY `product_frequency_id` (product_frequency_id)
+                          )"
+			);
+			
+			$this->_doQuery(
+				"LOAD DATA LOCAL INFILE '" . $parseFile . "'
+                          INTO TABLE " . $this->_getTableName(
+					'sinch_product_type_frequency_temp'
+				) . "
+                          FIELDS TERMINATED BY '" . $this->field_terminated_char
+				. "'
+                          OPTIONALLY ENCLOSED BY '\"'
+                          LINES TERMINATED BY \"\r\n\"
+                          IGNORE 1 LINES "
+			);
+			
+			$this->_doQuery(
+				"DROP TABLE IF EXISTS " . $this->_getTableName(
+					'sinch_product_type_frequency'
+				)
+			);
+			$this->_doQuery(
+				"RENAME TABLE " . $this->_getTableName('sinch_product_type_frequency_temp')
+				. "
+                          TO " . $this->_getTableName('sinch_product_type_frequency')
+			);
+			$this->_log("Finish parse " . FILE_PRODUCT_TYPE_FREQUENCY);
+		} else {
+			$this->_log("Wrong file " . $parseFile);
+		}
+	}
+	
 }

@@ -22,6 +22,10 @@ define('FILE_CUSTOMER_GROUPS', 'CustomerGroups.csv');
 define('FILE_CUSTOMER_GROUP_PRICE', 'CustomerGroupPrices.csv');
 define('FILE_URL_AND_DIR', "ftp://%%%login%%%:%%%password%%%@%%%server%%%/");
 
+define('FILE_PRODUCT_TYPES', 'ProductTypes.csv');
+define('FILE_PRODUCT_FREQUENCIES', 'ProductFrequencies.csv');
+define('FILE_PRODUCT_TYPE_FREQUENCY', 'ProductProductTypes.csv');
+
 define('DEFAULT_FILE_TERMINATED_CHAR', "|");
 
 define("UPDATE_CATEGORY_DATA", false);
