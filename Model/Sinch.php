@@ -32,6 +32,8 @@ use SITC\Sinchimport\Model\Import\IndexManagement;
 use SITC\Sinchimport\Model\Import\Multimedia;
 use SITC\Sinchimport\Model\Import\Popularity;
 use SITC\Sinchimport\Model\Import\ProductDates;
+use SITC\Sinchimport\Model\Import\ProductFrequencies;
+use SITC\Sinchimport\Model\Import\ProductTypeFrequency;
 use SITC\Sinchimport\Model\Import\ProductTypes;
 use SITC\Sinchimport\Model\Import\ReasonsToBuy;
 use SITC\Sinchimport\Model\Import\RelatedProducts;
@@ -134,8 +136,8 @@ class Sinch {
     private Reviews $reviewImport;
     private RelatedProducts $relatedProductsImport;
 	private ProductTypes $productTypesImport;
-	//private ProductFrequencies $productFrequenciesImport;
-	//private ProductTypeFrequency $productTypeFrequencyImport;
+	private ProductFrequencies $productFrequenciesImport;
+	private ProductTypeFrequency $productTypeFrequencyImport;
 
     private Download $dlHelper;
     private Data $dataHelper;
@@ -173,9 +175,9 @@ class Sinch {
         RelatedProducts $relatedProductsImport,
         Download $dlHelper,
         Data $dataHelper,
-	    ProductTypes $productTypesImport
-	    //ProductFrequencies $productFrequenciesImport,
-		//ProductTypeFrequency $productTypeFrequencyImport
+	    ProductTypes $productTypesImport,
+	    ProductFrequencies $productFrequenciesImport,
+		ProductTypeFrequency $productTypeFrequencyImport
     )
     {
         $this->sitcIndexMgmt = $sitcIndexMgmt;
@@ -197,8 +199,8 @@ class Sinch {
         $this->reviewImport = $reviewImport;
         $this->relatedProductsImport = $relatedProductsImport;
 	    $this->productTypesImport = $productTypesImport;
-	    //$this->productFrequenciesImport = $productFrequenciesImport;
-	    //$this->productTypeFrequencyImport = $productTypeFrequencyImport;
+	    $this->productFrequenciesImport = $productFrequenciesImport;
+	    $this->productTypeFrequencyImport = $productTypeFrequencyImport;
 		
 		
         $this->dlHelper = $dlHelper;
@@ -318,8 +320,8 @@ class Sinch {
                     Download::FILE_STOCK_AND_PRICES,
                     Download::FILE_PRODUCTS_GALLERY_PICTURES,
                     Download::FILE_PRODUCT_TYPES,
-	                //Download::FILE_PRODUCT_FREQUENCIES,
-	                //Download::FILE_PRODUCT_PRODUCT_TYPES
+	                Download::FILE_PRODUCT_FREQUENCIES,
+	                Download::FILE_PRODUCT_TYPE_FREQUENCY
                 ];
                 $optionalFiles = [
                     Download::FILE_ACCOUNT_GROUP_CATEGORIES,
@@ -349,6 +351,16 @@ class Sinch {
 	            if ($this->productTypesImport->haveRequiredFiles()) {
 		            $this->print("Parse Product Types");
 		            $this->productTypesImport->parse();
+	            }
+	
+	            if ($this->productFrequenciesImport->haveRequiredFiles()) {
+		            $this->print("Parse Product Frequencies");
+		            $this->productFrequenciesImport->parse();
+	            }
+	
+	            if ($this->productTypeFrequencyImport->haveRequiredFiles()) {
+		            $this->print("Parse Product Type Frequency");
+		            $this->productTypeFrequencyImport->parse();
 	            }
 				
                 if ($this->virtualCategoryImport->haveRequiredFiles()) {

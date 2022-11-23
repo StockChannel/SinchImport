@@ -2,7 +2,6 @@
 namespace SITC\Sinchimport\Model\Import;
 
 use Magento\Framework\App\ResourceConnection;
-use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
 use SITC\Sinchimport\Model\Sinch;
 use Symfony\Component\Console\Output\ConsoleOutput;
@@ -55,9 +54,8 @@ class ProductTypes extends AbstractImportSection {
 		$conn->query(
 			"CREATE TABLE {$product_types_temp} (
                 sinch_product_type_id int(11),
-                sinch_product_type_name varchar(255),
-                shop_option_id int(11),
-                KEY(sinch_product_type_id)
+                sinch_product_type_name varchar(255)
+                PRIMARY KEY('sinch_product_type_id' , 'sinch_product_type_id')
             )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
 		);
 		

@@ -35,7 +35,7 @@ class Download extends AbstractHelper
 	
 	public const FILE_PRODUCT_TYPES = 'ProductTypes.csv';
 	public const FILE_PRODUCT_FREQUENCIES = 'ProductFrequencies.csv';
-	public const FILE_PRODUCT_PRODUCT_TYPES = 'ProductProductTypes.csv';
+	public const FILE_PRODUCT_TYPE_FREQUENCY = 'ProductProductTypes.csv';
 
     private const EXPECTED_HEADER = [
         self::FILE_ACCOUNT_GROUP_CATEGORIES => 'AccountGroupID|CategoryID',
@@ -62,7 +62,7 @@ class Download extends AbstractHelper
 	    
 	    self::FILE_PRODUCT_TYPES => 'ID|Name',
 	    self::FILE_PRODUCT_FREQUENCIES => 'ID|Name',
-	    self::FILE_PRODUCT_PRODUCT_TYPES => 'ID|ProductTypeID|FrequencyID'
+	    self::FILE_PRODUCT_TYPE_FREQUENCY => 'ID|ProductTypeID|FrequencyID'
     ];
 
     private ConsoleOutput $output;
