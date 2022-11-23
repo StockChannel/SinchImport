@@ -32,9 +32,9 @@ use SITC\Sinchimport\Model\Import\IndexManagement;
 use SITC\Sinchimport\Model\Import\Multimedia;
 use SITC\Sinchimport\Model\Import\Popularity;
 use SITC\Sinchimport\Model\Import\ProductDates;
-use SITC\Sinchimport\Model\Import\ProductFrequencies;
+//use SITC\Sinchimport\Model\Import\ProductFrequencies;
 use SITC\Sinchimport\Model\Import\ProductTypeFrequency;
-use SITC\Sinchimport\Model\Import\ProductTypes;
+//use SITC\Sinchimport\Model\Import\ProductTypes;
 use SITC\Sinchimport\Model\Import\ReasonsToBuy;
 use SITC\Sinchimport\Model\Import\RelatedProducts;
 use SITC\Sinchimport\Model\Import\Reviews;
@@ -135,8 +135,8 @@ class Sinch {
     private VirtualCategory $virtualCategoryImport;
     private Reviews $reviewImport;
     private RelatedProducts $relatedProductsImport;
-	private ProductTypes $productTypesImport;
-	private ProductFrequencies $productFrequenciesImport;
+	//private ProductTypes $productTypesImport;
+	//private ProductFrequencies $productFrequenciesImport;
 	private ProductTypeFrequency $productTypeFrequencyImport;
 
     private Download $dlHelper;
@@ -175,8 +175,8 @@ class Sinch {
         RelatedProducts $relatedProductsImport,
         Download $dlHelper,
         Data $dataHelper,
-	    ProductTypes $productTypesImport,
-	    ProductFrequencies $productFrequenciesImport,
+	    //ProductTypes $productTypesImport,
+	    //ProductFrequencies $productFrequenciesImport,
 		ProductTypeFrequency $productTypeFrequencyImport
     )
     {
@@ -198,8 +198,8 @@ class Sinch {
         $this->virtualCategoryImport = $virtualCategoryImport;
         $this->reviewImport = $reviewImport;
         $this->relatedProductsImport = $relatedProductsImport;
-	    $this->productTypesImport = $productTypesImport;
-	    $this->productFrequenciesImport = $productFrequenciesImport;
+	    //$this->productTypesImport = $productTypesImport;
+	    //$this->productFrequenciesImport = $productFrequenciesImport;
 	    $this->productTypeFrequencyImport = $productTypeFrequencyImport;
 		
 		
@@ -347,17 +347,7 @@ class Sinch {
                 $this->addImportStatus('Parse Categories');
                 $this->parseCategories();
                 $this->addImportStatus('Parse Categories', true);
-				
-	            if ($this->productTypesImport->haveRequiredFiles()) {
-		            $this->print("Parse Product Types");
-		            $this->productTypesImport->parse();
-	            }
-	
-	            if ($this->productFrequenciesImport->haveRequiredFiles()) {
-		            $this->print("Parse Product Frequencies");
-		            $this->productFrequenciesImport->parse();
-	            }
-	
+
 	            if ($this->productTypeFrequencyImport->haveRequiredFiles()) {
 		            $this->print("Parse Product Type Frequency");
 		            $this->productTypeFrequencyImport->parse();
