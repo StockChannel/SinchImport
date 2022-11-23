@@ -69,7 +69,7 @@ class ProductTypeFrequency extends AbstractImportSection {
     			sinch_product_id int(11),
                 sinch_product_type_id int(11),
                 sinch_product_frequency_id int(11),
-                FOREIGN KEY (`sinch_product_id`) REFERENCES `{$this->productsTable}` (`distributor_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+                FOREIGN KEY (`sinch_product_id`) REFERENCES `{$this->productsTable}` (`sinch_product_id`) ON DELETE CASCADE ON UPDATE CASCADE,
                 FOREIGN KEY (`sinch_product_type_id`) REFERENCES `{$this->productTypesTable}` (`sinch_product_type_id`) ON DELETE CASCADE ON UPDATE CASCADE,
                 FOREIGN KEY (`sinch_product_frequency_id`) REFERENCES `{$this->productFrequenciesTable}` (`sinch_product_frequency_id`) ON DELETE CASCADE ON UPDATE CASCADE
             )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
