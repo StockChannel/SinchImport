@@ -76,7 +76,7 @@ class PickupImport
                         break;
                 }
             } catch (\Exception $e) {
-                $this->logger->warn("Caught exception while running import: " . $e->getMessage());
+                $this->logger->warning("Caught exception while running import: " . $e->getMessage());
             }
         }
     }
