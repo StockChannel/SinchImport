@@ -3373,10 +3373,12 @@ class Sinch {
         if (!$sinch_product_id) {
             return $this;
         }
+        $sinch_products_pictures_gallery = $this->getTableName('sinch_products_pictures_gallery');
         $res = $this->_doQuery(
             "SELECT COUNT(*) AS cnt
-                FROM " . $this->getTableName('sinch_products_pictures_gallery') . "
-                WHERE sinch_product_id = " . $sinch_product_id,
+                FROM $sinch_products_pictures_gallery
+                WHERE sinch_product_id = :sinchProductId",
+            [':sinchProductId' => $sinch_product_id],
             true
         )->fetch();
 
@@ -3386,39 +3388,36 @@ class Sinch {
 
         $photos = $this->_doQuery(
             "SELECT image_url as Pic, thumb_image_url as ThumbPic
-                FROM " . $this->getTableName('sinch_products_pictures_gallery') . "
-                WHERE sinch_product_id = " . $sinch_product_id,
+                FROM $sinch_products_pictures_gallery
+                WHERE sinch_product_id = :sinchProductId",
+            [':sinchProductId' => $sinch_product_id],
             true
         )->fetchAll();
 
         foreach ($photos as $photo) {
-            $picHeight = (int)500;
-            $picWidth = (int)500;
+            $picHeight = 500;
+            $picWidth = 500;
             $thumbUrl = (string)$photo["ThumbPic"];
             $picUrl = (string)$photo["Pic"];
 
-            array_push(
-                $this->galleryPhotos,
-                [
-                    'height' => $picHeight,
-                    'width' => $picWidth,
-                    'thumb' => $thumbUrl,
-                    'pic' => $picUrl
-                ]
-            );
+            $this->galleryPhotos[] = [
+                'height' => $picHeight,
+                'width' => $picWidth,
+                'thumb' => $thumbUrl,
+                'pic' => $picUrl
+            ];
         }
 
         return $this;
     }
 
-    private function getSinchProductIdByEntity($entity_id)
+    private function getSinchProductIdByEntity($entity_id): ?int
     {
-        $res = $this->_doQuery(
-            "SELECT sinch_product_id FROM " . $this->getTableName('sinch_products_mapping') . " WHERE entity_id = " . $entity_id,
-            true
-        )->fetch();
-
-        return ($res['sinch_product_id']);
+        $sinch_products_mapping = $this->getTableName('sinch_products_mapping');
+        return $this->conn->fetchOne(
+            "SELECT sinch_product_id FROM $sinch_products_mapping WHERE entity_id = :entityId",
+            [':entityId' => $entity_id],
+        );
     }
 
     public function getGalleryPhotos()
