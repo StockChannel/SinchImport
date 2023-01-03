@@ -4,7 +4,10 @@ namespace SITC\Sinchimport\Model;
 
 require_once __DIR__ . '/Config.php';
 
+use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Helper\Download;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use SITC\Sinchimport\Model\Import\ProductTypeFrequency;
 
 class Sinch
 {
@@ -12,6 +15,7 @@ class Sinch
     public $varDir;
     public $files;
     public $debug_mode = false;
+	public const FIELD_TERMINATED_CHAR  = '|';
 
     /**
      * Application Event Dispatcher
@@ -97,8 +101,16 @@ class Sinch
     private $sitcIndexMgmt;
     private $dlHelper;
     private $stockPriceImport;
-
-    public function __construct(
+	
+	//YAN
+	private ProductTypeFrequency $productTypeFrequencyImport;
+	
+	/**
+	 * @throws \Magento\Framework\Exception\LocalizedException
+	 * @throws \Magento\Framework\Exception\FileSystemException
+	 * @throws \Magento\Framework\Exception\RuntimeException
+	 */
+	public function __construct(
         \Magento\Framework\Model\Context $context,
         \Magento\Framework\App\Filesystem\DirectoryList $directoryList,
         \Magento\Store\Model\StoreManagerInterface $storeManager,
@@ -120,7 +132,8 @@ class Sinch
         \SITC\Sinchimport\Model\Import\CustomCatalogVisibility $customCatalogImport,
         \SITC\Sinchimport\Model\Import\IndexManagement $sitcIndexMgmt,
         \SITC\Sinchimport\Helper\Download $dlHelper,
-        \SITC\Sinchimport\Model\Import\StockPrice $stockPriceImport
+        \SITC\Sinchimport\Model\Import\StockPrice $stockPriceImport,
+        \SITC\Sinchimport\Model\Import\ProductTypeFrequency $productTypeFrequencyImport
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
@@ -147,6 +160,8 @@ class Sinch
 
         $this->import_status_table = $this->_getTableName('sinch_import_status');
         $this->import_status_statistic_table = $this->_getTableName('sinch_import_status_statistic');
+	
+	    $this->productTypeFrequencyImport = $productTypeFrequencyImport;
 
         $this->createTempDir($directoryList);
 
@@ -292,6 +307,8 @@ class Sinch
                 $this->print("Upload Files...");
                 $this->uploadFiles();
                 $this->addImportStatus('Upload Files');
+				
+				$this->parseProductTypeFrequency ();
 
                 $this->print("Parse Category Types...");
                 $this->parseCategoryTypes();
@@ -4137,6 +4154,14 @@ class Sinch
         }
     }
 
+	private function parseProductTypeFrequency (){
+		
+		if ($this->productTypeFrequencyImport->haveRequiredFiles()) {
+			$this->print("Parse Product Type Frequency");
+			$this->productTypeFrequencyImport->parse();
+		}
+	}
+	
     private function parseEANCodes()
     {
         $parseFile = $this->varDir . FILE_EANCODES;

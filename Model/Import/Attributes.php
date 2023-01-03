@@ -5,6 +5,8 @@ namespace SITC\Sinchimport\Model\Import;
 use Magento\Framework\Exception\InputException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Exception\StateException;
+use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Model\Sinch;
 
 class Attributes extends AbstractImportSection {
     const LOG_PREFIX = "Attributes: ";
@@ -64,6 +66,7 @@ class Attributes extends AbstractImportSection {
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Symfony\Component\Console\Output\ConsoleOutput $output,
+        Download $dlHelper,
         \Magento\Framework\File\Csv $csv,
         \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository,
         \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
@@ -79,8 +82,8 @@ class Attributes extends AbstractImportSection {
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
     )
     {
-        parent::__construct($resourceConn, $output);
-        $this->csv = $csv->setLineLength(256)->setDelimiter("|");
+	    parent::__construct($resourceConn, $output, $dlHelper);
+        $this->csv = $csv->setLineLength(256)->setDelimiter(Sinch::FIELD_TERMINATED_CHAR);
         $this->attributeRepository = $attributeRepository;
         $this->attributeGroupRepository = $attributeGroupRepository;
         $this->attributeFactory = $attributeFactory;
@@ -100,7 +103,16 @@ class Attributes extends AbstractImportSection {
         $this->eavAttrTable = $this->getTableName("eav_attribute");
         $this->eavOptionValueTable = $this->getTableName("eav_attribute_option_value");
     }
-
+	
+	public function getRequiredFiles(): array
+	{
+		return [
+			Download::FILE_CATEGORIES_FEATURES,
+			Download::FILE_RESTRICTED_VALUES,
+			Download::FILE_PRODUCT_FEATURES
+		];
+	}
+	
     /**
      * @param string $categoryFeaturesFile CategoryFeatures.csv
      * @param string $restrictedValuesFile RestrictedValues.csv

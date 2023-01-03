@@ -3,8 +3,11 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use SITC\Sinchimport\Helper\Download;
+
 /**
  * Class StockPrice
+ *
  * @package SITC\Sinchimport\Model\Import
  * Implements stock handling
  */
@@ -64,10 +67,10 @@ class StockPrice extends AbstractImportSection
         \Magento\CatalogInventory\Api\StockConfigurationInterface  $stockConfiguration,
         IndexManagement                                            $indexManagement,
         \Magento\InventoryApi\Api\StockRepositoryInterface\Proxy   $stockRepo,
-        \Magento\InventoryApi\Api\Data\StockInterfaceFactory\Proxy $stockFactory
-    )
-    {
-        parent::__construct($resourceConn, $output);
+        \Magento\InventoryApi\Api\Data\StockInterfaceFactory\Proxy $stockFactory,
+        Download $dlHelper
+    ){
+	    parent::__construct($resourceConn, $output, $dlHelper);
         $this->helper = $helper;
         $this->stockConfiguration = $stockConfiguration;
         $this->indexManagement = $indexManagement;
@@ -96,7 +99,13 @@ class StockPrice extends AbstractImportSection
         $this->inventory_source_stock_link = $this->getTableName('inventory_source_stock_link');
         $this->inventory_reservation = $this->getTableName('inventory_reservation');
     }
-
+	
+	public function getRequiredFiles(): array
+	{
+		return [
+		];
+	}
+	
     /**
      * Parse the stock files
      * @param string $stockAndPricesCsv StockAndPrices.csv

@@ -1,6 +1,8 @@
 <?php
 namespace SITC\Sinchimport\Model\Import;
 
+use SITC\Sinchimport\Helper\Download;
+
 /**
  * Class CustomerGroupPrice
  *
@@ -106,9 +108,10 @@ class CustomerGroupPrice extends AbstractImportSection
         \Magento\Customer\Api\GroupRepositoryInterface $groupRepository,
         \Magento\Catalog\Api\TierPriceStorageInterface $tierPriceStorage,
         \Magento\Catalog\Api\Data\TierPriceInterfaceFactory $tierPriceFactory,
-        \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
-    ) {
-        parent::__construct($resourceConn, $output);
+        \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder,
+	    Download $dlHelper
+    ){
+	    parent::__construct($resourceConn, $output, $dlHelper);
         $this->helper = $helper;
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->groupFactory = $groupFactory;
@@ -125,7 +128,13 @@ class CustomerGroupPrice extends AbstractImportSection
         $this->groupPriceTableCurrent = $this->getTableName(self::PRICE_TABLE_CURRENT);
         $this->groupPriceTableNext = $this->getTableName(self::PRICE_TABLE_NEXT);
     }
-
+	
+	public function getRequiredFiles(): array
+	{
+		return [
+		];
+	}
+	
     private function createMappingTable()
     {
         $groupTable = $this->getTableName('customer_group');

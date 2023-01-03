@@ -2,6 +2,8 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use SITC\Sinchimport\Helper\Download;
+
 class UNSPSC extends AbstractImportSection {
     const LOG_PREFIX = "UNSPSC: ";
     const LOG_FILENAME = "unspsc";
@@ -27,15 +29,22 @@ class UNSPSC extends AbstractImportSection {
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Symfony\Component\Console\Output\ConsoleOutput $output,
         \Magento\Framework\App\Cache\TypeListInterface $cacheType,
-        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
+        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
+	    Download $dlHelper
     ){
-        parent::__construct($resourceConn, $output);
+	    parent::__construct($resourceConn, $output, $dlHelper);
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
 
         $this->productTempTable = $this->getTableName('products_temp');
         $this->cpeTable = $this->getTableName('catalog_product_entity');
     }
+	
+	public function getRequiredFiles(): array
+	{
+		return [
+		];
+	}
 
     public function parse()
     {

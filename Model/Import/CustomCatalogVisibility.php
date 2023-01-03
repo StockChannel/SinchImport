@@ -2,6 +2,8 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use SITC\Sinchimport\Helper\Download;
+
 class CustomCatalogVisibility extends AbstractImportSection {
     const LOG_PREFIX = "CustomCatalog: ";
     const LOG_FILENAME = "custom_catalog";
@@ -41,9 +43,10 @@ class CustomCatalogVisibility extends AbstractImportSection {
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Symfony\Component\Console\Output\ConsoleOutput $output,
         \SITC\Sinchimport\Util\CsvIterator $csv,
-        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
+        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
+        Download $dlHelper
     ){
-        parent::__construct($resourceConn, $output);
+	    parent::__construct($resourceConn, $output, $dlHelper);
         $this->stockPriceCsv = $csv->setLineLength(256)->setDelimiter("|");
         $this->groupPriceCsv = clone $this->stockPriceCsv;
         $this->massProdValues = $massProdValues;
@@ -51,7 +54,13 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->cpeTable = $this->getTableName('catalog_product_entity');
         $this->productMappingTable = $this->getTableName('sinch_products_mapping');
     }
-
+	
+	public function getRequiredFiles(): array
+	{
+		return [
+		];
+	}
+	
     private function cleanupTempTables()
     {
         $this->getConnection()->query("DROP TABLE IF EXISTS {$this->flagTable}");

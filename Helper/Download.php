@@ -22,7 +22,23 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
     private $pendingLog = "";
     /** @var string $saveDir The directory within var to save files to */
     private $saveDir;
-
+	
+	
+	public const FILE_PRODUCT_TYPES = 'ProductTypes.csv';
+	public const FILE_PRODUCT_FREQUENCIES = 'ProductFrequencies.csv';
+	public const FILE_PRODUCT_TYPE_FREQUENCY = 'ProductProductTypes.csv';
+	
+	public const FILE_CATEGORIES_FEATURES = 'CategoryFeatures.csv';
+	public const FILE_RESTRICTED_VALUES = 'RestrictedValues.csv';
+	public const FILE_PRODUCT_FEATURES = 'ProductFeatures.csv';
+	
+	private const EXPECTED_HEADER = [
+		self::FILE_PRODUCT_TYPES => 'ID|Name',
+		self::FILE_PRODUCT_FREQUENCIES => 'ID|Name',
+		self::FILE_PRODUCT_TYPE_FREQUENCY => 'ID|ProductTypeID|FrequencyID'
+	];
+	
+	
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
         \Symfony\Component\Console\Output\ConsoleOutput $output,
@@ -42,7 +58,17 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
         $this->password = isset($ftp_data['password']) ? $ftp_data['password'] : "";
         $this->server = isset($ftp_data['ftp_server']) ? $ftp_data['ftp_server'] : "";
     }
-
+	
+	/**
+	 * Return the save path for the given file
+	 * @param string $filename File to determine save location for
+	 * @return string Path to the file on disk (whether it exists or not)
+	 */
+	public function getSavePath(string $filename): string
+	{
+		return $this->saveDir . $filename;
+	}
+	
     /**
      * Connects to the sinch FTP server ready for downloading files
      * Returns true on success, or an error message on failure
@@ -204,4 +230,36 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
         \exec("wget -q -t 3 -T 30 --show-progress -O{$outputLoc} --user={$user} --password={$password} {$url}", $shellOut, $result);
         return $result == 0;
     }
+	
+	/**
+	 * Validate whether a file downloaded correctly (based on existence and file size)
+	 * and matches the expected format (based on the header row in the file)
+	 * @param string $filename
+	 * @return bool
+	 */
+	public function validateFile(string $filename): bool
+	{
+		$saveFile = $this->saveDir . $filename;
+		if (!file_exists($saveFile) || @filesize($saveFile) < 1) return false;
+		
+		//Read the header row from the given file and validate it matches the header we expect for it
+		$fileHandle = fopen($saveFile, 'r');
+		if ($fileHandle === false) {
+			$this->print("Failed to open $filename for validation");
+			return false;
+		}
+		$headerLine = fgets($fileHandle);
+		fclose($fileHandle);
+		if ($headerLine === false) {
+			$this->print("Failed to read header line from $filename for validation");
+			return false;
+		}
+		$headerLine = trim($headerLine);
+		if ($headerLine != self::EXPECTED_HEADER[$filename]) {
+			$this->print("Header line for file {$filename} doesn't match expected header: {$headerLine} != " . self::EXPECTED_HEADER[$filename]);
+			return false;
+		}
+		return true;
+	}
+	
 }

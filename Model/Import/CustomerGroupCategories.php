@@ -1,6 +1,9 @@
 <?php
 namespace SITC\Sinchimport\Model\Import;
 
+use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Model\Sinch;
+
 class CustomerGroupCategories extends AbstractImportSection {
     const LOG_PREFIX = "CustomerGroupCategories: ";
     const LOG_FILENAME = "customer_groups_cats";
@@ -16,17 +19,25 @@ class CustomerGroupCategories extends AbstractImportSection {
     private $mappingTablenameFinal;
     //Holds the prepared SQL statement for inserting mapping rows
     private $insertMapping = null;
+	
 
     public function __construct(
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \Magento\Framework\File\Csv $csv
+        \Magento\Framework\File\Csv $csv,
+	    Download $dlHelper
     ){
-        parent::__construct($resourceConn, $output);
-        $this->csv = $csv->setLineLength(256)->setDelimiter("|");
+	    parent::__construct($resourceConn, $output, $dlHelper);
+	    $this->csv = $csv->setLineLength(256)->setDelimiter(Sinch::FIELD_TERMINATED_CHAR);
         $this->mappingTablenameFinal = $this->getTableName(self::MAPPING_TABLE);
     }
-
+	
+	public function getRequiredFiles(): array
+	{
+		return [
+		];
+	}
+	
     /**
      * Parses the customer group categories file into the mapping table
      *
