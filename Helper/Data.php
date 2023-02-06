@@ -1,34 +1,46 @@
 <?php
 namespace SITC\Sinchimport\Helper;
 
-class Data extends \Magento\Framework\App\Helper\AbstractHelper
+use Exception;
+use Magento\Framework\App\Area;
+use Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Framework\Mail\Template\TransportBuilder;
+use Magento\Store\Model\StoreManager;
+
+class Data extends AbstractHelper
 {
     /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
-    private $resourceConn;
+    private \Magento\Framework\App\ResourceConnection $resourceConn;
     /** @var \Magento\Customer\Model\Session\Proxy $customerSession */
     private $customerSession;
     /** @var \Magento\Framework\Filesystem\DirectoryList\Proxy $dir */
-    private $dir;
+    private \Magento\Framework\Filesystem\DirectoryList\Proxy $dir;
     /** @var \Magento\Framework\App\Http\Context $httpContext */
-    private $httpContext;
+    private \Magento\Framework\App\Http\Context $httpContext;
+    private StoreManager $storeManager;
+    private TransportBuilder $transportBuilder;
 
     /** @var string $accountTable */
-    private $accountTable;
+    private string $accountTable;
     /** @var string $groupMappingTable */
-    private $groupMappingTable;
+    private string $groupMappingTable;
 
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
         \Magento\Framework\App\ResourceConnection $resourceConn,
         \Magento\Customer\Model\Session\Proxy $customerSession,
         \Magento\Framework\Filesystem\DirectoryList\Proxy $dir,
-        \Magento\Framework\App\Http\Context $httpContext
+        \Magento\Framework\App\Http\Context $httpContext,
+        StoreManager $storeManager,
+        TransportBuilder $transportBuilder
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
         $this->customerSession = $customerSession;
         $this->dir = $dir;
         $this->httpContext = $httpContext;
+        $this->storeManager = $storeManager;
+        $this->transportBuilder = $transportBuilder;
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
         $this->groupMappingTable = $this->resourceConn->getTableName('sinch_group_mapping');
     }
@@ -179,5 +191,36 @@ class Data extends \Magento\Framework\App\Helper\AbstractHelper
     public function isInStockFilterEnabled()
     {
         return $this->getStoreConfig('sinchimport/stock/in_stock_filter_enable');
+    }
+
+    public function sendSuccessEmail(): bool
+    {
+        echo "Send success email\n";
+        $destEmail = $this->getStoreConfig('sinchimport/general/success_email_dest');
+        // If email not set or not valid, just return true without doing anything
+        if (empty($destEmail) || filter_var($destEmail, FILTER_VALIDATE_EMAIL) === false) return true;
+        echo "Email non-empty and valid\n";
+        try {
+            $sinch_import_status_statistic = $this->resourceConn->getTableName('sinch_import_status_statistic');
+            $importData = $this->resourceConn->getConnection()->fetchRow(
+                "SELECT start_import, import_type FROM $sinch_import_status_statistic ORDER BY start_import DESC LIMIT 1"
+            );
+            $this->transportBuilder->setTemplateIdentifier('sinchimport_import_completed')
+                ->setTemplateOptions(
+                    [
+                        'area' => Area::AREA_ADMINHTML,
+                        'store' => $this->storeManager->getStore()->getId(),
+                    ]
+                )
+                ->setTemplateVars($importData)
+                ->setFromByScope($this->getStoreConfig('trans_email/ident_general')) //Use the General Contact identity as sender
+                ->addTo($destEmail, "Sinchimport Administrator")
+                ->getTransport()
+                ->sendMessage();
+        } catch (Exception $e) {
+            echo $e->getTraceAsString();
+            return false;
+        }
+        return true;
     }
 }

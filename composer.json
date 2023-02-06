@@ -12,14 +12,14 @@
     "magento/module-indexer": ">=100.2.0",
     "magento/module-inventory-api": ">=1.0.0",
     "magento/module-store": ">=100.2.2",
-    "php": ">=7.0.0",
+    "php": ">=7.4.0",
     "laminas/laminas-log": "^2.12.0",
     "smile/elasticsuite": "*"
   },
   "require-dev": {
-    "squizlabs/php_codesniffer": "^2.6",
-    "phpmd/phpmd": "^2.6",
-    "sebastian/phpcpd": "^4.0"
+    "squizlabs/php_codesniffer": "@stable",
+    "phpmd/phpmd": "@stable",
+    "sebastian/phpcpd": "@stable"
   },
   "license": [
     "OSL-3.0",
@@ -52,5 +52,11 @@
       "type": "composer",
       "url": "https://repo.magento.com/"
     }
-  ]
+  ],
+  "config": {
+    "allow-plugins": {
+      "magento/composer-dependency-version-audit-plugin": true,
+      "magento/magento-composer-installer": false
+    }
+  }
 }

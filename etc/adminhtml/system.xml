@@ -37,6 +37,10 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Enable if you wish to allow products with a price of 0. When disabled, zero prices are treated as feed errors and silently dropped. Only affects prices processed by the import module as part of Group Pricing</comment>
                 </field>
+                <field id="success_email_dest" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Import Success notification email destination</label>
+                    <comment>If blank or not a valid email, does not send success emails</comment>
+                </field>
             </group>
 
             <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
