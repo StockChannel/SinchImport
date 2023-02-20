@@ -880,6 +880,11 @@ class Sinch
             $catalog_category_entity_varchar = $this->_getTableName(
                 'catalog_category_entity_varchar'
             );
+			
+	        $catalog_category_entity_text = $this->_getTableName(
+		        'catalog_category_entity_text'
+	        );
+			
             $catalog_category_entity_int = $this->_getTableName(
                 'catalog_category_entity_int'
             );
@@ -966,6 +971,7 @@ class Sinch
                     $sinch_categories,
                     $catalog_category_entity,
                     $catalog_category_entity_varchar,
+	                $catalog_category_entity_text,
                     $catalog_category_entity_int,
                     $_categoryDefault_attribute_set_id,
                     $name_attrid,
@@ -985,6 +991,7 @@ class Sinch
                             $coincidence,
                             $catalog_category_entity,
                             $catalog_category_entity_varchar,
+	                        $catalog_category_entity_text,
                             $catalog_category_entity_int,
                             $_categoryDefault_attribute_set_id,
                             $imType,
@@ -1006,6 +1013,7 @@ class Sinch
                             $coincidence,
                             $catalog_category_entity,
                             $catalog_category_entity_varchar,
+	                        $catalog_category_entity_text,
                             $catalog_category_entity_int,
                             $_categoryDefault_attribute_set_id,
                             $imType,
@@ -1617,6 +1625,7 @@ class Sinch
         $sinch_categories,
         $catalog_category_entity,
         $catalog_category_entity_varchar,
+        $catalog_category_entity_text,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $name_attrid,
@@ -1920,8 +1929,8 @@ class Sinch
                      value = c.MetaTitle"
             );
 
-            $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
+	        $this->_doQuery(
+		        "INSERT INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -1940,7 +1949,7 @@ class Sinch
                 )
                 ON DUPLICATE KEY UPDATE
                     value = c.MetaDescription"
-            );
+	        );
 
             $this->_doQuery(
                 "INSERT INTO $catalog_category_entity_varchar
@@ -2085,7 +2094,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -2201,6 +2210,7 @@ class Sinch
         $coincidence,
         $catalog_category_entity,
         $catalog_category_entity_varchar,
+        $catalog_category_entity_text,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $imType,
@@ -2234,6 +2244,7 @@ class Sinch
             $coincidence,
             $catalog_category_entity,
             $catalog_category_entity_varchar,
+	        $catalog_category_entity_text,
             $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
             $name_attrid,
@@ -2262,6 +2273,7 @@ class Sinch
             $sinch_categories,
             $catalog_category_entity,
             $catalog_category_entity_varchar,
+	        $catalog_category_entity_text,
             $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
             $imType,
@@ -2678,6 +2690,7 @@ class Sinch
         $sinch_categories,
         $catalog_category_entity,
         $catalog_category_entity_varchar,
+        $catalog_category_entity_text,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $imType,
@@ -2965,7 +2978,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
+                "INSERT INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -3129,7 +3142,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -3217,6 +3230,7 @@ class Sinch
         $coincidence,
         $catalog_category_entity,
         $catalog_category_entity_varchar,
+        $catalog_category_entity_text,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $imType,
@@ -3264,6 +3278,7 @@ class Sinch
             $sinch_categories,
             $catalog_category_entity,
             $catalog_category_entity_varchar,
+	        $catalog_category_entity_text,
             $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
             $imType,
@@ -3476,6 +3491,7 @@ class Sinch
         $sinch_categories,
         $catalog_category_entity,
         $catalog_category_entity_varchar,
+        $catalog_category_entity_text,
         $catalog_category_entity_int,
         $_categoryDefault_attribute_set_id,
         $imType,
@@ -3769,7 +3785,7 @@ class Sinch
 
             $q
                 = "
-                INSERT INTO $catalog_category_entity_varchar
+                INSERT INTO $catalog_category_entity_text
                     (
                      attribute_id,
                      store_id,
@@ -3934,7 +3950,7 @@ class Sinch
 
             $q
                 = "
-                INSERT IGNORE INTO $catalog_category_entity_varchar
+                INSERT IGNORE INTO $catalog_category_entity_text
                     (
                      attribute_id,
                      store_id,
