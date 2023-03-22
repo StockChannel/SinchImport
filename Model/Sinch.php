@@ -3434,8 +3434,8 @@ class Sinch {
 
         $StatusHistory_arr = [];
         if ($cnt > 0) {
-            $a = (($cnt > 7) ? ($cnt - 7) : 0);
-            $b = $cnt;
+            $offset = (($cnt > 7) ? ($cnt - 7) : 0);
+            $count = $cnt;
 
             $result = $this->_doQuery(
                 "SELECT
@@ -3447,7 +3447,8 @@ class Sinch {
                         global_status_import,
                         detail_status_import
                     FROM " . $this->import_status_statistic_table . "
-                    ORDER BY start_import limit " . $a . ", " . $b,
+                    ORDER BY start_import LIMIT $offset, $count",
+                [],
                 true
             )->fetchAll();
 
@@ -3466,7 +3467,7 @@ class Sinch {
                 FROM " . $this->import_status_statistic_table . "
                 WHERE global_status_import = 'Successful'
                 ORDER BY id DESC LIMIT 1",
-            true
+            [], true
         )->fetch();
 
         return is_array($imp_date) ? $imp_date['start_import'] : "N/A";
