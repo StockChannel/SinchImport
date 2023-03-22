@@ -3,6 +3,7 @@
 namespace SITC\Sinchimport\Console\Command;
 
 use Magento\Framework\App\State as AppState;
+use Magento\Framework\Console\Cli;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
@@ -53,7 +54,7 @@ class ImportCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->_appState->setAreaCode(\Magento\Framework\App\Area::AREA_ADMINHTML);
         $importType = $input->getArgument(self::INPUT_KEY_IMPORT_TYPE);
@@ -67,13 +68,13 @@ class ImportCommand extends Command
                 $this->sinch->runStockPriceImport();
                 break;
             default:
-                $this->sinch->runSinchImport();
-                break;
+                $output->writeln("<error>Unknown import type '{$importType}', select one of: 'full', 'stockprice'</error>");
+                return Cli::RETURN_FAILURE;
             }
         } catch (\Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
-            
-            return \Magento\Framework\Console\Cli::RETURN_FAILURE;
+            return Cli::RETURN_FAILURE;
         }
+        return Cli::RETURN_SUCCESS;
     }
 }
