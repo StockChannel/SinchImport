@@ -79,5 +79,6 @@ class ImportCommand extends Command
             
             return Cli::RETURN_FAILURE;
         }
+        return Cli::RETURN_SUCCESS;
     }
 }
