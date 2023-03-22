@@ -40,6 +40,7 @@ class BulletPoints extends AbstractImportSection {
         $bulletPointCsv = $this->dlHelper->getSavePath(Download::FILE_BULLET_POINTS);
 
         $this->startTimingStep('Load Bullet Points');
+        /** @noinspection SqlWithoutWhere */
         $conn->query("DELETE FROM {$this->bulletPointsTable}");
         //ID|No|Value
         $conn->query(
@@ -81,9 +82,7 @@ class BulletPoints extends AbstractImportSection {
         $summaryVals = [];
         for ($i = 1; $i <= 4; $i++) {
             foreach (['title', 'value'] as $attr) {
-                $summaryVals[] = [
-                    "list_summary_{$attr}_{$i}" => $this->dataHelper->getProductAttributeId("sinch_summary_{$attr}_{$i}")
-                ];
+                $summaryVals["list_summary_{$attr}_{$i}"] = $this->dataHelper->getProductAttributeId("sinch_summary_{$attr}_{$i}");
             }
         }
         foreach ($summaryVals as $field => $attributeId) {
