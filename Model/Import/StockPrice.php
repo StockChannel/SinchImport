@@ -3,6 +3,15 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Magento\CatalogInventory\Api\StockConfigurationInterface;
+use Magento\Framework\App\ResourceConnection;
+use Magento\InventoryApi\Api\Data\StockInterfaceFactory;
+use Magento\InventoryApi\Api\Data\StockInterfaceFactory\Proxy as StockFactory;
+use Magento\InventoryApi\Api\StockRepositoryInterface;
+use Magento\InventoryApi\Api\StockRepositoryInterface\Proxy as StockRepo;
+use SITC\Sinchimport\Helper\Data;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
 /**
  * Class StockPrice
  * @package SITC\Sinchimport\Model\Import
@@ -18,55 +27,50 @@ class StockPrice extends AbstractImportSection
     const DISTI_STOCK_IMPORT_TABLE = 'sinch_distributors_stock_and_price';
     const SINCH_PRODUCTS_TABLE = 'sinch_products';
 
-    /** @var \SITC\Sinchimport\Helper\Data */
-    private $helper;
-    /** @var \Magento\CatalogInventory\Api\StockConfigurationInterface */
-    private $stockConfiguration;
-    /** @var IndexManagement */
-    private $indexManagement;
-    /** @var \Magento\InventoryApi\Api\StockRepositoryInterface */
-    private $stockRepo;
-    /** @var \Magento\InventoryApi\Api\Data\StockInterfaceFactory */
-    private $stockFactory;
+    private Data $helper;
+    private StockConfigurationInterface $stockConfiguration;
+    private IndexManagement $indexManagement;
+    private StockRepositoryInterface $stockRepo;
+    private StockInterfaceFactory $stockFactory;
 
-    private $stockImportTable;
-    private $distiTable;
-    private $distiStockImportTable;
-    private $importStatsTable;
-    private $sinchProductsTable;
+    private string $stockImportTable;
+    private string $distiTable;
+    private string $distiStockImportTable;
+    private string $importStatsTable;
+    private string $sinchProductsTable;
 
-    private $backordersEnabled;
-    private $outOfStockThreshold;
+    private bool $backordersEnabled;
+    private int $outOfStockThreshold;
 
     //Magento tables
 
     //Tables common to both default/MSI
-    private $eav_entity_type;
-    private $eav_attribute;
-    private $catalog_product_entity;
-    private $catalog_product_entity_decimal;
-    private $catalog_product_entity_varchar;
-    private $products_website_temp;
+    private string $eav_entity_type;
+    private string $eav_attribute;
+    private string $catalog_product_entity;
+    private string $catalog_product_entity_decimal;
+    private string $catalog_product_entity_varchar;
+    private string $sinch_products_mapping;
+    private string $products_website_temp;
     //Defined in this scope as multi-source path needs it too, for inserting marker records
-    private $cataloginventory_stock_item;
+    private string $cataloginventory_stock_item;
     //Defined in this scope as the single source path checks for the existence of this table to determine whether it needs to clear multi-source records
-    private $inventory_source_item;
+    private string $inventory_source_item;
     //MSI tables
-    private $inventory_stock;
-    private $inventory_source;
-    private $inventory_source_stock_link;
-    private $inventory_reservation;
+    private string $inventory_stock;
+    private string $inventory_source;
+    private string $inventory_source_stock_link;
+    private string $inventory_reservation;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection                  $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput            $output,
-        \SITC\Sinchimport\Helper\Data                              $helper,
-        \Magento\CatalogInventory\Api\StockConfigurationInterface  $stockConfiguration,
-        IndexManagement                                            $indexManagement,
-        \Magento\InventoryApi\Api\StockRepositoryInterface\Proxy   $stockRepo,
-        \Magento\InventoryApi\Api\Data\StockInterfaceFactory\Proxy $stockFactory
-    )
-    {
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Data $helper,
+        StockConfigurationInterface $stockConfiguration,
+        IndexManagement $indexManagement,
+        StockRepo $stockRepo,
+        StockFactory $stockFactory
+    ) {
         parent::__construct($resourceConn, $output);
         $this->helper = $helper;
         $this->stockConfiguration = $stockConfiguration;
@@ -88,6 +92,7 @@ class StockPrice extends AbstractImportSection
         $this->catalog_product_entity = $this->getTableName('catalog_product_entity');
         $this->catalog_product_entity_decimal = $this->getTableName('catalog_product_entity_decimal');
         $this->catalog_product_entity_varchar = $this->getTableName('catalog_product_entity_varchar');
+        $this->sinch_products_mapping = $this->getTableName('sinch_products_mapping');
         $this->products_website_temp = $this->getTableName('products_website_temp');
         $this->cataloginventory_stock_item = $this->getTableName('cataloginventory_stock_item');
         $this->inventory_source_item = $this->getTableName('inventory_source_item');
@@ -183,11 +188,12 @@ class StockPrice extends AbstractImportSection
         $conn->query("CREATE TABLE IF NOT EXISTS {$tempSingle} LIKE {$tempTable}");
         $this->endTimingStep();
 
+        $anyValueImplementation = $this->helper->getStoreConfig('sinchimport/misc/any_value_implementation');
         for ($i = 1; $i <= 5; $i++) {
             $this->startTimingStep('Product supplier ' . $i);
             $conn->query("DELETE FROM {$tempSingle}");
             //The group by causes only a single row to be emitted per product (it picks any value for distributor, so supplier order is undefined behaviour)
-            $conn->query("INSERT INTO {$tempSingle} SELECT product_id, ANY_VALUE(distributor_id) FROM {$tempTable} GROUP BY product_id");
+            $conn->query("INSERT INTO {$tempSingle} SELECT product_id, {$anyValueImplementation}(distributor_id) FROM {$tempTable} GROUP BY product_id");
 
             $supplierAttrId = $this->getProductAttributeId('supplier_' . $i);
             //Try to clear the attribute value (in case there are less than 5 suppliers for each product, but there was previously more)
@@ -196,28 +202,21 @@ class StockPrice extends AbstractImportSection
                 "UPDATE {$this->catalog_product_entity_varchar} SET value = '' WHERE attribute_id = :supplierAttrId",
                 [":supplierAttrId" => $supplierAttrId]
             );
+            // Joe said (and I quote): "you shouldn't need it in other scopes", so its on him if he's wrong
+            // Remove values on non-zero store_id (it takes an excessively long time to populate in website scope, so we just won't do that)
+            $conn->query(
+                "DELETE FROM {$this->catalog_product_entity_varchar} WHERE attribute_id = :supplierAttrId AND store_id <> 0",
+                [":supplierAttrId" => $supplierAttrId]
+            );
 
             // Product Distributors (global scope)
             $conn->query(
                 "INSERT INTO {$this->catalog_product_entity_varchar} (attribute_id, store_id, entity_id, value) (
-                    SELECT {$supplierAttrId}, 0, cpe.entity_id, distributors.distributor_name FROM {$this->catalog_product_entity} cpe
+                    SELECT {$supplierAttrId}, 0, spm.entity_id, distributors.distributor_name FROM {$this->sinch_products_mapping} spm
                         INNER JOIN {$tempSingle} supplier
-                            ON cpe.store_product_id = supplier.product_id
+                            ON spm.sinch_product_id = supplier.product_id
                         INNER JOIN {$this->distiTable} distributors
                             ON supplier.distributor_id = distributors.distributor_id
-                ) ON DUPLICATE KEY UPDATE value = distributors.distributor_name"
-            );
-
-            // Product Distributors (website scope)
-            $conn->query(
-                "INSERT INTO {$this->catalog_product_entity_varchar} (attribute_id, store_id, entity_id, value) (
-                    SELECT {$supplierAttrId}, w.website, cpe.entity_id, distributors.distributor_name FROM {$this->catalog_product_entity} cpe
-                        INNER JOIN {$tempSingle} supplier
-                            ON cpe.store_product_id = supplier.product_id
-                        INNER JOIN {$this->distiTable} distributors
-                            ON supplier.distributor_id = distributors.distributor_id
-                        INNER JOIN {$this->products_website_temp} w
-                            ON cpe.store_product_id = w.store_product_id
                 ) ON DUPLICATE KEY UPDATE value = distributors.distributor_name"
             );
 
@@ -325,6 +324,14 @@ class StockPrice extends AbstractImportSection
             the value of \Magento\CatalogInventory\Api\StockConfigurationInterface->getDefaultScopeId() only serves to break the checkout process */
         $stockItemScope = $this->stockConfiguration->getDefaultScopeId();
 
+        if ($this->backordersEnabled) {
+            //If OOS threshold is 0 (indicating infinite backorders), set its value to -1000 just for the purposes of our calculations,
+            // This way it will treat products as in stock
+            if ($this->outOfStockThreshold == 0) {
+                $this->outOfStockThreshold = -1000;
+            }
+        }
+
         if ($this->helper->isMSIEnabled()) {
             //MSI (or the multi-source setting for the import) enabled, process multi-source
             $stockId = $this->getOrCreateStockSource();
@@ -365,11 +372,6 @@ class StockPrice extends AbstractImportSection
             $this->startTimingStep('Set stock to 0 for sinch products not present in new data (MSI)');
             //We want to delete if backorders are enabled (i.e. out of stock threshold is < 0)
             if ($this->backordersEnabled) {
-                //If OOS threshold is 0 (indicating infinite backorders), set its value to -1000 just for the purposes of our calculations,
-                // This way it will treat products as in stock
-                if ($this->outOfStockThreshold == 0) {
-                    $this->outOfStockThreshold = -1000;
-                }
                 //This variant is needed so that when backorders are enabled, and the corresponding feed is exporting
                 // out of stock products, products with 0 stock are not set to out of stock immediately
                 $conn->query(

@@ -198,6 +198,11 @@
                     <comment><![CDATA[When disabled, SKU is assumed to be GLOBALLY UNIQUE (i.e. a product with a given SKU always represents the same product, even if the names differ)<br>
                     When enabled (the default), checks that the item name and the replacement candidate name identically match before updating quote item records (the replacement candidate is still matched based on SKU)]]></comment>
                 </field>
+                <field id="any_value_implementation" translate="label" type="text" sortOrder="10" showInDefault="1" showInStore="0" showInWebsite="0">
+                    <label>ANY_VALUE Implementation</label>
+                    <comment><![CDATA[The implementation of ANY_VALUE to use when selecting records not specified in the GROUP BY condition (primarily Product Supplier).<br>
+                    The default is acceptable on all databases except MariaDB, which fails to implement ANY_VALUE]]></comment>
+                </field>
             </group>
 
         </section>
