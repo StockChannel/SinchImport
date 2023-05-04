@@ -15,4 +15,7 @@
     <type name="Magento\Framework\App\Action\AbstractAction">
         <plugin name="sitc_customcatalog_vary_context_accgrp" type="SITC\Sinchimport\Plugin\VaryContext" sortOrder="11"/>
     </type>
+    <type name="Smile\ElasticsuiteCatalog\Model\ResourceModel\Product\Fulltext\Collection">
+        <plugin name="sitc_customcatalog_product_collection" type="SITC\Sinchimport\Plugin\Elasticsuite\Collection" sortOrder="0" />
+    </type>
 </config>

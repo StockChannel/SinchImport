@@ -2,6 +2,7 @@
 namespace SITC\Sinchimport\Helper;
 
 use Exception;
+use Magento\Catalog\Model\Product;
 use Magento\Framework\App\Area;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\Mail\Template\TransportBuilder;
@@ -222,5 +223,145 @@ class Data extends AbstractHelper
             return false;
         }
         return true;
+    }
+
+    /**
+     * Check the visibility of $product, assuming the current customer is in $accountGroup, returning whether
+     * the product and it's children are to be considered visible
+     * @param Product $product
+     * @param int $accountGroup
+     * @return bool
+     */
+    public function checkProductVisibility(Product $product, int $accountGroup): bool
+    {
+        $sinch_restrict = $product->getSinchRestrict();
+        $childrenVisible = true;
+        // Special logic for types with children (make sure child rules permit visibility)
+        $childCCRules = $this->getChildCCRules($product);
+        if (!empty($childCCRules)) {
+            $childrenVisible = array_reduce(
+                $childCCRules,
+                function($carry, $rule) use ($accountGroup) {
+                    return $carry && self::evalCCRule($accountGroup, $rule);
+                },
+                true
+            );
+        }
+        return self::evalCCRule($accountGroup, $sinch_restrict) && $childrenVisible;
+    }
+
+    /**
+     * Return an array containing all Custom Catalog rules for the children of $product
+     * @param Product $product Product to return child restriction rules for
+     * @return array CC Rules
+     */
+    public function getChildCCRules(Product $product): array
+    {
+        $children = $product->getTypeInstance()->getChildrenIds($product->getId());
+        if (!empty($children)) {
+            $conn = $this->resourceConn->getConnection();
+            $catalog_product_entity_varchar = $conn->getTableName('catalog_product_entity_varchar');
+            $eav_attribute = $conn->getTableName('eav_attribute');
+
+            // Return of getChildrenIds is a bit fucking weird, so normalize the array layout, so we can use it for binds
+            $children = array_map(function ($value) { return array_key_first($value); }, array_values($children));
+
+            $childSub = implode(", ", array_fill(0, count($children), '?'));
+            return $conn->fetchCol(
+                "SELECT value FROM $catalog_product_entity_varchar cpev
+                        WHERE attribute_id = (SELECT attribute_id FROM $eav_attribute WHERE attribute_code = 'sinch_restrict')
+                        AND entity_id IN ($childSub)",
+                $children
+            );
+        }
+        return [];
+    }
+
+    /**
+     * Evaluate a Custom Catalog rule in the context of $currentGroup, returning
+     * whether the rule permits visibility to that group
+     * @param int $currentGroup Group to evaluate the rule for
+     * @param string|null $rule Rule to evaluate
+     * @return bool
+     */
+    public static function evalCCRule(int $currentGroup, ?string $rule): bool
+    {
+        if (empty($rule)) return true;
+        $blacklist = substr($rule, 0, 1) == "!";
+        if($blacklist) {
+            $rule = substr($rule, 1);
+        }
+        $product_account_groups = explode(",", $rule);
+
+        if((!$blacklist && in_array($currentGroup, $product_account_groups)) || //Whitelist and account group in list
+            ($blacklist && !in_array($currentGroup, $product_account_groups))) { //Blacklist and account group not in list
+            return true;
+        }
+        return false;
+    }
+
+
+    /**
+     * Merge multiple Custom Catalog rules together, returning a single rule
+     * which consists of the most restrictive subset of the given rules
+     * @param string[] $current Current rules
+     * @param string[] $additional Additional rules to merge into current
+     * @return string[]
+     */
+    public static function mergeCCRules(array $current, array $additional): array
+    {
+        // Ensure we only get single value arrays
+        if (count($current) > 1) {
+            $merged = [""];
+            foreach ($current as $entry) {
+                $merged = self::mergeCCRules($merged, [$entry]);
+            }
+            $current = $merged;
+        }
+        $main = $current[0];
+        // Ditto for additional
+        if (count($additional) > 1) {
+            $merged = [""];
+            foreach ($additional as $entry) {
+                $merged = self::mergeCCRules($merged, [$entry]);
+            }
+            $additional = $merged;
+        }
+        $second = $additional[0];
+        $mainBlacklist = strpos($main, "!") === 0;
+        $secondBlacklist = strpos($second, "!") === 0;
+        if ($mainBlacklist) {
+            $main = substr($main, 1);
+        }
+        if ($secondBlacklist) {
+            $second = substr($second, 1);
+        }
+        // Check length of string to avoid including empty string in groups list
+        $mainGroups = strlen($main) === 0 ? [] : explode(",", $main);
+        $secondGroups = strlen($second) === 0 ? [] : explode(",", $second);
+
+        $finalGroups = [];
+        if ($mainBlacklist && $secondBlacklist) {
+            // Merge blacklist rules
+            return ["!" . implode(",", array_unique(array_merge($mainGroups, $secondGroups)))];
+        } else if (!$mainBlacklist && !$secondBlacklist) {
+            // Merge whitelist rules
+            $finalGroups = array_intersect($mainGroups, $secondGroups);
+        } else if (!$mainBlacklist && $secondBlacklist) {
+            // One is whitelist, remove two's values from it
+            $finalGroups = array_diff($mainGroups, $secondGroups);
+        } else /*if ($mainBlacklist && !$secondBlacklist)*/ {
+            // Two is whitelist, remove one's values from it
+            $finalGroups = array_diff($secondGroups, $mainGroups);
+        }
+        // The above 3 conditions need special behaviour to prevent rule being set to empty string when no groups can see it.
+        if (empty($finalGroups)) {
+            $finalGroups = ["#"];
+        }
+        // Just in case a sub-product somehow gets visibility of #, we should propagate the lack of visibility
+        if (count($finalGroups) > 1 && array_search("#", $finalGroups)) {
+            $finalGroups = ["#"];
+        }
+        return [implode(",", $finalGroups)];
     }
 }

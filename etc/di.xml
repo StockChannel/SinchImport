@@ -97,4 +97,7 @@
         <plugin name="sitc_in_stock_filter" type="SITC\Sinchimport\Plugin\Elasticsuite\InventoryData" />
     </type>
     <!-- End Stock Filter -->
+
+    <!-- Override for the sinch_restrict attribute on composite/grouped/bundle products (to merge their attribute values together) -->
+    <preference for="Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\AttributeData" type="SITC\Sinchimport\Plugin\Elasticsuite\AttributeData" />
 </config>

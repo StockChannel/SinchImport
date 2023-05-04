@@ -14,7 +14,7 @@
 namespace SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder;
 
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
-use SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\BuilderInterface;
+use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\BuilderInterface;
 
 /**
  * Build an ES query to limit the selection to just products visible to the current account group.

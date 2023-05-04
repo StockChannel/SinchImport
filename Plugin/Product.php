@@ -2,15 +2,20 @@
 
 namespace SITC\Sinchimport\Plugin;
 
+use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Helper\Data;
+
 class Product {
-    /** @var \SITC\Sinchimport\Model\Helper $helper */
-    private $helper;
+    private Data $helper;
+    private ResourceConnection $resourceConnection;
     
     public function __construct(
-        \SITC\Sinchimport\Helper\Data $helper
+        Data               $helper,
+        ResourceConnection $resourceConnection
     )
     {
         $this->helper = $helper;
+        $this->resourceConnection = $resourceConnection;
     }
 
     /**
@@ -53,29 +58,13 @@ class Product {
      * @param \Magento\Catalog\Model\Product $product The product
      * @return bool Can see
      */
-    private function canSeeProduct(\Magento\Catalog\Model\Product $product)
+    private function canSeeProduct(\Magento\Catalog\Model\Product $product): bool
     {
         if(!$this->helper->isProductVisibilityEnabled()) {
             return true;
         }
 
         $account_group_id = $this->helper->getCurrentAccountGroupId();
-        $sinch_restrict = $product->getSinchRestrict();
-            
-        if(empty($sinch_restrict)){ //If sinch_restrict is empty, product is always visible
-            return true;
-        }
-        
-        $blacklist = substr($sinch_restrict, 0, 1) == "!";
-        if($blacklist) {
-            $sinch_restrict = substr($sinch_restrict, 1);
-        }
-        $product_account_groups = explode(",", $sinch_restrict);
-
-        if((!$blacklist && in_array($account_group_id, $product_account_groups)) || //Whitelist and account group in list
-            ($blacklist && !in_array($account_group_id, $product_account_groups))) { //Blacklist and account group not in list
-            return true;
-        }
-        return false;
+        return $this->helper->checkProductVisibility($product, $account_group_id);
     }
 }
