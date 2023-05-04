@@ -230,10 +230,10 @@ class Data extends AbstractHelper
      * Check the visibility of $product, assuming the current customer is in $accountGroup, returning whether
      * the product and it's children are to be considered visible
      * @param Product $product
-     * @param int $accountGroup
+     * @param ?int $accountGroup
      * @return bool
      */
-    public function checkProductVisibility(Product $product, int $accountGroup): bool
+    public function checkProductVisibility(Product $product, ?int $accountGroup): bool
     {
         $sinch_restrict = $product->getSinchRestrict();
         $childrenVisible = true;
@@ -281,14 +281,18 @@ class Data extends AbstractHelper
     /**
      * Evaluate a Custom Catalog rule in the context of $currentGroup, returning
      * whether the rule permits visibility to that group
-     * @param int $currentGroup Group to evaluate the rule for
+     * @param ?int $currentGroup Group to evaluate the rule for
      * @param string|null $rule Rule to evaluate
      * @return bool
      */
-    public static function evalCCRule(int $currentGroup, ?string $rule): bool
+    public static function evalCCRule(?int $currentGroup, ?string $rule): bool
     {
+
         if (empty($rule)) return true;
         $blacklist = substr($rule, 0, 1) == "!";
+        if (empty($currentGroup)) {
+            return $blacklist;
+        }
         if($blacklist) {
             $rule = substr($rule, 1);
         }
