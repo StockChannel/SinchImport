@@ -14,7 +14,7 @@
     "magento/module-store": ">=100.2.2",
     "php": ">=7.4.0",
     "laminas/laminas-log": "^2.12.0",
-    "smile/elasticsuite": "*"
+    "smile/elasticsuite": ">=2.10.13"
   },
   "require-dev": {
     "squizlabs/php_codesniffer": "@stable",
