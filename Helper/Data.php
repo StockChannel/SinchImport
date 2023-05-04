@@ -25,6 +25,7 @@ class Data extends AbstractHelper
     private string $accountTable;
     /** @var string $groupMappingTable */
     private string $groupMappingTable;
+    private ?int $defaultStoreId = null;
 
     public function __construct(
         \Magento\Framework\App\Helper\Context $context,
@@ -363,5 +364,28 @@ class Data extends AbstractHelper
             $finalGroups = ["#"];
         }
         return [implode(",", $finalGroups)];
+    }
+
+    /**
+     * Retrieve the default store_id, for inserting in place of static 1 from previous import versions
+     * @return int
+     */
+    public function getDefaultStoreId(): int
+    {
+        if (empty($this->defaultStoreId)) {
+            $storeView = $this->storeManager->getDefaultStoreView();
+            if (!empty($storeView)) {
+                $this->defaultStoreId = $storeView->getId();
+            } else {
+                $conn = $this->resourceConn->getConnection();
+                $store = $conn->getTableName('store');
+                $storeId = $conn->fetchCol(
+                    "SELECT store_id FROM $store WHERE store_id != 0 AND code != 'admin' AND is_active = 1 ORDER BY sort_order LIMIT 1"
+                );
+                // Fallback to the old behaviour (store_id 1), if all else fails
+                $this->defaultStoreId = (!empty($storeId) && is_numeric($storeId)) ? intval($storeId) : 1;
+            }
+        }
+        return $this->defaultStoreId;
     }
 }
