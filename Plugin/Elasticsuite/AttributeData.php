@@ -143,7 +143,9 @@ class AttributeData extends \Smile\ElasticsuiteCatalog\Model\Product\Indexer\Ful
                 $before = $parentData[$attributeCode];
                 // Special logic to merge the rules into 1
                 $parentData[$attributeCode] = Data::mergeCCRules($parentData[$attributeCode], $value);
-                $this->logger->info("Sinch_restrict merge: {$before[0]} + {$value[0]} = {$parentData[$attributeCode][0]}");
+                if (count($before) == 1 && count($value) == 1) {
+                    $this->logger->info("Sinch_restrict merge: {$before[0]} + {$value[0]} = {$parentData[$attributeCode][0]}");
+                }
                 continue;
             }
 
