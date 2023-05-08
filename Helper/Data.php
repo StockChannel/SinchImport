@@ -315,6 +315,14 @@ class Data extends AbstractHelper
      */
     public static function mergeCCRules(array $current, array $additional): array
     {
+        // Ensure that some values were given (particularly $current,
+        // where in Datacom NZ Prod we observed it cause a crash)
+        if (empty($current)) {
+            $current = [""];
+        }
+        if (empty($additional)) {
+            $additional = [""];
+        }
         // Ensure we only get single value arrays
         if (count($current) > 1) {
             $merged = [""];
