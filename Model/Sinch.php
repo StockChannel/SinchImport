@@ -284,6 +284,7 @@ class Sinch
                 if(!$this->sitcIndexMgmt->ensureIndexersNotRunning()){
                     $this->print("There are indexers currently running, abandoning import");
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
+                    $this->setImportResult('Abandoned');
                     throw new \Magento\Framework\Exception\LocalizedException(__("There are indexers currently running, abandoning import"));
                 }
 
@@ -730,17 +731,18 @@ class Sinch
                       WHERE id=" . $this->current_import_status_statistic_id
         );
         if ($finished == 1) {
-            $this->_doQuery(
-                "
-                UPDATE " . $this->import_status_statistic_table . "
-                SET
-                    global_status_import='Successful',
-                    finish_import=now()
-                WHERE
-                    error_report_message='' and
-                    id=" . $this->current_import_status_statistic_id
-            );
+            $this->setImportResult('Successful');
         }
+    }
+
+    private function setImportResult(string $status)
+    {
+        $this->_resourceConnection->getConnection()->query(
+            "UPDATE $this->import_status_statistic_table
+                SET global_status_import = :status, finish_import = NOW()
+                WHERE id = :currentImportId",
+            [":currentImportId" => $this->current_import_status_statistic_id, ":status" => $status]
+        );
     }
 
     /**
@@ -7767,6 +7769,7 @@ class Sinch
                 if(!$this->sitcIndexMgmt->ensureIndexersNotRunning()){
                     $this->print("There are indexers currently running, abandoning import");
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
+                    $this->setImportResult('Abandoned');
                     throw new \Magento\Framework\Exception\LocalizedException(__("There are indexers currently running, abandoning import"));
                 }
 

@@ -39,7 +39,8 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
             'Failed'     => 'sinch-error',
             'Run'        => 'sinch-run',
             'Successful' => 'sinch-success',
-            'Scheduled'  => 'sinch-scheduled'
+            'Scheduled'  => 'sinch-scheduled',
+            'Abandoned'  => 'sinch-error'
         ];
         
         $html
