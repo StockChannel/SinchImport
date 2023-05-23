@@ -2248,7 +2248,6 @@ class Sinch
             $coincidence,
             $catalog_category_entity,
             $catalog_category_entity_varchar,
-	        $catalog_category_entity_text,
             $catalog_category_entity_int,
             $_categoryDefault_attribute_set_id,
             $name_attrid,
