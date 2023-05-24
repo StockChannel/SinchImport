@@ -7,6 +7,7 @@ use Magento\Framework\App\Area;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\Mail\Template\TransportBuilder;
 use Magento\Store\Model\StoreManager;
+use SITC\Sinchimport\Plugin\VaryContext;
 
 class Data extends AbstractHelper
 {
@@ -83,7 +84,18 @@ class Data extends AbstractHelper
      */
     public function getCurrentAccountGroupId()
     {
-        return $this->httpContext->getValue(\SITC\Sinchimport\Plugin\VaryContext::CONTEXT_ACCOUNT_GROUP);
+        if ($this->httpContext->getValue(VaryContext::CONTEXT_DEPERSONALIZED)) {
+            //Depersonalize has run, and the httpContext has the value
+            return $this->httpContext->getValue(VaryContext::CONTEXT_ACCOUNT_GROUP);
+        }
+        //Pre-depersonalize, retrieve manually
+        if ($this->isModuleEnabled('Tigren_CompanyAccount') && $this->customerSession->isLoggedIn()) {
+            $attr = $this->customerSession->getCustomerData()->getCustomAttribute('account_id');
+            if(!empty($attr)){
+                return $this->getAccountGroupForAccount($attr->getValue());
+            }
+        }
+        return false;
     }
 
     public function getAccountGroupForAccount($accountId)

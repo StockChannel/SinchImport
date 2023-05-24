@@ -6,6 +6,7 @@ namespace SITC\Sinchimport\Plugin;
  * Plugin on \Magento\Framework\App\Action\AbstractAction, adding account group to the HTTP context
  */
 class VaryContext {
+    const CONTEXT_DEPERSONALIZED = 'CONTEXT_HAS_DEPERSONALIZED';
     const CONTEXT_ACCOUNT_GROUP = 'CONTEXT_SITC_ACC_GRP';
     const DEFAULT_ACCOUNT_GROUP = false;
 
@@ -45,6 +46,11 @@ class VaryContext {
             static::CONTEXT_ACCOUNT_GROUP,
             $account_group_id,
             static::DEFAULT_ACCOUNT_GROUP
+        );
+        $this->httpContext->setValue(
+            static::CONTEXT_DEPERSONALIZED,
+            true,
+            false
         );
     }
 }
