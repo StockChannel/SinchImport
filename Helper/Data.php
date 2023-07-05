@@ -353,8 +353,9 @@ class Data extends AbstractHelper
             $additional = $merged;
         }
         $second = $additional[0];
-        $mainBlacklist = strpos($main, "!") === 0;
-        $secondBlacklist = strpos($second, "!") === 0;
+        // An empty rule is considered to be an empty blacklist
+        $mainBlacklist = strpos($main, "!") === 0 || strlen($main) === 0;
+        $secondBlacklist = strpos($second, "!") === 0 || strlen($second) === 0;
         if ($mainBlacklist) {
             $main = substr($main, 1);
         }
