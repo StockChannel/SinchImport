@@ -4847,59 +4847,40 @@ class Sinch
                               "
         );
 
+        //
+        if ($this->imType == "REWRITE") {
+            $insertMod = "";
+            $onDuplicate = " ON DUPLICATE KEY UPDATE value = VALUES(value)";
+        } else {
+            $insertMod = "IGNORE";
+            $onDuplicate = "";
+        }
+
         //Set enabled
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_int'
-            ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                 )(
-                                    SELECT
-                                        " . $this->_getProductAttributeId(
-                'status'
-            ) . ",
-                                        w.website,
-                                        a.entity_id,
-                                        1
-                                    FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                    INNER JOIN " . $this->_getTableName(
-                'products_website_temp'
-            ) . " w
-                                        ON a.store_product_id=w.store_product_id
-                                 )
-                                 ON DUPLICATE KEY UPDATE
-                                    value=1
-                              "
+            "INSERT $insertMod INTO " . $this->_getTableName('catalog_product_entity_int') . " (attribute_id, store_id, entity_id, value) (
+                        SELECT " . $this->_getProductAttributeId('status') . ",
+                            w.website,
+                            cpe.entity_id,
+                            1
+                        FROM " . $this->_getTableName('catalog_product_entity') . " cpe
+                        INNER JOIN " . $this->_getTableName('products_website_temp') . " w
+                            ON cpe.store_product_id=w.store_product_id
+                    )
+                    $onDuplicate"
         );
 
         $this->_doQuery(
-            "
-                                INSERT INTO " . $this->_getTableName(
-                'catalog_product_entity_int'
-            ) . " (
-                                    attribute_id,
-                                    store_id,
-                                    entity_id,
-                                    value
-                                )(SELECT
-                                    " . $this->_getProductAttributeId('status')
-            . ",
-                                    0,
-                                    a.entity_id,
-                                    1
-                                  FROM " . $this->_getTableName(
-                'catalog_product_entity'
-            ) . " a
-                                )
-                                ON DUPLICATE KEY UPDATE
-                                    value=1
-                              "
+            "INSERT $insertMod INTO " . $this->_getTableName('catalog_product_entity_int') . " (attribute_id, store_id, entity_id, value) (
+                SELECT
+                    " . $this->_getProductAttributeId('status') . ",
+                    0,
+                    cpe.entity_id,
+                    1
+                    FROM " . $this->_getTableName('catalog_product_entity') . " cpe
+                    WHERE cpe.sinch_product_id IS NOT NULL
+            )
+            $onDuplicate"
         );
 
         //TODO: This seems to change category mapping to the root category when the actual category doesn't exist
@@ -6601,14 +6582,16 @@ class Sinch
         // set status = 1 for all stores
         $this->_doQuery(
             "
-            INSERT INTO $catalog_product_entity_int
-                (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_atatus,
-                0,
-                a.entity_id,
-                1
-            FROM $catalog_product_entity a
+            INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value) (
+                SELECT
+                    $attr_atatus,
+                    0,
+                    cpe.entity_id,
+                    1
+                FROM $catalog_product_entity cpe
+                INNER JOIN $sinch_products_mapping spm
+                    ON cpe.entity_id = spm.entity_id
+                    AND spm.sinch_product_id IS NOT NULL
             )
             ON DUPLICATE KEY UPDATE
                 value = 1"
@@ -7166,7 +7149,7 @@ class Sinch
                 sinch_product_id = a.sinch_product_id"
         );
 
-        $this->print("--Replace Magento Multistore 4...");
+        $this->print("--Merge Magento Multistore 4...");
         //Set enabled
         $this->_doQuery(
             "DELETE cpei
@@ -7177,38 +7160,33 @@ class Sinch
         );
 
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
-                (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_atatus,
-                w.website,
-                a.entity_id,
-                1
-            FROM $catalog_product_entity a
-            JOIN $products_website_temp w
-                ON a.store_product_id = w.store_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 1"
+            "INSERT IGNORE INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value) (
+                SELECT
+                    $attr_atatus,
+                    w.website,
+                    a.entity_id,
+                    1
+                FROM $catalog_product_entity a
+                JOIN $products_website_temp w
+                    ON a.store_product_id = w.store_product_id
+            )"
         );
 
         $this->print("--Replace Magento Multistore 5...");
 
         // set status = 1 for all stores
         $this->_doQuery(
-            "
-            INSERT INTO $catalog_product_entity_int
-                (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_atatus,
-                0,
-                a.entity_id,
-                1
-            FROM $catalog_product_entity a
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 1"
+            "INSERT IGNORE INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value) (
+                SELECT
+                    $attr_atatus,
+                    0,
+                    cpe.entity_id,
+                    1
+                FROM $catalog_product_entity cpe
+                INNER JOIN $sinch_products_mapping spm
+                    ON cpe.entity_id = spm.entity_id
+                    AND spm.sinch_product_id IS NOT NULL
+            )"
         );
 
         $this->print("--Replace Magento Multistore 6...");
