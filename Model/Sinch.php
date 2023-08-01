@@ -32,6 +32,7 @@ use SITC\Sinchimport\Model\Import\IndexManagement;
 use SITC\Sinchimport\Model\Import\Multimedia;
 use SITC\Sinchimport\Model\Import\Popularity;
 use SITC\Sinchimport\Model\Import\ProductDates;
+use SITC\Sinchimport\Model\Import\ProductTypeFrequency;
 use SITC\Sinchimport\Model\Import\ReasonsToBuy;
 use SITC\Sinchimport\Model\Import\RelatedProducts;
 use SITC\Sinchimport\Model\Import\Reviews;
@@ -132,6 +133,7 @@ class Sinch {
     private VirtualCategory $virtualCategoryImport;
     private Reviews $reviewImport;
     private RelatedProducts $relatedProductsImport;
+	private ProductTypeFrequency $productTypeFrequencyImport;
 
     private Download $dlHelper;
     private Data $dataHelper;
@@ -168,7 +170,8 @@ class Sinch {
         Reviews $reviewImport,
         RelatedProducts $relatedProductsImport,
         Download $dlHelper,
-        Data $dataHelper
+        Data $dataHelper,
+		ProductTypeFrequency $productTypeFrequencyImport
     )
     {
         $this->sitcIndexMgmt = $sitcIndexMgmt;
@@ -189,7 +192,8 @@ class Sinch {
         $this->virtualCategoryImport = $virtualCategoryImport;
         $this->reviewImport = $reviewImport;
         $this->relatedProductsImport = $relatedProductsImport;
-
+	    $this->productTypeFrequencyImport = $productTypeFrequencyImport;
+		
         $this->dlHelper = $dlHelper;
         $this->dataHelper = $dataHelper;
 
@@ -305,7 +309,10 @@ class Sinch {
                     Download::FILE_PRODUCT_CATEGORIES,
                     Download::FILE_PRODUCTS,
                     Download::FILE_STOCK_AND_PRICES,
-                    Download::FILE_PRODUCTS_GALLERY_PICTURES
+                    Download::FILE_PRODUCTS_GALLERY_PICTURES,
+                    Download::FILE_PRODUCT_TYPES,
+	                Download::FILE_PRODUCT_FREQUENCIES,
+	                Download::FILE_PRODUCT_TYPE_FREQUENCY
                 ];
                 $optionalFiles = [
                     Download::FILE_ACCOUNT_GROUP_CATEGORIES,
@@ -332,6 +339,11 @@ class Sinch {
                 $this->parseCategories();
                 $this->addImportStatus('Parse Categories', true);
 
+	            if ($this->productTypeFrequencyImport->haveRequiredFiles()) {
+		            $this->print("Parse Product Type Frequency");
+		            $this->productTypeFrequencyImport->parse();
+	            }
+				
                 if ($this->virtualCategoryImport->haveRequiredFiles()) {
                     $this->print("Parsing Virtual Categories");
                     $this->virtualCategoryImport->parse();
