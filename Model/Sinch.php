@@ -170,9 +170,9 @@ class Sinch
             FILE_CUSTOMER_GROUP_CATEGORIES,
             FILE_CUSTOMER_GROUPS,
             FILE_CUSTOMER_GROUP_PRICE,
-	        FILE_PRODUCT_TYPES,
-	        FILE_PRODUCT_FREQUENCIES,
-	        FILE_PRODUCT_TYPE_FREQUENCY
+            FILE_PRODUCT_TYPES,
+            FILE_PRODUCT_FREQUENCIES,
+            FILE_PRODUCT_TYPE_FREQUENCY
         ];
 
         $this->_dataConf = $this->scopeConfig->getValue(
@@ -222,9 +222,9 @@ class Sinch
 
     /**
      * Log some data to the sinch log file
-     * 
+     *
      * @param string $logString The message
-     * 
+     *
      * @return void
      */
     private function _log(string $logString)
@@ -282,7 +282,7 @@ class Sinch
 
                 //Once we hold the import lock, check/await indexer completion
                 $this->print("Making sure no indexers are currently running");
-                if(!$this->sitcIndexMgmt->ensureIndexersNotRunning()){
+                if (!$this->sitcIndexMgmt->ensureIndexersNotRunning()) {
                     $this->print("There are indexers currently running, abandoning import");
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
                     throw new \Magento\Framework\Exception\LocalizedException(__("There are indexers currently running, abandoning import"));
@@ -325,18 +325,18 @@ class Sinch
                 $this->print("Parse EAN Codes...");
                 $this->parseEANCodes();
                 $this->addImportStatus('Parse EAN Codes');
-	
-	            $this->print("Parse Product Types...");
-	            $this->parseProductTypes();
-	            $this->addImportStatus('Parse Product Types');
-	
-	            $this->print("Parse Product Frequencies...");
-	            $this->parseProductFrequencies();
-	            $this->addImportStatus('Parse Product Frequencies');
-	
-	            $this->print("Parse Product Type Frequency");
-	            $this->parseProductTypeFrequency();
-	            $this->addImportStatus('Parse Product Type Frequency');
+
+                $this->print("Parse Product Types...");
+                $this->parseProductTypes();
+                $this->addImportStatus('Parse Product Types');
+
+                $this->print("Parse Product Frequencies...");
+                $this->parseProductFrequencies();
+                $this->addImportStatus('Parse Product Frequencies');
+
+                $this->print("Parse Product Type Frequency");
+                $this->parseProductTypeFrequency();
+                $this->addImportStatus('Parse Product Type Frequency');
 
                 $this->print("Parse Manufacturers...");
                 $this->parseManufacturers();
@@ -400,7 +400,7 @@ class Sinch
                     \Magento\Store\Model\ScopeInterface::SCOPE_STORE
                 );
 
-                if(!$ccCategoryDisable){
+                if (!$ccCategoryDisable) {
                     if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
                         $this->print("Parsing customer group categories...");
                         $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
@@ -418,8 +418,8 @@ class Sinch
                     \Magento\Store\Model\ScopeInterface::SCOPE_STORE
                 );
 
-                if(!$ccProductDisable) {
-                    if(file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)){
+                if (!$ccProductDisable) {
+                    if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)) {
                         $this->print("Processing Custom catalog restrictions...");
                         $this->customCatalogImport->parse(
                             $this->varDir . FILE_STOCK_AND_PRICES,
@@ -443,7 +443,7 @@ class Sinch
                         ]
                     );
                     $this->print("Post import hooks complete");
-                } catch(\Exception $e) {
+                } catch (\Exception $e) {
                     $this->print("Caught exception while running post import hooks: " . $e->getMessage());
                 }
 
@@ -559,10 +559,10 @@ class Sinch
 
     private function retriableQuery($query)
     {
-        while(true){
+        while (true) {
             try {
                 return $this->_doQuery($query);
-            } catch(\Magento\Framework\DB\Adapter\DeadlockException $_e){
+            } catch (\Magento\Framework\DB\Adapter\DeadlockException $_e) {
                 $this->print("Sleeping as the previous attempt deadlocked");
                 sleep(10);
             }
@@ -581,7 +581,7 @@ class Sinch
         );
 
         $scheduledImportId = false;
-        if($this->import_run_type == 'MANUAL') {
+        if ($this->import_run_type == 'MANUAL') {
             $scheduledImportId = $this->_resourceConnection->getConnection()->fetchOne(
                 "SELECT id FROM {$this->import_status_statistic_table}
                     WHERE import_run_type = 'MANUAL'
@@ -591,7 +591,7 @@ class Sinch
             );
         }
 
-        if(empty($scheduledImportId)) {
+        if (empty($scheduledImportId)) {
             $this->_doQuery(
                 "INSERT INTO " . $this->import_status_statistic_table . " (
                             start_import,
@@ -610,7 +610,7 @@ class Sinch
                         )
                         "
             );
-            
+
             $result = $this->_doQuery(
                 "SELECT MAX(id) AS id FROM {$this->import_status_statistic_table}"
             )->fetch();
@@ -638,9 +638,9 @@ class Sinch
     /**
      * Set the error message for the import
      * including logging it
-     * 
+     *
      * @param string $message The error message
-     * 
+     *
      * @return void
      */
     private function _setErrorMessage(string $message)
@@ -772,7 +772,7 @@ class Sinch
         $this->_log("--- Start downloading files ---");
 
         $connRes = $this->dlHelper->connect();
-        if($connRes !== true){
+        if ($connRes !== true) {
             $this->_setErrorMessage($connRes);
             throw new \Magento\Framework\Exception\LocalizedException(__($connRes));
         }
@@ -782,7 +782,7 @@ class Sinch
                 $dlRes = $this->dlHelper->downloadFile($file);
                 if (!$dlRes || !file_exists($this->varDir . $file) || @filesize($this->varDir . $file) < 1) {
                     //Allow failures of optional files
-                    switch($file){
+                    switch ($file) {
                         case FILE_CATEGORIES_FEATURES:
                             $this->_ignore_category_features = true;
                             break;
@@ -4577,6 +4577,7 @@ class Sinch
                 $catalog_product_entity = $this->_getTableName('catalog_product_entity');
                 //Allow retrying, as this is particularly likely to deadlock if the site is being used
                 $this->retriableQuery("DELETE FROM $catalog_product_entity WHERE type_id = 'simple'");
+                $this->retriableQuery("DELETE FROM $catalog_product_entity WHERE type_id = 'virtual'");
             }
 
             $this->print("--Parse Products 6");
@@ -4771,6 +4772,9 @@ class Sinch
 
     private function replaceMagentoProducts()
     {
+        $sinch_product_type_frequency = $this->_getTableName(
+            'sinch_product_type_frequency'
+        );
         $this->_doQuery(
             "DELETE cpe
                 FROM " . $this->_getTableName('catalog_product_entity') . " cpe
@@ -4798,7 +4802,7 @@ class Sinch
                                 )(SELECT
                                      pm.entity_id,
                                      $this->defaultAttributeSetId,
-                                     'simple',
+                                     spt.product_type_name,
                                      a.product_sku,
                                      NOW(),
                                      0,
@@ -4806,6 +4810,8 @@ class Sinch
                                      a.sinch_product_id
                                   FROM " . $this->_getTableName('products_temp')
             . " a
+                                INNER JOIN $sinch_product_type_frequency spt
+                                ON a.sinch_product_id = spt.sinch_product_id
                                   LEFT JOIN " . $this->_getTableName(
                 'sinch_products_mapping'
             ) . " pm
@@ -4836,7 +4842,7 @@ class Sinch
                                 )(SELECT
                                      pm.entity_id,
                                      $this->defaultAttributeSetId,
-                                     'simple',
+                                     spt.product_type_name,
                                      a.product_sku,
                                      NOW(),
                                      0,
@@ -4844,6 +4850,8 @@ class Sinch
                                      a.sinch_product_id
                                   FROM " . $this->_getTableName('products_temp')
             . " a
+                                INNER JOIN $sinch_product_type_frequency spt
+                                ON a.sinch_product_id = spt.sinch_product_id
                                   LEFT JOIN " . $this->_getTableName(
                 'sinch_products_mapping'
             ) . " pm
@@ -6483,6 +6491,9 @@ class Sinch
         $sinch_categories_mapping = $this->_getTableName(
             'sinch_categories_mapping'
         );
+        $sinch_product_type_frequency = $this->_getTableName(
+            'sinch_product_type_frequency'
+        );
         //TODO: Index table reference
 //        $catalog_category_product_index = $this->_getTableName(
 //            'catalog_category_product_index'
@@ -6535,13 +6546,15 @@ class Sinch
             (SELECT
                 pm.entity_id,
                 $_defaultAttributeSetId,
-                'simple',
+                spt.product_type_name,
                 a.product_sku,
                 NOW(),
                 0,
                 a.store_product_id,
                 a.sinch_product_id
             FROM $products_temp a
+            INNER JOIN $sinch_product_type_frequency spt
+                ON a.sinch_product_id = spt.sinch_product_id
             LEFT JOIN $sinch_products_mapping pm
                 ON a.store_product_id = pm.store_product_id
                 AND a.sinch_product_id = pm.sinch_product_id
@@ -6560,13 +6573,15 @@ class Sinch
             (SELECT
                 pm.entity_id,
                 $_defaultAttributeSetId,
-                'simple',
+                spt.product_type_name,
                 a.product_sku,
                 NOW(),
                 0,
                 a.store_product_id,
                 a.sinch_product_id
             FROM $products_temp a
+            INNER JOIN $sinch_product_type_frequency spt
+                ON a.sinch_product_id = spt.sinch_product_id
             LEFT JOIN $sinch_products_mapping pm
                 ON a.store_product_id = pm.store_product_id
                 AND a.sinch_product_id = pm.sinch_product_id
@@ -6870,7 +6885,7 @@ class Sinch
                     ON cpw.product_id = cpe.entity_id
                 WHERE cpe.entity_id IS NULL"
             );
-        } catch(\Magento\Framework\DB\Adapter\DeadlockException $_e){
+        } catch (\Magento\Framework\DB\Adapter\DeadlockException $_e) {
             //Do nothing, the foreign key should ensure this is fulfilled anyway
         }
 
@@ -7087,6 +7102,9 @@ class Sinch
         $catalog_product_website = $this->_getTableName(
             'catalog_product_website'
         );
+        $sinch_product_type_frequency = $this->_getTableName(
+            'sinch_product_type_frequency'
+        );
         $_defaultAttributeSetId
             = $this->_getProductDefaulAttributeSetId();
         $attr_atatus = $this->_getProductAttributeId(
@@ -7133,13 +7151,15 @@ class Sinch
             (SELECT
                 pm.entity_id,
                 $_defaultAttributeSetId,
-                'simple',
+                spt.product_type_name,
                 a.product_sku,
                 NOW(),
                 0,
                 a.store_product_id,
                 a.sinch_product_id
             FROM $products_temp a
+            INNER JOIN $sinch_product_type_frequency spt
+                ON a.sinch_product_id = spt.sinch_product_id
             LEFT JOIN $sinch_products_mapping pm
                 ON a.store_product_id = pm.store_product_id
                 AND a.sinch_product_id = pm.sinch_product_id
@@ -7159,13 +7179,15 @@ class Sinch
             (SELECT
                 pm.entity_id,
                 $_defaultAttributeSetId,
-                'simple',
+                spt.product_type_name,
                 a.product_sku,
                 NOW(),
                 0,
                 a.store_product_id,
                 a.sinch_product_id
             FROM $products_temp a
+            INNER JOIN $sinch_product_type_frequency spt
+                ON a.sinch_product_id = spt.sinch_product_id
             LEFT JOIN $sinch_products_mapping pm
                 ON a.store_product_id = pm.store_product_id
                 AND a.sinch_product_id = pm.sinch_product_id
@@ -7686,7 +7708,7 @@ class Sinch
             if (is_array($res)) {
                 $catalog_product_flat = array_pop($res);
                 $this->_doQuery('DELETE pf1 FROM ' . $catalog_product_flat . ' pf1
-                    LEFT JOIN ' . $this->_getTableName('catalog_product_entity'). ' p
+                    LEFT JOIN ' . $this->_getTableName('catalog_product_entity') . ' p
                         ON pf1.entity_id = p.entity_id
                     WHERE p.entity_id IS NULL'
                 );
@@ -7711,7 +7733,7 @@ class Sinch
             'sinchimport/general/index_tonerfinder',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
 
-        if ($configTonerFinder == 1 ){
+        if ($configTonerFinder == 1) {
             $this->insertCategoryIdForFinder();
         } else {
             $this->_logImportInfo("Configuration ignores indexing tonerfinder");
@@ -7776,7 +7798,7 @@ class Sinch
 
                 //Once we hold the import lock, check/await indexer completion
                 $this->print("Making sure no indexers are currently running");
-                if(!$this->sitcIndexMgmt->ensureIndexersNotRunning()){
+                if (!$this->sitcIndexMgmt->ensureIndexersNotRunning()) {
                     $this->print("There are indexers currently running, abandoning import");
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
                     throw new \Magento\Framework\Exception\LocalizedException(__("There are indexers currently running, abandoning import"));
@@ -7835,7 +7857,7 @@ class Sinch
                     \Magento\Store\Model\ScopeInterface::SCOPE_STORE
                 );
 
-                if(!$ccCategoryDisable){
+                if (!$ccCategoryDisable) {
                     if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES)) {
                         $this->print("Parsing customer group categories...");
                         $this->customerGroupCatsImport->parse($this->varDir . FILE_CUSTOMER_GROUP_CATEGORIES);
@@ -7850,7 +7872,7 @@ class Sinch
                     \Magento\Store\Model\ScopeInterface::SCOPE_STORE
                 );
 
-                if(!$ccProductDisable) {
+                if (!$ccProductDisable) {
                     if (file_exists($this->varDir . FILE_CUSTOMER_GROUP_PRICE) && file_exists($this->varDir . FILE_STOCK_AND_PRICES)) {
                         $this->print("Processing Custom catalog restrictions...");
                         $this->customCatalogImport->parse(
@@ -7871,7 +7893,7 @@ class Sinch
                         ]
                     );
                     $this->print("Post import hooks complete");
-                } catch(\Exception $e) {
+                } catch (\Exception $e) {
                     $this->print("Caught exception while running post import hooks: " . $e->getMessage());
                 }
 
@@ -7976,8 +7998,8 @@ class Sinch
         $res = $this->_connection->query(
             "SELECT store_product_id
                 FROM " . $this->_getTableName('sinch_products_mapping') . "
-                WHERE entity_id = ?" ,
-                [ $entity_id ]
+                WHERE entity_id = ?",
+            [$entity_id]
         )->fetch();
 
         if (!empty($res)) {
@@ -8089,7 +8111,7 @@ class Sinch
     public function getImportStatuses()
     {
         $messages = [];
-        if(!$this->_connection->isTableExists($this->import_status_table)) {
+        if (!$this->_connection->isTableExists($this->import_status_table)) {
             return $messages;
         }
 
@@ -8131,15 +8153,15 @@ class Sinch
      */
     public function insertCategoryIdForFinder()
     {
-        $tbl_store  = $this->_getTableName('store');
-        $tbl_cat    = $this->_getTableName( 'catalog_category_product' );
+        $tbl_store = $this->_getTableName('store');
+        $tbl_cat = $this->_getTableName('catalog_category_product');
 
-        $this->_doQuery(" 
-                INSERT INTO ". $this->_getTableName('catalog_category_product_index') ." (
+        $this->_doQuery("
+                INSERT INTO " . $this->_getTableName('catalog_category_product_index') . " (
                 category_id, product_id, position, is_parent, store_id, visibility) (
                     SELECT a.category_id, a.product_id, a.position, 1, b.store_id, 4
-                    FROM ". $tbl_cat ." a
-                        JOIN ". $tbl_store ." b )
+                    FROM " . $tbl_cat . " a
+                        JOIN " . $tbl_store . " b )
                 ON DUPLICATE KEY UPDATE visibility = 4"
         );
 
@@ -8149,11 +8171,11 @@ class Sinch
             $table = $this->_getTableName('catalog_category_product_index_store' . $storeId);
 
             if ($this->_connection->isTableExists($table)) {
-                $this->_doQuery(" 
-                  INSERT INTO ". $table ." (category_id, product_id, position, is_parent, store_id, visibility) (
+                $this->_doQuery("
+                  INSERT INTO " . $table . " (category_id, product_id, position, is_parent, store_id, visibility) (
                       SELECT  a.category_id, a.product_id, a.position, 1, b.store_id, 4
-                      FROM ". $tbl_cat ." a
-                        JOIN ". $tbl_store ." b )
+                      FROM " . $tbl_cat . " a
+                        JOIN " . $tbl_store . " b )
                   ON DUPLICATE KEY UPDATE visibility = 4"
                 );
             }
@@ -8166,7 +8188,7 @@ class Sinch
             'sinchimport/general/meta_title',
             \Magento\Store\Model\ScopeInterface::SCOPE_STORE);
 
-        if ($configMetaTitle == 1 ){
+        if ($configMetaTitle == 1) {
             $this->_doQuery(
                 "
                                     INSERT INTO " . $this->_getTableName(
@@ -8235,117 +8257,117 @@ class Sinch
             $this->_logImportInfo("-- Ignore the meta title for product configuration.");
         }
     }
-	
-	private function parseProductTypes()
-	{
-		$parseFile = $this->varDir . FILE_PRODUCT_TYPES;
-		if (filesize($parseFile)) {
-			$this->_log("Start parse " . FILE_PRODUCT_TYPES);
-			
-			$this->_doQuery(
-				"DROP TABLE IF EXISTS " . $this->_getTableName(
-					'sinch_product_types_temp'
-				)
-			);
-			$this->_doQuery(
-				"CREATE TABLE " . $this->_getTableName('sinch_product_types_temp')
-				. "(
+
+    private function parseProductTypes()
+    {
+        $parseFile = $this->varDir . FILE_PRODUCT_TYPES;
+        if (filesize($parseFile)) {
+            $this->_log("Start parse " . FILE_PRODUCT_TYPES);
+
+            $this->_doQuery(
+                "DROP TABLE IF EXISTS " . $this->_getTableName(
+                    'sinch_product_types_temp'
+                )
+            );
+            $this->_doQuery(
+                "CREATE TABLE " . $this->_getTableName('sinch_product_types_temp')
+                . "(
                           `product_type_id` int(11) DEFAULT NULL,
                           `product_type_name` varchar(50) DEFAULT NULL,
                           KEY `product_type_id` (product_type_id)
                           )"
-			);
-			
-			$this->_doQuery(
-				"LOAD DATA LOCAL INFILE '" . $parseFile . "'
+            );
+
+            $this->_doQuery(
+                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                           INTO TABLE " . $this->_getTableName(
-					'sinch_product_types_temp'
-				) . "
+                    'sinch_product_types_temp'
+                ) . "
                           FIELDS TERMINATED BY '" . $this->field_terminated_char
-				. "'
+                . "'
                           OPTIONALLY ENCLOSED BY '\"'
                           LINES TERMINATED BY \"\r\n\"
                           IGNORE 1 LINES "
-			);
-			
-			$this->_doQuery(
-				"DROP TABLE IF EXISTS " . $this->_getTableName(
-					'sinch_product_types'
-				)
-			);
-			$this->_doQuery(
-				"RENAME TABLE " . $this->_getTableName('sinch_product_types_temp')
-				. "
+            );
+
+            $this->_doQuery(
+                "DROP TABLE IF EXISTS " . $this->_getTableName(
+                    'sinch_product_types'
+                )
+            );
+            $this->_doQuery(
+                "RENAME TABLE " . $this->_getTableName('sinch_product_types_temp')
+                . "
                           TO " . $this->_getTableName('sinch_product_types')
-			);
-			$this->_log("Finish parse " . FILE_PRODUCT_TYPES);
-		} else {
-			$this->_log("Wrong file " . $parseFile);
-		}
-	}
-	
-	private function parseProductFrequencies()
-	{
-		$parseFile = $this->varDir . FILE_PRODUCT_FREQUENCIES;
-		if (filesize($parseFile)) {
-			$this->_log("Start parse " . FILE_PRODUCT_FREQUENCIES);
-			
-			$this->_doQuery(
-				"DROP TABLE IF EXISTS " . $this->_getTableName(
-					'sinch_product_frequencies_temp'
-				)
-			);
-			$this->_doQuery(
-				"CREATE TABLE " . $this->_getTableName('sinch_product_frequencies_temp')
-				. "(
+            );
+            $this->_log("Finish parse " . FILE_PRODUCT_TYPES);
+        } else {
+            $this->_log("Wrong file " . $parseFile);
+        }
+    }
+
+    private function parseProductFrequencies()
+    {
+        $parseFile = $this->varDir . FILE_PRODUCT_FREQUENCIES;
+        if (filesize($parseFile)) {
+            $this->_log("Start parse " . FILE_PRODUCT_FREQUENCIES);
+
+            $this->_doQuery(
+                "DROP TABLE IF EXISTS " . $this->_getTableName(
+                    'sinch_product_frequencies_temp'
+                )
+            );
+            $this->_doQuery(
+                "CREATE TABLE " . $this->_getTableName('sinch_product_frequencies_temp')
+                . "(
                           `product_frequency_id` int(11) DEFAULT NULL,
                           `product_frequency_name` varchar(50) DEFAULT NULL,
                           KEY `product_frequency_id` (product_frequency_id)
                           )"
-			);
-			
-			$this->_doQuery(
-				"LOAD DATA LOCAL INFILE '" . $parseFile . "'
+            );
+
+            $this->_doQuery(
+                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                           INTO TABLE " . $this->_getTableName(
-					'sinch_product_frequencies_temp'
-				) . "
+                    'sinch_product_frequencies_temp'
+                ) . "
                           FIELDS TERMINATED BY '" . $this->field_terminated_char
-				. "'
+                . "'
                           OPTIONALLY ENCLOSED BY '\"'
                           LINES TERMINATED BY \"\r\n\"
                           IGNORE 1 LINES "
-			);
-			
-			$this->_doQuery(
-				"DROP TABLE IF EXISTS " . $this->_getTableName(
-					'sinch_product_frequencies'
-				)
-			);
-			$this->_doQuery(
-				"RENAME TABLE " . $this->_getTableName('sinch_product_frequencies_temp')
-				. "
+            );
+
+            $this->_doQuery(
+                "DROP TABLE IF EXISTS " . $this->_getTableName(
+                    'sinch_product_frequencies'
+                )
+            );
+            $this->_doQuery(
+                "RENAME TABLE " . $this->_getTableName('sinch_product_frequencies_temp')
+                . "
                           TO " . $this->_getTableName('sinch_product_frequencies')
-			);
-			$this->_log("Finish parse " . FILE_PRODUCT_FREQUENCIES);
-		} else {
-			$this->_log("Wrong file " . $parseFile);
-		}
-	}
-	
-	private function parseProductTypeFrequency()
-	{
-		$parseFile = $this->varDir . FILE_PRODUCT_TYPE_FREQUENCY;
-		if (filesize($parseFile)) {
-			$this->_log("Start parse " . FILE_PRODUCT_TYPE_FREQUENCY);
-			
-			$this->_doQuery(
-				"DROP TABLE IF EXISTS " . $this->_getTableName(
-					'sinch_product_type_frequency_temp'
-				)
-			);
-			$this->_doQuery(
-				"CREATE TABLE " . $this->_getTableName('sinch_product_type_frequency_temp')
-				. "(
+            );
+            $this->_log("Finish parse " . FILE_PRODUCT_FREQUENCIES);
+        } else {
+            $this->_log("Wrong file " . $parseFile);
+        }
+    }
+
+    private function parseProductTypeFrequency()
+    {
+        $parseFile = $this->varDir . FILE_PRODUCT_TYPE_FREQUENCY;
+        if (filesize($parseFile)) {
+            $this->_log("Start parse " . FILE_PRODUCT_TYPE_FREQUENCY);
+
+            $this->_doQuery(
+                "DROP TABLE IF EXISTS " . $this->_getTableName(
+                    'sinch_product_type_frequency_temp'
+                )
+            );
+            $this->_doQuery(
+                "CREATE TABLE " . $this->_getTableName('sinch_product_type_frequency_temp')
+                . "(
                           `sinch_product_id` int(11) DEFAULT NULL,
                           `product_type_id`  int(11) DEFAULT NULL,
                           `product_frequency_id`  int(11) DEFAULT NULL,
@@ -8353,34 +8375,60 @@ class Sinch
                           KEY `product_type_id` (product_type_id),
                           KEY `product_frequency_id` (product_frequency_id)
                           )"
-			);
-			
-			$this->_doQuery(
-				"LOAD DATA LOCAL INFILE '" . $parseFile . "'
+            );
+
+            $this->_doQuery(
+                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
                           INTO TABLE " . $this->_getTableName(
-					'sinch_product_type_frequency_temp'
-				) . "
+                    'sinch_product_type_frequency_temp'
+                ) . "
                           FIELDS TERMINATED BY '" . $this->field_terminated_char
-				. "'
+                . "'
                           OPTIONALLY ENCLOSED BY '\"'
                           LINES TERMINATED BY \"\r\n\"
                           IGNORE 1 LINES "
-			);
-			
-			$this->_doQuery(
-				"DROP TABLE IF EXISTS " . $this->_getTableName(
-					'sinch_product_type_frequency'
-				)
-			);
-			$this->_doQuery(
-				"RENAME TABLE " . $this->_getTableName('sinch_product_type_frequency_temp')
-				. "
+            );
+
+            $this->_doQuery(
+                "DROP TABLE IF EXISTS " . $this->_getTableName(
+                    'sinch_product_type_frequency'
+                )
+            );
+            $this->_doQuery(
+                "RENAME TABLE " . $this->_getTableName('sinch_product_type_frequency_temp')
+                . "
                           TO " . $this->_getTableName('sinch_product_type_frequency')
-			);
-			$this->_log("Finish parse " . FILE_PRODUCT_TYPE_FREQUENCY);
-		} else {
-			$this->_log("Wrong file " . $parseFile);
-		}
-	}
-	
+            );
+
+            // Update product type mapping
+            $sinch_product_type_frequency = $this->_getTableName('sinch_product_type_frequency');
+            $this->_doQuery(
+                "ALTER TABLE $sinch_product_type_frequency ADD COLUMN `product_type_name` varchar(50) DEFAULT NULL"
+            );
+
+            $this->_doQuery(
+                "UPDATE $sinch_product_type_frequency SET `product_type_name` = 'simple' WHERE `product_type_id` = 1"
+            );
+
+            $this->_doQuery(
+                "UPDATE $sinch_product_type_frequency SET `product_type_name` = 'virtual' WHERE `product_type_id` = 2"
+            );
+
+            $this->_doQuery(
+                "UPDATE $sinch_product_type_frequency SET `product_type_name` = 'virtual' WHERE `product_type_id` = 3"
+            );
+
+            $this->_doQuery(
+                "UPDATE $sinch_product_type_frequency SET `product_type_name` = 'virtual' WHERE `product_type_id` = 4"
+            );
+
+            $this->_doQuery(
+                "UPDATE $sinch_product_type_frequency SET `product_type_name` = 'virtual' WHERE `product_type_id` = 5"
+            );
+
+            $this->_log("Finish parse " . FILE_PRODUCT_TYPE_FREQUENCY);
+        } else {
+            $this->_log("Wrong file " . $parseFile);
+        }
+    }
 }
