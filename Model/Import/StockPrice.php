@@ -210,9 +210,12 @@ class StockPrice extends AbstractImportSection
             );
 
             // Product Distributors (global scope)
+            //CPE is as presence check and spm is to use the index on sinch_product_id
             $conn->query(
                 "INSERT INTO {$this->catalog_product_entity_varchar} (attribute_id, store_id, entity_id, value) (
-                    SELECT {$supplierAttrId}, 0, spm.entity_id, distributors.distributor_name FROM {$this->sinch_products_mapping} spm
+                    SELECT {$supplierAttrId}, 0, cpe.entity_id, distributors.distributor_name FROM {$this->catalog_product_entity} cpe
+                        INNER JOIN {$this->sinch_products_mapping} spm
+                            ON cpe.entity_id = spm.entity_id
                         INNER JOIN {$tempSingle} supplier
                             ON spm.sinch_product_id = supplier.product_id
                         INNER JOIN {$this->distiTable} distributors
