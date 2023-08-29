@@ -3,13 +3,13 @@
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
     <group id="sinchimport">
         <job name="sinchimport_full" instance="SITC\Sinchimport\Cron\Importfull" method="execute">
-            <schedule>0 21 * * 1</schedule>
+            <config_path>sinchimport/cron/sinchimport_full</config_path>
         </job>
         <job name="sinchimport_stockprice" instance="SITC\Sinchimport\Cron\Importstockprice" method="execute">
-            <schedule>0 8 * * *</schedule>
+            <config_path>sinchimport/cron/sinchimport_stockprice</config_path>
         </job>
         <job name="sinchimport_pickup_import" instance="SITC\Sinchimport\Cron\PickupImport" method="execute">
-            <schedule>* * * * *</schedule>
+            <config_path>sinchimport/cron/sinchimport_pickup_import</config_path>
         </job>
     </group>
 </config>
