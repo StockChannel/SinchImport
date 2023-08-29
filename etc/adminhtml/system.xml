@@ -158,7 +158,7 @@
                         | | +-------- Day of the Month  (range: 1-31)<br/>
                         | +---------- Hour              (range: 0-23)<br/>
                         +------------ Minute            (range: 0-59)<br/>
-                        Example: */5 * * * * - every five minuts<br/>
+                        Example: */5 * * * * - every five minutes<br/>
                         <br/>
                         Read more about cron expressions - <a href="https://en.wikipedia.org/wiki/Cron">here</a>]]>
                 </comment>
