@@ -4731,7 +4731,7 @@ class Sinch
     {
         $catalog_product_entity_int = $this->_getTableName('catalog_product_entity_int');
         $catalog_product_entity = $this->_getTableName('catalog_product_entity');
-        $sinch_products = $this->_getTableName('sinch_products');
+        $sinch_products = $this->_getTableName('products_temp');
         $sinch_manufacturers = $this->_getTableName('sinch_manufacturers');
 
         $this->_connection->query(
