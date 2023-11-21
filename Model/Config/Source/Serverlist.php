@@ -2,9 +2,11 @@
 
 namespace SITC\Sinchimport\Model\Config\Source;
 
-class Serverlist implements \Magento\Framework\Option\ArrayInterface
+use Magento\Framework\Data\OptionSourceInterface;
+
+class Serverlist implements OptionSourceInterface
 {
-    public function toOptionArray()
+    public function toOptionArray(): array
     {
         return [
             [
@@ -60,6 +62,10 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
                 'label' => 'Poland - ftp.pl.stockinthechannel.com'
             ],
             [
+                'value' => 'ftp.channelstock.co.za',
+                'label' => 'South Africa - ftp.channelstock.co.za'
+            ],
+            [
                 'value' => 'ftpdemo.stockinthechannel.com',
                 'label' => 'Demo - ftpdemo.stockinthechannel.com'
             ],
@@ -70,7 +76,7 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
         ];
     }
     
-    public function toArray()
+    public function toArray(): array
     {
         return [
             'ftp.stockinthechannel.com'     => 'UK - ftp.stockinthechannel.com',
@@ -84,10 +90,11 @@ class Serverlist implements \Magento\Framework\Option\ArrayInterface
             'ftpnl.stockinthechannel.com'   => 'Holland - ftpnl.stockinthechannel.com',
             'ftpde.stockinthechannel.com'   => 'Germany - ftpde.stockinthechannel.com',
             'ftpse.stockinthechannel.com'   => 'Sweden - ftpse.stockinthechannel.com',
-            'ftp.ca.stockinthechannel.com' => 'Canada - ftp.ca.stockinthechannel.com',
+            'ftp.ca.stockinthechannel.com'  => 'Canada - ftp.ca.stockinthechannel.com',
+            'ftp.pl.stockinthechannel.com'  => 'Poland - ftp.pl.stockinthechannel.com',
+            'ftp.channelstock.co.za'        => 'South Africa - ftp.channelstock.co.za',
             'ftpdemo.stockinthechannel.com' => 'Demo - ftpdemo.stockinthechannel.com',
-            'ftp.sandbox.stockinthechannel.com' => 'Sandbox - ftp.sandbox.stockinthechannel.com',
-            'ftp.pl.stockinthechannel.com' => 'Poland - ftp.pl.stockinthechannel.com'
+            'ftp.sandbox.stockinthechannel.com' => 'Sandbox - ftp.sandbox.stockinthechannel.com'
         ];
     }
 }
