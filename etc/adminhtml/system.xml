@@ -205,7 +205,19 @@
                     <label>Enable in stock filter</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="manual_source_assignment" translate="label" type="select" sortOrder="3" showInDefault="1" showInWebsite="0" showInStore="0">
+                <group id="stock_filter" translate="label" type="text" sortOrder="3" showInStore="0" showInWebsite="0" showInDefault="1">
+                    <label>In Stock Filter</label>
+                    <field id="in_stock_value" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                        <label>"In Stock" Value</label>
+                    </field>
+                    <field id="out_of_stock_value" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                        <label>"Out of Stock" Value</label>
+                    </field>
+                    <depends>
+                        <field id="sinchimport/stock/in_stock_filter_enable">1</field>
+                    </depends>
+                </group>
+                <field id="manual_source_assignment" translate="label" type="select" sortOrder="4" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Manual Source Assignment</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>When enabled, the import will not assign sources (distributors) to the Sinch stock</comment>
