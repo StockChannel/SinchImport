@@ -95,7 +95,7 @@ class InventoryData
 
         $productStatuses = [];
         foreach ($result as $prodId => $indexData) {
-            $isInStock = isset($indexData['stock']) && isset($indexData['stock']['is_in_stock']) && $indexData['stock']['is_in_stock'] ? $inStockValue : $outOfStockValue;
+            $isInStock = (isset($indexData['stock']['qty']) && $indexData['stock']['qty'] > 0) ? $inStockValue : $outOfStockValue;
             $productStatuses[] = [
                 'attribute_id' => $this->attrId,
                 'store_id' => $storeId,
