@@ -2,8 +2,8 @@
 
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
-use Laminas\Log\Logger;
-use Laminas\Log\Writer\Stream;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\ObjectManager;
 use Magento\Store\Model\ScopeInterface;
@@ -38,9 +38,9 @@ class AttributeData extends \Smile\ElasticsuiteCatalog\Model\Product\Indexer\Ful
     ) {
         parent::__construct($resourceModel, $fieldFactory, $attributeHelper, $indexedBackendModels, $forbiddenChildrenAttributes, $scopeConfig);
 
-        $writer = new Stream(BP . '/var/log/sinch_custom_catalog.log');
-        $this->logger = new Logger();
-        $this->logger->addWriter($writer);
+        $writer = new StreamHandler(BP . '/var/log/sinch_custom_catalog.log');
+        $this->logger = new Logger("custom_catalog_index");
+        $this->logger->pushHandler($writer);
     }
 
     /*

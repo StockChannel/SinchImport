@@ -2,8 +2,8 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
-use Laminas\Log\Logger;
-use Laminas\Log\Writer\Stream;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 abstract class AbstractImportSection {
     const LOG_PREFIX = "AbstractImportSection: ";
@@ -31,9 +31,9 @@ abstract class AbstractImportSection {
     ){
         $this->resourceConn = $resourceConn;
 
-        $writer = new Stream(BP . "/var/log/sinch_" . static::LOG_FILENAME . ".log");
-        $logger = new Logger();
-        $logger->addWriter($writer);
+        $writer = new StreamHandler(BP . "/var/log/sinch_" . static::LOG_FILENAME . ".log");
+        $logger = new Logger(static::LOG_FILENAME);
+        $logger->pushHandler($writer);
         $this->logger = $logger;
         $this->output = $output;
     }
