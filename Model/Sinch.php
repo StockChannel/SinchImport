@@ -6,6 +6,7 @@ require_once __DIR__ . '/Config.php';
 
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Helper\Url;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
 class Sinch
@@ -99,6 +100,7 @@ class Sinch
     private Import\StockPrice $stockPriceImport;
     private Download $dlHelper;
     private Data $helper;
+    private Url $helperUrl;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -122,7 +124,8 @@ class Sinch
         Import\IndexManagement $sitcIndexMgmt,
         Import\StockPrice $stockPriceImport,
         Download $dlHelper,
-        Data $helper
+        Data $helper,
+        Url $helperUrl
     ) {
         $this->attributesImport = $attributesImport;
         $this->customerGroupCatsImport = $customerGroupCatsImport;
@@ -182,6 +185,7 @@ class Sinch
         $this->_deploymentData = $deploymentConfig->getConfigData();
 
         $this->field_terminated_char = DEFAULT_FILE_TERMINATED_CHAR;
+        $this->helperUrl = $helperUrl;
     }
 
     private function _getTableName(string $tableName)
@@ -446,6 +450,7 @@ class Sinch
 
                 $this->print("Start indexing catalog url rewrites...");
                 $this->reindexProductUrls();
+                $this->helperUrl->generateCategoryUrl();
                 $this->print("Finish indexing catalog url rewrites...");
 
                 $this->addImportStatus('Indexing data');
