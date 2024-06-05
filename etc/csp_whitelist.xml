@@ -12,5 +12,20 @@
                 <value id="sinch_quotes" type="host">*.quotes.stockinthechannel.co.uk</value>
             </values>
         </policy>
+        <policy id="object-src">
+            <values>
+                <value id="object_src_self" type="host">self</value>
+            </values>
+        </policy>
+        <policy id="base-uri">
+            <values>
+                <value id='base_uri_self' type='host'>self</value>
+            </values>
+        </policy>
+        <policy id="frame-ancestors">
+            <values>
+                <value id='frame_ancestors_self' type='host'>self</value>
+            </values>
+        </policy>
     </policies>
 </csp_whitelist>
