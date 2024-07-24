@@ -74,7 +74,7 @@ class FixQuoteItems implements ObserverInterface
             //Check old name and candidate name match
             $candidateName = $this->getProductName($row['entity_id'], $row['store_id']);
             if($verifyName && $row['name'] != $candidateName) {
-                $this->logger->warn("Found candidate product for quote_item {$row['item_id']}, but candidate name doesn't match, skipping: {$row['name']} != {$candidateName}");
+                $this->logger->warning("Found candidate product for quote_item {$row['item_id']}, but candidate name doesn't match, skipping: {$row['name']} != {$candidateName}");
                 continue;
             }
             $update->bindValue(":itemId", $row['item_id'], PDO::PARAM_INT);

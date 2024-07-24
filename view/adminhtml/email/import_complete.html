@@ -1,0 +1,13 @@
+<!--@subject {{var store.getFrontendName()}} - {{trans "Import Complete"}} @-->
+<table>
+    <tr class="email-summary">
+        <td>
+            <h1>{{var store.getFrontendName()}} - {{trans "Import Complete" }}</h1>
+        </td>
+    </tr>
+    <tr class="email-information">
+        <td>
+            <p>{{trans "The %import_type import started on %start_time has completed successfully" import_type=$import_type start_time=$start_import}}</p>
+        </td>
+    </tr>
+</table>

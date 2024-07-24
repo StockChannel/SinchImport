@@ -102,6 +102,9 @@
     </type>
     <!-- End Stock Filter -->
 
+    <!-- Override for the sinch_restrict attribute on composite/grouped/bundle products (to merge their attribute values together) -->
+    <preference for="Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\AttributeData" type="SITC\Sinchimport\Plugin\Elasticsuite\AttributeData" />
+
     <type name="Magento\Catalog\Block\Product\Image">
         <plugin name="image_badge_overlay" type="SITC\Sinchimport\Helper\Badges" sortOrder="0" />
     </type>

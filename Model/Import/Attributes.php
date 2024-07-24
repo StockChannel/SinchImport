@@ -171,7 +171,7 @@ class Attributes extends AbstractImportSection {
         $this->log("Parsing category features file");
         foreach($category_features as $feature_row){
             if(count($feature_row) != 4) {
-                $this->logger->warn("Feature row not 4 columns");
+                $this->logger->warning("Feature row not 4 columns");
                 $this->logger->debug(print_r($feature_row, true));
                 continue;
             }
@@ -413,10 +413,10 @@ class Attributes extends AbstractImportSection {
                     $this->addMapping($sinch_value_id, $sinch_feature_id, $option_id);
                 }
             } catch (InputException $e) {
-                $this->logger->warn("Failed to add option: " . $sinch_value_id . " - " . $option_data["text"] . "(InputException: " . $e->getMessage() . ")");
+                $this->logger->warning("Failed to add option: " . $sinch_value_id . " - " . $option_data["text"] . "(InputException: " . $e->getMessage() . ")");
                 //throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
             } catch (StateException $e) {
-                $this->logger->warn("Failed to add option: " . $sinch_value_id . " - " . $option_data["text"] . "(StateException: " . $e->getMessage() . ")");
+                $this->logger->warning("Failed to add option: " . $sinch_value_id . " - " . $option_data["text"] . "(StateException: " . $e->getMessage() . ")");
                 //throw new \Magento\Framework\Exception\StateException(__("Failed to create option id: %1", $sinch_value_id));
             }
         }
@@ -455,7 +455,7 @@ class Attributes extends AbstractImportSection {
                     }
                 }
                 if(!$matched){
-                    $this->logger->err("Failed to match attribute group " . $attributeGroup->getAttributeGroupId() . " to an attribute set");
+                    $this->logger->error("Failed to match attribute group " . $attributeGroup->getAttributeGroupId() . " to an attribute set");
                 }
             }
             if(count($groups) != count($this->attributeGroupIds)){
@@ -544,12 +544,12 @@ class Attributes extends AbstractImportSection {
             $currVal += 1;
             $attrData = $this->queryMapping($rv_id);
             if($attrData === false){
-                $this->logger->err("Failed to retrieve attribute mapping for rv {$rv_id}");
+                $this->logger->error("Failed to retrieve attribute mapping for rv {$rv_id}");
                 continue;
             }
             $entityIds = $this->sinchToEntityIds($products);
             if($entityIds === false){
-                $this->logger->err("Failed to retrieve entity ids");
+                $this->logger->error("Failed to retrieve entity ids");
                 throw new StateException(__("Failed to retrieve entity ids"));
             }
             $prodCount = count($entityIds);

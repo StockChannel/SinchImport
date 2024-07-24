@@ -86,4 +86,10 @@ class CategoryBoostFilter implements QueryInterface
     {
         return $this->cached;
     }
+
+    public function setName(string $name): QueryInterface
+    {
+        $this->name = $name;
+        return $this;
+    }
 }

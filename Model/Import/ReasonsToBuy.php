@@ -10,9 +10,9 @@ class ReasonsToBuy extends AbstractImportSection {
     const LOG_PREFIX = "ReasonsToBuy: ";
     const LOG_FILENAME = "reasons_to_buy";
 
-    private $dataHelper;
+    private Data $dataHelper;
 
-    private $reasonsToBuyTable;
+    private string $reasonsToBuyTable;
 
     public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper, Data $dataHelper)
     {

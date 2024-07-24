@@ -46,23 +46,10 @@ class ProductCollectionLoadAfter implements ObserverInterface
         $account_group_id = $this->helper->getCurrentAccountGroupId();
         $filteredProductCollection->removeAllItems();
 
+
         /** @var Product $product */
         foreach ($productCollection as $product) {
-            $sinch_restrict = $product->getSinchRestrict();
-
-            if(empty($sinch_restrict)){ //If sinch_restrict is empty, product is always visible
-                $filteredProductCollection->addItem($product);
-                continue;
-            }
-
-            $blacklist = substr($sinch_restrict, 0, 1) == "!";
-            if($blacklist) {
-                $sinch_restrict = substr($sinch_restrict, 1);
-            }
-            $product_account_groups = explode(",", $sinch_restrict);
-
-            if((!$blacklist && in_array($account_group_id, $product_account_groups)) || //Whitelist and account group in list
-                ($blacklist && !in_array($account_group_id, $product_account_groups))) { //Blacklist and account group not in list
+            if($this->helper->checkProductVisibility($product, $account_group_id)) {
                 $filteredProductCollection->addItem($product);
             }
         }

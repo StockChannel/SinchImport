@@ -3,7 +3,6 @@
   "description": "Stockinthechannel Import",
   "type": "magento2-module",
   "require": {
-    "php": ">=8.1",
     "ext-ftp": "*",
     "ext-json": "*",
     "ext-pdo": "*",
@@ -14,15 +13,16 @@
     "magento/module-indexer": ">=100.2.0",
     "magento/module-inventory-api": ">=1.0.0",
     "magento/module-store": ">=100.2.2",
-    "magento/module-ui": ">=101.0.0",
-    "smile/elasticsuite": "^2.10.0",
-    "laminas/laminas-log": "^2.13.0"
+    "php": ">=8.1",
+    "monolog/monolog": "*",
+    "smile/elasticsuite": ">=2.10.13",
+    "magento/module-ui": ">=101.0.0"
   },
   "require-dev": {
-    "squizlabs/php_codesniffer": "~3.6.0",
-    "phpmd/phpmd": "^2.12.0",
-    "sebastian/phpcpd": "^6.0.3",
-    "friendsofphp/php-cs-fixer": "~3.4.0"
+    "squizlabs/php_codesniffer": "@stable",
+    "phpmd/phpmd": "@stable",
+    "sebastian/phpcpd": "@stable",
+    "friendsofphp/php-cs-fixer": "@stable"
   },
   "license": [
     "OSL-3.0",
@@ -65,7 +65,8 @@
   "config": {
     "allow-plugins": {
       "magento/composer-dependency-version-audit-plugin": true,
-      "magento/magento-composer-installer": false
+      "magento/magento-composer-installer": false,
+      "php-http/discovery": false
     }
   }
 }

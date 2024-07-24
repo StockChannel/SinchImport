@@ -77,6 +77,11 @@ class UpgradeData implements UpgradeDataInterface
             $this->upgrade231($eavSetup);
         }
 
+        if (version_compare($context->getVersion(), '2.3.2', '<')) {
+            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', 'is_visible', 0);
+        }
+
         if (version_compare($context->getVersion(), '2.4.0', '<')) {
             //Remove sinch_search_cache as it gains us nothing with ES
             $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);

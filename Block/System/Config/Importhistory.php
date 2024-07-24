@@ -42,7 +42,8 @@ class Importhistory extends Field
             'Failed'     => 'sinch-error',
             'Run'        => 'sinch-run',
             'Successful' => 'sinch-success',
-            'Scheduled'  => 'sinch-scheduled'
+            'Scheduled'  => 'sinch-scheduled',
+            'Abandoned'  => 'sinch-error'
         ];
         
         $html

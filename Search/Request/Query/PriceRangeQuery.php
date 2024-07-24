@@ -102,4 +102,10 @@ class PriceRangeQuery implements QueryInterface
     {
     	return $this->bounds;
     }
+
+    public function setName(string $name): QueryInterface
+    {
+        $this->name = $name;
+        return $this;
+    }
 }

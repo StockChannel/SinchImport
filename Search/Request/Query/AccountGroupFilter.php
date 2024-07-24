@@ -1,7 +1,7 @@
 <?php
 namespace SITC\Sinchimport\Search\Request\Query;
-
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
+
 /**
  * Account group filtering implementation.
  *
@@ -11,31 +11,15 @@ use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
  */
 class AccountGroupFilter implements QueryInterface
 {
-    /**
-     * @var string
-     */
-    private $name;
-    /**
-     * @var int
-     */
-    private $account_group = 0;
-    /**
-     * @var boolean
-     */
-    private $cached;
-    /**
-     * Constructor.
-     *
-     * @SuppressWarnings(PHPMD.BooleanArgumentFlag)
-     *
-     * @param int|null       $account_group   The current users account group
-     * @param string    $name            Query name.
-     * @param boolean   $cached          Should the query be cached or not.
-     */
+    private ?string $name;
+    private int $account_group = 0;
+    private bool $cached;
+
+
     public function __construct(
-        $account_group = 0,
-        $name = null,
-        $cached = false
+        ?int   $account_group = 0,
+        string $name = null,
+        bool $cached = false
     ) {
         if(is_numeric($account_group)) {
             $this->account_group = (int)$account_group;
@@ -43,24 +27,27 @@ class AccountGroupFilter implements QueryInterface
         $this->name = $name;
         $this->cached = $cached;
     }
+
     /**
      * {@inheritDoc}
      */
-    public function getType()
+    public function getType(): string
     {
         return 'sitcAccountGroupQuery';
     }
+
     /**
      * {@inheritDoc}
      */
-    public function getName()
+    public function getName(): ?string
     {
         return $this->name;
     }
+
     /**
      * {@inheritDoc}
      */
-    public function getBoost()
+    public function getBoost(): ?int
     {
         return QueryInterface::DEFAULT_BOOST_VALUE;
     }
@@ -70,7 +57,7 @@ class AccountGroupFilter implements QueryInterface
      *
      * @return int
      */
-    public function getAccountGroup()
+    public function getAccountGroup(): int
     {
         return $this->account_group;
     }
@@ -80,8 +67,14 @@ class AccountGroupFilter implements QueryInterface
      *
      * @return boolean
      */
-    public function isCached()
+    public function isCached(): bool
     {
         return $this->cached;
+    }
+
+    public function setName(string $name): QueryInterface
+    {
+        $this->name = $name;
+        return $this;
     }
 }

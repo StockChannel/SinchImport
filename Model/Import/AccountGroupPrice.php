@@ -17,12 +17,13 @@ use Symfony\Component\Console\Output\ConsoleOutput;
 
 /**
  * Class AccountGroupPrice
- * 
+ *
  * NOTE: ScopedProductTierPriceManagementInterface is avoided because its too slow
- * 
+ *
  * @package SITC\Sinchimport\Model\Import
  */
-class AccountGroupPrice extends AbstractImportSection {
+class AccountGroupPrice extends AbstractImportSection
+{
     const LOG_PREFIX = "AccountGroupPrice: ";
     const LOG_FILENAME = "account_group_price";
 
@@ -31,8 +32,8 @@ class AccountGroupPrice extends AbstractImportSection {
     const PRICE_TABLE_CURRENT = "sinch_customer_group_price_cur";
     const PRICE_TABLE_NEXT = "sinch_customer_group_price_nxt";
 
-    private $customerGroupCount = 0;
-    private $customerGroupPriceCount = 0;
+    private int $customerGroupCount = 0;
+    private int $customerGroupPriceCount = 0;
 
     /**
      * @var Data
@@ -87,6 +88,18 @@ class AccountGroupPrice extends AbstractImportSection {
     /** @var string */
     private $groupPriceTableNext;
 
+
+    /**
+     * @var array Holds a cache of sinchGroup -> magentoGroupId conversions
+     *
+     */
+    private $groupIdCache = [];
+    /**
+     * @var array Holds a cache of sinchGroup -> magentoGroupCode conversions
+     */
+    private $groupCodeCache = [];
+
+
     public function __construct(
         ResourceConnection $resourceConn,
         ConsoleOutput $output,
@@ -98,7 +111,7 @@ class AccountGroupPrice extends AbstractImportSection {
         TierPriceStorageInterface $tierPriceStorage,
         TierPriceInterfaceFactory $tierPriceFactory,
         SearchCriteriaBuilder $searchCriteriaBuilder
-    ){
+    ) {
         parent::__construct($resourceConn, $output, $dlHelper);
         $this->helper = $helper;
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
@@ -153,13 +166,15 @@ class AccountGroupPrice extends AbstractImportSection {
             FOREIGN KEY (magento_value_id) REFERENCES {$this->tierPriceTable} (value_id) ON UPDATE CASCADE ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
 
+        //Drop the table and make sure that the price column has a default negative value
+        // Should ensure that we don't end up reading NULL as 0
+        $this->getConnection()->query("DROP TABLE IF EXISTS {$this->groupPriceTableNext}");
         $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->groupPriceTableNext} (
             sinch_group_id int(10) unsigned NOT NULL,
             sinch_product_id int(10) unsigned NOT NULL,
-            price decimal(12,4) NOT NULL,
+            price decimal(12,4) NOT NULL DEFAULT -1,
             PRIMARY KEY (sinch_group_id, sinch_product_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
-        $this->getConnection()->query("TRUNCATE TABLE {$this->groupPriceTableNext}");
     }
 
 
@@ -179,7 +194,7 @@ class AccountGroupPrice extends AbstractImportSection {
         $customerGroupCsv = $this->csv->getData($accountGroupFile);
         unset($customerGroupCsv[0]);
 
-        foreach($customerGroupCsv as $groupData){
+        foreach ($customerGroupCsv as $groupData) {
             //Sinch Group ID, Group Name
             $this->createOrUpdateGroup($groupData[0], $groupData[1]);
         }
@@ -197,7 +212,11 @@ class AccountGroupPrice extends AbstractImportSection {
                 IGNORE 1 LINES
                 (sinch_group_id, sinch_product_id, price)"
         );
-        $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext} WHERE price < 0");
+        $permitZero = $this->helper->getStoreConfig('sinchimport/general/permit_zero_price');
+        $this->getConnection()->query(
+            "DELETE FROM {$this->groupPriceTableNext} WHERE price < 0 OR (price = 0 AND :permitZero = 0)",
+            [':permitZero' => (int)$permitZero]
+        );
         $this->endTimingStep();
         
         $this->log("New rules loaded, calculating delta");
@@ -220,8 +239,8 @@ class AccountGroupPrice extends AbstractImportSection {
             );
             $deletedCount = count($toDelete);
             $this->log("{$deletedCount} rules to be deleted");
-            foreach($toDelete as $rule) {
-                if(!empty($rule['magento_value_id'])) {
+            foreach ($toDelete as $rule) {
+                if (!empty($rule['magento_value_id'])) {
                     $this->getConnection()->query(
                         "DELETE FROM {$this->tierPriceTable} WHERE value_id = :value_id",
                         [':value_id' => $rule['magento_value_id']]
@@ -284,7 +303,7 @@ class AccountGroupPrice extends AbstractImportSection {
             );
             $updatedCount = count($toUpdate);
             $this->log("{$updatedCount} rules to be updated");
-            foreach($toUpdate as $updatedRule) {
+            foreach ($toUpdate as $updatedRule) {
                 $this->getConnection()->query(
                     "UPDATE {$this->tierPriceTable} tp SET value = :price WHERE value_id = :value_id",
                     [
@@ -358,9 +377,9 @@ class AccountGroupPrice extends AbstractImportSection {
             "SELECT magento_id FROM {$this->mappingTable} WHERE sinch_id = :sinch_id",
             [":sinch_id" => $sinchGroupId]
         );
-        if(!empty($magentoGroupId)){
+        if (!empty($magentoGroupId)) {
             $group = $this->groupRepository->getById($magentoGroupId);
-            if($group->getCode() != $fullGroupName && $groupName != "NOT LOGGED IN") {
+            if ($group->getCode() != $fullGroupName && $groupName != "NOT LOGGED IN") {
                 $group->setCode($fullGroupName);
                 $this->groupRepository->save($group);
             }
@@ -368,7 +387,7 @@ class AccountGroupPrice extends AbstractImportSection {
         }
         
         //Special case, map a group named "NOT LOGGED IN" to the default Magento group with the same name
-        if($groupName == "NOT LOGGED IN") {
+        if ($groupName == "NOT LOGGED IN") {
             $this->insertMapping($sinchGroupId, 0); //0 is the Magento ID for "NOT LOGGED IN"
             return;
         }
@@ -380,13 +399,13 @@ class AccountGroupPrice extends AbstractImportSection {
         try {
             $group = $this->groupRepository->save($group);
             $this->insertMapping($sinchGroupId, $group->getId());
-        } catch(InvalidTransitionException $e){
+        } catch (InvalidTransitionException $e) {
             $this->log("Group unexpectedly exists, trying to remap it: {$groupName} ({$sinchGroupId})");
             $criteria = $this->searchCriteriaBuilder
                 ->addFilter('code', $fullGroupName, 'eq')
                 ->create();
             $matchingGroups = $this->groupRepository->getList($criteria)->getItems();
-            if(count($matchingGroups) > 0) {
+            if (count($matchingGroups) > 0) {
                 $this->insertMapping($sinchGroupId, $matchingGroups[0]->getId());
                 return;
             }

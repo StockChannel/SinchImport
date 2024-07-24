@@ -3,8 +3,8 @@
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 
-use Laminas\Log\Logger;
-use Laminas\Log\Writer\Stream;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\SearchProcessing;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
@@ -27,9 +27,9 @@ class Provider
      */
     public function __construct(Data $helper, QueryFactory $queryFactory, SearchProcessing $searchHelper)
     {
-        $writer = new Stream(BP . '/var/log/joe_search_stuff.log');
-        $logger = new Logger();
-        $logger->addWriter($writer);
+        $writer = new StreamHandler(BP . '/var/log/joe_search_stuff.log');
+        $logger = new Logger("joe_search_stuff");
+        $logger->pushHandler($writer);
         $this->logger = $logger;
 
         $this->helper = $helper;

@@ -2,8 +2,8 @@
 
 namespace SITC\Sinchimport\Helper;
 
-use Laminas\Log\Logger;
-use Laminas\Log\Writer\Stream;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 use Magento\Catalog\Model\Category;
 use Magento\Customer\Model\Group;
 use Magento\Customer\Model\Session;
@@ -96,9 +96,9 @@ class SearchProcessing extends AbstractHelper
         $this->sinchCategoriesTable = $this->resourceConn->getTableName('sinch_categories');
         $this->sinchCategoriesMappingTable = $this->resourceConn->getTableName('sinch_categories_mapping');
 
-        $writer = new Stream(BP . '/var/log/search_processing.log');
-        $this->logger = new Logger();
-        $this->logger->addWriter($writer);
+        $writer = new StreamHandler(BP . '/var/log/search_processing.log');
+        $this->logger = new Logger("search_processing");
+        $this->logger->pushHandler($writer);
     }
 
     public function getQueryTextRewrites(ContainerConfigurationInterface $containerConfig, string $queryText): array

@@ -32,6 +32,15 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>If enabled, the import will process stock with one source per distributor, otherwise all stock will be provided by the default source. Enabling this has no effect unless the MSI modules are active</comment>
                 </field>
+                <field id="permit_zero_price" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Permit Zero Price</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enable if you wish to allow products with a price of 0. When disabled, zero prices are treated as feed errors and silently dropped. Only affects prices processed by the import module as part of Group Pricing</comment>
+                </field>
+                <field id="success_email_dest" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Import Success notification email destination</label>
+                    <comment>If blank or not a valid email, does not send success emails</comment>
+                </field>
             </group>
 
             <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
@@ -132,6 +141,28 @@
                     <comment>When enabled, overrides Elasticsuite's "Facet Min Coverage" functionality for Stockinthechannel Filterable Attributes, reverting them to default behaviour</comment>
                 </field>
             </group>
+            <group id="cron" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0" >
+                <label>Cron Schedule</label>
+                <field id="full" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Full Import</label>
+                </field>
+                <field id="stockprice" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Stock Price Import</label>
+                </field>
+                <comment><![CDATA[Enter cron expression<br/>
+                        <br/>
+                        * * * * *<br/>
+                        | | | | |<br/>
+                        | | | | +---- Day of the Week   (range: 0-6, 1 standing for Monday)<br/>
+                        | | | +------ Month of the Year (range: 1-12)<br/>
+                        | | +-------- Day of the Month  (range: 1-31)<br/>
+                        | +---------- Hour              (range: 0-23)<br/>
+                        +------------ Minute            (range: 0-59)<br/>
+                        Example: */5 * * * * - every five minutes<br/>
+                        <br/>
+                        Read more about cron expressions - <a href="https://en.wikipedia.org/wiki/Cron">here</a>]]>
+                </comment>
+            </group>
 
             <group id="category_visibility" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Category Visibility Functionality</label>
@@ -173,9 +204,26 @@
                     <comment>If enabled, clear inventory reservations for affected products when importing new stock levels, and calculate stock status based on stock + backorder limit.
                         When disabled, the saleable quantity (stock + backorder limit - reservations) is used to determine stock status</comment>
                 </field>
-                <field id="in_stock_filter_enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="in_stock_filter_enable" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Enable in stock filter</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <group id="stock_filter" translate="label" type="text" sortOrder="3" showInStore="0" showInWebsite="0" showInDefault="1">
+                    <label>In Stock Filter</label>
+                    <field id="in_stock_value" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                        <label>"In Stock" Value</label>
+                    </field>
+                    <field id="out_of_stock_value" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                        <label>"Out of Stock" Value</label>
+                    </field>
+                    <depends>
+                        <field id="sinchimport/stock/in_stock_filter_enable">1</field>
+                    </depends>
+                </group>
+                <field id="manual_source_assignment" translate="label" type="select" sortOrder="4" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Manual Source Assignment</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When enabled, the import will not assign sources (distributors) to the Sinch stock</comment>
                 </field>
             </group>
 
@@ -186,6 +234,11 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment><![CDATA[When disabled, SKU is assumed to be GLOBALLY UNIQUE (i.e. a product with a given SKU always represents the same product, even if the names differ)<br>
                     When enabled (the default), checks that the item name and the replacement candidate name identically match before updating quote item records (the replacement candidate is still matched based on SKU)]]></comment>
+                </field>
+                <field id="any_value_implementation" translate="label" type="text" sortOrder="10" showInDefault="1" showInStore="0" showInWebsite="0">
+                    <label>ANY_VALUE Implementation</label>
+                    <comment><![CDATA[The implementation of ANY_VALUE to use when selecting records not specified in the GROUP BY condition (primarily Product Supplier).<br>
+                    The default is acceptable on all databases except MariaDB, which fails to implement ANY_VALUE]]></comment>
                 </field>
                 <field id="experimental_search_features" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Enable Experimental search features</label>

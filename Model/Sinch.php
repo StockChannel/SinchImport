@@ -19,6 +19,7 @@ use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Helper\Url;
 use SITC\Sinchimport\Logger\Logger;
 use SITC\Sinchimport\Model\Import\AccountGroupCategories;
 use SITC\Sinchimport\Model\Import\AccountGroupPrice;
@@ -135,6 +136,7 @@ class Sinch {
 
     private Download $dlHelper;
     private Data $dataHelper;
+    private Url $helperUrl;
 
     public function __construct(
         Context $context,
@@ -168,7 +170,8 @@ class Sinch {
         Reviews $reviewImport,
         RelatedProducts $relatedProductsImport,
         Download $dlHelper,
-        Data $dataHelper
+        Data $dataHelper,
+        Url $helperUrl
     )
     {
         $this->sitcIndexMgmt = $sitcIndexMgmt;
@@ -192,6 +195,7 @@ class Sinch {
 
         $this->dlHelper = $dlHelper;
         $this->dataHelper = $dataHelper;
+        $this->helperUrl = $helperUrl;
 
         $this->output = $output;
         $this->_storeManager = $storeManager;
@@ -292,6 +296,7 @@ class Sinch {
                 if (!$this->sitcIndexMgmt->ensureIndexersNotRunning()) {
                     $this->print("There are indexers currently running, abandoning import");
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
+                    $this->setImportResult('Abandoned');
                     throw new LocalizedException(__("There are indexers currently running, abandoning import"));
                 }
                 $this->addImportStatus('Start Import', true);
@@ -517,7 +522,8 @@ class Sinch {
                 }
 
                 $this->addImportStatus('Index catalog url rewrites');
-                $this->_reindexProductUrlKey();
+                $this->reindexProductUrls();
+                $this->helperUrl->generateCategoryUrl();
                 $this->addImportStatus('Index catalog url rewrites', true);
 
                 $this->addImportStatus('Clean cache');
@@ -716,14 +722,18 @@ class Sinch {
             [":importId" => $this->current_import_status_statistic_id, ":msg" => $message]
         );
         if ($message == 'Finish Import' && $finished) {
-            $this->conn->query(
-                "UPDATE {$this->import_status_statistic_table}
-                        SET global_status_import = 'Successful',
-                            finish_import = NOW()
-                        WHERE error_report_message = '' AND id = :importId",
-                [":importId" => $this->current_import_status_statistic_id]
-            );
+            $this->setImportResult('Successful');
         }
+    }
+
+    private function setImportResult(string $status)
+    {
+        $this->_resourceConnection->getConnection()->query(
+            "UPDATE $this->import_status_statistic_table
+                SET global_status_import = :status, finish_import = NOW()
+                WHERE id = :currentImportId",
+            [":currentImportId" => $this->current_import_status_statistic_id, ":status" => $status]
+        );
     }
 
     /**
@@ -1095,9 +1105,9 @@ class Sinch {
                     (value_id, attribute_id, store_id, entity_id, value)
                 VALUES
                     (1, :nameAttr, 0, 1, 'Root Catalog'),
-                    (2, :nameAttr, 1, 1, 'Root Catalog'),
+                    (2, :nameAttr, :storeId, 1, 'Root Catalog'),
                     (3, :urlKeyAttr, 0, 1, 'root-catalog')",
-            [":nameAttr" => $name_attrid, ":urlKeyAttr" => $attr_url_key]
+            [":nameAttr" => $name_attrid, ":urlKeyAttr" => $attr_url_key, ":storeId" => $this->dataHelper->getDefaultStoreId()]
         );
 
         $this->_doQuery(
@@ -1144,15 +1154,16 @@ class Sinch {
                         (attribute_id, store_id, entity_id, value)
                     VALUES
                         (:nameAttr,       0, :entityId, :value),
-                        (:nameAttr,       1, :entityId, :value),
-                        (:displayModeAttr, 1, :entityId, :value),
+                        (:nameAttr,       :storeId, :entityId, :value),
+                        (:displayModeAttr, :storeId, :entityId, :value),
                         (:urlKeyAttr,      0, :entityId, :value)",
                 [
                     ":nameAttr" => $name_attrid,
                     ":displayModeAttr" => $attr_display_mode,
                     ":urlKeyAttr" => $attr_url_key,
                     ":entityId" => $i,
-                    ":value" => "$key"
+                    ":value" => "$key",
+                    ":storeId" => $this->dataHelper->getDefaultStoreId()
                 ] //TODO: Why is value inserted into display_mode?
             );
 
@@ -1161,13 +1172,14 @@ class Sinch {
                         (attribute_id, store_id, entity_id, value)
                     VALUES
                         (:isActiveAttr, 0, :entityId, 1),
-                        (:isActiveAttr, 1, :entityId, 1),
+                        (:isActiveAttr, :storeId, :entityId, 1),
                         (:includeInMenuAttr, 0, :entityId, 1),
-                        (:includeInMenuAttr, 1, :entityId, 1)",
+                        (:includeInMenuAttr, :storeId, :entityId, 1)",
                 [
                     ":isActiveAttr" => $attr_is_active,
                     ":includeInMenuAttr" => $attr_include_in_menu,
-                    ":entityId" => $i
+                    ":entityId" => $i,
+                    ":storeId" => $this->dataHelper->getDefaultStoreId()
                 ]
             );
             $i++;
@@ -1336,6 +1348,7 @@ class Sinch {
         $catalog_category_entity = $this->getTableName('catalog_category_entity');
         $catalog_category_entity_varchar = $this->getTableName('catalog_category_entity_varchar');
         $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');
+        $catalog_category_entity_text = $this->getTableName('catalog_category_entity_text');
 
         $ignore = 'IGNORE';
         $onDuplicate = '';
@@ -1416,7 +1429,7 @@ class Sinch {
             );
 
             //Add values for both admin and primary store for these attributes
-            foreach([0, 1] as $storeId) {
+            foreach([0, $this->dataHelper->getDefaultStoreId()] as $storeId) {
                 $this->_doQuery(
                     "INSERT INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
                         (
@@ -1485,7 +1498,8 @@ class Sinch {
             );
 
             $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
+                "INSERT INTO $catalog_category_entity_text
+                (attribute_id, store_id, entity_id, value)
                     (
                         SELECT :catMetaDescriptionAttr, 0, scm.shop_entity_id, c.MetaDescription
                         FROM $categories_temp c
@@ -1577,7 +1591,7 @@ class Sinch {
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
+                "INSERT IGNORE INTO $catalog_category_entity_text (attribute_id, store_id, entity_id, value)
                 (
                     SELECT :catMetaDescriptionAttr, 0, scm.shop_entity_id, c.MetaDescription
                     FROM $categories_temp c
@@ -1708,8 +1722,8 @@ class Sinch {
                         (attribute_id, store_id, entity_id, value)
                     VALUES
                         ($name_attrid,       0, $i, '$key'),
-                        ($name_attrid,       1, $i, '$key'),
-                        ($attr_display_mode, 1, $i, '$key'),
+                        ($name_attrid,       {$this->dataHelper->getDefaultStoreId()}, $i, '$key'),
+                        ($attr_display_mode, {$this->dataHelper->getDefaultStoreId()}, $i, '$key'),
                         ($attr_url_key,      0, $i, '$key')"
             );
 
@@ -1718,9 +1732,9 @@ class Sinch {
                         (attribute_id, store_id, entity_id, value)
                     VALUES
                         ($attr_is_active,       0, $i, 1),
-                        ($attr_is_active,       1, $i, 1),
+                        ($attr_is_active,       {$this->dataHelper->getDefaultStoreId()}, $i, 1),
                         ($attr_include_in_menu, 0, $i, 1),
-                        ($attr_include_in_menu, 1, $i, 1)"
+                        ($attr_include_in_menu, {$this->dataHelper->getDefaultStoreId()}, $i, 1)"
             );
             $i++;
         }
@@ -1963,13 +1977,13 @@ class Sinch {
             $this->print("--Parse Products 6");
 
             $this->addProductsWebsite();
-            $this->mapSinchProducts($replace_merge_product);
+            $this->mapProducts();
 
             $this->print("--Parse Products 7");
             $this->replaceMagentoProductsMultistore($this->imType == "MERGE");
             $this->print("--Parse Products 8");
 
-            $this->mapSinchProducts($replace_merge_product, true);
+            $this->mapProducts();
 
             //TODO: Check manufacturer apply works ok here
             //$this->addManufacturer_attribute();
@@ -2040,76 +2054,65 @@ class Sinch {
         }
     }
 
-    private function mapSinchProducts($mode = 'MERGE', $mapping_again = false)
+    private function mapProducts()
     {
-        $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $this->getTableName('sinch_products_mapping_temp')
+        $sinch_products_mapping_temp = $this->getTableName('sinch_products_mapping_temp');
+        $catalog_product_entity = $this->getTableName('catalog_product_entity');
+        $products_temp = $this->getTableName('products_temp');
+
+        $this->conn->query(
+            "DROP TABLE IF EXISTS $sinch_products_mapping_temp"
         );
-        $this->_doQuery(
-            "CREATE TABLE " . $this->getTableName('sinch_products_mapping_temp') . " (
-                entity_id int(11) unsigned NOT NULL,
-                shop_sinch_product_id int(11),
-                sku varchar(255) default NULL,
-                sinch_product_id int(11),
-                sinch_manufacturer_id int(11),
-                sinch_manufacturer_name varchar(255),
-                KEY entity_id (entity_id),
-                KEY sinch_manufacturer_id (sinch_manufacturer_id),
-                KEY sinch_manufacturer_name (sinch_manufacturer_name),
-                KEY sinch_product_id (sinch_product_id),
-                KEY sku (sku),
-                UNIQUE KEY(entity_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+        $this->conn->query(
+            "CREATE TABLE $sinch_products_mapping_temp (
+                  entity_id int(11) unsigned NOT NULL,
+                  product_sku varchar(64) NOT NULL,
+                  shop_sinch_product_id int(11),
+                  sinch_product_id int(11),
+                  KEY entity_id (entity_id),
+                  KEY sinch_product_id (sinch_product_id),
+                  UNIQUE KEY product_sku (product_sku),
+                  UNIQUE KEY(entity_id)
+            )"
         );
 
-        $productEntityTable = $this->getTableName('catalog_product_entity');
-
-        // backup Product ID in REWRITE mode
-        $productsBackupTable = $this->getTableName('sinch_product_backup');
-        if ($mode == 'REWRITE' && !$mapping_again && $this->tableHasData($productsBackupTable)) {
-            $this->print("Using $productsBackupTable in place of $productEntityTable for this mapping");
-            $productEntityTable = $productsBackupTable;
-        }
-        // (end) backup Product ID in REWRITE mode
-
-        $this->_doQuery(
-            "INSERT ignore INTO " . $this->getTableName('sinch_products_mapping_temp') . " (
+        //Ignore to drop rows which break the unique key constraints silently
+        $this->conn->query(
+            "INSERT ignore INTO $sinch_products_mapping_temp (
                 entity_id,
-                sku,
+                product_sku,
                 shop_sinch_product_id
-            )(SELECT
+            )(
+                SELECT
                 entity_id,
                 sku,
                 sinch_product_id
-              FROM {$productEntityTable}
+              FROM $catalog_product_entity
              )"
         );
 
-        //Not a redundant operation since the value in cpe may have been null
-        $this->_doQuery(
-            "UPDATE " . $this->getTableName('sinch_products_mapping_temp') . " pmt
-            JOIN " . $this->getTableName('products_temp') . " p
-                ON pmt.sku = p.product_sku
-            SET pmt.sinch_product_id = p.sinch_product_id"
+        $this->conn->query(
+            "UPDATE $sinch_products_mapping_temp pmt
+                INNER JOIN $products_temp pt
+                    ON pmt.product_sku = pt.product_sku
+                SET
+                    pmt.sinch_product_id = pt.sinch_product_id"
         );
 
-        //If the sinch_product_id value in cpe is NULL and its not in pmt, then set it in cpe
-        $this->_doQuery(
-            "UPDATE " . $this->getTableName('catalog_product_entity') . " cpe
-            JOIN " . $this->getTableName('sinch_products_mapping_temp') . " pmt
-                ON cpe.entity_id = pmt.entity_id
-            SET cpe.sinch_product_id = pmt.sinch_product_id
-            WHERE
-                cpe.sinch_product_id IS NULL
-                AND pmt.sinch_product_id IS NOT NULL"
+        $this->conn->query(
+            "UPDATE $catalog_product_entity cpe
+                INNER JOIN $sinch_products_mapping_temp pmt
+                    ON cpe.entity_id = pmt.entity_id
+                SET cpe.sinch_product_id = pmt.sinch_product_id
+                WHERE
+                    (cpe.sinch_product_id IS NULL
+                    AND pmt.sinch_product_id IS NOT NULL)
+                    OR cpe.sinch_product_id != pmt.sinch_product_id"
         );
 
-        $this->_doQuery(
-            "DROP TABLE IF EXISTS " . $this->getTableName('sinch_products_mapping')
-        );
-        $this->_doQuery(
-            "RENAME TABLE " . $this->getTableName('sinch_products_mapping_temp') . " TO " . $this->getTableName('sinch_products_mapping')
-        );
+        $sinch_products_mapping = $this->getTableName('sinch_products_mapping');
+        $this->conn->query("DROP TABLE IF EXISTS $sinch_products_mapping");
+        $this->conn->query("RENAME TABLE $sinch_products_mapping_temp TO $sinch_products_mapping");
     }
 
     private function _getProductDefaulAttributeSetId()
@@ -2592,14 +2595,16 @@ class Sinch {
 
         // set status = 1 for all stores
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
-            (SELECT
-                $attr_atatus,
-                0,
-                cpe.entity_id,
-                1
-            FROM $catalog_product_entity cpe
-            WHERE cpe.sinch_product_id IS NOT NULL
+            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value) (
+                SELECT
+                    $attr_atatus,
+                    0,
+                    cpe.entity_id,
+                    1
+                FROM $catalog_product_entity cpe
+                INNER JOIN $sinch_products_mapping spm
+                    ON cpe.entity_id = spm.entity_id
+                    AND spm.sinch_product_id IS NOT NULL
             )
             ON DUPLICATE KEY UPDATE
                 value = 1"
@@ -3155,17 +3160,19 @@ class Sinch {
         }
     }
 
-    private function _reindexProductUrlKey()
+    private function reindexProductUrls()
     {
-        $this->_doQuery("DELETE FROM " . $this->getTableName('url_rewrite') . " WHERE is_autogenerated = 1");
-        $this->_doQuery(
-            "UPDATE " . $this->getTableName('catalog_product_entity_varchar') . " SET value = '' WHERE attribute_id = :urlKey",
-            [':urlKey' => $this->dataHelper->getProductAttributeId('url_key')]
+        $url_rewrite = $this->getTableName('url_rewrite');
+        $catalog_product_entity_varchar = $this->getTableName('catalog_product_entity_varchar');
+
+        $conn = $this->_resourceConnection->getConnection();
+        $conn->query("DELETE FROM $url_rewrite WHERE is_autogenerated = 1 AND entity_type = 'product'");
+        $conn->query(
+            "UPDATE $catalog_product_entity_varchar SET value = '' WHERE attribute_id = :attrId",
+            [':attrId' => $this->dataHelper->getProductAttributeId('url_key')]
         );
 
         $this->_productUrlFactory->create()->refreshRewrites();
-
-        return true;
     }
 
     public function runCleanCache()
@@ -3219,6 +3226,7 @@ class Sinch {
                 if (!$this->sitcIndexMgmt->ensureIndexersNotRunning()) {
                     $this->print("There are indexers currently running, abandoning import");
                     $this->_setErrorMessage("There are indexers currently running, abandoning import");
+                    $this->setImportResult('Abandoned');
                     throw new LocalizedException(__("There are indexers currently running, abandoning import"));
                 }
                 $this->addImportStatus('Stock Price Start Import', true);
@@ -3351,7 +3359,7 @@ class Sinch {
             $this->print("========REINDEX CATALOG URL REWRITE========");
 
             $this->print("Start indexing catalog url rewrites...");
-            $this->_reindexProductUrlKey();
+            $this->reindexProductUrls();
             $this->print("Finish indexing catalog url rewrites...");
 
             $this->print("========>FINISH REINDEX CATALOG URL REWRITE...");

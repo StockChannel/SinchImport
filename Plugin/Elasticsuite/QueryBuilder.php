@@ -17,8 +17,8 @@ use SITC\Sinchimport\Search\Request\Query\PriceRangeQuery;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
-use Laminas\Log\Logger;
-use Laminas\Log\Writer\Stream;
+use Monolog\Logger;
+use Monolog\Handler\StreamHandler;
 
 class QueryBuilder
 {
@@ -58,9 +58,9 @@ class QueryBuilder
 	){
 		$this->categoryRepository = $categoryRepository;
 		$this->response = $response;
-		$writer = new Stream(BP . '/var/log/search_processing.log');
-		$this->logger = new Logger();
-		$this->logger->addWriter($writer);
+		$writer = new StreamHandler(BP . '/var/log/search_processing.log');
+		$this->logger = new Logger("query_builder");
+		$this->logger->pushHandler($writer);
 		$this->resourceConnection = $resourceConnection;
 		$this->connection = $this->resourceConnection->getConnection();
 		$this->categoryTableVarchar = $this->connection->getTableName('catalog_category_entity_varchar');

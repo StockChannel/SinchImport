@@ -57,7 +57,7 @@ class ImportCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->_appState->setAreaCode(Area::AREA_ADMINHTML);
         $importType = $input->getArgument(self::INPUT_KEY_IMPORT_TYPE);
@@ -76,7 +76,6 @@ class ImportCommand extends Command
             }
         } catch (Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
-            
             return Cli::RETURN_FAILURE;
         }
         return Cli::RETURN_SUCCESS;

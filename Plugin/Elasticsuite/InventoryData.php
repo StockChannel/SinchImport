@@ -73,17 +73,29 @@ class InventoryData
      *
      * @param \Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\InventoryData $subject
      * @param $result
+     * @param $storeId
      * @return mixed
      */
-    public function afterAddData(\Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\InventoryData $subject, $result)
+    public function afterAddData(\Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\InventoryData $subject, $result, $storeId)
     {
         if (empty($this->helper->isInStockFilterEnabled())) {
             return $result;
         }
-        $storeId = $this->storeManager->getDefaultStoreView()->getId();
+        $this->log("Processing addData for store " . $storeId);
+        $inStockValue = $this->helper->getStoreConfig('sinchimport/stock/stock_filter/in_stock_value');
+        $outOfStockValue = $this->helper->getStoreConfig('sinchimport/stock/stock_filter/out_of_stock_value');
+        $this->connection->query(
+            "DELETE FROM {$this->catalog_product_entity_varchar} WHERE attribute_id = :attrId AND value NOT IN (:inStock, :outStock)",
+            [
+                'attrId' => $this->attrId,
+                'inStock' => $inStockValue,
+                'outStock' => $outOfStockValue
+            ]
+        );
+
         $productStatuses = [];
         foreach ($result as $prodId => $indexData) {
-            $isInStock = isset($indexData['stock']) && isset($indexData['stock']['is_in_stock']) && $indexData['stock']['is_in_stock'] ? 'Y' : 'N';
+            $isInStock = (isset($indexData['stock']['qty']) && $indexData['stock']['qty'] > 0) ? $inStockValue : $outOfStockValue;
             $productStatuses[] = [
                 'attribute_id' => $this->attrId,
                 'store_id' => $storeId,
@@ -91,10 +103,9 @@ class InventoryData
                 'value' => $isInStock
             ];
         }
-        $count = sizeof($productStatuses);
-        $this->log("Processed stock filter for $count products");
+        $count = count($productStatuses);
         $rows = $this->connection->insertOnDuplicate($this->catalog_product_entity_varchar, $productStatuses);
-        $this->log("Inserted $rows status rows into database");
+        $this->log("Processed stock filter for $count products. Inserted/Updated $rows rows");
         return $result;
     }
 
