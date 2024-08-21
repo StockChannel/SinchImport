@@ -413,4 +413,14 @@ class Data extends AbstractHelper
         }
         return $this->defaultStoreId;
     }
+
+    public function getSourceBySku(string $sku): string
+    {
+        $conn = $this->resourceConn->getConnection();
+        $inventorySourceItem = $conn->getTableName('inventory_source_item');
+        return $conn->fetchOne(
+            "SELECT source_code from {$inventorySourceItem} WHERE sku = :sku ORDER BY quantity DESC LIMIT 1",
+            [":sku" => $sku]
+        );
+    }
 }
