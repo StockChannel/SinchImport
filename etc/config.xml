@@ -55,5 +55,6 @@
                 <stockprice>0 8 * * *</stockprice>
             </cron>
         </sinchimport>
+
     </default>
 </config>
