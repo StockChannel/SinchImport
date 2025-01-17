@@ -203,6 +203,7 @@ class AccountGroupPrice extends AbstractImportSection
 
         $this->startTimingStep('Group prices - LOAD DATA');
         $this->log("Loading new values into database for processing");
+        // We need the special logic for the price column to ensure empty fields are interpreted as -1, not 0
         $this->getConnection()->query(
             "LOAD DATA LOCAL INFILE '{$accountGroupPriceFile}'
                 INTO TABLE {$this->groupPriceTableNext}
@@ -210,7 +211,8 @@ class AccountGroupPrice extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (sinch_group_id, sinch_product_id, price)"
+                (sinch_group_id, sinch_product_id, @price)
+                SET price = IF(CHAR_LENGTH(TRIM(@price)) = 0, -1, @price)"
         );
         $permitZero = $this->helper->getStoreConfig('sinchimport/general/permit_zero_price');
         $this->getConnection()->query(

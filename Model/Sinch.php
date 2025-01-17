@@ -2175,54 +2175,55 @@ class Sinch {
         return $string;
     }
 
-    private function addDescriptions()
+    private function addDescriptions(bool $merge): void
     {
-        // product description for all web sites
+        $ignore = $merge ? "IGNORE" : "";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+
+        // product description (website scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_text')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('description') . ",
+                :attributeId,
                 pwt.website,
                 cpe.entity_id,
                 pt.description
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-              INNER JOIN " . $this->getTableName('products_website_temp') . " pwt
+              INNER JOIN {$this->getTableName('products_website_temp')} pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.description"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('description')]
         );
 
-        // product description for all web sites
+        // product description (global scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_text')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('description') . ",
+                :attributeId,
                 0,
                 cpe.entity_id,
                 pt.description
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.description"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('description')]
         );
     }
 
-    private function cleanProductDistributors()
+    private function cleanProductDistributors(): void
     {
         for ($i = 1; $i <= 5; $i++) {
             $this->_doQuery(
@@ -2233,145 +2234,151 @@ class Sinch {
         }
     }
 
-    private function addWeight()
+    private function addWeight(bool $merge): void
     {
-        // product weight for specific web site
+        $ignore = $merge ? "IGNORE" : "";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+
+        // product weight (website scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_decimal') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_decimal')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('weight') . ",
+                :attributeId,
                 pwt.website,
                 cpe.entity_id,
                 pt.Weight
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-              INNER JOIN " . $this->getTableName('products_website_temp') . " pwt
+              INNER JOIN {$this->getTableName('products_website_temp')} pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.Weight"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('weight')]
         );
-        // product weight for all web sites
+
+        // product weight (global scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_decimal') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_decimal')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('weight') . ",
+                :attributeId,
                 0,
                 cpe.entity_id,
                 pt.Weight
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.Weight"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('weight')]
         );
     }
 
-    private function addShortDescriptions()
+    private function addShortDescriptions(bool $merge): void
     {
-        // product short description for all web sites
+        $ignore = $merge ? "IGNORE" : "";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+
+        // product short description (website scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_text')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('short_description') . ",
+                :attributeId,
                 pwt.website,
                 cpe.entity_id,
                 pt.short_description
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-              INNER JOIN " . $this->getTableName('products_website_temp') . " pwt
+              INNER JOIN {$this->getTableName('products_website_temp')} pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.short_description"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('short_description')]
         );
-        // product short description for all web sites
+        // product short description (global scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_text')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('short_description') . ",
+                :attributeId,
                 0,
                 cpe.entity_id,
                 pt.short_description
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.short_description"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('short_description')]
         );
     }
 
-    private function addMetaTitle()
+    private function addMetaTitle(bool $merge): void
     {
         $configMetaTitle = $this->scopeConfig->getValue(
             'sinchimport/general/meta_title',
             ScopeInterface::SCOPE_STORE);
 
         if ($configMetaTitle == 1) {
+            $ignore = $merge ? "IGNORE" : "";
+            $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+
+            // Meta title (website scope)
             $this->_doQuery(
-                "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
+                "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_varchar')} (
                     attribute_id,
                     store_id,
                     entity_id,
                     value
                 )(
                   SELECT
-                    " . $this->dataHelper->getProductAttributeId('meta_title') . ",
+                    :attributeId,
                     pwt.website,
                     cpe.entity_id,
                     pt.Title
-                  FROM " . $this->getTableName('catalog_product_entity') . " cpe
-                  INNER JOIN " . $this->getTableName('products_temp') . " pt
+                  FROM {$this->getTableName('catalog_product_entity')} cpe
+                  INNER JOIN {$this->getTableName('products_temp')} pt
                     ON cpe.sinch_product_id = pt.sinch_product_id
-                  INNER JOIN " . $this->getTableName('products_website_temp') . " pwt
+                  INNER JOIN {$this->getTableName('products_website_temp')} pwt
                     ON cpe.sinch_product_id = pwt.sinch_product_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = pt.Title"
+                ) $onDuplicate",
+                [":attributeId" => $this->dataHelper->getProductAttributeId('meta_title')]
             );
 
+            // Meta title (global scope)
             $this->_doQuery(
-                "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
+                "INSERT INTO {$this->getTableName('catalog_product_entity_varchar')} (
                     attribute_id,
                     store_id,
                     entity_id,
                     value
                 )(
                   SELECT
-                    " . $this->dataHelper->getProductAttributeId('meta_title') . ",
+                    :attributeId,
                     0,
                     cpe.entity_id,
                     pt.Title
-                  FROM " . $this->getTableName('catalog_product_entity') . " cpe
-                  INNER JOIN " . $this->getTableName('products_temp') . " pt
+                  FROM {$this->getTableName('catalog_product_entity')} cpe
+                  INNER JOIN {$this->getTableName('products_temp')} pt
                     ON cpe.sinch_product_id = pt.sinch_product_id
-                )
-                ON DUPLICATE KEY UPDATE
-                    value = pt.Title"
+                ) $onDuplicate",
+                [":attributeId" => $this->dataHelper->getProductAttributeId('meta_title')]
             );
         } else {
             $this->print("-- Ignore the meta title for product configuration.");
@@ -2393,99 +2400,102 @@ class Sinch {
         }
     }
 
-    private function addMetaDescriptions()
+    private function addMetaDescriptions(bool $merge): void
     {
-        // product meta description for all web sites
+        $ignore = $merge ? "IGNORE" : "";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+
+        // product meta description (website scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_varchar')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('meta_description') . ",
+                :attributeId,
                 pwt.website,
                 cpe.entity_id,
                 pt.short_description
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-              INNER JOIN " . $this->getTableName('products_website_temp') . " pwt
+              INNER JOIN {$this->getTableName('products_website_temp')} pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.short_description"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('meta_description')]
         );
-        // product meta description for all web sites
+        // product meta description (global scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_varchar') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_varchar')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('meta_description') . ",
+                :attributeId,
                 0,
                 cpe.entity_id,
                 pt.short_description
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.short_description"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('meta_description')]
         );
     }
 
-    private function addSpecification()
+    private function addSpecification(bool $merge): void
     {
-        // product specification for all web sites
+        $ignore = $merge ? "IGNORE" : "";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+
+        // product specification (website scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_text')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('specification') . ",
+                :attributeId,
                 pwt.website,
                 cpe.entity_id,
                 pt.specifications
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-              INNER JOIN " . $this->getTableName('products_website_temp') . " pwt
+              INNER JOIN {$this->getTableName('products_website_temp')} pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.specifications"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('specification')]
         );
-        // product specification  for all web sites
+
+        // product specification (global scope)
         $this->_doQuery(
-            "INSERT INTO " . $this->getTableName('catalog_product_entity_text') . " (
+            "INSERT INTO {$this->getTableName('catalog_product_entity_text')} (
                 attribute_id,
                 store_id,
                 entity_id,
                 value
             )(
               SELECT
-                " . $this->dataHelper->getProductAttributeId('specification') . ",
+                :attributeId,
                 0,
                 cpe.entity_id,
                 pt.specifications
-              FROM " . $this->getTableName('catalog_product_entity') . " cpe
-              INNER JOIN " . $this->getTableName('products_temp') . " pt
+              FROM {$this->getTableName('catalog_product_entity')} cpe
+              INNER JOIN {$this->getTableName('products_temp')} pt
                   ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.specifications"
+            ) $onDuplicate",
+            [":attributeId" => $this->dataHelper->getProductAttributeId('specification')]
         );
     }
 
-    private function replaceMagentoProductsMultistore(bool $merge_mode)
+    private function replaceMagentoProductsMultistore(bool $merge_mode): void
     {
         $this->print("--Replace Magento Products Multistore 1...");
 
@@ -2503,7 +2513,7 @@ class Sinch {
 
         $_defaultAttributeSetId = $this->_getProductDefaulAttributeSetId();
 
-        $attr_atatus = $this->dataHelper->getProductAttributeId('status');
+        $attr_status = $this->dataHelper->getProductAttributeId('status');
         $attr_name = $this->dataHelper->getProductAttributeId('name');
         $attr_visibility = $this->dataHelper->getProductAttributeId('visibility');
         $attr_tax_class_id = $this->dataHelper->getProductAttributeId('tax_class_id');
@@ -2576,38 +2586,37 @@ class Sinch {
             WHERE cpe.entity_id IS NULL"
         );
 
+        $ignore = $merge_mode ? "IGNORE" : "";
+        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
             (SELECT
-                $attr_atatus,
+                $attr_status,
                 pwt.website,
                 cpe.entity_id,
                 1
             FROM $catalog_product_entity cpe
             JOIN $products_website_temp pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 1"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 5...");
+        // We don't use the mapping table as it won't contain products created this import (they won't be mapped until after this function completes)
+        // It seems that our replacement just using sinch_product_id on cpe runs in about the same time (or faster) anyway
 
         // set status = 1 for all stores
         $this->_doQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value) (
+            "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value) (
                 SELECT
-                    $attr_atatus,
+                    $attr_status,
                     0,
                     cpe.entity_id,
                     1
                 FROM $catalog_product_entity cpe
-                INNER JOIN $sinch_products_mapping spm
-                    ON cpe.entity_id = spm.entity_id
-                    AND spm.sinch_product_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 1"
+                WHERE cpe.sinch_product_id IS NOT NULL
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 6...");
@@ -2768,9 +2777,9 @@ class Sinch {
             WHERE cpe.entity_id IS NULL"
         );
 
-        //Set product name for specific web sites
+        // Product name (website scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_name,
                 pwt.website,
@@ -2781,16 +2790,14 @@ class Sinch {
                 ON cpe.sinch_product_id = pt.sinch_product_id
             JOIN $products_website_temp pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.product_name"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 21...");
 
-        // product name for all web sites
+        // Product name (global scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_name,
                 0,
@@ -2799,17 +2806,15 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.product_name"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 22...");
 
         $this->dropHTMLentities($this->dataHelper->getProductAttributeId('name'));
-        $this->addDescriptions();
+        $this->addDescriptions($merge_mode);
         $this->cleanProductDistributors();
-        $this->addWeight();
+        $this->addWeight($merge_mode);
 
         //Formerly addPdfUrl
         if ($this->multimediaImport->haveRequiredFiles()) {
@@ -2820,19 +2825,19 @@ class Sinch {
         }
 
         $this->print("Adding short descriptions...");
-        $this->addShortDescriptions();
+        $this->addShortDescriptions($merge_mode);
         $this->print("StockPrice apply distributors...");
         $this->stockPriceImport->applyDistributors();
 
         $this->print("Adding meta title...");
-        $this->addMetaTitle();
+        $this->addMetaTitle($merge_mode);
         $this->print("Adding meta descriptions...");
-        $this->addMetaDescriptions();
+        $this->addMetaDescriptions($merge_mode);
         //Replaced addEAN
         $this->print("Adding EAN codes...");
         $this->eanImport->parse();
         $this->print("Adding specifications...");
-        $this->addSpecification();
+        $this->addSpecification($merge_mode);
 
         //TODO: Run brands section apply here
         //$this->addManufacturers();
@@ -2843,7 +2848,7 @@ class Sinch {
 
         //Make product visible to catalog and search (website scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_visibility,
                 pwt.website,
@@ -2852,16 +2857,14 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_website_temp pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 4"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 24...");
 
         //Make product visible to catalog and search (global scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_visibility,
                 0,
@@ -2869,9 +2872,7 @@ class Sinch {
                 4
             FROM $catalog_product_entity cpe
             WHERE cpe.sinch_product_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 4"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 25...");
@@ -2909,7 +2910,7 @@ class Sinch {
 
         //Adding tax class "Taxable Goods" (website scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_tax_class_id,
                 pwt.website,
@@ -2918,16 +2919,14 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_website_temp pwt
                 ON cpe.sinch_product_id = pwt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 2"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 28...");
 
         //Adding tax class "Taxable Goods" (global scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_tax_class_id,
                 0,
@@ -2935,16 +2934,14 @@ class Sinch {
                 2
             FROM $catalog_product_entity cpe
             WHERE cpe.sinch_product_id IS NOT NULL
-            )
-            ON DUPLICATE KEY UPDATE
-                value = 2"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 29...");
 
-        // Load url Image
+        // Image Url (website scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_image,
                 store.store_id,
@@ -2954,16 +2951,14 @@ class Sinch {
             JOIN $core_store store
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.main_image_url"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 30...");
 
-        // image for specific web sites
+        // Image Url (global scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_image,
                 0,
@@ -2972,16 +2967,14 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.main_image_url"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 31...");
 
-        // small_image for specific web sites
+        // small_image (website scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_small_image,
                 store.store_id,
@@ -2991,16 +2984,14 @@ class Sinch {
             JOIN $core_store store
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.medium_image_url"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 32...");
 
-        // small_image for all web sites
+        // small_image (global scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_small_image,
                 0,
@@ -3009,16 +3000,14 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.medium_image_url"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 33...");
 
-        // thumbnail for specific web site
+        // thumbnail (website scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_thumbnail,
                 store.store_id,
@@ -3028,16 +3017,14 @@ class Sinch {
             JOIN $core_store store
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.thumb_image_url"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 34...");
 
-        // thumbnail for all web sites
+        // thumbnail (global scope)
         $this->retriableQuery(
-            "INSERT INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
+            "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
             (SELECT
                 $attr_thumbnail,
                 0,
@@ -3046,9 +3033,7 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = pt.thumb_image_url"
+            ) $onDuplicate"
         );
 
         $this->print("--Replace Magento Multistore 35...");
