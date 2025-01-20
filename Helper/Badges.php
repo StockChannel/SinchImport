@@ -2,14 +2,13 @@
 
 namespace SITC\Sinchimport\Helper;
 
-use Magento\Catalog\Model\ProductRepository;
 use Magento\Catalog\Model\ResourceModel\Product\Collection as ProductCollection;
 use Magento\Framework\App\CacheInterface;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
-use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Serialize\Serializer\Json;
-use SITC\Sinchimport\Logger\Logger;
+use Monolog\Logger;
 
 class Badges extends AbstractHelper
 {
@@ -40,34 +39,30 @@ class Badges extends AbstractHelper
     const CACHE_ID = "sinch_badge_products";
 
     private Data $helper;
-    private ProductRepository $productRepository;
     private Logger $logger;
     private CacheInterface $cache;
     private Json $serializer;
 
-    /**
-     * @param Data $helper
-     * @param ProductRepository $productRepository
-     * @param Logger $logger
-     * @param CacheInterface $cache
-     * @param Json $serializer
-     * @param Context $context
-     */
+    private ResourceConnection $resourceConn;
+
+
     public function __construct(
         Data $helper,
-        ProductRepository $productRepository,
-        Logger $logger,
         CacheInterface $cache,
         Json $serializer,
-        Context $context
+        Context $context,
+        ResourceConnection $resourceConn
     ) {
         parent::__construct($context);
 
         $this->helper = $helper;
-        $this->productRepository = $productRepository;
+        $logger = new \Monolog\Logger("badges");
+        $logger->pushHandler(new \Monolog\Handler\FirePHPHandler());
+        $logger->pushHandler(new \Monolog\Handler\ChromePHPHandler());
         $this->logger = $logger;
         $this->cache = $cache;
         $this->serializer = $serializer;
+        $this->resourceConn = $resourceConn;
     }
 
     /**
@@ -76,20 +71,14 @@ class Badges extends AbstractHelper
      */
     public function getBadgeImageUrl(string $badgeType): ?string
     {
-        switch ($badgeType) {
-            case self::BADGE_BESTSELLER:
-                return $this->helper->getStoreConfig('sinchimport/badges/bestseller');
-            case self::BADGE_HOT_PRODUCT:
-                return $this->helper->getStoreConfig('sinchimport/badges/hot_product');
-            case self::BADGE_NEW:
-                return $this->helper->getStoreConfig('sinchimport/badges/new');
-            case self::BADGE_POPULAR:
-                return $this->helper->getStoreConfig('sinchimport/badges/popular');
-            case self::BADGE_RECOMMENDED:
-                return $this->helper->getStoreConfig('sinchimport/badges/recommended');
-        }
-
-        return null;
+        return match ($badgeType) {
+            self::BADGE_BESTSELLER => $this->helper->getStoreConfig('sinchimport/badges/bestseller'),
+            self::BADGE_HOT_PRODUCT => $this->helper->getStoreConfig('sinchimport/badges/hot_product'),
+            self::BADGE_NEW => $this->helper->getStoreConfig('sinchimport/badges/new'),
+            self::BADGE_POPULAR => $this->helper->getStoreConfig('sinchimport/badges/popular'),
+            self::BADGE_RECOMMENDED => $this->helper->getStoreConfig('sinchimport/badges/recommended'),
+            default => null,
+        };
     }
 
     /**
@@ -146,26 +135,30 @@ class Badges extends AbstractHelper
         $productArr = array_column($products->getData(), 'entity_id');
 
         foreach (self::BADGE_TYPES as $badgeType => $attrCode) {
-            $productArr = array_merge([], $productArr);
-            usort($productArr, function ($a, $b) use ($attrCode) {
-                try {
-                    $productA = $this->productRepository->getById($a);
-                    $productB = $this->productRepository->getById($b);
-                } catch (NoSuchEntityException $e) {
-                    $this->logger->info($e->getMessage());
-                    return 0;
-                }
-                $attrValueA = is_array($productA->getData($attrCode)) ? $productA->getData($attrCode)[0] : (string)$productA->getData($attrCode);
-                $attrValueB = is_array($productB->getData($attrCode)) ? $productB->getData($attrCode)[0] : (string)$productB->getData($attrCode);
-                if (intval($attrValueA) == intval($attrValueB)) return 0;
-                return (intval($attrValueA) < intval($attrValueB)) ? 1 : -1;
-            });
+            $inClause = implode(",", array_fill(0, count($productArr), '?'));
+            $tableName = $this->resourceConn->getTableName(
+                $attrCode == 'sinch_release_date' ? 'catalog_product_entity_datetime' : 'catalog_product_entity_int'
+            );
+            $pairs = $this->resourceConn->getConnection()->fetchPairs(
+                "SELECT entity_id, value FROM $tableName WHERE entity_id IN ($inClause) AND attribute_id = ?
+                    ORDER BY value DESC",
+                array_merge($productArr, [$this->helper->getProductAttributeId($attrCode)])
+            );
+            // Exclude products already selected for other badges
+            $pairs = array_filter($pairs, function ($value, $entity_id) use ($badgeProducts) {
+                return !in_array($entity_id, $badgeProducts);
+            }, ARRAY_FILTER_USE_BOTH);
 
-            $prodId = $productArr[0] ?? 0;
-            //Pop first element off the array, so we don't mark the same product for multiple badges
-            array_shift($productArr);
-
-            $badgeProducts[$badgeType] = $prodId;
+            $highestValKey = array_key_first($pairs);
+            if ($pairs[$highestValKey] <= 0 || ($attrCode == 'sinch_release_date' && $pairs[$highestValKey] == '0000-00-00 00:00:00')) {
+                $this->logger->info("Highest value for $badgeType ($attrCode) <= 0 (or == '0000-00-00 00:00:00'), skipping");
+            } else {
+                $badgeProducts[$badgeType] = $highestValKey;
+                $ids = implode(', ', array_keys($pairs));
+                $this->logger->info("$badgeType ($attrCode): [$ids]");
+                $values = implode(', ', array_values($pairs));
+                $this->logger->info("$badgeType ($attrCode) values: [$values]");
+            }
         }
         $this->saveBadgeProducts($badgeProducts, $products->getLoadedIds());
     }

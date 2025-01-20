@@ -99,6 +99,8 @@ class SearchProcessing extends AbstractHelper
         $writer = new StreamHandler(BP . '/var/log/search_processing.log');
         $this->logger = new Logger("search_processing");
         $this->logger->pushHandler($writer);
+        $this->logger->pushHandler(new \Monolog\Handler\FirePHPHandler());
+        $this->logger->pushHandler(new \Monolog\Handler\ChromePHPHandler());
     }
 
     public function getQueryTextRewrites(ContainerConfigurationInterface $containerConfig, string $queryText): array
@@ -244,7 +246,7 @@ class SearchProcessing extends AbstractHelper
                             ON eao.attribute_id = ea.attribute_id
                         WHERE ea.attribute_code = :attribute
                             AND LENGTH(eaov.value) >= :valMinLength
-                            AND :queryText LIKE CONCAT('%', eaov.value, '%')
+                            AND REGEXP_LIKE(:queryText, CONCAT('\\\\b', eaov.value, '\\\\b'), 'i')
                         ORDER BY LENGTH(eaov.value) DESC",
             [
                 ':attribute' => $attributeCode,
@@ -268,8 +270,9 @@ class SearchProcessing extends AbstractHelper
         foreach (self::FILTERABLE_ATTRIBUTES as $attribute) {
             //Match on values for this attribute, preferring to match longer values if possible
             $matchingValues = $this->queryTextContainsAttributeValue($attribute, $queryText);
+            $this->logger->info("Matching values: " . implode(", ", $matchingValues));
             if (!empty($matchingValues)) {
-                //For now we only take the first matching value, then strip it from the queryText and return a QueryInterface representing the filter
+                //For now, we only take the first matching value, then strip it from the queryText and return a QueryInterface representing the filter
                 $queryText = $this->stripFromQueryText($queryText, $matchingValues[0]);
                 return $this->queryFactory->create(
                     'sitcAttributeValueQuery',
@@ -291,7 +294,9 @@ class SearchProcessing extends AbstractHelper
      */
     public function stripFromQueryText(string $queryText, string $strip): string
     {
-        return trim(str_ireplace($strip, '', $queryText));
+        // The original version of this function just did str_ireplace, but it didn't respect word boundaries
+        // We still do str_replace to dedup spaces in the middle, in lieu of a better solution
+        return trim(str_replace('  ', ' ', preg_replace('/\b' . preg_quote($strip, '/') . '\b/i', '', $queryText)));
     }
 
     /**
@@ -428,6 +433,7 @@ class SearchProcessing extends AbstractHelper
 
         $inClause = implode(",", array_fill(0, count($categoryName), '?'));
         //Arrays merged in bind to ensure the number of params matches number of tokens
+        // TODO: Needs some kind of store or category path filter to exclude results from other trees
         $categoryId = $this->resourceConn->getConnection()->fetchOne(
             "SELECT ccev.entity_id FROM {$this->categoryTableVarchar} ccev 
                 JOIN {$this->eavTable} ea ON ea.attribute_id = ccev.attribute_id AND ea.attribute_code = 'name'

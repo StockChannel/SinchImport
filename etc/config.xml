@@ -64,6 +64,13 @@
                 <yearly_sales_boost_factor>1.2</yearly_sales_boost_factor>
                 <searches_boost_factor>1.2</searches_boost_factor>
             </search>
+            <badges>
+                <bestseller></bestseller>
+                <hot_product></hot_product>
+                <new></new>
+                <popular></popular>
+                <recommended></recommended>
+            </badges>
         </sinchimport>
     </default>
 </config>
