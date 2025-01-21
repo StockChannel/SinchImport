@@ -1512,7 +1512,7 @@ class Sinch {
             );
 
             $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
+                "INSERT INTO $catalog_category_entity_text (attribute_id, store_id, entity_id, value)
                     (
                         SELECT :catDescriptionAttr, 0, scm.shop_entity_id, c.Description
                         FROM $categories_temp c
@@ -1602,7 +1602,7 @@ class Sinch {
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar (attribute_id, store_id, entity_id, value)
+                "INSERT IGNORE INTO $catalog_category_entity_text (attribute_id, store_id, entity_id, value)
                 (
                     SELECT :catDescriptionAttr, 0, scm.shop_entity_id, c.Description
                     FROM $categories_temp c
