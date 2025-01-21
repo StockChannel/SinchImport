@@ -1961,7 +1961,7 @@ class Sinch
 	        );
 
             $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
+                "INSERT INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -2123,7 +2123,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -3008,7 +3008,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
+                "INSERT INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -3170,7 +3170,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                 (
                     attribute_id,
                     store_id,
@@ -3811,7 +3811,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT INTO $catalog_category_entity_varchar
+                "INSERT INTO $catalog_category_entity_text
                               (
                                attribute_id,
                                store_id,
@@ -3965,7 +3965,7 @@ class Sinch
             );
 
             $this->_doQuery(
-                "INSERT IGNORE INTO $catalog_category_entity_varchar
+                "INSERT IGNORE INTO $catalog_category_entity_text
                           (
                            attribute_id,
                            store_id,
