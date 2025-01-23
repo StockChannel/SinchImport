@@ -108,4 +108,16 @@
     <type name="Magento\Catalog\Block\Product\Image">
         <plugin name="image_badge_overlay" type="SITC\Sinchimport\Helper\Badges" sortOrder="0" />
     </type>
+
+    <!-- Proxies config for classes, so we don't have the "Incompatible types" error in the IDE -->
+    <type name="SITC\Sinchimport\Helper\SearchProcessing">
+        <arguments>
+            <argument name="queryFactory" xsi:type="object">Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory\Proxy</argument>
+            <argument name="thesaurus" xsi:type="object">Smile\ElasticsuiteThesaurus\Model\Index\Proxy</argument>
+            <argument name="resourceConn" xsi:type="object">Magento\Framework\App\ResourceConnection\Proxy</argument>
+            <argument name="requestBuilder" xsi:type="object">Smile\ElasticsuiteCore\Search\Request\Builder\Proxy</argument>
+            <argument name="searchEngine" xsi:type="object">Magento\Search\Model\SearchEngine\Proxy</argument>
+            <argument name="storeManager" xsi:type="object">Magento\Store\Model\StoreManagerInterface\Proxy</argument>
+        </arguments>
+    </type>
 </config>

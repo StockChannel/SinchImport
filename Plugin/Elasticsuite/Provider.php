@@ -3,6 +3,9 @@
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 
+use Monolog\Handler\ChromePHPHandler;
+use Monolog\Handler\FirePHPHandler;
+use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use SITC\Sinchimport\Helper\Data;
@@ -27,14 +30,17 @@ class Provider
      */
     public function __construct(Data $helper, QueryFactory $queryFactory, SearchProcessing $searchHelper)
     {
-        $writer = new StreamHandler(BP . '/var/log/joe_search_stuff.log');
-        $logger = new Logger("joe_search_stuff");
-        $logger->pushHandler($writer);
-        $this->logger = $logger;
-
         $this->helper = $helper;
         $this->searchHelper = $searchHelper;
         $this->queryFactory = $queryFactory;
+
+        $this->logger = new Logger("joe_search_stuff");
+        $this->logger->pushHandler(new StreamHandler(BP . '/var/log/joe_search_stuff.log'));
+        $this->logger->pushHandler(new FirePHPHandler());
+        $this->logger->pushHandler(new ChromePHPHandler());
+        if ($this->helper->getStoreConfig('sinchimport/general/debug') != 1) {
+            $this->logger->pushHandler(new NullHandler());
+        }
     }
 
     /**
@@ -51,6 +57,7 @@ class Provider
         if ($boostQuery == null) {
             return $result;
         }
+        $this->logger->info("Adding boost to created query");
 
         return $this->queryFactory->create(
             QueryInterface::TYPE_BOOL,

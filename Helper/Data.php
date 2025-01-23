@@ -215,27 +215,32 @@ class Data extends AbstractHelper
 
     public function popularityBoostEnabled(): bool
     {
-        return $this->getStoreConfig('sinchimport/search/popularity_boost') == 1;
+        return $this->getStoreConfig('sinchimport/popularity_boost/enable') == 1;
     }
 
-    public function popularityBoostFactor(): float
+    public function scoreBoostFactor(): float
     {
-        return (float)$this->getStoreConfig('sinchimport/search/popularity_boost_factor');
+        return (float)$this->getStoreConfig('sinchimport/popularity_boost/score_factor');
     }
 
     public function monthlyPopularityBoostFactor(): float
     {
-        return (float)$this->getStoreConfig('sinchimport/search/monthly_sales_boost_factor');
+        return (float)$this->getStoreConfig('sinchimport/popularity_boost/monthly_sales_factor');
     }
 
     public function yearlyPopularityBoostFactor(): float
     {
-        return (float)$this->getStoreConfig('sinchimport/search/yearly_sales_boost_factor');
+        return (float)$this->getStoreConfig('sinchimport/popularity_boost/yearly_sales_factor');
     }
 
     public function searchesBoostFactor(): float
     {
-        return (float)$this->getStoreConfig('sinchimport/search/searches_boost_factor');
+        return (float)$this->getStoreConfig('sinchimport/popularity_boost/searches_factor');
+    }
+
+    public function badgesEnabled(): bool
+    {
+        return $this->getStoreConfig('sinchimport/badges/enable') == 1;
     }
 
     public function getProductAttributeId(string $attributeCode): ?int

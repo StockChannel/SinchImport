@@ -10,6 +10,7 @@
                 <multisource_stock>0</multisource_stock>
                 <permit_zero_price>0</permit_zero_price>
                 <success_email_dest></success_email_dest>
+                <debug>0</debug>
             </general>
             <sinch_ftp>
                 <replace_category>REWRITE</replace_category>
@@ -58,13 +59,16 @@
             <search>
                 <category_field_search_weight>8</category_field_search_weight>
                 <brand_field_search_weight>4</brand_field_search_weight>
-                <popularity_boost>0</popularity_boost>
-                <popularity_boost_factor>0.5</popularity_boost_factor>
-                <monthly_sales_boost_factor>1.5</monthly_sales_boost_factor>
-                <yearly_sales_boost_factor>1.2</yearly_sales_boost_factor>
-                <searches_boost_factor>1.2</searches_boost_factor>
             </search>
+            <popularity_boost>
+                <enable>1</enable>
+                <score_factor>0.5</score_factor>
+                <monthly_sales_factor>1.5</monthly_sales_factor>
+                <yearly_sales_factor>1.2</yearly_sales_factor>
+                <searches_factor>1.2</searches_factor>
+            </popularity_boost>
             <badges>
+                <enable>1</enable>
                 <bestseller></bestseller>
                 <hot_product></hot_product>
                 <new></new>

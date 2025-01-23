@@ -8,6 +8,9 @@ use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Serialize\Serializer\Json;
+use Monolog\Handler\ChromePHPHandler;
+use Monolog\Handler\FirePHPHandler;
+use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 
 class Badges extends AbstractHelper
@@ -56,10 +59,12 @@ class Badges extends AbstractHelper
         parent::__construct($context);
 
         $this->helper = $helper;
-        $logger = new \Monolog\Logger("badges");
-        $logger->pushHandler(new \Monolog\Handler\FirePHPHandler());
-        $logger->pushHandler(new \Monolog\Handler\ChromePHPHandler());
-        $this->logger = $logger;
+        $this->logger = new Logger("badges");
+        $this->logger->pushHandler(new FirePHPHandler());
+        $this->logger->pushHandler(new ChromePHPHandler());
+        if ($this->helper->getStoreConfig('sinchimport/general/debug') != 1) {
+            $this->logger->pushHandler(new NullHandler());
+        }
         $this->cache = $cache;
         $this->serializer = $serializer;
         $this->resourceConn = $resourceConn;

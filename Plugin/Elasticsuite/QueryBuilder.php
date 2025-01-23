@@ -9,6 +9,9 @@ use Magento\Framework\App\Response\Http as HttpResponse;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\UrlInterface;
+use Monolog\Handler\ChromePHPHandler;
+use Monolog\Handler\FirePHPHandler;
+use Monolog\Handler\NullHandler;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\SearchProcessing;
 use SITC\Sinchimport\Search\Request\Query\AttributeValueFilter;
@@ -58,9 +61,6 @@ class QueryBuilder
 	){
 		$this->categoryRepository = $categoryRepository;
 		$this->response = $response;
-		$writer = new StreamHandler(BP . '/var/log/search_processing.log');
-		$this->logger = new Logger("query_builder");
-		$this->logger->pushHandler($writer);
 		$this->resourceConnection = $resourceConnection;
 		$this->connection = $this->resourceConnection->getConnection();
 		$this->categoryTableVarchar = $this->connection->getTableName('catalog_category_entity_varchar');
@@ -75,6 +75,14 @@ class QueryBuilder
 		$this->spHelper = $spHelper;
         $this->request = $request;
         $this->urlBuilder = $urlBuilder;
+
+        $this->logger = new Logger("query_builder");
+        $this->logger->pushHandler(new StreamHandler(BP . '/var/log/search_processing.log'));
+        $this->logger->pushHandler(new FirePHPHandler());
+        $this->logger->pushHandler(new ChromePHPHandler());
+        if ($this->helper->getStoreConfig('sinchimport/general/debug') != 1) {
+            $this->logger->pushHandler(new NullHandler());
+        }
 	}
 
 	/**
@@ -137,6 +145,7 @@ class QueryBuilder
 
 		$boostQuery = $this->spHelper->getBoostQuery();
 		if ($boostQuery != null) {
+            $this->logger->info("Adding boost to should clauses");
 		    $shouldClauses[] = $boostQuery;
         }
 
@@ -169,28 +178,26 @@ class QueryBuilder
         }
 
         $queryParams = [];
-        if (isset($queryFilters[SearchProcessing::FILTER_TYPE_CATEGORY]) && $queryFilters[SearchProcessing::FILTER_TYPE_CATEGORY] instanceof CategoryBoostFilter) {
-            $cats = $queryFilters[SearchProcessing::FILTER_TYPE_CATEGORY]->getCategories();
-            if (!empty($cats)) {
-                $catId = $this->spHelper->getCategoryIdByName($containerConfig, $cats);
-                if (!empty($catId)) {
-                    $queryParams['cat'] = $catId;
+        foreach ($queryFilters as $filter) {
+            if ($filter instanceof CategoryBoostFilter) {
+                $cats = $filter->getCategories();
+                if (!empty($cats)) {
+                    $catId = $this->spHelper->getCategoryIdByName($containerConfig, $cats);
+                    if (!empty($catId)) {
+                        $queryParams['cat'] = $catId;
+                    }
                 }
+            } else if ($filter instanceof PriceRangeQuery) {
+                $bounds = $filter->getBounds();
+                if (!empty($bounds['lte']) && is_numeric($bounds['lte'])) {
+                    $min = $bounds['gte'] ?? '0';
+                    $queryParams['price'] = "{$min}-{$bounds['lte']}";
+                }
+            } else if ($filter instanceof AttributeValueFilter) {
+                $attrCode = $filter->getAttribute();
+                $attrValue = $filter->getValue();
+                $queryParams[$attrCode] = $attrValue;
             }
-        }
-
-        if (isset($queryFilters[SearchProcessing::FILTER_TYPE_PRICE]) && $queryFilters[SearchProcessing::FILTER_TYPE_PRICE] instanceof PriceRangeQuery) {
-            $bounds = $queryFilters[SearchProcessing::FILTER_TYPE_PRICE]->getBounds();
-            if (!empty($bounds['lte']) && is_numeric($bounds['lte'])) {
-                $min = $bounds['gte'] ?? '0';
-                $queryParams['price'] = "{$min}-{$bounds['lte']}";
-            }
-        }
-
-        if (isset($queryFilters[SearchProcessing::FILTER_TYPE_ATTRIBUTE]) && $queryFilters[SearchProcessing::FILTER_TYPE_ATTRIBUTE] instanceof AttributeValueFilter) {
-            $attrCode = $queryFilters[SearchProcessing::FILTER_TYPE_ATTRIBUTE]->getAttribute();
-            $attrValue = $queryFilters[SearchProcessing::FILTER_TYPE_ATTRIBUTE]->getValue();
-            $queryParams[$attrCode] = $attrValue;
         }
 
         //Check whether the query text directly matches a category name & redirect if true
@@ -218,21 +225,35 @@ class QueryBuilder
                     return true;
                 }
             }
-            //Query text is empty but we have no target category, try to find one based on product family
-            if (isset($queryParams['sinch_family'])) {
+            //Query text is empty but we have no target category, try to find one based on any AttributeValueFilters present
+            $catalog_category_product = $this->connection->getTableName('catalog_category_product');
+            $catalog_product_index_eav = $this->connection->getTableName('catalog_product_index_eav');
+            $eav_attribute_option_value = $this->connection->getTableName('eav_attribute_option_value');
+            $eav_attribute_option = $this->connection->getTableName('eav_attribute_option');
+            $eav_attribute = $this->connection->getTableName('eav_attribute');
+            foreach ($queryFilters as $filter) {
+                if (!$filter instanceof AttributeValueFilter) continue;
+                $this->logger->info("Processing attribute {$filter->getAttribute()} to determine target category");
                 $catId = $this->connection->fetchOne(
-                    "SELECT cce.entity_id FROM {$this->categoryTable} cce
-                    JOIN {$this->sinchProductsTable} sp
-                        ON cce.store_category_id = sp.store_category_id
-                    JOIN {$this->productFamilyTable} pf
-                        ON sp.family_id = pf.id
-                    WHERE pf.name = :family
-                    GROUP BY cce.entity_id
-                    ORDER BY COUNT(cce.entity_id) DESC
-                    LIMIT 1",
-                    [':family' => $queryParams['sinch_family']]
+                    "SELECT ccp.category_id FROM $catalog_category_product ccp
+                        INNER JOIN $catalog_product_index_eav cpie
+                            ON ccp.product_id = cpie.entity_id
+                            AND cpie.value IN (
+                                SELECT eaov.option_id
+                                    FROM $eav_attribute_option_value eaov
+                                    INNER JOIN $eav_attribute_option eao
+                                        ON eaov.option_id = eao.option_id
+                                    INNER JOIN $eav_attribute ea
+                                    ON eao.attribute_id = ea.attribute_id
+                                    WHERE ea.attribute_code = :attr AND eaov.value = :value
+                            )
+                        GROUP BY ccp.category_id
+                        ORDER BY COUNT(ccp.category_id) DESC
+                        LIMIT 1",
+                    [':attr' => $filter->getAttribute(), ':value' => $filter->getValue()]
                 );
                 if (!empty($catId)) {
+                    $this->logger->info("Found candidate category for attribute {$filter->getAttribute()}: {$catId}. Using it");
                     $catUrl = $this->getCategoryUrl($catId, $queryParams);
                     $this->response->setRedirect($catUrl)->sendResponse();
                     return true;

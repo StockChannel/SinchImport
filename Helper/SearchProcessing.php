@@ -2,6 +2,9 @@
 
 namespace SITC\Sinchimport\Helper;
 
+use Monolog\Handler\ChromePHPHandler;
+use Monolog\Handler\FirePHPHandler;
+use Monolog\Handler\NullHandler;
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
 use Magento\Catalog\Model\Category;
@@ -18,6 +21,7 @@ use Magento\Search\Model\SearchEngine;
 use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete\TermsDataProvider;
 use SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder;
+use SITC\Sinchimport\Search\Request\Query\AttributeValueFilter;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterface;
 use Smile\ElasticsuiteCore\Api\Search\Request\ContainerConfigurationInterfaceFactory;
 use Smile\ElasticsuiteCore\Search\Request\Builder;
@@ -41,23 +45,13 @@ class SearchProcessing extends AbstractHelper
 
     //For this to work properly with checkAttributeValueMatch, all the attributes are expected to be of type select
     public const FILTERABLE_ATTRIBUTES = [
+        'sinch_family',
         'manufacturer',
-        'sinch_family'
     ];
     //Only match attribute values at least this long (changed to 2 to match on "HP")
     private const ATTRIBUTE_VALUE_MIN_LENGTH = 2;
 
-    private Session $customerSession;
-    private QueryFactory $queryFactory;
-    private Index $thesaurus;
-    private ResourceConnection $resourceConn;
-    private Builder $requestBuilder;
-    private SearchEngine $searchEngine;
-    private ContainerConfigurationInterfaceFactory $containerConfigFactory;
-    private StoreManagerInterface $storeManager;
     private Logger $logger;
-    private ItemFactory $itemFactory;
-    private Data $helper;
 
     private string $categoryTableVarchar;
     private string $categoryTable;
@@ -66,41 +60,32 @@ class SearchProcessing extends AbstractHelper
     private string $sinchCategoriesMappingTable;
 
     public function __construct(
-        Context $context,
-        Session $customerSession,
-        QueryFactory\Proxy $queryFactory,
-        Index\Proxy $thesaurus,
-        ResourceConnection\Proxy $resourceConn,
-        Builder\Proxy $requestBuilder,
-        SearchEngine\Proxy $searchEngine,
-        ContainerConfigurationInterfaceFactory $containerConfigFactory,
-        StoreManagerInterface\Proxy $storeManager,
-        ItemFactory $itemFactory,
-        Data $helper
+        Context                                                 $context,
+        private readonly Session                                $customerSession,
+        private readonly QueryFactory                           $queryFactory,
+        private readonly Index                                  $thesaurus,
+        private readonly ResourceConnection                     $resourceConn,
+        private readonly Builder                                $requestBuilder,
+        private readonly SearchEngine                           $searchEngine,
+        private readonly ContainerConfigurationInterfaceFactory $containerConfigFactory,
+        private readonly StoreManagerInterface                  $storeManager,
+        private readonly ItemFactory                            $itemFactory,
+        private readonly Data $helper
     ){
         parent::__construct($context);
-        $this->customerSession = $customerSession;
-        $this->queryFactory = $queryFactory;
-        $this->thesaurus = $thesaurus;
-        $this->resourceConn = $resourceConn;
-        $this->requestBuilder = $requestBuilder;
-        $this->searchEngine = $searchEngine;
-        $this->containerConfigFactory = $containerConfigFactory;
-        $this->storeManager = $storeManager;
-        $this->itemFactory = $itemFactory;
-        $this->helper = $helper;
-
         $this->categoryTableVarchar = $this->resourceConn->getTableName('catalog_category_entity_varchar');
         $this->categoryTable = $this->resourceConn->getTableName('catalog_category_entity');
         $this->eavTable = $this->resourceConn->getTableName('eav_attribute');
         $this->sinchCategoriesTable = $this->resourceConn->getTableName('sinch_categories');
         $this->sinchCategoriesMappingTable = $this->resourceConn->getTableName('sinch_categories_mapping');
 
-        $writer = new StreamHandler(BP . '/var/log/search_processing.log');
         $this->logger = new Logger("search_processing");
-        $this->logger->pushHandler($writer);
-        $this->logger->pushHandler(new \Monolog\Handler\FirePHPHandler());
-        $this->logger->pushHandler(new \Monolog\Handler\ChromePHPHandler());
+        $this->logger->pushHandler(new StreamHandler(BP . '/var/log/search_processing.log'));
+        $this->logger->pushHandler(new FirePHPHandler());
+        $this->logger->pushHandler(new ChromePHPHandler());
+        if ($this->helper->getStoreConfig('sinchimport/general/debug') != 1) {
+            $this->logger->pushHandler(new NullHandler());
+        }
     }
 
     public function getQueryTextRewrites(ContainerConfigurationInterface $containerConfig, string $queryText): array
@@ -161,13 +146,19 @@ class SearchProcessing extends AbstractHelper
                         );
                         break;
                     case self::FILTER_TYPE_ATTRIBUTE:
-                        $filter = $this->checkAttributeValueMatch($match['query']); //In FILTER_TYPE_ATTRIBUTE $match['query'] is the original queryText for our runtime matching
-                        if (empty($filter) /*|| empty($match['query'])*/) {
+                        $matchedFilters = $this->checkAttributeValueMatch($match['query']); //In FILTER_TYPE_ATTRIBUTE $match['query'] is the original queryText for our runtime matching
+                        if (empty($matchedFilters) /*|| empty($match['query'])*/) {
                             //If we didn't get a filter, or the query text is empty, don't filter
                             $this->logger->info("Filter is empty in attribute match");
                             continue 2;
                         }
-                        $filters[self::FILTER_TYPE_ATTRIBUTE] = $filter;
+                        foreach ($matchedFilters as $filter) {
+                            if (!$filter instanceof AttributeValueFilter) {
+                                $this->logger->error("Got unexpected filter type from checkAttributeValueMatch");
+                                continue;
+                            }
+                            $filters[self::FILTER_TYPE_ATTRIBUTE  . '_' . $filter->getAttribute()] = $filter;
+                        }
                         break;
                 }
                 //Adjust query text for the remaining checks (we only do this if the filter reports success by not doing "continue 2")
@@ -259,22 +250,23 @@ class SearchProcessing extends AbstractHelper
     /**
      * Parses the queryText for attribute value matches
      * @param string $queryText
-     * @return QueryInterface|null
+     * @return QueryInterface[]|null
      */
-    private function checkAttributeValueMatch(string &$queryText): ?QueryInterface
+    private function checkAttributeValueMatch(string &$queryText): ?array
     {
         if (empty($queryText)) {
             return null;
         }
 
+        $results = [];
         foreach (self::FILTERABLE_ATTRIBUTES as $attribute) {
             //Match on values for this attribute, preferring to match longer values if possible
             $matchingValues = $this->queryTextContainsAttributeValue($attribute, $queryText);
-            $this->logger->info("Matching values: " . implode(", ", $matchingValues));
             if (!empty($matchingValues)) {
+                $this->logger->info("$attribute matching values: " . implode(", ", $matchingValues));
                 //For now, we only take the first matching value, then strip it from the queryText and return a QueryInterface representing the filter
                 $queryText = $this->stripFromQueryText($queryText, $matchingValues[0]);
-                return $this->queryFactory->create(
+                $results[] = $this->queryFactory->create(
                     'sitcAttributeValueQuery',
                     [
                         'attribute' => $attribute,
@@ -283,7 +275,11 @@ class SearchProcessing extends AbstractHelper
                 );
             }
         }
-        return null;
+        // Unnecessary, but just to complete the convention of only returning arrays with data
+        if (empty($results)) {
+            return null;
+        }
+        return $results;
     }
 
     /**
@@ -470,7 +466,7 @@ class SearchProcessing extends AbstractHelper
                         [ //Boost on Popularity Score
                             FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
                                 'field' => 'sinch_score', //TODO: Seems like field names for non-option int attributes are just their attribute code, confirm
-                                'factor' => $this->helper->popularityBoostFactor(),
+                                'factor' => $this->helper->scoreBoostFactor(),
                                 'modifier' => 'log1p',
                                 'missing' => 0
                             ],

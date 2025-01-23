@@ -41,6 +41,10 @@
                     <label>Import Success notification email destination</label>
                     <comment>If blank or not a valid email, does not send success emails</comment>
                 </field>
+                <field id="debug" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Debug Mode</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
             </group>
 
             <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
@@ -257,51 +261,90 @@
                     <label>Brand name search weight</label>
                     <comment><![CDATA[The search weight for the brand name field]]></comment>
                 </field>
-                <field id="popularity_boost" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Enable Popularity Boost</label>
+            </group>
+
+            <group id="popularity_boost" translate="label" type="text" sortOrder="90" showInDefault="1" showInStore="1" showInWebsite="1">
+                <label>Popularity Boost</label>
+                <comment><![CDATA[Boost the position of products in collections based on additional Stockinthechannel provided attributes]]></comment>
+                <field id="enable" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment><![CDATA[When enabled, boosts search results based on their popularity score attribute, multiplied by Popularity Boost Factor]]></comment>
                 </field>
-                <field id="popularity_boost_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Popularity Boost Factor</label>
-                    <comment><![CDATA[The factor to use when Popularity boosting]]></comment>
+                <field id="score_factor" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Score Boost Factor</label>
+                    <comment><![CDATA[Factor used for the "sinch_score" attribute]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                    </depends>
                 </field>
-                <field id="monthly_sales_boost_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="monthly_sales_factor" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Monthly Popularity Boost Factor</label>
-                    <comment><![CDATA[The factor to use when Popularity boosting on the monthly Stockinthechannel implied sales]]></comment>
+                    <comment><![CDATA[Factor to use for the "sinch_popularity_month" attribute (Monthly Stockinthechannel Implied Sales)]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                    </depends>
                 </field>
-                <field id="yearly_sales_boost_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="yearly_sales_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Yearly Popularity Boost Factor</label>
-                    <comment><![CDATA[The factor to use when Popularity boosting on the yearly Stockinthechannel implied sales]]></comment>
+                    <comment><![CDATA[Factor to use for the "sinch_popularity_year" attribute (Yearly Stockinthechannel Implied Sales)]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                    </depends>
                 </field>
-                <field id="searches_boost_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="searches_factor" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Search Data Boost Factor</label>
-                    <comment><![CDATA[The factor to use when Popularity boosting on the Stockinthechannel search data]]></comment>
+                    <comment><![CDATA[Factor to use for the "sinch_searches" attribute (Stockinthechannel search data)]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                    </depends>
                 </field>
             </group>
 
-            <group id="badges" translate="label" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1">
+            <group id="badges" translate="label" type="text" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Product Badges</label>
-                <field id="bestseller" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Best seller badge image URL</label>
-                    <comment><![CDATA[URL to image used for best seller product badge]]></comment>
+                <comment><![CDATA[Badges for notable products on the first page of collections. Works best in combination with Popularity Boost, but not required]]></comment>
+                <field id="enable" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="hot_product" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Hot product badge image URL</label>
+                <field id="bestseller" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Bestseller Badge Image URL</label>
+                    <comment><![CDATA[URL to image used for bestseller product badge]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                    </depends>
+                </field>
+                <field id="hot_product" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Hot Product Badge Image URL</label>
                     <comment><![CDATA[URL to image used for hot product badge]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                    </depends>
                 </field>
-                <field id="new" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>New product badge image URL</label>
+                <field id="new" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>New Product Badge Image URL</label>
                     <comment><![CDATA[URL to image used for new product badge]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                    </depends>
                 </field>
-                <field id="popular" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Popular product badge image URL</label>
-                    <comment><![CDATA[URL to image used for popular product product badge]]></comment>
+                <field id="popular" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Popular Product Badge Image URL</label>
+                    <comment><![CDATA[URL to image used for popular product badge]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                    </depends>
                 </field>
-                <field id="recommended" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Recommended product badge image URL</label>
-                    <comment><![CDATA[URL to image used for recommended product product badge]]></comment>
+                <field id="recommended" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Recommended Product Badge Image URL</label>
+                    <comment><![CDATA[URL to image used for recommended product badge]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                    </depends>
                 </field>
+                <depends>
+                    <field id="sinchimport/misc/experimental_search_features">1</field>
+                </depends>
             </group>
         </section>
     </system>
