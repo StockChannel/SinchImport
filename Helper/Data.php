@@ -208,9 +208,14 @@ class Data extends AbstractHelper
         return $this->isModuleEnabled('Magento_Inventory') && $this->getStoreConfig('sinchimport/general/multisource_stock');
     }
 
-    public function experimentalSearchEnabled(): bool
+    public function enhancedSearchEnabled(): bool
     {
-        return $this->getStoreConfig('sinchimport/misc/experimental_search_features') == 1;
+        return $this->getStoreConfig('sinchimport/search/enable_enhanced') == 1;
+    }
+
+    public function dynamicCategoryMatchEnabled(): bool
+    {
+        return $this->getStoreConfig('sinchimport/search/dynamic_category_match_enable') == 1;
     }
 
     public function popularityBoostEnabled(): bool

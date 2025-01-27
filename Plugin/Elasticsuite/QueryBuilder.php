@@ -99,7 +99,7 @@ class QueryBuilder
 	 */
 	public function aroundCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, callable $proceed, ContainerConfigurationInterface $containerConfig, $queryText, string $spellingType, float $boost = 1): QueryInterface
 	{
-		if (!$this->helper->experimentalSearchEnabled()) {
+		if (!$this->helper->enhancedSearchEnabled()) {
 			return $proceed($containerConfig, $queryText, $spellingType, $boost);
 		}
 
@@ -175,6 +175,15 @@ class QueryBuilder
 	{
         if ($containerConfig->getName() === self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE || $this->request->isAjax()) {
             return false;
+        }
+
+        // To avoid redirect loops and similar weirdness
+        $skip_params = ['cat', 'price', 'sinch_family', 'manufacturer'];
+        foreach (array_keys($this->request->getParams()) as $param) {
+            if (in_array($param, $skip_params)) {
+                $this->logger->info("Found skip param '{$param}' on request, won't redirect");
+                return false;
+            }
         }
 
         $queryParams = [];

@@ -36,7 +36,7 @@ class TermsDataProvider {
 	public function afterGetItems(ESDataProvider $subject, array $result): array
 	{
         $suggestions = [];
-		if ($this->helper->experimentalSearchEnabled()) {
+		if ($this->helper->enhancedSearchEnabled()) {
             $queryText = $this->queryFactory->get()->getQueryText();
             $suggestions = $this->searchProcessing->getAutocompleteSuggestions($queryText);
 		}

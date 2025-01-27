@@ -22,7 +22,7 @@ class VirtualCategory extends AbstractImportSection {
         $this->dataHelper = $dataHelper;
     }
 
-    public function parse()
+    public function parse(): void
     {
         $catalog_category_entity = $this->getTableName('catalog_category_entity');
         $catalog_category_entity_int = $this->getTableName('catalog_category_entity_int');

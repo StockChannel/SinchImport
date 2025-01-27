@@ -29,7 +29,7 @@ class ProductAttributeDataProvider
      */
     public function afterGetItems(DataProvider $subject, array $result): array
     {
-        if ($this->helper->experimentalSearchEnabled()) {
+        if ($this->helper->enhancedSearchEnabled()) {
             uasort($result, [$this, 'prioritizeFamily']);
         }
 

@@ -244,11 +244,6 @@
                     <comment><![CDATA[The implementation of ANY_VALUE to use when selecting records not specified in the GROUP BY condition (primarily Product Supplier).<br>
                     The default is acceptable on all databases except MariaDB, which fails to implement ANY_VALUE]]></comment>
                 </field>
-                <field id="experimental_search_features" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Enable Experimental search features</label>
-                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment><![CDATA[When enabled, boosts results where the category name matches the search query]]></comment>
-                </field>
             </group>
 
             <group id="search" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
@@ -260,6 +255,19 @@
                 <field id="brand_field_search_weight" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Brand name search weight</label>
                     <comment><![CDATA[The search weight for the brand name field]]></comment>
+                </field>
+                <field id="enable_enhanced" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Enhanced Search</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, attempt to refine searches to improve their relevance and specificity]]></comment>
+                </field>
+                <field id="dynamic_category_match_enable" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Dynamic Category Matches within Enhanced Search</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, attempt to refine searches to improve their relevance and specificity]]></comment>
+                    <depends>
+                        <field id="sinchimport/search/enable_enhanced">1</field>
+                    </depends>
                 </field>
             </group>
 
@@ -342,9 +350,6 @@
                         <field id="sinchimport/badges/enable">1</field>
                     </depends>
                 </field>
-                <depends>
-                    <field id="sinchimport/misc/experimental_search_features">1</field>
-                </depends>
             </group>
         </section>
     </system>

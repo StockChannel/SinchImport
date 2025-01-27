@@ -59,7 +59,7 @@ class ProductCollectionLoadAfter implements ObserverInterface
 
     private function loadCachedProducts(Collection $productCollection): void
     {
-        if ($this->helper->experimentalSearchEnabled() && $this->helper->badgesEnabled() && $productCollection->getSize() > 4) {
+        if ($this->helper->badgesEnabled() && $productCollection->getSize() > 4) {
             $badgeProducts = $this->badgeHelper->loadCachedBadgeProducts($productCollection);
             $this->categoryViewPlugin->setProductCollection($badgeProducts);
         }

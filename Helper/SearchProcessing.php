@@ -35,12 +35,19 @@ class SearchProcessing extends AbstractHelper
     public const FILTER_TYPE_PRICE = "price";
     public const FILTER_TYPE_CATEGORY = "category";
     public const FILTER_TYPE_ATTRIBUTE = "attribute";
+    public const FILTER_TYPE_CATEGORY_DYNAMIC = "category_dynamic";
 
     // All known textual filters to look for. All types are expected to return a named capture "query" containing the remaining query text, if any
     private const QUERY_REGEXES = [
         self::FILTER_TYPE_PRICE => "/(?(DEFINE)(?<price>[0-9]+(?:.[0-9]+)?)(?<cur>(?:\p{Sc}|[A-Z]{3})\s?))(?<query>.+?)\s+(?J:(?:below|under|(?:cheaper|less)\sthan)\s+(?&cur)?(?<below>(?&price))|(?:between|from)?\s*(?&cur)?(?<above>(?&price))\s*(?:and|to|-)\s*(?&cur)?(?<below>(?&price)))/u",
         self::FILTER_TYPE_CATEGORY => "/(?<query>.+)\s+in\s+(?<category>.+)/u",
-        self::FILTER_TYPE_ATTRIBUTE => "" //This regex is derived at runtime based on the available attribute values
+        self::FILTER_TYPE_ATTRIBUTE => "", // Derived at runtime based on the available attribute values
+        self::FILTER_TYPE_CATEGORY_DYNAMIC => "" // Derived at runtime based on category name and sinch_virtual_category values
+    ];
+
+    private const DYNAMIC_REGEX_TYPES = [
+        self::FILTER_TYPE_ATTRIBUTE,
+        self::FILTER_TYPE_CATEGORY_DYNAMIC,
     ];
 
     //For this to work properly with checkAttributeValueMatch, all the attributes are expected to be of type select
@@ -117,7 +124,6 @@ class SearchProcessing extends AbstractHelper
     {
         $filters = [];
         foreach (self::QUERY_REGEXES as $filterType => $_regex) {
-
             $match = $this->getRegexMatchesRaw($filterType, $queryText);
             if (!empty($match)) {
                 $this->logger->info("Query text is: '{$queryText}' and filter type is {$filterType}");
@@ -160,6 +166,20 @@ class SearchProcessing extends AbstractHelper
                             $filters[self::FILTER_TYPE_ATTRIBUTE  . '_' . $filter->getAttribute()] = $filter;
                         }
                         break;
+                    case self::FILTER_TYPE_CATEGORY_DYNAMIC:
+                        if (!empty($filters[self::FILTER_TYPE_CATEGORY])) {
+                            $this->logger->info("Skipping dynamic category filter as static category filter is set");
+                            continue 2;
+                        }
+                        if (!$this->helper->dynamicCategoryMatchEnabled()) continue 2;
+                        // Check category matches dynamically
+                        $filter = $this->checkCategoryNameMatchDynamic($match['query']);
+                        if (empty($filter)) {
+                            $this->logger->info("Filter is empty in dynamic category match");
+                            continue 2;
+                        }
+                        $filters[self::FILTER_TYPE_CATEGORY_DYNAMIC] = $filter;
+                        break;
                 }
                 //Adjust query text for the remaining checks (we only do this if the filter reports success by not doing "continue 2")
                 $queryText = $match['query'] ?? '';
@@ -178,9 +198,9 @@ class SearchProcessing extends AbstractHelper
     public function getRegexMatchesRaw(string $filterType, string $queryText)
     {
         $matches = [];
-        //Attribute is a special case as it requires runtime generation
-        if ($filterType == self::FILTER_TYPE_ATTRIBUTE) {
-            //Return a dummy "match" with the original queryText, so we can do it dynamically
+        // Any type in DYNAMIC_REGEX_TYPES should return a dummy match, so it can be processed dynamically
+        if (in_array($filterType, self::DYNAMIC_REGEX_TYPES)) {
+            // Return a dummy "match" with the original queryText
             return ['query' => $queryText];
         }
         if (preg_match(self::QUERY_REGEXES[$filterType], $queryText, $matches) >= 1) {
@@ -236,9 +256,9 @@ class SearchProcessing extends AbstractHelper
                         INNER JOIN $eav_attribute ea
                             ON eao.attribute_id = ea.attribute_id
                         WHERE ea.attribute_code = :attribute
-                            AND LENGTH(eaov.value) >= :valMinLength
+                            AND CHAR_LENGTH(eaov.value) >= :valMinLength
                             AND REGEXP_LIKE(:queryText, CONCAT('\\\\b', eaov.value, '\\\\b'), 'i')
-                        ORDER BY LENGTH(eaov.value) DESC",
+                        ORDER BY CHAR_LENGTH(eaov.value) DESC",
             [
                 ':attribute' => $attributeCode,
                 ':valMinLength' => self::ATTRIBUTE_VALUE_MIN_LENGTH,
@@ -360,9 +380,8 @@ class SearchProcessing extends AbstractHelper
                 }
             }
 
-            asort($adjustedCatMap, SORT_NUMERIC);
-            //asort puts the lowest count first, so flip it in the foreach
-            foreach (array_reverse($adjustedCatMap, true) as $cat => $coverage) {
+            arsort($adjustedCatMap, SORT_NUMERIC);
+            foreach ($adjustedCatMap as $cat => $coverage) {
                 if ($debug) {
                     $this->logger->info("Category {$cat} has {$coverage}% product coverage for query");
                 }
@@ -502,6 +521,90 @@ class SearchProcessing extends AbstractHelper
                     ],
                     'scoreMode' => FunctionScore::SCORE_MODE_MAX,
                     'boostMode' => FunctionScore::BOOST_MODE_SUM
+                ]
+            );
+        }
+        return null;
+    }
+
+
+    public function checkCategoryNameMatchDynamic(string &$queryText): ?QueryInterface
+    {
+        $catalog_category_entity_varchar = $this->resourceConn->getTableName('catalog_category_entity_varchar');
+        $eav_attribute = $this->resourceConn->getTableName('eav_attribute');
+        $eav_entity_type = $this->resourceConn->getTableName('eav_entity_type');
+        $catalog_category_entity_int = $this->resourceConn->getTableName('catalog_category_entity_int');
+        $eav_attribute_option = $this->resourceConn->getTableName('eav_attribute_option');
+        $eav_attribute_option_value = $this->resourceConn->getTableName('eav_attribute_option_value');
+
+        $this->logger->info("Checking dynamic category name match");
+        $matchingName = $this->resourceConn->getConnection()->fetchOne(
+            "SELECT ccev.value FROM $catalog_category_entity_varchar ccev
+                INNER JOIN $eav_attribute ea
+                    ON ccev.attribute_id = ea.attribute_id
+                INNER JOIN $eav_entity_type eet
+                    ON ea.entity_type_id = eet.entity_type_id
+                WHERE ea.attribute_code = 'name'
+                  AND eet.entity_type_code = :entityTypeCode
+                  AND ccev.store_id = :storeId
+                  AND CHAR_LENGTH(ccev.value) >= :valMinLength
+                  AND REGEXP_LIKE(:queryText, CONCAT('\\\\b', ccev.value, '\\\\b'), 'i')
+                ORDER BY CHAR_LENGTH(ccev.value) DESC
+                LIMIT 1",
+            [
+                ":entityTypeCode" => Category::ENTITY,
+                ":storeId" => $this->getCurrentStoreId(),
+                ":valMinLength" => self::ATTRIBUTE_VALUE_MIN_LENGTH,
+                ":queryText" => $queryText
+            ]
+        );
+        if (!empty($matchingName)) {
+            $this->logger->info("Found dynamic category name match: {$matchingName}");
+            // Name directly matched a category, so strip match from the queryText and create a category boost query
+            $queryText = $this->stripFromQueryText($queryText, $matchingName);
+            return $this->queryFactory->create(
+                'sitcCategoryBoostQuery',
+                [
+                    'queries' => [$matchingName],
+                    'filter' => true //This function always returns filter queries (those with minShouldMatch=1)
+                ]
+            );
+        }
+
+        // Now check sinch_virtual_category, seeing as none of the actual category names matched
+        $this->logger->info("Checking dynamic virtual category name match");
+        $matchingVirtualCat = $this->resourceConn->getConnection()->fetchOne(
+            "SELECT eaov.value FROM $catalog_category_entity_int ccei
+                INNER JOIN $eav_attribute_option eao
+                    ON ccei.value = eao.option_id
+                INNER JOIN $eav_attribute_option_value eaov
+                    ON eao.option_id = eaov.option_id
+                INNER JOIN $eav_attribute ea
+                    ON ccei.attribute_id = ea.attribute_id
+                INNER JOIN $eav_entity_type eet
+                    ON ea.entity_type_id = eet.entity_type_id
+                WHERE ea.attribute_code = 'sinch_virtual_category'
+                  AND eet.entity_type_code = :entityTypeCode
+                  AND ccei.store_id = 0 -- Virtual category values are always inserted into scope 0 by the import
+                  AND CHAR_LENGTH(eaov.value) >= :valMinLength
+                  AND REGEXP_LIKE(:queryText, CONCAT('\\\\b', eaov.value, '\\\\b'), 'i')
+                ORDER BY CHAR_LENGTH(eaov.value) DESC
+                LIMIT 1",
+            [
+                ":entityTypeCode" => Category::ENTITY,
+                ":valMinLength" => self::ATTRIBUTE_VALUE_MIN_LENGTH,
+                ":queryText" => $queryText
+            ]
+        );
+        if (!empty($matchingVirtualCat)) {
+            $this->logger->info("Found dynamic virtual category name match: {$matchingVirtualCat}");
+            // Name directly matched a virtual category, so strip match from the queryText and create a category boost query
+            $queryText = $this->stripFromQueryText($queryText, $matchingVirtualCat);
+            return $this->queryFactory->create(
+                'sitcCategoryBoostQuery',
+                [
+                    'queries' => [$matchingVirtualCat],
+                    'filter' => true //This function always returns filter queries (those with minShouldMatch=1)
                 ]
             );
         }
