@@ -6594,9 +6594,7 @@ class Sinch
                     cpe.entity_id,
                     1
                 FROM $catalog_product_entity cpe
-                INNER JOIN $sinch_products_mapping spm
-                    ON cpe.entity_id = spm.entity_id
-                    AND spm.sinch_product_id IS NOT NULL
+                WHERE cpe.sinch_product_id IS NOT NULL
             )
             ON DUPLICATE KEY UPDATE
                 value = 1"
@@ -7188,9 +7186,7 @@ class Sinch
                     cpe.entity_id,
                     1
                 FROM $catalog_product_entity cpe
-                INNER JOIN $sinch_products_mapping spm
-                    ON cpe.entity_id = spm.entity_id
-                    AND spm.sinch_product_id IS NOT NULL
+                WHERE cpe.sinch_product_id IS NOT NULL
             )"
         );
 
