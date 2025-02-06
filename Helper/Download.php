@@ -43,18 +43,18 @@ class Download extends AbstractHelper
         self::FILE_CATEGORIES_FEATURES => 'ID|CategoryID|Name|Order',
         self::FILE_DISTRIBUTORS => 'ID|Name',
         self::FILE_DISTRIBUTORS_STOCK => 'ProductID|DistributorID|Stock',
-        self::FILE_FAMILIES => 'ID|ParentID|Name',
-        self::FILE_FAMILY_SERIES => 'ID|Name',
+        self::FILE_FAMILIES => 'ID|BrandID|Name',
+        self::FILE_FAMILY_SERIES => 'ID|Name|FamilyID',
         self::FILE_MULTIMEDIA => 'ID|ProductID|Description|URL|ContentType',
         self::FILE_PRODUCTS_GALLERY_PICTURES => 'ProductID|MainImageURL|ThumbImageURL',
         self::FILE_PRODUCT_CATEGORIES => 'ProductID|CategoryID',
         self::FILE_PRODUCT_FEATURES => 'ID|ProductID|RestrictedValueID',
-        self::FILE_PRODUCTS => 'ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|LastYearSales|LastMonthSales|Searches|Feature1|Feature2|Feature3|Feature4',
+        self::FILE_PRODUCTS => 'ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|Searches|Feature1|Value1|Feature2|Value2|Feature3|Value3|Feature4|Value4|LastYearSales|LastMonthSales',
         self::FILE_REASONS_TO_BUY => 'ID|No|Value|Title|HighPic',
         self::FILE_RELATED_PRODUCTS => 'ProductID|RelatedProductID',
         self::FILE_RESTRICTED_VALUES => 'ID|CategoryFeatureID|Text|Order',
         self::FILE_STOCK_AND_PRICES => 'ProductID|Stock|Price|Cost',
-        self::FILE_REVIEWS => 'ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageUrl|AwardImage80Url|AwardImage200Url'
+        self::FILE_REVIEWS => 'ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageURL|AwardImage80URL|AwardImage200URL'
     ];
 
     private ConsoleOutput $output;
@@ -279,7 +279,7 @@ class Download extends AbstractHelper
             return false;
         }
         $headerLine = trim($headerLine);
-        if ($headerLine != self::EXPECTED_HEADER[$filename]) {
+        if (mb_strtolower($headerLine) != mb_strtolower(self::EXPECTED_HEADER[$filename])) {
             $this->print("Header line for file {$filename} doesn't match expected header: {$headerLine} != " . self::EXPECTED_HEADER[$filename]);
             return false;
         }

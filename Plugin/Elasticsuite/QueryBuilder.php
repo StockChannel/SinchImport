@@ -178,7 +178,7 @@ class QueryBuilder
         }
 
         // To avoid redirect loops and similar weirdness
-        $skip_params = ['cat', 'price', 'sinch_family', 'manufacturer'];
+        $skip_params = ['cat', 'price', 'sinch_family', 'manufacturer', 'p'];
         foreach (array_keys($this->request->getParams()) as $param) {
             if (in_array($param, $skip_params)) {
                 $this->logger->info("Found skip param '{$param}' on request, won't redirect");

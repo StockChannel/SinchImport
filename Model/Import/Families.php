@@ -10,10 +10,10 @@ class Families extends AbstractImportSection {
     const LOG_PREFIX = "Families: ";
     const LOG_FILENAME = "families";
 
-    private $dataHelper;
+    private Data $dataHelper;
 
-    private $familyTable;
-    private $familySeriesTable;
+    private string $familyTable;
+    private string $familySeriesTable;
 
     public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper, Data $dataHelper)
     {
@@ -49,7 +49,7 @@ class Families extends AbstractImportSection {
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (id, parent_id, name)"
+                (id, brand_id, name)"
         );
         $this->endTimingStep();
 
@@ -63,7 +63,7 @@ class Families extends AbstractImportSection {
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (id, name)"
+                (id, name, family_id)"
         );
         $this->endTimingStep();
 
@@ -241,7 +241,7 @@ class Families extends AbstractImportSection {
         $conn->query(
             "CREATE TABLE IF NOT EXISTS {$this->familyTable} (
                 id int(10) unsigned NOT NULL COMMENT 'Sinch Family ID' PRIMARY KEY,
-                parent_id int(10) unsigned COMMENT 'Parent Family ID',
+                brand_id int(10) unsigned COMMENT 'Parent Brand ID',
                 name varchar(255),
                 shop_option_id int(10) unsigned COMMENT 'Magento Option ID'
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
@@ -250,6 +250,7 @@ class Families extends AbstractImportSection {
             "CREATE TABLE IF NOT EXISTS {$this->familySeriesTable} (
                 id int(10) unsigned NOT NULL COMMENT 'Sinch Family Series ID' PRIMARY KEY,
                 name varchar(255),
+                family_id int(10) unsigned COMMENT 'Parent Family ID',
                 shop_option_id int(10) unsigned COMMENT 'Magento Option ID'
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );

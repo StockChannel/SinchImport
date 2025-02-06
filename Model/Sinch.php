@@ -763,6 +763,10 @@ class Sinch {
                     $this->_setErrorMessage("$filename is empty, cannot continue");
                     throw new LocalizedException(__("$filename is empty, cannot continue"));
                 }
+                if (!$this->dlHelper->validateFile($filename)) {
+                    $this->_setErrorMessage("$filename is not valid for nile format, cannot continue");
+                    throw new LocalizedException(__("$filename is not valid for nile format, cannot continue"));
+                }
             }
             $this->_log("Downloading optional files");
             foreach ($optionalFiles as $filename) {
@@ -775,6 +779,17 @@ class Sinch {
                         default:
                     }
                     $this->print("Failed to download optional file $filename, skipping");
+                    continue;
+                }
+                if (!$this->dlHelper->validateFile($filename)) {
+                    // Do the same if they fail to validate
+                    switch ($filename) {
+                        case Download::FILE_RELATED_PRODUCTS:
+                            $this->_ignore_product_related = true;
+                            break;
+                        default:
+                    }
+                    $this->print("Failed to validate optional file $filename, skipping");
                 }
             }
         } finally {
@@ -1782,10 +1797,10 @@ class Sinch {
         $this->_doQuery($q);
     }
 
-    private function parseProductCategories()
+    private function parseProductCategories(): void
     {
         $parseFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCT_CATEGORIES);
-        if (filesize($parseFile)) {
+        if ($this->dlHelper->validateFile(Download::FILE_PRODUCT_CATEGORIES)) {
             $this->_log("Start parse " . Download::FILE_PRODUCT_CATEGORIES);
 
             $this->_doQuery(
@@ -1824,7 +1839,7 @@ class Sinch {
         }
     }
 
-    private function parseProducts()
+    private function parseProducts(): void
     {
         $this->print("--Parse Products 1");
 
@@ -1880,7 +1895,7 @@ class Sinch {
             );
             $this->print("--Parse Products 2");
 
-            //Products CSV is ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|LastYearSales|LastMonthSales|Searches|Feature1|Value1|Feature2|Value2|Feature3|Value3|Feature4|Value4
+            //Products CSV is ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|Searches|Feature1|Value1|Feature2|Value2|Feature3|Value3|Feature4|Value4|LastYearSales|LastMonthSales
             $this->_doQuery(
                 "LOAD DATA LOCAL INFILE '" . $productsCsv . "'
                           INTO TABLE " . $this->getTableName('products_temp') . "
@@ -1909,8 +1924,6 @@ class Sinch {
                             score,
                             release_date,
                             eol_date,
-                            implied_sales_year,
-                            implied_sales_month,
                             searches,
                             list_summary_title_1,
                             list_summary_value_1,
@@ -1919,7 +1932,9 @@ class Sinch {
                             list_summary_title_3,
                             list_summary_value_3,
                             list_summary_title_4,
-                            list_summary_value_4
+                            list_summary_value_4,
+                            implied_sales_year,
+                            implied_sales_month
                           )"
             );
 
