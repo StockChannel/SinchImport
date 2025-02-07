@@ -4498,13 +4498,16 @@ class Sinch
             $this->print("--Parse Products 2");
 
             $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $parseFile . "'
-                          INTO TABLE " . $this->_getTableName('products_temp') . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char
-                . "'
+                "LOAD DATA LOCAL INFILE '{$parseFile}'
+                          INTO TABLE {$this->_getTableName('products_temp')}
+                          FIELDS TERMINATED BY '{$this->field_terminated_char}'
                           OPTIONALLY ENCLOSED BY '\"'
                           LINES TERMINATED BY \"\r\n\"
-                          IGNORE 1 LINES "
+                          IGNORE 1 LINES
+                          (store_product_id, product_sku, product_name, sinch_manufacturer_id, main_image_url, 
+                          thumb_image_url, specifications, description, search_cache, description_type, medium_image_url, Title, Weight, 
+                          Family, Reviews, pdf_url, product_short_description, @unspsc)
+                          SET unspsc = IF(CHAR_LENGTH(TRIM(@unspsc)) = 0, NULL, @unspsc)"
             );
 
             if ($this->product_file_format == "NEW") {
