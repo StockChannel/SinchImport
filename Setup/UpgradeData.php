@@ -2,7 +2,9 @@
 
 namespace SITC\Sinchimport\Setup;
 
+use Magento\Catalog\Api\Data\EavAttributeInterface;
 use Magento\Eav\Setup\EavSetup;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Setup\UpgradeDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
@@ -19,15 +21,18 @@ class UpgradeData implements UpgradeDataInterface
     private $resourceConn;
     /** @var \Magento\CatalogInventory\Api\StockConfigurationInterface */
     private $stockConfig;
+    private ScopeConfigInterface $scopeConfig;
 
     public function __construct(
         \Magento\Eav\Setup\EavSetupFactory $eavSetupFactory,
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig
+        \Magento\CatalogInventory\Api\StockConfigurationInterface $stockConfig,
+        ScopeConfigInterface $scopeConfig
     ){
         $this->eavSetupFactory = $eavSetupFactory;
         $this->resourceConn = $resourceConn;
         $this->stockConfig = $stockConfig;
+        $this->scopeConfig = $scopeConfig;
     }
 
     /**
@@ -71,6 +76,11 @@ class UpgradeData implements UpgradeDataInterface
         if (version_compare($context->getVersion(), '2.3.2', '<')) {
             $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', 'is_visible', 0);
+        }
+        if (version_compare($context->getVersion(), '2.3.3', '<')){
+            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $label = $this->scopeConfig->getValue('sinchimport/stock/stock_filter/stock_filter_label');
+            $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', EavAttributeInterface::FRONTEND_LABEL, $label);
         }
 
         $installer->endSetup();
@@ -186,17 +196,7 @@ class UpgradeData implements UpgradeDataInterface
                 'facet_min_coverage_rate' => 10
             ]
         );
-//        $attrId = $eavSetup->getAttributeId('catalog_product', InventoryData::IN_STOCK_FILTER_CODE);
-//        $options = [
-//            'values' => [
-//                'Y',
-//                'N'
-//            ],
-//            'attribute_id' => $attrId
-//        ];
-//        $eavSetup->addAttributeOption($options);
     }
-
     private function getConnection()
     {
         return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);

@@ -41,8 +41,9 @@
                 <clear_reservations>1</clear_reservations>
                 <in_stock_filter_enable>1</in_stock_filter_enable>
                 <stock_filter>
-                    <in_stock_value>Y</in_stock_value>
-                    <out_of_stock_value>N</out_of_stock_value>
+                    <stock_filter_label>Availability</stock_filter_label>
+                    <in_stock_value>In Stock</in_stock_value>
+                    <out_of_stock_value>Out of Stock</out_of_stock_value>
                 </stock_filter>
                 <manual_source_assignment>0</manual_source_assignment>
             </stock>
