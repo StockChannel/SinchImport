@@ -207,9 +207,7 @@
                 </field>
                 <group id="stock_filter" translate="label" type="text" sortOrder="3" showInStore="0" showInWebsite="0" showInDefault="1" canRestore="1">
                     <label>In Stock Filter</label>
-                    <field id="stock_filter_label" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
-                        <label>Filter Name</label>
-                    </field>
+                    <comment>To change the label used by the attribute itself (i.e. 'Availability'), navigate to 'Stores > Attributes > Product'</comment>
                     <field id="in_stock_value" translate="label" type="text" sortOrder="2" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                         <label>"In Stock" Value</label>
                     </field>
