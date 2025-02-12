@@ -1,19 +1,20 @@
 <?php
 /** @var $block Magento\Catalog\Block\Product\ProductList\Item\Block */
 
-const SUMMARY_FEATURE_COUNT = 4;
 $product = $block->getProduct();
 if (!$product) return;
 
 $summaryFeatures = [];
-for ($i = 1; $i <= SUMMARY_FEATURE_COUNT; $i++) {
-    $summaryFeatures[] = $product->getData("sinch_summary_$i");
+for ($i = 1; $i <= 4; $i++) {
+    $title = $product->getData("sinch_summary_title_{$i}");
+    $value = $product->getData("sinch_summary_value_{$i}");
+    if (empty($title) || empty($value)) continue;
+    $summaryFeatures[] = $title . ": " . $value;
 }
-if ( !empty($summaryFeatures) ) :
-echo "<div class='sitc-summary-features'><ul>";
-        foreach($summaryFeatures as $feature)
-        {
+if (!empty($summaryFeatures)) {
+    echo "<div class='sitc-summary-features'><ul>";
+    foreach ($summaryFeatures as $feature) {
         echo "<li>" . $feature . "</li>";
-        }
-        echo "</ul></div>";
-endif;
+    }
+    echo "</ul></div>";
+}

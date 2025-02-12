@@ -15,17 +15,32 @@
 <?php
     $_helper = $this->helper(Magento\Catalog\Helper\Output::class);
     $_product = $block->getProduct();
+    $exclude = [
+        'sinch_summary_title_1', 'sinch_summary_value_1',
+        'sinch_summary_title_2', 'sinch_summary_value_2',
+        'sinch_summary_title_3', 'sinch_summary_value_3',
+        'sinch_summary_title_4', 'sinch_summary_value_4'
+    ];
 ?>
 <?php if ($_additional = $block->getAdditionalData()) :?>
     <div class="additional-attributes-wrapper table-wrapper">
         <table class="data table additional-attributes" id="product-attribute-specs-table">
             <caption class="table-caption"><?= $block->escapeHtml(__('More Information')) ?></caption>
             <tbody>
-            <?php foreach ($_additional as $_data) :?>
-                <?php 
-                    $label = $block->escapeHtml($_data['label']);
-                    if($label == 'PDF URLs' || $label == 'Product Manuals (HTML)'):
-                ?>
+            <?php // Show the summary features first (they're "summary" features...)
+            for ($i = 1; $i <= 4; $i++):
+                $title = $_product->getData("sinch_summary_title_{$i}");
+                $value = $_product->getData("sinch_summary_value_{$i}");
+                if (empty($title) || empty($value)) continue; ?>
+                <tr>
+                    <th class="col label" scope="row"><?= $block->escapeHtml($title) ?></th>
+                    <td class="col data" data-th="<?= $block->escapeHtmlAttr($title) ?>"><?= /* @noEscape */ $_helper->productAttribute($_product, $value, "sinch_summary_value_{$i}") ?></td>
+                </tr>
+            <?php endfor;
+            $_additional = $block->getAdditionalData($exclude);
+            foreach ($_additional as $_data):
+                $label = $block->escapeHtml($_data['label']);
+                if ($_data['code'] === 'pdf_url' || $_data['code'] == 'sinch_manuals'): ?>
                     <tr>
                         <th class="col label" scope="row"><?= $block->escapeHtml($_data['label']) ?></th>
                         <td class="col data" data-th="<?= $block->escapeHtmlAttr($_data['label']) ?>">

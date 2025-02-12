@@ -225,6 +225,19 @@ class UpgradeSchema implements UpgradeSchemaInterface
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
         }
 
+        if (version_compare($context->getVersion(), '2.5.4', '<')) {
+            // Nile upgrade 2.5.4
+            $connection = $installer->getConnection();
+            $sinch_category_backup = $installer->getTable('sinch_category_backup');
+            // Drop entity_type_id and attribute_set_id as we don't use them
+            if ($connection->tableColumnExists($sinch_category_backup, 'entity_type_id')) {
+                $connection->dropColumn($sinch_category_backup, 'entity_type_id');
+            }
+            if ($connection->tableColumnExists($sinch_category_backup, 'attribute_set_id')) {
+                $connection->dropColumn($sinch_category_backup, 'attribute_set_id');
+            }
+        }
+
         $installer->endSetup();
     }
 

@@ -43,4 +43,10 @@
         <plugin name="sitc_product_badges" type="SITC\Sinchimport\Plugin\Catalog\CategoryView" sortOrder="0"/>
     </type>
     <!-- End search stuff-->
+
+    <!-- Interceptor for getProductDetailsHtml on ListProduct (or possibly the base AbstractProduct) blocks so we can
+        render our keyfeatures block on themes where it won't natively -->
+    <type name="Magento\Catalog\Block\Product\ListProduct">
+        <plugin name="sitc_keyfeatures_list" type="SITC\Sinchimport\Plugin\InjectFeaturesBlock" sortOrder="0"/>
+    </type>
 </config>

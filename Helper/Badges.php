@@ -154,15 +154,17 @@ class Badges extends AbstractHelper
                 return !in_array($entity_id, $badgeProducts);
             }, ARRAY_FILTER_USE_BOTH);
 
-            $highestValKey = array_key_first($pairs);
-            if ($pairs[$highestValKey] <= 0 || ($attrCode == 'sinch_release_date' && $pairs[$highestValKey] == '0000-00-00 00:00:00')) {
-                $this->logger->info("Highest value for $badgeType ($attrCode) <= 0 (or == '0000-00-00 00:00:00'), skipping");
-            } else {
-                $badgeProducts[$badgeType] = $highestValKey;
-                $ids = implode(', ', array_keys($pairs));
-                $this->logger->info("$badgeType ($attrCode): [$ids]");
-                $values = implode(', ', array_values($pairs));
-                $this->logger->info("$badgeType ($attrCode) values: [$values]");
+            if (!empty($pairs)) {
+                $highestValKey = array_key_first($pairs);
+                if ($pairs[$highestValKey] <= 0 || ($attrCode == 'sinch_release_date' && $pairs[$highestValKey] == '0000-00-00 00:00:00')) {
+                    $this->logger->info("Highest value for $badgeType ($attrCode) <= 0 (or == '0000-00-00 00:00:00'), skipping");
+                } else {
+                    $badgeProducts[$badgeType] = $highestValKey;
+                    $ids = implode(', ', array_keys($pairs));
+                    $this->logger->info("$badgeType ($attrCode): [$ids]");
+                    $values = implode(', ', array_values($pairs));
+                    $this->logger->info("$badgeType ($attrCode) values: [$values]");
+                }
             }
         }
         $this->saveBadgeProducts($badgeProducts, $products->getLoadedIds());

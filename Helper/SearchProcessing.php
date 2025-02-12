@@ -55,6 +55,14 @@ class SearchProcessing extends AbstractHelper
         'sinch_family',
         'manufacturer',
     ];
+    public const PARENT_ATTRIBUTES = [
+        'sinch_family' => 'manufacturer',
+        'sinch_family_series' => 'sinch_family'
+    ];
+    public const CHILD_ATTRIBUTES = [
+        'manufacturer' => 'sinch_family',
+        'sinch_family' => 'sinch_family_series'
+    ];
     //Only match attribute values at least this long (changed to 2 to match on "HP")
     private const ATTRIBUTE_VALUE_MIN_LENGTH = 2;
 
@@ -242,13 +250,32 @@ class SearchProcessing extends AbstractHelper
      * returning an array of the matches, ordered by length (desc)
      * @param string $attributeCode
      * @param string $queryText
+     * @param string[]|null $validIds
      * @return string[]
      */
-    public function queryTextContainsAttributeValue(string $attributeCode, string $queryText): array
+    public function queryTextContainsAttributeValue(string $attributeCode, string $queryText, ?array $validIds = null): array
     {
         $eav_attribute = $this->resourceConn->getTableName('eav_attribute');
         $eav_attribute_option = $this->resourceConn->getTableName('eav_attribute_option');
         $eav_attribute_option_value = $this->resourceConn->getTableName('eav_attribute_option_value');
+        if (!is_null($validIds) && count($validIds) > 0) {
+            $placeholders = implode(',', array_fill(0, count($validIds), '?'));
+            // Min length is 1 on sinch_family_series when being selected as a child (allow "ThinkPad X 1", where X is a series)
+            $params = array_merge([$attributeCode, $attributeCode == 'sinch_family_series' ? 1 : self::ATTRIBUTE_VALUE_MIN_LENGTH, $queryText], $validIds);
+            return $this->resourceConn->getConnection()->fetchCol(
+                "SELECT eaov.value FROM $eav_attribute_option_value eaov
+                        INNER JOIN $eav_attribute_option eao
+                            ON eaov.option_id = eao.option_id
+                        INNER JOIN $eav_attribute ea
+                            ON eao.attribute_id = ea.attribute_id
+                        WHERE ea.attribute_code = ?
+                            AND CHAR_LENGTH(eaov.value) >= ?
+                            AND REGEXP_LIKE(?, CONCAT('\\\\b', eaov.value, '\\\\b'), 'i')
+                            AND eao.option_id IN ($placeholders)
+                        ORDER BY CHAR_LENGTH(eaov.value) DESC",
+                $params
+            );
+        }
         return $this->resourceConn->getConnection()->fetchCol(
             "SELECT eaov.value FROM $eav_attribute_option_value eaov
                         INNER JOIN $eav_attribute_option eao
@@ -293,6 +320,11 @@ class SearchProcessing extends AbstractHelper
                         'value' => $matchingValues[0]
                     ]
                 );
+                // Now apply parent and child value matches as necessary
+                $additional = $this->checkApplyParentAndChildValuesMatch($queryText, $attribute, $matchingValues[0]);
+                if (!empty($additional)) {
+                    $results = array_merge($results, $additional);
+                }
             }
         }
         // Unnecessary, but just to complete the convention of only returning arrays with data
@@ -300,6 +332,113 @@ class SearchProcessing extends AbstractHelper
             return null;
         }
         return $results;
+    }
+
+    private function checkApplyParentAndChildValuesMatch(string &$queryText, string $attribute, string $matchingValue): ?array
+    {
+        $results = [];
+        $mainBackingTable = $this->getSinchTable($attribute);
+        $mainIdCol = $this->getIdColumn($attribute);
+        $mainValueCol = $this->getValueColumn($attribute);
+        $conn = $this->resourceConn->getConnection();
+
+        // Handle parent
+        if (!empty(self::PARENT_ATTRIBUTES[$attribute])) {
+            $parentAttribute = self::PARENT_ATTRIBUTES[$attribute];
+            $parentTable = $this->getSinchTable($parentAttribute);
+            $valueCol = $this->getValueColumn($parentAttribute);
+            $parentIdCol = $this->getIdColumn($parentAttribute);
+            $refCol = $this->getParentReferenceColumn($attribute);
+            // Retrieve associated parent value
+            $parentValue = $conn->fetchOne(
+                "SELECT parent.{$valueCol}
+                    FROM {$mainBackingTable} main
+                    INNER JOIN {$parentTable} parent
+                        ON main.{$refCol} = parent.{$parentIdCol}
+                    WHERE main.{$mainValueCol} = :primaryValue",
+                [":primaryValue" => $matchingValue]
+            );
+            $this->logger->info("Applying parent ($parentAttribute) value match: $parentValue (from $matchingValue)");
+            // Strip it from the query text if present
+            $queryText = $this->stripFromQueryText($queryText, $parentValue);
+            // Append an attribute value filter matching its value
+            $results[] = $this->queryFactory->create(
+                'sitcAttributeValueQuery',
+                [
+                    'attribute' => $parentAttribute,
+                    'value' => $parentValue
+                ]
+            );
+        }
+
+        // Handle children
+        if (!empty(self::CHILD_ATTRIBUTES[$attribute])) {
+            $childAttribute = self::CHILD_ATTRIBUTES[$attribute];
+            $childTable = $this->getSinchTable($childAttribute);
+            $refCol = $this->getParentReferenceColumn($childAttribute);
+            $childOptionIds = $conn->fetchCol(
+                "SELECT child.shop_option_id
+                    FROM {$childTable} child
+                    WHERE child.{$refCol} IN (
+                        SELECT main.{$mainIdCol}
+                            FROM {$mainBackingTable} main
+                            WHERE main.{$mainValueCol} = :primaryValue
+                    )
+                    AND child.shop_option_id IS NOT NULL",
+                [":primaryValue" => $matchingValue]
+            );
+            $matchingValues = $this->queryTextContainsAttributeValue($childAttribute, $queryText, $childOptionIds);
+            if (!empty($matchingValues)) {
+                $this->logger->info("$childAttribute matching values (child of $attribute): " . implode(", ", $matchingValues));
+                //For now, we only take the first matching value, then strip it from the queryText and return a QueryInterface representing the filter
+                $queryText = $this->stripFromQueryText($queryText, $matchingValues[0]);
+                $results[] = $this->queryFactory->create(
+                    'sitcAttributeValueQuery',
+                    [
+                        'attribute' => $childAttribute,
+                        'value' => $matchingValues[0]
+                    ]
+                );
+            }
+        }
+
+        if (!empty($results)) {
+            return $results;
+        }
+        return null;
+    }
+
+    private function getSinchTable(string $attribute): string
+    {
+        return match ($attribute) {
+            'manufacturer' => 'sinch_manufacturers',
+            'sinch_family' => 'sinch_family',
+            'sinch_family_series' => 'sinch_family_series',
+        };
+    }
+
+    private function getIdColumn(string $attribute): string
+    {
+        return match ($attribute) {
+            'manufacturer' => 'sinch_manufacturer_id',
+            'sinch_family', 'sinch_family_series' => 'id',
+        };
+    }
+
+    private function getValueColumn(string $attribute): string
+    {
+        return match ($attribute) {
+            'manufacturer' => 'manufacturer_name',
+            'sinch_family', 'sinch_family_series' => 'name',
+        };
+    }
+
+    private function getParentReferenceColumn(string $attribute): string
+    {
+        return match ($attribute) {
+            'sinch_family' => 'brand_id',
+            'sinch_family_series' => 'family_id',
+        };
     }
 
     /**

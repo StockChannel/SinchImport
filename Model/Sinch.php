@@ -48,71 +48,37 @@ class Sinch {
     public const FIELD_TERMINATED_CHAR = "|";
     private const UPDATE_CATEGORY_DATA = false;
 
-    public $debug_mode = false;
-
-    /**
-     * Application Event Dispatcher
-     *
-     * @var ManagerInterface
-     */
-    protected $_eventManager;
-
-    /**
-     * Store manager
-     *
-     * @var StoreManagerInterface
-     */
-    protected $_storeManager;
-    protected $scopeConfig;
-
-    /**
-     * Logging instance
-     *
-     * @var Logger
-     */
-    protected $_sinchLogger;
-    protected $_resourceConnection;
-    protected $conn;
-
-    /**
-     * @var Processor
-     */
-    protected $_indexProcessor;
-
-    /**
-     * @var Pool
-     */
-    protected $_cacheFrontendPool;
-
-    /**
-     * Product url factory
-     *
-     * @var UrlFactory
-     */
-    protected $_productUrlFactory;
-
-    /**
-     * @var CollectionFactory
-     */
-    protected $indexersFactory;
-    protected $_eavAttribute;
-    private $output;
-    private $galleryPhotos = [];
-    private $defaultAttributeSetId = 0;
-    private $field_terminated_char;
-    private $import_status_table;
-    private $import_status_statistic_table;
-    private $current_import_status_statistic_id;
-    private $_categoryEntityTypeId;
-    private $_categoryDefault_attribute_set_id;
-    private $import_run_type = 'MANUAL';
-    private $_ignore_product_related = false;
-    private $_categoryMetaTitleAttrId;
-    private $_categoryMetadescriptionAttrId;
-    private $_categoryDescriptionAttrId;
-    private $_dataConf;
+    public bool $debug_mode = false;
+    protected ManagerInterface $_eventManager;
+    protected StoreManagerInterface $_storeManager;
+    protected ScopeConfigInterface $scopeConfig;
+    protected Logger $_sinchLogger;
+    protected ResourceConnection $_resourceConnection;
+    protected \Magento\Framework\DB\Adapter\AdapterInterface $conn;
+    protected Processor $_indexProcessor;
+    protected Pool $_cacheFrontendPool;
+    protected UrlFactory $_productUrlFactory;
+    protected CollectionFactory $indexersFactory;
+    protected Attribute $_eavAttribute;
+    private ConsoleOutput $output;
+    private array $galleryPhotos = [];
+    private int $defaultAttributeSetId = 0;
+    private string $field_terminated_char;
+    private string $import_status_table;
+    private string $import_status_statistic_table;
+    private int $current_import_status_statistic_id;
+    private ?int $_categoryEntityTypeId = null;
+    private ?int $_categoryDefault_attribute_set_id = null;
+    private string $import_run_type = 'MANUAL';
+    private bool $_ignore_product_related = false;
+    private ?int $_categoryMetaTitleAttrId = null;
+    private ?int $_categoryMetadescriptionAttrId = null;
+    private ?int $_categoryDescriptionAttrId = null;
+    private mixed $_dataConf;
     private $_deploymentData;
-    private $imType;
+
+    private string $categoryImportMode;
+    private string $productImportMode;
 
     //Nick
     private IndexManagement $sitcIndexMgmt;
@@ -217,6 +183,8 @@ class Sinch {
             'sinchimport/sinch_ftp',
             ScopeInterface::SCOPE_STORE
         );
+        $this->categoryImportMode = $this->_dataConf['replace_category'];
+        $this->productImportMode = $this->_dataConf['replace_product'];
 
         $this->_deploymentData = $deploymentConfig->getConfigData();
 
@@ -231,7 +199,7 @@ class Sinch {
     /**
      * @throws Exception
      */
-    public function startCronFullImport()
+    public function startCronFullImport(): void
     {
         $this->_log("Start full import from cron");
 
@@ -248,15 +216,47 @@ class Sinch {
      *
      * @return void
      */
-    private function _log(string $logString)
+    private function _log(string $logString): void
     {
         $this->_sinchLogger->info($logString);
     }
 
     /**
+     * Backup the IDs of the products and categories for reuse
+     * @return void
+     */
+    private function backupIDs(): void
+    {
+        $catalog_product_entity = $this->conn->getTableName('catalog_product_entity');
+        $catalog_category_entity = $this->conn->getTableName('catalog_category_entity');
+        $sinch_product_backup = $this->conn->getTableName('sinch_product_backup');
+        $sinch_category_backup = $this->conn->getTableName('sinch_category_backup');
+
+        $conn = $this->conn->getConnection();
+        // Clear any data currently in the backup tables
+        $conn->query(
+            "DELETE FROM $sinch_product_backup"
+        );
+        $conn->query(
+            "DELETE FROM $sinch_category_backup"
+        );
+        // Backup the current IDs to the tables
+        $conn->query(
+            "INSERT INTO $sinch_product_backup (entity_id, sku, sinch_product_id)
+                SELECT entity_id, sku, sinch_product_id FROM $catalog_product_entity"
+        );
+        // Don't think we need to have attribute_set_id
+        $conn->query(
+            "INSERT INTO $sinch_category_backup (entity_id, parent_id, store_category_id, parent_store_category_id)
+                SELECT entity_id, parent_id, store_category_id, parent_store_category_id
+                FROM $catalog_category_entity"
+        );
+    }
+
+    /**
      * @throws Exception
      */
-    public function runSinchImport()
+    public function runSinchImport(): void
     {
         $this->_categoryMetaTitleAttrId = $this->dataHelper->getCategoryAttributeId('meta_title');
         $this->_categoryMetadescriptionAttrId = $this->dataHelper->getCategoryAttributeId('meta_description');
@@ -286,10 +286,8 @@ class Sinch {
                 ScopeInterface::SCOPE_STORE
             );
             try {
-                $imType = $this->_dataConf['replace_category'];
-
                 $this->_doQuery("SELECT GET_LOCK('sinchimport_{$current_vhost}', 30)");
-
+                $this->print("Import lock acquired");
                 $this->addImportStatus('Start Import');
                 //Once we hold the import lock, check/await indexer completion
                 $this->print("Making sure no indexers are currently running");
@@ -301,7 +299,7 @@ class Sinch {
                 }
                 $this->addImportStatus('Start Import', true);
 
-                $this->print("========IMPORTING DATA IN $imType MODE========");
+                $this->print("========IMPORTING DATA IN {$this->categoryImportMode} MODE========");
 
                 $requiredFiles = [
                     Download::FILE_CATEGORIES,
@@ -332,6 +330,11 @@ class Sinch {
                 $this->addImportStatus('Download Files');
                 $this->downloadFiles($requiredFiles, $optionalFiles);
                 $this->addImportStatus('Download Files', true);
+
+                if ($this->dataHelper->getStoreConfig('sinchimport/sinch_ftp/backup_data') == 1) {
+                    $this->print("Backing up product and category IDs for reuse");
+                    $this->backupIDs();
+                }
 
                 $this->addImportStatus('Parse Categories');
                 $this->parseCategories();
@@ -499,12 +502,7 @@ class Sinch {
 
                 try {
                     $this->addImportStatus('Post import hooks');
-                    $this->_eventManager->dispatch(
-                        'sinchimport_post_import',
-                        [
-                            'import_type' => 'FULL'
-                        ]
-                    );
+                    $this->_eventManager->dispatch('sinchimport_post_import', ['import_type' => 'FULL']);
                     $this->addImportStatus('Post import hooks', true);
                 } catch (Exception $e) {
                     $this->addImportStatus('Post import hooks', true);
@@ -530,6 +528,19 @@ class Sinch {
                 $this->runCleanCache();
                 $this->addImportStatus('Clean cache', true);
 
+
+                try {
+                    $this->addImportStatus('Import completion hooks');
+                    $this->_eventManager->dispatch(
+                        'sinchimport_import_complete_post_index',
+                        ['import_type' => 'FULL']
+                    );
+                    $this->addImportStatus('Import completion hooks', true);
+                } catch (Exception $e) {
+                    $this->addImportStatus('Import completion hooks', true);
+                    $this->print("Caught exception while running import completion hooks: " . $e->getMessage());
+                }
+
                 $this->addImportStatus('Finish Import', true);
             } catch (Exception $e) {
                 $this->_setErrorMessage($e);
@@ -542,7 +553,7 @@ class Sinch {
         }
     }
 
-    private function initImportStatuses($type)
+    private function initImportStatuses($type): void
     {
         $this->conn->query("TRUNCATE TABLE {$this->import_status_table}");
 
@@ -624,7 +635,7 @@ class Sinch {
      *
      * @return void
      */
-    private function _setErrorMessage(string $message)
+    private function _setErrorMessage(string $message): void
     {
         $this->_log($message);
         $this->conn->query(
@@ -697,7 +708,7 @@ class Sinch {
      *
      * @param string $message The message
      */
-    private function print(string $message)
+    private function print(string $message): void
     {
         $this->output->writeln($message);
         $this->_log($message);
@@ -708,7 +719,7 @@ class Sinch {
      * @param string $message Message
      * @param bool $finished Whether the status entry is complete
      */
-    private function addImportStatus(string $message, bool $finished = false)
+    private function addImportStatus(string $message, bool $finished = false): void
     {
         $this->print("-- " . $message . ($finished ? " - Done" : ""));
         $this->conn->query(
@@ -726,7 +737,7 @@ class Sinch {
         }
     }
 
-    private function setImportResult(string $status)
+    private function setImportResult(string $status): void
     {
         $this->_resourceConnection->getConnection()->query(
             "UPDATE $this->import_status_statistic_table
@@ -742,7 +753,7 @@ class Sinch {
      * @param array $optionalFiles Optional Files (permit failure)
      * @throws LocalizedException
      */
-    private function downloadFiles(array $requiredFiles, array $optionalFiles = [])
+    private function downloadFiles(array $requiredFiles, array $optionalFiles = []): void
     {
         $this->_log("--- Start downloading files ---");
 
@@ -803,8 +814,6 @@ class Sinch {
      */
     private function parseCategories(): void
     {
-        $this->imType = $this->_dataConf['replace_category'];
-
         if (!$this->dlHelper->validateFile(Download::FILE_CATEGORIES)) {
             $this->_log(Download::FILE_CATEGORIES . " failed validation");
             throw new LocalizedException(__(Download::FILE_CATEGORIES . ' failed validation'));
@@ -892,7 +901,7 @@ class Sinch {
 
             $this->print("==========MULTI STORE LOGIC==========");
 
-            switch ($this->imType) {
+            switch ($this->categoryImportMode) {
                 case "REWRITE":
                     $this->rewriteMultistoreCategories(
                         $rootCatNames,
@@ -932,23 +941,18 @@ class Sinch {
 
     }
 
-    private function _getCategoryEntityTypeIdAndDefault_attribute_set_id()
+    private function _getCategoryEntityTypeIdAndDefault_attribute_set_id(): void
     {
-        if (!$this->_categoryEntityTypeId
-            || !$this->_categoryDefault_attribute_set_id
-        ) {
-            $sql
-                = "
-                    SELECT entity_type_id, default_attribute_set_id
-                    FROM " . $this->getTableName('eav_entity_type') . "
+        if (!$this->_categoryEntityTypeId || !$this->_categoryDefault_attribute_set_id) {
+            $result = $this->conn->fetchRow(
+                "SELECT entity_type_id, default_attribute_set_id
+                    FROM {$this->getTableName('eav_entity_type')}
                     WHERE entity_type_code = 'catalog_category'
-                    LIMIT 1
-                   ";
-            $result = $this->_doQuery($sql)->fetch();
+                    LIMIT 1"
+            );
             if ($result) {
                 $this->_categoryEntityTypeId = $result['entity_type_id'];
-                $this->_categoryDefault_attribute_set_id
-                    = $result['default_attribute_set_id'];
+                $this->_categoryDefault_attribute_set_id = $result['default_attribute_set_id'];
             }
         }
     }
@@ -1227,7 +1231,7 @@ class Sinch {
         //The following 5 lines replace 100 lines of repetition from previous implementations
         $catalog_category_entity_source = $this->getTableName('sinch_category_backup');
         //When the import type is merge, we're mapping again, or the backup table is empty, use catalog_category_entity
-        if ($this->imType == "MERGE" || $mapping_again || !$this->tableHasData($catalog_category_entity_source)) {
+        if ($this->categoryImportMode == "MERGE" || $mapping_again || !$this->tableHasData($catalog_category_entity_source)) {
             $catalog_category_entity_source = $catalog_category_entity;
         }
 
@@ -1296,7 +1300,7 @@ class Sinch {
         }
 
         // added for mapping new sinch categories in merge && !UPDATE_CATEGORY_DATA mode
-        if ((self::UPDATE_CATEGORY_DATA && $this->imType == "MERGE") || ($this->imType == "REWRITE")) {
+        if ((self::UPDATE_CATEGORY_DATA && $this->categoryImportMode == "MERGE") || ($this->categoryImportMode == "REWRITE")) {
             $where = '';
         } else {
             $where = 'WHERE cce.parent_id = 0 AND cce.store_category_id IS NOT NULL';
@@ -1429,7 +1433,7 @@ class Sinch {
         }
 
         //TODO: Remove UPDATE_CATEGORY_DATA?
-        if ($this->imType == "REWRITE" || self::UPDATE_CATEGORY_DATA) {
+        if ($this->categoryImportMode == "REWRITE" || self::UPDATE_CATEGORY_DATA) {
             $this->_doQuery(
                 "INSERT INTO $catalog_category_entity_int (attribute_id, store_id, entity_id, value)
                     (
@@ -1628,7 +1632,7 @@ class Sinch {
             );
         }
 
-        if($this->imType == 'MERGE') {
+        if($this->categoryImportMode == 'MERGE') {
             $this->deleteOldSinchCategoriesFromShopMerge();
         } else {
             $this->deleteOldSinchCategories();
@@ -1842,9 +1846,6 @@ class Sinch {
     private function parseProducts(): void
     {
         $this->print("--Parse Products 1");
-
-        $replace_merge_product = $this->_dataConf['replace_product'];
-
         $productsCsv = $this->dlHelper->getSavePath(Download::FILE_PRODUCTS);
 
         if (filesize($productsCsv)) {
@@ -1852,7 +1853,7 @@ class Sinch {
 
             $this->_doQuery("DROP TABLE IF EXISTS " . $this->getTableName('products_temp'));
             $this->_doQuery(
-                "CREATE TABLE " . $this->getTableName('products_temp') . "(
+                "CREATE TABLE {$this->getTableName('products_temp')} (
                          sinch_product_id int(11),
                          product_sku varchar(255),
                          product_name varchar(255),
@@ -1896,10 +1897,11 @@ class Sinch {
             $this->print("--Parse Products 2");
 
             //Products CSV is ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|Searches|Feature1|Value1|Feature2|Value2|Feature3|Value3|Feature4|Value4|LastYearSales|LastMonthSales
+            // UNSPSC needs specific handling as it's a numeric field where 0 isn't an acceptable default value
             $this->_doQuery(
-                "LOAD DATA LOCAL INFILE '" . $productsCsv . "'
-                          INTO TABLE " . $this->getTableName('products_temp') . "
-                          FIELDS TERMINATED BY '" . $this->field_terminated_char . "'
+                "LOAD DATA LOCAL INFILE '{$productsCsv}'
+                          INTO TABLE {$this->getTableName('products_temp')}
+                          FIELDS TERMINATED BY '{$this->field_terminated_char}'
                           OPTIONALLY ENCLOSED BY '\"'
                           LINES TERMINATED BY \"\r\n\"
                           IGNORE 1 LINES
@@ -1917,7 +1919,7 @@ class Sinch {
                             Title,
                             Weight,
                             short_description,
-                            unspsc,
+                            @unspsc,
                             ean_code,
                             family_id,
                             series_id,
@@ -1935,23 +1937,24 @@ class Sinch {
                             list_summary_value_4,
                             implied_sales_year,
                             implied_sales_month
-                          )"
+                          )
+                          SET unspsc = IF(CHAR_LENGTH(TRIM(@unspsc)) = 0, NULL, @unspsc)"
             );
 
 
             $this->_doQuery(
-                "UPDATE " . $this->getTableName('products_temp') . "
+                "UPDATE {$this->getTableName('products_temp')}
                       SET product_name = Title WHERE Title != ''"
             );
             $this->_doQuery(
-                "UPDATE " . $this->getTableName('products_temp') . " pt
-                JOIN " . $this->getTableName('sinch_product_categories') . " spc
-                SET pt.store_category_id=spc.store_category_id
-                WHERE pt.sinch_product_id=spc.store_product_id"
+                "UPDATE {$this->getTableName('products_temp')} pt
+                            JOIN {$this->getTableName('sinch_product_categories')} spc
+                            SET pt.store_category_id = spc.store_category_id
+                            WHERE pt.sinch_product_id = spc.store_product_id"
             );
             $this->_doQuery(
-                "UPDATE " . $this->getTableName('products_temp') . "
-                      SET main_image_url = medium_image_url WHERE main_image_url = ''"
+                "UPDATE {$this->getTableName('products_temp')}
+                    SET main_image_url = medium_image_url WHERE main_image_url = ''"
             );
 
             $this->unspscImport->parse();
@@ -1960,30 +1963,25 @@ class Sinch {
             $this->print("--Parse Products 4");
 
             $this->_doQuery(
-                "UPDATE " . $this->getTableName('products_temp') . " p
-                          JOIN " . $this->getTableName('sinch_manufacturers') . " m
-                            ON p.sinch_manufacturer_id=m.sinch_manufacturer_id
-                          SET p.manufacturer_name=m.manufacturer_name"
+                "UPDATE {$this->getTableName('products_temp')} p
+                    JOIN {$this->getTableName('sinch_manufacturers')} m
+                    ON p.sinch_manufacturer_id = m.sinch_manufacturer_id
+                    SET p.manufacturer_name = m.manufacturer_name"
             );
 
             $this->print("--Parse Products 5");
 
             if ($this->current_import_status_statistic_id) {
-                $res = $this->_doQuery(
-                    "SELECT COUNT(*) AS cnt
-                                     FROM " . $this->getTableName(
-                        'products_temp'
-                    )
-                )->fetch();
-                $this->_doQuery(
-                    "UPDATE " . $this->import_status_statistic_table . "
-                              SET number_of_products=" . $res['cnt'] . "
-                              WHERE id="
-                    . $this->current_import_status_statistic_id
+                $prodCount = $this->conn->fetchOne("SELECT COUNT(*) FROM {$this->getTableName('products_temp')}");
+                $this->conn->query(
+                    "UPDATE {$this->import_status_statistic_table}
+                        SET number_of_products = :count
+                        WHERE id = :importId",
+                    [":count" => $prodCount, ":importId" => $this->current_import_status_statistic_id]
                 );
             }
 
-            if ($replace_merge_product == "REWRITE") {
+            if ($this->productImportMode == "REWRITE") {
                 $catalog_product_entity = $this->getTableName('catalog_product_entity');
                 //Allow retrying, as this is particularly likely to deadlock if the site is being used
                 $this->retriableQuery("DELETE FROM $catalog_product_entity WHERE type_id = 'simple' AND sinch_product_id IS NOT NULL");
@@ -1995,10 +1993,10 @@ class Sinch {
             $this->mapProducts();
 
             $this->print("--Parse Products 7");
-            $this->replaceMagentoProductsMultistore($this->imType == "MERGE");
+            $this->replaceMagentoProductsMultistore($this->productImportMode == "MERGE");
             $this->print("--Parse Products 8");
 
-            $this->mapProducts();
+            $this->mapProducts(true);
 
             //TODO: Check manufacturer apply works ok here
             //$this->addManufacturer_attribute();
@@ -2017,11 +2015,12 @@ class Sinch {
         }
     }
 
-    private function retriableQuery($query): Zend_Db_Statement_Interface
+    private function retriableQuery($query): void
     {
         while (true) {
             try {
-                return $this->_doQuery($query);
+                $this->_doQuery($query);
+                return;
             } catch (DeadlockException $_e) {
                 $this->print("Sleeping as the previous attempt deadlocked");
                 sleep(10);
@@ -2029,7 +2028,7 @@ class Sinch {
         }
     }
 
-    private function addProductsWebsite()
+    private function addProductsWebsite(): void
     {
         $this->_doQuery("DROP TABLE IF EXISTS " . $this->getTableName('products_website_temp'));
 
@@ -2069,7 +2068,7 @@ class Sinch {
         }
     }
 
-    private function mapProducts()
+    private function mapProducts(bool $mapping_again = false): void
     {
         $sinch_products_mapping_temp = $this->getTableName('sinch_products_mapping_temp');
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
@@ -2091,19 +2090,17 @@ class Sinch {
             )"
         );
 
+        $catalog_product_entity_source = $this->getTableName('sinch_product_backup');
+        //When the import type is merge, we're mapping again, or the backup table is empty, use catalog_product_entity
+        if ($this->productImportMode == "MERGE" || $mapping_again || !$this->tableHasData($catalog_product_entity_source)) {
+            $catalog_product_entity_source = $catalog_product_entity;
+        }
+
         //Ignore to drop rows which break the unique key constraints silently
         $this->conn->query(
-            "INSERT ignore INTO $sinch_products_mapping_temp (
-                entity_id,
-                product_sku,
-                shop_sinch_product_id
-            )(
-                SELECT
-                entity_id,
-                sku,
-                sinch_product_id
-              FROM $catalog_product_entity
-             )"
+            "INSERT ignore INTO $sinch_products_mapping_temp (entity_id, product_sku, shop_sinch_product_id)
+                SELECT entity_id, sku, sinch_product_id
+                    FROM $catalog_product_entity_source"
         );
 
         $this->conn->query(
@@ -2147,7 +2144,7 @@ class Sinch {
         return $this->defaultAttributeSetId;
     }
 
-    private function dropHTMLentities($attribute_id)
+    private function dropHTMLentities($attribute_id): void
     {
         // product name for all web sites
         $results = $this->_doQuery(
@@ -2174,7 +2171,7 @@ class Sinch {
         }
     }
 
-    private function valid_char($string)
+    private function valid_char($string): array|string|null
     {
         $string = preg_replace('/&#8482;/', ' ', $string);
         $string = preg_replace('/&reg;/', ' ', $string);
@@ -2401,11 +2398,8 @@ class Sinch {
         }
     }
 
-    /**
-     * @param string $logString
-     * @param bool $isError
-     */
-    protected function _logImportInfo($logString = '', $isError = false)
+
+    protected function _logImportInfo(string $logString = '', bool $isError = false): void
     {
         if ($logString) {
             if ($isError) {
@@ -2550,6 +2544,7 @@ class Sinch {
 
         $this->print("--Replace Magento Multistore 3...");
 
+        // New Products (no existing entity ID)
         $this->_doQuery(
             "INSERT INTO $catalog_product_entity (entity_id, attribute_set_id, type_id, sku, updated_at, has_options, sinch_product_id)
             (SELECT
@@ -2570,6 +2565,7 @@ class Sinch {
                 sinch_product_id = pt.sinch_product_id"
         );
 
+        // "Existing" products (existing entity ID, possibly from backup IDs)
         $this->_doQuery(
             "INSERT INTO $catalog_product_entity (entity_id, attribute_set_id, type_id, sku, updated_at, has_options, sinch_product_id)
             (SELECT
@@ -3054,7 +3050,7 @@ class Sinch {
         $this->print("--Replace Magento Multistore 35...");
     }
 
-    private function parseProductsPicturesGallery()
+    private function parseProductsPicturesGallery(): void
     {
         $parseFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCTS_GALLERY_PICTURES);
         if (filesize($parseFile)) {
@@ -3095,7 +3091,7 @@ class Sinch {
         }
     }
 
-    private function runIndexer()
+    private function runIndexer(): void
     {
         $this->_indexProcessor->reindexAll();
         //Clear changelogs explicitly after finishing a full reindex
@@ -3117,7 +3113,7 @@ class Sinch {
     /**
      * @insertCategoryIdForFinder
      */
-    public function insertCategoryIdForFinder()
+    public function insertCategoryIdForFinder(): void
     {
         $tbl_store = $this->getTableName('store');
         $tbl_cat = $this->getTableName('catalog_category_product');
@@ -3149,7 +3145,7 @@ class Sinch {
         }
     }
 
-    private function invalidateIndexers()
+    private function invalidateIndexers(): void
     {
         /**
          * @var IndexerInterface[] $indexers
@@ -3160,7 +3156,7 @@ class Sinch {
         }
     }
 
-    private function reindexProductUrls()
+    private function reindexProductUrls(): void
     {
         $url_rewrite = $this->getTableName('url_rewrite');
         $catalog_product_entity_varchar = $this->getTableName('catalog_product_entity_varchar');
@@ -3175,7 +3171,7 @@ class Sinch {
         $this->_productUrlFactory->create()->refreshRewrites();
     }
 
-    public function runCleanCache()
+    public function runCleanCache(): void
     {
         foreach ($this->_cacheFrontendPool as $cacheFrontend) {
             $cacheFrontend->getBackend()->clean();
@@ -3186,7 +3182,7 @@ class Sinch {
     /**
      * @throws LocalizedException
      */
-    public function startCronStockPriceImport()
+    public function startCronStockPriceImport(): void
     {
         $this->_log("Start stock price import from cron");
 
@@ -3196,7 +3192,7 @@ class Sinch {
         $this->_log("Finish stock price import from cron");
     }
 
-    public function runStockPriceImport()
+    public function runStockPriceImport(): void
     {
         $this->initImportStatuses('PRICE STOCK');
 
@@ -3318,6 +3314,18 @@ class Sinch {
                 $this->runCleanCache();
                 $this->addImportStatus('Clean cache', true);
 
+                try {
+                    $this->addImportStatus('Import completion hooks');
+                    $this->_eventManager->dispatch(
+                        'sinchimport_import_complete_post_index',
+                        ['import_type' => 'PRICE STOCK']
+                    );
+                    $this->addImportStatus('Import completion hooks', true);
+                } catch (Exception $e) {
+                    $this->addImportStatus('Import completion hooks', true);
+                    $this->print("Caught exception while running import completion hooks: " . $e->getMessage());
+                }
+
                 $this->addImportStatus('Finish Import', true);
                 $this->print("========>FINISH STOCK & PRICE SINCH IMPORT");
 
@@ -3353,7 +3361,7 @@ class Sinch {
         }
     }
 
-    public function runReindexUrlRewrite()
+    public function runReindexUrlRewrite(): void
     {
         try {
             $this->print("========REINDEX CATALOG URL REWRITE========");
@@ -3375,7 +3383,7 @@ class Sinch {
     /**
      * load Gallery array from XML
      */
-    public function loadGalleryPhotos($entity_id)
+    public function loadGalleryPhotos($entity_id): static
     {
         $sinch_product_id = $this->getSinchProductIdByEntity($entity_id);
         if (!$sinch_product_id) {
@@ -3428,12 +3436,12 @@ class Sinch {
         );
     }
 
-    public function getGalleryPhotos()
+    public function getGalleryPhotos(): array
     {
         return $this->galleryPhotos;
     }
 
-    public function getImportStatusHistory()
+    public function getImportStatusHistory(): array
     {
         $res = $this->_doQuery(
             "SELECT COUNT(*) as cnt FROM " . $this->import_status_statistic_table

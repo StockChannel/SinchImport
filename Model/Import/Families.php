@@ -32,7 +32,7 @@ class Families extends AbstractImportSection {
         ];
     }
 
-    public function parse()
+    public function parse(): void
     {
         $this->createTableIfRequired();
         $conn = $this->getConnection();
@@ -40,6 +40,7 @@ class Families extends AbstractImportSection {
         $familySeriesCsv = $this->dlHelper->getSavePath(Download::FILE_FAMILY_SERIES);
 
         $this->startTimingStep('Load Families');
+        /** @noinspection SqlWithoutWhere */
         $conn->query("DELETE FROM {$this->familyTable}");
         //ID|ParentID|Name
         $conn->query(
@@ -54,6 +55,7 @@ class Families extends AbstractImportSection {
         $this->endTimingStep();
 
         $this->startTimingStep('Load Family Series');
+        /** @noinspection SqlWithoutWhere */
         $conn->query("DELETE FROM {$this->familySeriesTable}");
         //ID|Name
         $conn->query(
@@ -121,10 +123,14 @@ class Families extends AbstractImportSection {
         //Get Families with missing values
         $res = $conn->fetchAll(
             "SELECT sf.id, sf.name
-                FROM {$this->familyTable} sf
-                LEFT JOIN {$eav_attribute_option_value} aov
-                    ON sf.name = aov.value
-                WHERE aov.value IS NULL"
+                FROM {$eav_attribute_option} eao
+                INNER JOIN {$eav_attribute_option_value} eaov
+                    ON eao.option_id = eaov.option_id
+                    AND eao.attribute_id = :familyAttr
+                RIGHT JOIN {$this->familyTable} sf
+                    ON sf.name = eaov.value
+                WHERE eaov.value IS NULL",
+            [":familyAttr" => $familyAttr]
         );
 
         //Insert missing Family names
@@ -144,10 +150,14 @@ class Families extends AbstractImportSection {
         //Get Family Series with missing values
         $res = $conn->fetchAll(
             "SELECT sfs.id, sfs.name
-                FROM {$this->familySeriesTable} sfs
-                LEFT JOIN {$eav_attribute_option_value} aov
-                    ON sfs.name = aov.value
-                WHERE aov.value IS NULL"
+                FROM {$eav_attribute_option} eao
+                INNER JOIN {$eav_attribute_option_value} eaov
+                    ON eao.option_id = eaov.option_id
+                    AND eao.attribute_id = :familySeriesAttr
+                RIGHT JOIN {$this->familySeriesTable} sfs
+                    ON sfs.name = eaov.value
+                WHERE eaov.value IS NULL",
+            [":familySeriesAttr" => $familySeriesAttr]
         );
 
         //Insert missing Family Series names
@@ -190,7 +200,8 @@ class Families extends AbstractImportSection {
         $this->endTimingStep();
     }
 
-    public function apply() {
+    public function apply(): void
+    {
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
         $catalog_product_entity_int = $this->getTableName('catalog_product_entity_int');
         $sinch_products = $this->getTableName('sinch_products');
@@ -235,7 +246,7 @@ class Families extends AbstractImportSection {
         $this->timingPrint();
     }
 
-    private function createTableIfRequired()
+    private function createTableIfRequired(): void
     {
         $conn = $this->getConnection();
         $conn->query(
