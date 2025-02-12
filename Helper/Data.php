@@ -48,11 +48,12 @@ class Data extends AbstractHelper
         $this->groupMappingTable = $this->resourceConn->getTableName('sinch_group_mapping');
     }
 
-    public function getStoreConfig($configPath)
+    public function getStoreConfig($configPath, $storeId = null)
     {
         return $this->scopeConfig->getValue(
             $configPath,
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE,
+            $storeId
         );
     }
 
