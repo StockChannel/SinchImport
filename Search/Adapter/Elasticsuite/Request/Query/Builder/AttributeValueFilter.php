@@ -14,10 +14,10 @@
 namespace SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder;
 
 use InvalidArgumentException;
+use Magento\Framework\App\ResourceConnection;
 use SITC\Sinchimport\Helper\Data;
 use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder;
 use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder\AbstractComplexBuilder;
-use Smile\ElasticsuiteCore\Search\Request\Query\Nested;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\BuilderInterface;
@@ -31,21 +31,26 @@ use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\BuilderInte
  */
 class AttributeValueFilter extends AbstractComplexBuilder implements BuilderInterface
 {
-    /** @var QueryFactory $queryFactory */
-    private $queryFactory;
-    /** @var Data $helper */
-    private $helper;
+    private readonly string $eav_attribute_option_value;
+    private readonly string $eav_attribute_option;
+    private readonly string $eav_attribute;
 
-    public function __construct(Builder $builder, QueryFactory\Proxy $queryFactory, Data $helper) {
+    public function __construct(
+        Builder $builder,
+        private QueryFactory\Proxy $queryFactory,
+        private Data $helper,
+        private ResourceConnection $resourceConn,
+    ) {
         parent::__construct($builder);
-        $this->queryFactory = $queryFactory;
-        $this->helper = $helper;
+        $this->eav_attribute_option_value = $this->resourceConn->getTableName('eav_attribute_option_value');
+        $this->eav_attribute_option = $this->resourceConn->getTableName('eav_attribute_option');
+        $this->eav_attribute = $this->resourceConn->getTableName('eav_attribute');
     }
 
     /**
      * {@inheritDoc}
      */
-    public function buildQuery(QueryInterface $query)
+    public function buildQuery(QueryInterface $query): bool|array
     {
         if ($query->getType() !== 'sitcAttributeValueQuery') {
             throw new InvalidArgumentException("Query builder : invalid query type {$query->getType()}");
@@ -56,10 +61,26 @@ class AttributeValueFilter extends AbstractComplexBuilder implements BuilderInte
                 QueryInterface::TYPE_MATCH,
                 [
                     'field' => $query->getAttribute(),
-                    'queryText' => $query->getValue(),
+                    'queryText' => $this->getOptionIdFromValue($query->getAttribute(), $query->getValue()),
                     'boost' => $query->getBoost()
                 ]
             )
+        );
+    }
+
+
+    private function getOptionIdFromValue(string $attributeCode, string $value): ?int
+    {
+        return $this->resourceConn->getConnection()->fetchOne(
+            "SELECT eao.option_id FROM {$this->eav_attribute_option_value} eaov
+                        INNER JOIN {$this->eav_attribute_option} eao
+                            ON eaov.option_id = eao.option_id
+                        INNER JOIN {$this->eav_attribute} ea
+                            ON eao.attribute_id = ea.attribute_id
+                        WHERE ea.attribute_code = :attribute
+                            AND eaov.value = :value
+                        ORDER BY CHAR_LENGTH(eaov.value) DESC LIMIT 1",
+            [":attribute" => $attributeCode, "value" => $value]
         );
     }
 }

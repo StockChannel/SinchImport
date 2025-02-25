@@ -35,6 +35,10 @@ class CategoryView
     public function afterToHtml(Image $subject, $result)
     {
         foreach (array_keys(Badges::BADGE_TYPES) as $badgeType) {
+            if (!$this->badgeHelper->badgeEnabled($badgeType)) {
+                // Badge not enabled, skip
+                continue;
+            }
             $badgeTypeProductId = $this->productCollection[$badgeType] ?? -1;
             try {
                 $product = $this->productRepository->getById($badgeTypeProductId);
@@ -42,14 +46,12 @@ class CategoryView
                 continue;
             }
 
-            $badgeImageUrl = $this->badgeHelper->getBadgeImageUrl($badgeType) ?? '';
+            $badgeContent = $this->badgeHelper->getBadgeContent($badgeType) ?? '';
             $badgeTitle = $this->badgeHelper->getFormattedBadgeTitle($badgeType);
             $productName = $product->getName();
 
             if ($productName == $subject->getLabel()) {
-                $html = "<div class='badge-1 badge-custom'>
-                    <img src='$badgeImageUrl'  alt='$badgeTitle'/>
-                </div>";
+                $html = "<div class='badge-1 badge-custom " . str_replace(' ', '', $badgeTitle) . "'> " . $badgeContent . "<span>" . $badgeTitle . "</span></div>";
 
                 return $result . $html;
             }

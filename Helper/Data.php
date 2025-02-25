@@ -213,14 +213,27 @@ class Data extends AbstractHelper
         return $this->getStoreConfig('sinchimport/search/enable_enhanced') == 1;
     }
 
-    public function dynamicCategoryMatchEnabled(): bool
-    {
-        return $this->getStoreConfig('sinchimport/search/dynamic_category_match_enable') == 1;
-    }
+    private const VALID_SCORING_MODES = ['multiply', 'sum', 'avg', 'first', 'max', 'min'];
+    private const VALID_BOOST_MODES = ['multiply', 'replace', 'sum', 'avg', 'max', 'min'];
+    private const VALID_MODIFIERS = ['none', 'log', 'log1p', 'log2p', 'ln', 'ln1p', 'ln2p', 'square', 'sqrt', 'reciprocal'];
 
     public function popularityBoostEnabled(): bool
     {
         return $this->getStoreConfig('sinchimport/popularity_boost/enable') == 1;
+    }
+
+    public function popularityScoringMode(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/scoring_mode');
+        if (!in_array($value, self::VALID_SCORING_MODES)) return 'max';
+        return $value;
+    }
+
+    public function popularityBoostMode(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/boost_mode');
+        if (!in_array($value, self::VALID_BOOST_MODES)) return 'sum';
+        return $value;
     }
 
     public function scoreBoostFactor(): float
@@ -228,9 +241,33 @@ class Data extends AbstractHelper
         return (float)$this->getStoreConfig('sinchimport/popularity_boost/score_factor');
     }
 
+    public function scoreBoostModifier(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/score_modifier');
+        if (!in_array($value, self::VALID_MODIFIERS)) return 'log1p';
+        return $value;
+    }
+
+    public function scoreBoostWeight(): int
+    {
+        return (int)$this->getStoreConfig('sinchimport/popularity_boost/score_weight');
+    }
+
     public function monthlyPopularityBoostFactor(): float
     {
         return (float)$this->getStoreConfig('sinchimport/popularity_boost/monthly_sales_factor');
+    }
+
+    public function monthlyPopularityBoostModifier(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/monthly_sales_modifier');
+        if (!in_array($value, self::VALID_MODIFIERS)) return 'log1p';
+        return $value;
+    }
+
+    public function monthlyPopularityBoostWeight(): int
+    {
+        return (int)$this->getStoreConfig('sinchimport/popularity_boost/monthly_sales_weight');
     }
 
     public function yearlyPopularityBoostFactor(): float
@@ -238,9 +275,33 @@ class Data extends AbstractHelper
         return (float)$this->getStoreConfig('sinchimport/popularity_boost/yearly_sales_factor');
     }
 
+    public function yearlyPopularityBoostModifier(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/yearly_sales_modifier');
+        if (!in_array($value, self::VALID_MODIFIERS)) return 'log1p';
+        return $value;
+    }
+
+    public function yearlyPopularityBoostWeight(): int
+    {
+        return (int)$this->getStoreConfig('sinchimport/popularity_boost/yearly_sales_weight');
+    }
+
     public function searchesBoostFactor(): float
     {
         return (float)$this->getStoreConfig('sinchimport/popularity_boost/searches_factor');
+    }
+
+    public function searchesBoostModifier(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/searches_modifier');
+        if (!in_array($value, self::VALID_MODIFIERS)) return 'log1p';
+        return $value;
+    }
+
+    public function searchesBoostWeight(): int
+    {
+        return (int)$this->getStoreConfig('sinchimport/popularity_boost/searches_weight');
     }
 
     public function badgesEnabled(): bool

@@ -74,7 +74,7 @@ class Badges extends AbstractHelper
      * @param string $badgeType
      * @return string|null
      */
-    public function getBadgeImageUrl(string $badgeType): ?string
+    public function getBadgeContent(string $badgeType): ?string
     {
         return match ($badgeType) {
             self::BADGE_BESTSELLER => $this->helper->getStoreConfig('sinchimport/badges/bestseller'),
@@ -83,6 +83,18 @@ class Badges extends AbstractHelper
             self::BADGE_POPULAR => $this->helper->getStoreConfig('sinchimport/badges/popular'),
             self::BADGE_RECOMMENDED => $this->helper->getStoreConfig('sinchimport/badges/recommended'),
             default => null,
+        };
+    }
+
+    public function badgeEnabled(string $badgeType): bool
+    {
+        return match ($badgeType) {
+            self::BADGE_BESTSELLER => $this->helper->getStoreConfig('sinchimport/badges/enable_bestseller'),
+            self::BADGE_HOT_PRODUCT => $this->helper->getStoreConfig('sinchimport/badges/enable_hot_product'),
+            self::BADGE_NEW => $this->helper->getStoreConfig('sinchimport/badges/enable_new'),
+            self::BADGE_POPULAR => $this->helper->getStoreConfig('sinchimport/badges/enable_popular'),
+            self::BADGE_RECOMMENDED => $this->helper->getStoreConfig('sinchimport/badges/enable_recommended'),
+            default => false,
         };
     }
 
@@ -101,7 +113,7 @@ class Badges extends AbstractHelper
      * @param array $badgeProducts
      * @param array $loadedCollectionIds
      */
-    private function saveBadgeProducts(array $badgeProducts, array $loadedCollectionIds)
+    private function saveBadgeProducts(array $badgeProducts, array $loadedCollectionIds): void
     {
         $serializedProductIds = $this->serializer->serialize($badgeProducts);
         $cacheId = self::CACHE_ID . '|' . implode(",", $loadedCollectionIds);
@@ -113,7 +125,7 @@ class Badges extends AbstractHelper
      * @param ProductCollection|null $products
      * @return mixed
      */
-    public function loadCachedBadgeProducts(ProductCollection $products = null)
+    public function loadCachedBadgeProducts(ProductCollection $products = null): mixed
     {
         $cacheId = self::CACHE_ID . '|' . implode("," ,$products->getLoadedIds());
         $cachedBadges = $this->cache->load($cacheId);
@@ -131,7 +143,7 @@ class Badges extends AbstractHelper
     /**
      * @param ProductCollection $products
      */
-    private function generateProductsForBadges(ProductCollection $products)
+    private function generateProductsForBadges(ProductCollection $products): void
     {
         if ($products->getCurPage() > 1) {
             return;

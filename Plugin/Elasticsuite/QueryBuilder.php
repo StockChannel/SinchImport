@@ -99,7 +99,25 @@ class QueryBuilder
 	 */
 	public function aroundCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, callable $proceed, ContainerConfigurationInterface $containerConfig, $queryText, string $spellingType, float $boost = 1): QueryInterface
 	{
-		if (!$this->helper->enhancedSearchEnabled()) {
+        $skip = false;
+        if (is_string($queryText)) {
+            if (str_starts_with($queryText, SearchProcessing::NO_PROCESSING_TAG)) {
+                $queryText = substr($queryText, strlen(SearchProcessing::NO_PROCESSING_TAG));
+                $skip = true;
+            }
+        } else if (is_array($queryText)) {
+            $replaced = [];
+            foreach ($queryText as $query) {
+                if (str_starts_with($query, SearchProcessing::NO_PROCESSING_TAG)) {
+                    $query = substr($query, strlen(SearchProcessing::NO_PROCESSING_TAG));
+                    $skip = true;
+                }
+                $replaced[] = $query;
+            }
+            $queryText = $replaced;
+        }
+
+		if (!$this->helper->enhancedSearchEnabled() || $skip) {
 			return $proceed($containerConfig, $queryText, $spellingType, $boost);
 		}
 
@@ -113,7 +131,7 @@ class QueryBuilder
             $queryText = $queryText[0];
         }
 
-		//TODO: New SearchProcessing use
+		//SearchProcessing use
         $this->logger->info("Original query text: " . $queryText);
         //This call can modify query text if one or more filters match
         $queryFilters = $this->spHelper->getFiltersFromQuery($containerConfig, $queryText);
@@ -132,15 +150,15 @@ class QueryBuilder
 			$boost
 		);
 
-		//Pass in a list of synonyms for the category boost
-		$shouldClauses = [
-            $this->queryFactory->create(
+        $shouldClauses = [];
+        if (!empty($queryText)) {
+            // Pass in a list of synonyms for the category boost
+            $shouldClauses[] = $this->queryFactory->create(
                 'sitcCategoryBoostQuery',
-                [
-                    'queries' => $this->spHelper->getQueryTextRewrites($containerConfig, $queryText)
-                ]
-            )
-        ];
+                ['queries' => $this->spHelper->getQueryTextRewrites($containerConfig, $queryText)]
+            );
+        }
+
 		$minShouldMatch = 0;
 
 		$boostQuery = $this->spHelper->getBoostQuery();
@@ -149,12 +167,19 @@ class QueryBuilder
 		    $shouldClauses[] = $boostQuery;
         }
 
-        //If we have any boosts to add (the should clauses) or any query filters (the additional must clauses), add them to the final result
+        // If we have any boosts to add (the should clauses) or any query filters (the additional must clauses), add them to the final result
 		if (!empty($shouldClauses) || !empty($queryFilters)) {
+            $must = array_merge([$originalResult], array_values($queryFilters));
+            if ($queryText == "") {
+                // If query text is empty just replace the must clauses with the container's plus our filters
+                // (otherwise the filter and multi_match clauses it adds will fuck all results, because it's got no query)
+                $must = array_merge($containerConfig->getFilters(), array_values($queryFilters));
+            }
+
 		    return $this->queryFactory->create(
                 QueryInterface::TYPE_BOOL,
                 [
-                    'must' => array_merge([$originalResult], array_values($queryFilters)),
+                    'must' => $must,
                     'should' => $shouldClauses,
                     'minimumShouldMatch' => $minShouldMatch
                 ]
@@ -173,7 +198,10 @@ class QueryBuilder
      */
 	private function checkRedirect(ContainerConfigurationInterface $containerConfig, string $queryText, array $queryFilters): bool
 	{
-        if ($containerConfig->getName() === self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE || $this->request->isAjax()) {
+        if ($containerConfig->getName() === self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE
+            || $this->request->isAjax()
+            || $this->helper->getStoreConfig('sinchimport/search/enhanced_settings/enable_redirects') != 1
+        ) {
             return false;
         }
 

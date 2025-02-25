@@ -32,6 +32,9 @@ use Smile\ElasticsuiteThesaurus\Model\Index;
 
 class SearchProcessing extends AbstractHelper
 {
+    // If you want to hire me, Amazon, you can do it for only 50% of the combined salaries of your developers ;)
+    public const NO_PROCESSING_TAG = "🔍✍️⛔";
+
     public const FILTER_TYPE_PRICE = "price";
     public const FILTER_TYPE_CATEGORY = "category";
     public const FILTER_TYPE_ATTRIBUTE = "attribute";
@@ -85,7 +88,8 @@ class SearchProcessing extends AbstractHelper
         private readonly ContainerConfigurationInterfaceFactory $containerConfigFactory,
         private readonly StoreManagerInterface                  $storeManager,
         private readonly ItemFactory                            $itemFactory,
-        private readonly Data $helper
+        private readonly Data                                   $helper,
+        private readonly \Smile\ElasticsuiteCore\Search\Request\Query\Builder $queryBuilder,
     ){
         parent::__construct($context);
         $this->categoryTableVarchar = $this->resourceConn->getTableName('catalog_category_entity_varchar');
@@ -132,6 +136,11 @@ class SearchProcessing extends AbstractHelper
     {
         $filters = [];
         foreach (self::QUERY_REGEXES as $filterType => $_regex) {
+            if ($this->helper->getStoreConfig('sinchimport/search/enhanced_settings/enable_' . $filterType) != 1) {
+                // Skip types not currently enabled
+                continue;
+            }
+            $oldFilters = $filters;
             $match = $this->getRegexMatchesRaw($filterType, $queryText);
             if (!empty($match)) {
                 $this->logger->info("Query text is: '{$queryText}' and filter type is {$filterType}");
@@ -179,7 +188,6 @@ class SearchProcessing extends AbstractHelper
                             $this->logger->info("Skipping dynamic category filter as static category filter is set");
                             continue 2;
                         }
-                        if (!$this->helper->dynamicCategoryMatchEnabled()) continue 2;
                         // Check category matches dynamically
                         $filter = $this->checkCategoryNameMatchDynamic($match['query']);
                         if (empty($filter)) {
@@ -189,13 +197,60 @@ class SearchProcessing extends AbstractHelper
                         $filters[self::FILTER_TYPE_CATEGORY_DYNAMIC] = $filter;
                         break;
                 }
-                //Adjust query text for the remaining checks (we only do this if the filter reports success by not doing "continue 2")
-                $queryText = $match['query'] ?? '';
+                if ($this->testFiltersValid($match['query'] ?? '', $filters)) {
+                     $this->logger->info("Filters being considered valid as they returned results");
+                     //Adjust query text for the remaining checks (we only do this if the filter reports success by not doing "continue 2")
+                     $queryText = $match['query'] ?? '';
+                } else {
+                    $this->logger->info("Most recent filter considered invalid as it returns no results, reverting its application");
+                    $filters = $oldFilters;
+                }
             }
         }
         $this->logger->info("Final query text is: " . $queryText);
         $this->logger->info("Returning filters of type: " . implode(", ", array_keys($filters)));
         return $filters;
+    }
+
+    private function testFiltersValid(string $queryText, array $filters): bool
+    {
+        //Get an instance of the quick_search_container (so we can ask it for the aggregations it would add in that view)
+        /** @var ContainerConfigurationInterface $containerConfig */
+        $containerConfig = $this->containerConfigFactory->create(['storeId' => $this->getCurrentStoreId(), 'containerName' => QueryBuilder::QUERY_TYPE_QUICKSEARCH]);
+        if ($queryText == '') {
+            $query = $this->queryBuilder->createFilterQuery($containerConfig, $filters);
+            $searchRequest = $this->requestBuilder->create(
+                $this->getCurrentStoreId(),
+                QueryBuilder::QUERY_TYPE_QUICKSEARCH,
+                0,
+                0,
+                $query,
+                [], // sort
+                [], // filter
+                [], // built filter
+                [], // facets
+                true
+            );
+        } else {
+            // Use a known string in the search query so we can identify our filter tests both sides of the adapter
+            $searchRequest = $this->requestBuilder->create(
+                $this->getCurrentStoreId(),
+                QueryBuilder::QUERY_TYPE_QUICKSEARCH,
+                0,
+                0,
+                self::NO_PROCESSING_TAG . $queryText,
+                [], // sort
+                [], // filter
+                array_merge($containerConfig->getFilters(), array_values($filters)), // built filter
+                [], // facets
+                true
+            );
+        }
+
+        $searchResult = $this->searchEngine->search($searchRequest);
+        $numFilters = count($filters);
+        $this->logger->info("Query '{$queryText}' returns {$searchResult->count()} results with its {$numFilters} filters");
+        return $searchResult->count() > 0;
     }
 
     /**
@@ -623,43 +678,43 @@ class SearchProcessing extends AbstractHelper
                     'functions' => [
                         [ //Boost on Popularity Score
                             FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
-                                'field' => 'sinch_score', //TODO: Seems like field names for non-option int attributes are just their attribute code, confirm
+                                'field' => 'sinch_score',
                                 'factor' => $this->helper->scoreBoostFactor(),
-                                'modifier' => 'log1p',
+                                'modifier' => $this->helper->scoreBoostModifier(),
                                 'missing' => 0
                             ],
-                            'weight' => 5
+                            'weight' => $this->helper->scoreBoostWeight()
                         ],
                         [ //Boost on Monthly BI data
                             FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
                                 'field' => 'sinch_popularity_month',
                                 'factor' => $this->helper->monthlyPopularityBoostFactor(),
-                                'modifier' => 'log1p',
+                                'modifier' => $this->helper->monthlyPopularityBoostModifier(),
                                 'missing' => 0
                             ],
-                            'weight' => 10
+                            'weight' => $this->helper->monthlyPopularityBoostWeight()
                         ],
                         [ //Boost on Yearly BI data
                             FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
                                 'field' => 'sinch_popularity_year',
                                 'factor' => $this->helper->yearlyPopularityBoostFactor(),
-                                'modifier' => 'log1p',
+                                'modifier' => $this->helper->yearlyPopularityBoostModifier(),
                                 'missing' => 0
                             ],
-                            'weight' => 8
+                            'weight' => $this->helper->yearlyPopularityBoostWeight()
                         ],
                         [ //Boost on sinch search data
                             FunctionScore::FUNCTION_SCORE_FIELD_VALUE_FACTOR => [
                                 'field' => 'sinch_searches',
                                 'factor' => $this->helper->searchesBoostFactor(),
-                                'modifier' => 'log1p',
+                                'modifier' => $this->helper->searchesBoostModifier(),
                                 'missing' => 0
                             ],
-                            'weight' => 8
+                            'weight' => $this->helper->searchesBoostWeight()
                         ]
                     ],
-                    'scoreMode' => FunctionScore::SCORE_MODE_MAX,
-                    'boostMode' => FunctionScore::BOOST_MODE_SUM
+                    'scoreMode' => $this->helper->popularityScoringMode(),
+                    'boostMode' => $this->helper->popularityBoostMode(),
                 ]
             );
         }
