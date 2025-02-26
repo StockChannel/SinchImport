@@ -144,6 +144,16 @@
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>When enabled, overrides Elasticsuite's "Facet Min Coverage" functionality for Stockinthechannel Filterable Attributes, reverting them to default behaviour</comment>
                 </field>
+                <field id="summary_features" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Summary Features Display</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When enabled, injects Stockinthechannel Summary Features into Magento product list pages. Please note this does not affect blocks in grid mode</comment>
+                </field>
+                <field id="bullet_points" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Bullet Points Display</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When enabled, injects Stockinthechannel Bullet Points into Magento product list pages. Please note this does not affect blocks in grid mode</comment>
+                </field>
             </group>
             <group id="cron" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0" >
                 <label>Cron Schedule</label>

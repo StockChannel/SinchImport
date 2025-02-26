@@ -9,8 +9,8 @@
 		
 		$rows = explode("<tr><th colspan=\"2\" class=\"text-left\">", $specTable);
 		$totalRows = count($rows);
-		$firsthalf = array_slice($rows, 0, $totalRows / 2 + 0.5);
-		$secondhalf = array_slice($rows, $totalRows / 2 + 0.5, $totalRows);
+		$firsthalf = array_slice($rows, 0, (int)($totalRows / 2 + 0.5));
+		$secondhalf = array_slice($rows, (int)($totalRows / 2 + 0.5), $totalRows);
 
 		echo '<div class="row">';
 

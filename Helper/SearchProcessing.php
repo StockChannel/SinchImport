@@ -289,7 +289,7 @@ class SearchProcessing extends AbstractHelper
         $groupId = Group::NOT_LOGGED_IN_ID;
         try {
             $groupId = $this->customerSession->getCustomerGroupId();
-        } catch (NoSuchEntityException | LocalizedException $e) {}
+        } catch (NoSuchEntityException | LocalizedException) {}
 
         return $this->queryFactory->create(
             'sitcPriceRangeQuery',

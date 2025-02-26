@@ -26,6 +26,8 @@
             <attributes>
                 <visible_in_admin>0</visible_in_admin>
                 <override_elasticsuite>0</override_elasticsuite>
+                <summary_features>0</summary_features>
+                <bullet_points>1</bullet_points>
             </attributes>
             <category_visibility>
                 <enable>0</enable>

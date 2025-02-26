@@ -14,8 +14,8 @@ use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Setup\UpgradeDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
+use Magento\Framework\Validator\ValidateException;
 use SITC\Sinchimport\Plugin\Elasticsuite\InventoryData;
-use Zend_Validate_Exception;
 
 /**
  * @codeCoverageIgnore
@@ -230,8 +230,7 @@ class UpgradeData implements UpgradeDataInterface
     }
 
     /**
-     * @throws Zend_Validate_Exception
-     * @throws LocalizedException
+     * @throws LocalizedException|ValidateException
      */
     private function nileUpgrade(EavSetup $eavSetup)
     {
@@ -665,8 +664,7 @@ class UpgradeData implements UpgradeDataInterface
 
     /**
      * @param EavSetup $eavSetup
-     * @throws LocalizedException
-     * @throws Zend_Validate_Exception
+     * @throws LocalizedException|ValidateException
      */
     private function nileUpgrade253(EavSetup $eavSetup)
     {
@@ -713,6 +711,7 @@ class UpgradeData implements UpgradeDataInterface
                 $eavSetup->updateAttribute($entityTypeId, $attrCode, 'used_in_product_listing', 1);
             }
         }
+        $eavSetup->updateAttribute($entityTypeId, 'sinch_bullet_points', 'used_in_product_listing', 1);
     }
 
     private function getConnection(): AdapterInterface

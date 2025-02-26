@@ -11,11 +11,12 @@ class Category
      */
     public function afterGetImageUrl(
         \Magento\Catalog\Model\Category $subject,
-        $result
+        $result,
+        $attributeCode = 'image'
     ) {
-        $image = $subject->getImage();
+        $image = $subject->getData($attributeCode);
         
-        if (is_string($image) && substr($image, 0, 4) == 'http') {
+        if (is_string($image) && str_starts_with($image, 'http')) {
             $url = $image;
         } else {
             $url = $result;
