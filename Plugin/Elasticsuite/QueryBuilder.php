@@ -97,7 +97,7 @@ class QueryBuilder
 	 * @return QueryInterface
 	 * @SuppressWarnings("unused")
 	 */
-	public function aroundCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, callable $proceed, ContainerConfigurationInterface $containerConfig, $queryText, string $spellingType, float $boost = 1): QueryInterface
+	public function aroundCreate(\Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder $_subject, callable $proceed, ContainerConfigurationInterface $containerConfig, array|string $queryText, string $spellingType, float $boost = 1): QueryInterface
 	{
         $skip = false;
         if (is_string($queryText)) {
@@ -131,6 +131,7 @@ class QueryBuilder
             $queryText = $queryText[0];
         }
 
+        $originalQueryText = $queryText;
 		//SearchProcessing use
         $this->logger->info("Original query text: " . $queryText);
         //This call can modify query text if one or more filters match
@@ -138,10 +139,15 @@ class QueryBuilder
         $this->logger->info("Query text after filter extraction: " . $queryText);
 
 		//If this isn't a product autocomplete suggestion or an AJAX call and category match is successful return early
-		if ($this->checkRedirect($containerConfig, $queryText, $queryFilters)) {
-			return $this->queryFactory->create(QueryInterface::TYPE_BOOL, []);
+		if ($this->checkRedirect($containerConfig, $queryText, $queryFilters, $originalQueryText)) {
+			//return $this->queryFactory->create(QueryInterface::TYPE_BOOL, []);
+            $this->logger->info("Would otherwise return early");
 		}
 
+        if (empty(trim($queryText)) && $this->helper->getStoreConfig('sinchimport/enhanced_search/empty_query_restore_mode') == 1) {
+            $queryText = $this->spHelper->processQueryTextNonDynamic($originalQueryText);
+            $this->logger->info("Empty query text replaced with: " . $queryText);
+        }
 		//This results in modified query text if the query matched the price regex
 		$originalResult = $proceed(
 			$containerConfig,
@@ -171,6 +177,7 @@ class QueryBuilder
 		if (!empty($shouldClauses) || !empty($queryFilters)) {
             $must = array_merge([$originalResult], array_values($queryFilters));
             if ($queryText == "") {
+                $this->logger->info("Query text empty, replacing original result entirely with just container + our filters");
                 // If query text is empty just replace the must clauses with the container's plus our filters
                 // (otherwise the filter and multi_match clauses it adds will fuck all results, because it's got no query)
                 $must = array_merge($containerConfig->getFilters(), array_values($queryFilters));
@@ -196,11 +203,11 @@ class QueryBuilder
      * @param QueryInterface[] $queryFilters
      * @return bool true if we're redirecting
      */
-	private function checkRedirect(ContainerConfigurationInterface $containerConfig, string $queryText, array $queryFilters): bool
+	private function checkRedirect(ContainerConfigurationInterface $containerConfig, string $queryText, array $queryFilters, string $originalQueryText): bool
 	{
         if ($containerConfig->getName() === self::QUERY_TYPE_PRODUCT_AUTOCOMPLETE
             || $this->request->isAjax()
-            || $this->helper->getStoreConfig('sinchimport/search/enhanced_settings/enable_redirects') != 1
+            || $this->helper->getStoreConfig('sinchimport/enhanced_search/enable_redirects') != 1
         ) {
             return false;
         }
@@ -214,10 +221,22 @@ class QueryBuilder
             }
         }
 
+        $redirectsOnlyStripRegex = $this->helper->getStoreConfig('sinchimport/enhanced_search/redirects_only_strip_regex_terms') == 1;
+        $redirectsAvoidCategories = $this->helper->getStoreConfig('sinchimport/enhanced_search/redirects_avoid_categories') == 1;
+
         $queryParams = [];
-        foreach ($queryFilters as $filter) {
+        foreach ($queryFilters as $filterType => $filter) {
+            if ($redirectsOnlyStripRegex && in_array($filterType, SearchProcessing::DYNAMIC_REGEX_TYPES)) {
+                // This is a dynamic filter type and redirects_only_strip_regex_terms is enabled, ignore it
+                continue;
+            }
             if ($filter instanceof CategoryBoostFilter) {
                 $cats = $filter->getCategories();
+                if ($filter->getMinShouldMatch() != 1) {
+                    // Ignore CategoryBoostFilters not in filter mode
+                    $this->logger->warning("Ignoring CategoryBoostFilter in checkRedirect as it's not in filter mode");
+                    continue;
+                }
                 if (!empty($cats)) {
                     $catId = $this->spHelper->getCategoryIdByName($containerConfig, $cats);
                     if (!empty($catId)) {
@@ -237,8 +256,29 @@ class QueryBuilder
             }
         }
 
-        //Check whether the query text directly matches a category name & redirect if true
-        if (!empty(trim($queryText)) && ($catId = $this->spHelper->getCategoryIdByName($containerConfig, trim($queryText), true)) != null) {
+        if ($redirectsOnlyStripRegex) {
+            $newQueryText = $this->spHelper->processQueryTextNonDynamic($originalQueryText);
+            $this->logger->info("CheckRedirect: Resetting query text from '{$queryText}' to '{$newQueryText}' as redirects only strip regex is enabled");
+            $queryText = $newQueryText;
+        }
+
+        if (!empty($queryParams['cat']) && empty($queryText)) {
+            // This would have been set explicitly by a regex match, or by category dynamic,
+            // so if query text is empty, that should mean that everything else they put was picked off by other filters
+            $catId = $queryParams['cat'];
+        } else if (!empty(trim($queryText))) {
+            //Check whether the query text directly matches a category name & redirect if true
+            $catId = $this->spHelper->getCategoryIdByName($containerConfig, trim($queryText), true);
+        }
+
+        if ($redirectsAvoidCategories && empty(trim($queryText))) {
+            // No query text, but we should be avoiding categories, so reset query text
+            $queryText = $this->spHelper->processQueryTextNonDynamic($originalQueryText);
+            $this->logger->info("CheckRedirect: Redirects avoid categories is enabled, and query text is empty, resetting to: " . $queryText);
+        } else if (!$redirectsAvoidCategories && !empty($catId)) {
+            // Query text isn't necessarily empty here, but if it isn't, it was a direct category name match, so its irrelevant
+            $this->logger->info("CheckRedirect: Not avoiding categories, have category target, and no relevant query text remaining, performing redirect");
+            if (isset($queryParams['cat'])) unset($queryParams['cat']);
             $catUrl = $this->getCategoryUrl($catId, $queryParams);
             $redirectUrl = $this->urlBuilder->getUrl($catUrl);
             $this->response->setRedirect($redirectUrl)->sendResponse();
@@ -252,6 +292,10 @@ class QueryBuilder
                 $this->response->setRedirect($redirectUrl)->sendResponse();
                 return true;
             }
+            if ($redirectsAvoidCategories || $redirectsOnlyStripRegex) {
+                $this->logger->warning("CheckRedirect: Don't think this should ever happen, so expect some weird shit to go down now 🤷");
+                $this->logger->warning("CheckRedirect: Like the fact we're going to try to redirect to a category now where we probably shouldn't");
+            }
             //Query text is empty, so we should redirect to a category if one was specified
             if (!empty($queryParams['cat'])) {
                 $catId = $queryParams['cat'];
@@ -262,7 +306,7 @@ class QueryBuilder
                     return true;
                 }
             }
-            //Query text is empty but we have no target category, try to find one based on any AttributeValueFilters present
+            //Query text is empty, but we have no target category, try to find one based on any AttributeValueFilters present
             $catalog_category_product = $this->connection->getTableName('catalog_category_product');
             $catalog_product_index_eav = $this->connection->getTableName('catalog_product_index_eav');
             $eav_attribute_option_value = $this->connection->getTableName('eav_attribute_option_value');

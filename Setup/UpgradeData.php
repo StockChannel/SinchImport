@@ -702,8 +702,9 @@ class UpgradeData implements UpgradeDataInterface
         }
     }
 
-    public function nileUpgrade254(EavSetup $eavSetup)
+    public function nileUpgrade254(EavSetup $eavSetup): void
     {
+        // Ensure that Summary features and Bullet points work in product list pages
         $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
         for ($i = 1; $i <= 4; $i++) {
             foreach (['title', 'value'] as $attr) {
@@ -712,6 +713,9 @@ class UpgradeData implements UpgradeDataInterface
             }
         }
         $eavSetup->updateAttribute($entityTypeId, 'sinch_bullet_points', 'used_in_product_listing', 1);
+        // Ensure that sinch_family and sinch_family_series display more consistently than OOTB
+        $eavSetup->updateAttribute($entityTypeId, 'sinch_family', 'facet_min_coverage_rate', 50);
+        $eavSetup->updateAttribute($entityTypeId, 'sinch_family_series', 'facet_min_coverage_rate', 75);
     }
 
     private function getConnection(): AdapterInterface

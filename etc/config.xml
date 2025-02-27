@@ -61,14 +61,18 @@
                 <category_field_search_weight>8</category_field_search_weight>
                 <brand_field_search_weight>4</brand_field_search_weight>
                 <enable_enhanced>1</enable_enhanced>
-                <enhanced_settings>
-                    <enable_price>1</enable_price>
-                    <enable_category>1</enable_category>
-                    <enable_attribute>1</enable_attribute>
-                    <enable_category_dynamic>1</enable_category_dynamic>
-                    <enable_redirects>0</enable_redirects>
-                </enhanced_settings>
             </search>
+            <enhanced_search>
+                <enable_price>1</enable_price>
+                <enable_category>1</enable_category>
+                <enable_attribute>1</enable_attribute>
+                <enable_category_dynamic>1</enable_category_dynamic>
+                <enable_redirects>1</enable_redirects>
+                <empty_query_restore_mode>1</empty_query_restore_mode>
+                <redirects_only_strip_regex_terms>0</redirects_only_strip_regex_terms>
+                <redirects_avoid_categories>1</redirects_avoid_categories>
+                <filter_validate_min_prods>1</filter_validate_min_prods>
+            </enhanced_search>
             <popularity_boost>
                 <enable>1</enable>
                 <advanced_settings_visible>0</advanced_settings_visible>

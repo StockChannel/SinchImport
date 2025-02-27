@@ -48,7 +48,7 @@ class SearchProcessing extends AbstractHelper
         self::FILTER_TYPE_CATEGORY_DYNAMIC => "" // Derived at runtime based on category name and sinch_virtual_category values
     ];
 
-    private const DYNAMIC_REGEX_TYPES = [
+    public const DYNAMIC_REGEX_TYPES = [
         self::FILTER_TYPE_ATTRIBUTE,
         self::FILTER_TYPE_CATEGORY_DYNAMIC,
     ];
@@ -134,9 +134,10 @@ class SearchProcessing extends AbstractHelper
      */
     public function getFiltersFromQuery(ContainerConfigurationInterface $containerConfig, string &$queryText): array
     {
+        $originalQueryText = $queryText;
         $filters = [];
         foreach (self::QUERY_REGEXES as $filterType => $_regex) {
-            if ($this->helper->getStoreConfig('sinchimport/search/enhanced_settings/enable_' . $filterType) != 1) {
+            if ($this->helper->getStoreConfig('sinchimport/enhanced_search/enable_' . $filterType) != 1) {
                 // Skip types not currently enabled
                 continue;
             }
@@ -197,7 +198,7 @@ class SearchProcessing extends AbstractHelper
                         $filters[self::FILTER_TYPE_CATEGORY_DYNAMIC] = $filter;
                         break;
                 }
-                if ($this->testFiltersValid($match['query'] ?? '', $filters)) {
+                if ($this->testFiltersValid($match['query'] ?? '', $filters, $originalQueryText)) {
                      $this->logger->info("Filters being considered valid as they returned results");
                      //Adjust query text for the remaining checks (we only do this if the filter reports success by not doing "continue 2")
                      $queryText = $match['query'] ?? '';
@@ -212,12 +213,50 @@ class SearchProcessing extends AbstractHelper
         return $filters;
     }
 
-    private function testFiltersValid(string $queryText, array $filters): bool
+    // Processes queryText similarly to getFiltersFromQuery, however only processing the regex based ones, and always returning a non-empty string where possible
+    // It makes no attempt to validate the results
+    public function processQueryTextNonDynamic(string $queryText): string
     {
+        $running = [$queryText];
+        foreach (self::QUERY_REGEXES as $filterType => $regex) {
+            if ($this->helper->getStoreConfig('sinchimport/enhanced_search/enable_' . $filterType) != 1) {
+                // Skip types not currently enabled
+                continue;
+            }
+            // Skip dynamic types
+            if (empty($regex) || in_array($filterType, self::DYNAMIC_REGEX_TYPES)) continue;
+            $match = $this->getRegexMatchesRaw($filterType, $running[array_key_last($running)]);
+            if (!empty($match) && !empty($match['query'])) {
+                $running[] = $match['query'];
+            }
+        }
+        // Return the "shortest" (most processed) non-empty queryText
+        foreach (array_reverse($running) as $candidate) {
+            if (!empty($candidate)) {
+                return $candidate;
+            }
+        }
+        return $queryText;
+    }
+
+    private function testFiltersValid(string $queryText, array $filters, string $originalQueryText): bool
+    {
+        $minProds = (int)$this->helper->getStoreConfig('sinchimport/enhanced_search/filter_validate_min_prods') ?? 1;
+        if ($minProds < 1) {
+            $this->logger->info("Skipping filter validation as filter_validate_min_prods is {$minProds}");
+            return true;
+        }
+        $emptyQueryRestore = $this->helper->getStoreConfig('sinchimport/enhanced_search/empty_query_restore_mode') == 1;
         //Get an instance of the quick_search_container (so we can ask it for the aggregations it would add in that view)
         /** @var ContainerConfigurationInterface $containerConfig */
         $containerConfig = $this->containerConfigFactory->create(['storeId' => $this->getCurrentStoreId(), 'containerName' => QueryBuilder::QUERY_TYPE_QUICKSEARCH]);
-        if ($queryText == '') {
+        // If empty query restore is on and query text is empty, perform the reset before the decision regarding the filter query
+        if (empty(trim($queryText)) && $emptyQueryRestore) {
+            $queryText = $this->processQueryTextNonDynamic($originalQueryText);
+            $this->logger->info("TestFiltersValid: Empty query text replaced with: " . $queryText);
+        }
+        if (empty(trim($queryText))) {
+            $this->logger->info("TestFiltersValid: Creating filter query as query text is empty");
             $query = $this->queryBuilder->createFilterQuery($containerConfig, $filters);
             $searchRequest = $this->requestBuilder->create(
                 $this->getCurrentStoreId(),
@@ -250,7 +289,7 @@ class SearchProcessing extends AbstractHelper
         $searchResult = $this->searchEngine->search($searchRequest);
         $numFilters = count($filters);
         $this->logger->info("Query '{$queryText}' returns {$searchResult->count()} results with its {$numFilters} filters");
-        return $searchResult->count() > 0;
+        return $searchResult->count() >= $minProds;
     }
 
     /**
@@ -258,7 +297,7 @@ class SearchProcessing extends AbstractHelper
      * @param string $queryText
      * @return array|bool
      */
-    public function getRegexMatchesRaw(string $filterType, string $queryText)
+    public function getRegexMatchesRaw(string $filterType, string $queryText): array|bool
     {
         $matches = [];
         // Any type in DYNAMIC_REGEX_TYPES should return a dummy match, so it can be processed dynamically
