@@ -716,6 +716,7 @@ class UpgradeData implements UpgradeDataInterface
         // Ensure that sinch_family and sinch_family_series display more consistently than OOTB
         $eavSetup->updateAttribute($entityTypeId, 'sinch_family', 'facet_min_coverage_rate', 50);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_family_series', 'facet_min_coverage_rate', 75);
+        $eavSetup->updateAttribute($entityTypeId, 'sinch_family_series', 'is_displayed_in_autocomplete', 0);
     }
 
     private function getConnection(): AdapterInterface

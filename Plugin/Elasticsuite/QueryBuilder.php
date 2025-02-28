@@ -77,7 +77,9 @@ class QueryBuilder
         $this->urlBuilder = $urlBuilder;
 
         $this->logger = new Logger("query_builder");
-        $this->logger->pushHandler(new StreamHandler(BP . '/var/log/search_processing.log'));
+        if ($this->helper->getStoreConfig('sinchimport/enhanced_search/enable_log_to_file') == 1) {
+            $this->logger->pushHandler(new StreamHandler(BP . '/var/log/search_processing.log'));
+        }
         $this->logger->pushHandler(new FirePHPHandler());
         $this->logger->pushHandler(new ChromePHPHandler());
         if ($this->helper->getStoreConfig('sinchimport/general/debug') != 1) {
@@ -201,6 +203,7 @@ class QueryBuilder
      * @param ContainerConfigurationInterface $containerConfig
      * @param string $queryText
      * @param QueryInterface[] $queryFilters
+     * @param string $originalQueryText
      * @return bool true if we're redirecting
      */
 	private function checkRedirect(ContainerConfigurationInterface $containerConfig, string $queryText, array $queryFilters, string $originalQueryText): bool

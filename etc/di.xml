@@ -123,4 +123,10 @@
             <argument name="storeManager" xsi:type="object">Magento\Store\Model\StoreManagerInterface\Proxy</argument>
         </arguments>
     </type>
+    <type name="SITC\Sinchimport\Plugin\Catalog\CategoryView">
+        <arguments>
+            <argument name="badgeHelper" xsi:type="object">SITC\Sinchimport\Helper\Badges\Proxy</argument>
+            <argument name="productRepository" xsi:type="object">Magento\Catalog\Model\ProductRepository\Proxy</argument>
+        </arguments>
+    </type>
 </config>

@@ -29,10 +29,10 @@ class CategoryView
      * @param Image $subject
      * @param $result
      *
-     * @return mixed|string
+     * @return string
      * @SuppressWarnings('unused')
      */
-    public function afterToHtml(Image $subject, $result)
+    public function afterToHtml(Image $subject, $result): string
     {
         foreach (array_keys(Badges::BADGE_TYPES) as $badgeType) {
             if (!$this->badgeHelper->badgeEnabled($badgeType)) {
@@ -40,19 +40,22 @@ class CategoryView
                 continue;
             }
             $badgeTypeProductId = $this->productCollection[$badgeType] ?? -1;
-            try {
-                $product = $this->productRepository->getById($badgeTypeProductId);
-            } catch (\Exception $e) {
-                continue;
-            }
-
             $badgeContent = $this->badgeHelper->getBadgeContent($badgeType) ?? '';
             $badgeTitle = $this->badgeHelper->getFormattedBadgeTitle($badgeType);
-            $productName = $product->getName();
+            $subjectProductId = $subject->getData('product_id');
+            $productName = "";
 
-            if ($productName == $subject->getLabel()) {
+            if (empty($subjectProductId)) {
+                // Found no product ID for this image, fallback to name match behaviour
+                try {
+                    $productName = $this->productRepository->getById($badgeTypeProductId)->getName();
+                } catch (\Exception $e) {
+                    continue;
+                }
+            }
+
+            if ((!empty($subjectProductId) && $badgeTypeProductId == $subjectProductId) || $productName == $subject->getLabel()) {
                 $html = "<div class='badge-1 badge-custom " . str_replace(' ', '', $badgeTitle) . "'> " . $badgeContent . "<span>" . $badgeTitle . "</span></div>";
-
                 return $result . $html;
             }
         }
@@ -60,7 +63,7 @@ class CategoryView
         return $result;
     }
 
-    public function setProductCollection($productCollection)
+    public function setProductCollection($productCollection): void
     {
         $this->productCollection = $productCollection;
     }

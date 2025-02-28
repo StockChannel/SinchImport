@@ -329,11 +329,26 @@
                 </field>
                 <field id="filter_validate_min_prods" translate="label" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Minimum matching products to consider filter valid</label>
-                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment><![CDATA[The minimum number of products required to match a filter in order for it to be considered valid.
                             A value of 0 disables the validation, slightly reducing the number of queries to ES, however it will worsen search results noticeably in some cases.
                         ]]></comment>
                     <validate>required-entry integer</validate>
+                </field>
+                <field id="enable_autocomplete_suggestions" translate="label" type="select" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable Additional Autocomplete Suggestions</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Whether to produce additional autocomplete suggestions based on automatic category filtering (non-dynamic)]]></comment>
+                    <depends>
+                        <field id="sinchimport/enhanced_search/enable_category">1</field>
+                    </depends>
+                </field>
+                <field id="enable_log_to_file" translate="label" type="select" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable Debug Logging to File</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Whether SearchProcessing and QueryBuilder also log to file in addition to the browser loggers]]></comment>
+                    <depends>
+                        <field id="sinchimport/general/debug">1</field>
+                    </depends>
                 </field>
                 <depends>
                     <field id="sinchimport/search/enable_enhanced">1</field>

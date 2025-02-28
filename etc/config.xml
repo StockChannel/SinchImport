@@ -72,6 +72,8 @@
                 <redirects_only_strip_regex_terms>0</redirects_only_strip_regex_terms>
                 <redirects_avoid_categories>1</redirects_avoid_categories>
                 <filter_validate_min_prods>1</filter_validate_min_prods>
+                <enable_autocomplete_suggestions>0</enable_autocomplete_suggestions>
+                <enable_log_to_file>0</enable_log_to_file>
             </enhanced_search>
             <popularity_boost>
                 <enable>1</enable>

@@ -99,7 +99,9 @@ class SearchProcessing extends AbstractHelper
         $this->sinchCategoriesMappingTable = $this->resourceConn->getTableName('sinch_categories_mapping');
 
         $this->logger = new Logger("search_processing");
-        $this->logger->pushHandler(new StreamHandler(BP . '/var/log/search_processing.log'));
+        if ($this->helper->getStoreConfig('sinchimport/enhanced_search/enable_log_to_file') == 1) {
+            $this->logger->pushHandler(new StreamHandler(BP . '/var/log/search_processing.log'));
+        }
         $this->logger->pushHandler(new FirePHPHandler());
         $this->logger->pushHandler(new ChromePHPHandler());
         if ($this->helper->getStoreConfig('sinchimport/general/debug') != 1) {
@@ -255,6 +257,12 @@ class SearchProcessing extends AbstractHelper
             $queryText = $this->processQueryTextNonDynamic($originalQueryText);
             $this->logger->info("TestFiltersValid: Empty query text replaced with: " . $queryText);
         }
+
+
+        // Whatever you do don't call $containerConfig->getAggregations, $this->queryBuilder->createFulltextQuery (at all), or
+        // $this->requestBuilder->create with a plain query text without the NO_PROCESSING_TAG or this will cause
+        // infinite recursion
+
         if (empty(trim($queryText))) {
             $this->logger->info("TestFiltersValid: Creating filter query as query text is empty");
             $query = $this->queryBuilder->createFilterQuery($containerConfig, $filters);
@@ -267,7 +275,7 @@ class SearchProcessing extends AbstractHelper
                 [], // sort
                 [], // filter
                 [], // built filter
-                [], // facets
+                $containerConfig->getAggregations($query), // facets
                 true
             );
         } else {
@@ -281,7 +289,7 @@ class SearchProcessing extends AbstractHelper
                 [], // sort
                 [], // filter
                 array_merge($containerConfig->getFilters(), array_values($filters)), // built filter
-                [], // facets
+                $containerConfig->getAggregations(self::NO_PROCESSING_TAG . $queryText), // facets
                 true
             );
         }
@@ -550,12 +558,17 @@ class SearchProcessing extends AbstractHelper
 
     /**
      * @param string $queryText
-     * @param bool $debug
      * @return ItemInterface[]
      */
-    public function getAutocompleteSuggestions(string $queryText, bool $debug = false): array
+    public function getAutocompleteSuggestions(string $queryText): array
     {
         $suggestions = [];
+        if ($this->helper->getStoreConfig('sinchimport/enhanced_search/enable_category') != 1
+            || $this->helper->getStoreConfig('sinchimport/enhanced_search/enable_autocomplete_suggestions') != 1) {
+            // These autocomplete suggestions rely entirely on the functionality of our non-dynamic category filter,
+            // so if it isn't enabled, just return now
+            return $suggestions;
+        }
 
         //Get an instance of the quick_search_container (so we can ask it for the aggregations it would add in that view)
         /** @var ContainerConfigurationInterface $containerConfig */
@@ -615,9 +628,8 @@ class SearchProcessing extends AbstractHelper
 
             arsort($adjustedCatMap, SORT_NUMERIC);
             foreach ($adjustedCatMap as $cat => $coverage) {
-                if ($debug) {
-                    $this->logger->info("Category {$cat} has {$coverage}% product coverage for query");
-                }
+                $this->logger->info("Category {$cat} has {$coverage}% product coverage for query");
+
                 //Add a suggestion for the aggregate
                 $suggestions[] = $this->itemFactory->create([
                     'title' => $this->formatCategoryTerm($queryText, $cat),
@@ -673,7 +685,7 @@ class SearchProcessing extends AbstractHelper
      * @param bool $processVariants
      * @return int|null
      */
-    public function getCategoryIdByName(ContainerConfigurationInterface $containerConfig, $categoryName, bool $processVariants = true): ?int
+    public function getCategoryIdByName(ContainerConfigurationInterface $containerConfig, array|string $categoryName, bool $processVariants = true): ?int
     {
         if (!is_array($categoryName)) {
             $categoryName = [$categoryName];
