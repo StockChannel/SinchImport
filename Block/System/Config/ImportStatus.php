@@ -24,8 +24,6 @@ class ImportStatus extends Field
                         "displayArea": "import_status",
                         "config": {
                             "template": "SITC_Sinchimport/import_status",
-                            "completeIcon": "' . $this->getViewFileUrl('SITC_Sinchimport::images/import_complete.gif') . '",
-                            "runningIcon": "'. $this->getViewFileUrl('SITC_Sinchimport::images/ajax_running.gif'). '",
                             "updateURL": "' . $this->getUrl('sinchimport/ajax/updateStatus') . '"
                         }
                     }

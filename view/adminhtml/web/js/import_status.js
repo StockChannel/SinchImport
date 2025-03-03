@@ -10,9 +10,7 @@ define([
         defaults: {
             //template: 'SITC_Sinchimport/import_status',
             //selector: '[data-role=sinchimport-status]',
-            updateURL: '',
-            completeIcon: '',
-            runningIcon: ''
+            updateURL: ''
         },
 
         statuses: ko.observableArray([]),

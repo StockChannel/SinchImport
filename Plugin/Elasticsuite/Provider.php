@@ -34,8 +34,7 @@ class Provider
         $this->searchHelper = $searchHelper;
         $this->queryFactory = $queryFactory;
 
-        $this->logger = new Logger("joe_search_stuff");
-        $this->logger->pushHandler(new StreamHandler(BP . '/var/log/joe_search_stuff.log'));
+        $this->logger = new Logger("es_provider");
         $this->logger->pushHandler(new FirePHPHandler());
         $this->logger->pushHandler(new ChromePHPHandler());
         if ($this->helper->getStoreConfig('sinchimport/general/debug') != 1) {

@@ -3305,8 +3305,9 @@ class Sinch {
                             'import_type' => 'PRICE STOCK'
                         ]
                     );
-                    $this->addImportStatus('Post import hooks');
+                    $this->addImportStatus('Post import hooks', true);
                 } catch (Exception $e) {
+                    $this->addImportStatus('Post import hooks', true);
                     $this->print("Caught exception while running post import hooks: " . $e->getMessage());
                 }
 
