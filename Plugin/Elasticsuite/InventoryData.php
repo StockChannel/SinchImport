@@ -1,6 +1,5 @@
 <?php
 
-
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 use Exception;
@@ -12,7 +11,6 @@ use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Logger\Logger;
 
-
 /**
  * Interceptor on Elasticsuite indexing to populate values for product stock attribute
  *
@@ -20,47 +18,26 @@ use SITC\Sinchimport\Logger\Logger;
  */
 class InventoryData
 {
-
     const LOG_PREFIX = 'InStockFilter: ';
     /**
      * Filter attribute code
      */
     const IN_STOCK_FILTER_CODE = 'sinch_in_stock';
 
-    /**
-     * @var Data
-     */
-    private $helper;
-    /**
-     * @var Logger
-     */
-    private $logger;
-    /**
-     * @var StoreManagerInterface
-     */
-    private $storeManager;
-    /**
-     * @var AdapterInterface
-     */
-    private $connection;
-    /**
-     * @var string
-     */
-    private $catalog_product_entity_varchar;
-    /**
-     * @var int
-     */
-    private $attrId;
+    private Data $helper;
+    private Logger $logger;
+    private AdapterInterface $connection;
+
+    private string $catalog_product_entity_varchar;
+    private int $attrId;
 
     public function __construct(
         Logger $logger,
-        StoreManagerInterface $storeManager,
         ResourceConnection $resourceConnection,
         Attribute $eavAttribute,
         Data $helper
     ){
         $this->logger = $logger;
-        $this->storeManager = $storeManager;
         $this->connection = $resourceConnection->getConnection();
         $this->helper = $helper;
 
@@ -82,8 +59,11 @@ class InventoryData
             return $result;
         }
         $this->log("Processing addData for store " . $storeId);
-        $inStockValue = $this->helper->getStoreConfig('sinchimport/stock/stock_filter/in_stock_value');
-        $outOfStockValue = $this->helper->getStoreConfig('sinchimport/stock/stock_filter/out_of_stock_value');
+        $inStockValue = $this->helper->getStoreConfig('sinchimport/stock/stock_filter/in_stock_value', $storeId);
+        $outOfStockValue = $this->helper->getStoreConfig('sinchimport/stock/stock_filter/out_of_stock_value', $storeId);
+        $this->log("Using in stock value {$inStockValue} for store {$storeId}");
+        $this->log("Using out of stock value {$outOfStockValue} for store {$storeId}");
+
         $this->connection->query(
             "DELETE FROM {$this->catalog_product_entity_varchar} WHERE attribute_id = :attrId AND value NOT IN (:inStock, :outStock)",
             [
@@ -109,7 +89,7 @@ class InventoryData
         return $result;
     }
 
-    private function log($msg)
+    private function log($msg): void
     {
         $this->logger->info(self::LOG_PREFIX . $msg);
     }

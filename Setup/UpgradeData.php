@@ -6,11 +6,13 @@ use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\Product;
 use Magento\CatalogInventory\Api\StockConfigurationInterface;
 use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
+use Magento\Catalog\Api\Data\EavAttributeInterface;
 use Magento\Eav\Setup\EavSetup;
 use Magento\Eav\Setup\EavSetupFactory;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Setup\UpgradeDataInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
@@ -28,15 +30,18 @@ class UpgradeData implements UpgradeDataInterface
     private $resourceConn;
     /** @var StockConfigurationInterface */
     private $stockConfig;
+    private ScopeConfigInterface $scopeConfig;
 
     public function __construct(
         EavSetupFactory $eavSetupFactory,
         ResourceConnection $resourceConn,
-        StockConfigurationInterface $stockConfig
+        StockConfigurationInterface $stockConfig,
+        ScopeConfigInterface $scopeConfig
     ){
         $this->eavSetupFactory = $eavSetupFactory;
         $this->resourceConn = $resourceConn;
         $this->stockConfig = $stockConfig;
+        $this->scopeConfig = $scopeConfig;
     }
 
     /**
@@ -80,6 +85,20 @@ class UpgradeData implements UpgradeDataInterface
         if (version_compare($context->getVersion(), '2.3.2', '<')) {
             $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', 'is_visible', 0);
+        }
+
+        if (version_compare($context->getVersion(), '2.3.3', '<')) {
+            // It has been established that this was completely pointless for rather obvious reasons...
+            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $label = $this->scopeConfig->getValue('sinchimport/stock/stock_filter/stock_filter_label') ?? 'Availability';
+            $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', EavAttributeInterface::FRONTEND_LABEL, $label);
+        }
+
+        if (version_compare($context->getVersion(), '2.3.4', '<')) {
+            // Make the attr visible again so that users can configure the label for the attribute in admin
+            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $eavSetup->updateAttribute($entityTypeId, InventoryData::IN_STOCK_FILTER_CODE, EavAttributeInterface::IS_VISIBLE, 1);
+            $eavSetup->updateAttribute($entityTypeId, InventoryData::IN_STOCK_FILTER_CODE, EavAttributeInterface::FRONTEND_LABEL, 'Availability');
         }
 
         if (version_compare($context->getVersion(), '2.4.0', '<')) {
@@ -218,15 +237,6 @@ class UpgradeData implements UpgradeDataInterface
                 'facet_min_coverage_rate' => 10
             ]
         );
-//        $attrId = $eavSetup->getAttributeId('catalog_product', InventoryData::IN_STOCK_FILTER_CODE);
-//        $options = [
-//            'values' => [
-//                'Y',
-//                'N'
-//            ],
-//            'attribute_id' => $attrId
-//        ];
-//        $eavSetup->addAttributeOption($options);
     }
 
     /**
