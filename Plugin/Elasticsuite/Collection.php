@@ -3,7 +3,7 @@
 namespace SITC\Sinchimport\Plugin\Elasticsuite;
 
 use SITC\Sinchimport\Helper\Data;
-use SITC\Sinchimport\Search\Request\Query\QueryFactory;
+use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
 
 class Collection
 {

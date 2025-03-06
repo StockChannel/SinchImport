@@ -2,7 +2,9 @@
 
 namespace SITC\Sinchimport\Plugin\Catalog\Model\Product;
 
+use Closure;
 use Magento\Framework\Image as MagentoImage;
+use Magento\Framework\Image\Factory;
 
 /**
  * @SuppressWarnings(PHPMD.UnusedFormalParameter)
@@ -25,16 +27,16 @@ class Image
     protected $_processorTmp;
 
     /**
-     * @var \Magento\Framework\Image\Factory
+     * @var Factory
      */
     protected $_imageFactory;
 
     /**
      * Image constructor.
-     * @param MagentoImage\Factory $imageFactory
+     * @param Factory $imageFactory
      */
     public function __construct(
-        \Magento\Framework\Image\Factory $imageFactory
+        Factory $imageFactory
     ) {
         $this->_imageFactory = $imageFactory;
         $this->_baseFileTmp = false;
@@ -42,7 +44,7 @@ class Image
 
     public function aroundSetBaseFile(
         \Magento\Catalog\Model\Product\Image $subject,
-        \Closure $proceed,
+        Closure $proceed,
         $file
     ) {
         $result = $proceed($file);
@@ -64,7 +66,7 @@ class Image
      */
     public function aroundGetResizedImageInfo(
         \Magento\Catalog\Model\Product\Image $subject,
-        \Closure $proceed
+        Closure $proceed
     ) {
         if ($this->_baseFileTmp) {
             return [150, 150];
@@ -78,7 +80,7 @@ class Image
      */
     public function aroundGetUrl(
         \Magento\Catalog\Model\Product\Image $subject,
-        \Closure $proceed
+        Closure $proceed
     ) {
         if ($this->_baseFileTmp) {
             return $this->_baseFileTmp;

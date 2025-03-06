@@ -1,0 +1,42 @@
+<table class='data-table history import-history'>
+    <thead>
+        <tr>
+            <th style='text-align:left;padding:15px 5px;background-color:#ccc;font-size:12pt;'>Step</th>
+            <th style='text-align:left;padding:15px 5px;background-color:#ccc;font-size:12pt;'>Status</th>
+        </tr>
+    </thead>
+    <!-- ko if: statuses().length >= 1 -->
+    <tbody data-bind="foreach: statuses">
+        <tr class="data-row">
+            <td data-bind="text: message"></td>
+            <td>
+                <!-- ko if: finished != 0 -->
+                <svg height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512">
+                    <path fill="#008000" d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/>
+                </svg>
+                <!-- /ko -->
+                <!-- ko if: finished == 0 -->
+                <svg style="max-width: 20px;" xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+                    <circle fill='none' stroke-opacity='1' stroke='#ee701e' stroke-width='.3' cx='100' cy='100' r='0'>
+                        <animate attributeName='r' calcMode='spline' dur='2' values='1;80' keyTimes='0;1' keySplines='0 .2 .5 1' repeatCount='indefinite'></animate>
+                        <animate attributeName='stroke-width' calcMode='spline' dur='2' values='0;25' keyTimes='0;1' keySplines='0 .2 .5 1' repeatCount='indefinite'></animate>
+                        <animate attributeName='stroke-opacity' calcMode='spline' dur='2' values='1;0' keyTimes='0;1' keySplines='0 .2 .5 1' repeatCount='indefinite'></animate>
+                    </circle>
+                </svg>
+                <!-- /ko -->
+            </td>
+        </tr>
+    </tbody>
+    <!-- /ko -->
+    <!-- ko if: statuses().length == 0 -->
+    <tbody><tr><td colspan="2">There is not currently an import running</td></tr></tbody>
+    <!-- /ko -->
+</table>
+<style>
+    .import-history td {
+        padding: 10px !important;
+    }
+    .import-history th {
+        padding: 10px !important;
+    }
+</style>

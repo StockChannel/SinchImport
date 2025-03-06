@@ -2,19 +2,22 @@
 
 namespace SITC\Sinchimport\Block\System\Config;
 
+use Magento\Backend\Block\Template\Context;
+use Magento\Config\Block\System\Config\Form\Field;
 use Magento\Framework\Data\Form\Element\AbstractElement;
+use SITC\Sinchimport\Model\Sinch;
 
-class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
+class Importhistory extends Field
 {
     protected $sinch;
     
     /**
-     * @param \Magento\Backend\Block\Template\Context $context
+     * @param Context $context
      * @param array                                   $data
      */
     public function __construct(
-        \Magento\Backend\Block\Template\Context $context,
-        \SITC\Sinchimport\Model\Sinch $sinch,
+        Context $context,
+        Sinch $sinch,
         array $data = []
     ) {
         parent::__construct($context, $data);
@@ -28,7 +31,7 @@ class Importhistory extends \Magento\Config\Block\System\Config\Form\Field
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      * @codeCoverageIgnore
      */
-    protected function _getElementHtml(AbstractElement $element)
+    protected function _getElementHtml(AbstractElement $element): string
     {
         $html = $this->_appendCss();
         

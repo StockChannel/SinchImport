@@ -2,12 +2,15 @@
 
 namespace SITC\Sinchimport\Plugin\Catalog\Helper;
 
+use Closure;
+use Magento\Catalog\Model\Product;
+
 class Image
 {   
     /**
      * Initialize Helper to work with Image
      *
-     * @param \Magento\Catalog\Model\Product $product
+     * @param Product $product
      * @param string                         $imageId
      * @param array                          $attributes
      *
@@ -16,7 +19,7 @@ class Image
      */
     public function aroundInit(
         \Magento\Catalog\Helper\Image $subject,
-        \Closure $proceed,
+        Closure $proceed,
         $product,
         $imageId,
         $attributes = []

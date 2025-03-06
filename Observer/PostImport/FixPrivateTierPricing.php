@@ -1,10 +1,16 @@
 <?php
 namespace SITC\Sinchimport\Observer\PostImport;
 
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Event\Observer;
+use Magento\Framework\Event\ObserverInterface;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Logger\Logger;
+
 /**
  * Fixes tier pricing for private products (ones with their base price set to 0 and tier price(s) > 0)
  */
-class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterface
+class FixPrivateTierPricing implements ObserverInterface
 {
     private $resourceConn;
     private $logger;
@@ -21,9 +27,9 @@ class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterfac
     private $prodPriceAttr;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \SITC\Sinchimport\Logger\Logger $logger,
-        \SITC\Sinchimport\Helper\Data $helper
+        ResourceConnection $resourceConn,
+        Logger $logger,
+        Data $helper
     ) {
         $this->resourceConn = $resourceConn;
         $this->logger = $logger->withName("FixPrivateTierPricing");
@@ -42,7 +48,7 @@ class FixPrivateTierPricing implements \Magento\Framework\Event\ObserverInterfac
     }
 
 
-    public function execute(\Magento\Framework\Event\Observer $observer)
+    public function execute(Observer $observer)
     {
         $this->logger->info("Fixing tier pricing for private products");
 

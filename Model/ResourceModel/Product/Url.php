@@ -2,44 +2,56 @@
 
 namespace SITC\Sinchimport\Model\ResourceModel\Product;
 
+use Magento\Catalog\Model\Category;
+use Magento\Catalog\Model\Product;
+use Magento\Catalog\Model\ProductFactory;
+use Magento\Eav\Model\Config;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\Filter\FilterManager;
+use Magento\Framework\Model\ResourceModel\Db\Context;
+use Magento\Store\Model\ScopeInterface;
+use Magento\Store\Model\StoreManagerInterface;
+use Psr\Log\LoggerInterface;
+use function strtolower;
+
 class Url extends \Magento\Catalog\Model\ResourceModel\Url
 {
     /**
-     * @var \Magento\Framework\App\Config\ScopeConfigInterface
+     * @var ScopeConfigInterface
      */
     protected $scopeConfig;
     
     /**
      * Catalog product
      *
-     * @var \Magento\Catalog\Model\Product
+     * @var Product
      */
     protected $_catalogProduct;
     
     /**
-     * @var \Magento\Framework\Filter\FilterManager
+     * @var FilterManager
      */
     protected $filter;
     
     /**
-     * @param \Magento\Framework\Model\ResourceModel\Db\Context $context
-     * @param \Magento\Store\Model\StoreManagerInterface        $storeManager
-     * @param \Magento\Eav\Model\Config                         $eavConfig
+     * @param Context $context
+     * @param StoreManagerInterface        $storeManager
+     * @param Config                         $eavConfig
      * @param \Magento\Catalog\Model\ResourceModel\Product      $productResource
-     * @param \Magento\Catalog\Model\Category                   $catalogCategory
-     * @param \Psr\Log\LoggerInterface                          $logger
+     * @param Category                   $catalogCategory
+     * @param LoggerInterface                          $logger
      * @param string                                            $connectionName
      */
     public function __construct(
-        \Magento\Framework\Model\ResourceModel\Db\Context $context,
-        \Magento\Store\Model\StoreManagerInterface $storeManager,
-        \Magento\Eav\Model\Config $eavConfig,
+        Context $context,
+        StoreManagerInterface $storeManager,
+        Config $eavConfig,
         \Magento\Catalog\Model\ResourceModel\Product $productResource,
-        \Magento\Catalog\Model\Category $catalogCategory,
-        \Psr\Log\LoggerInterface $logger,
-        \Magento\Catalog\Model\ProductFactory $catalogProduct,
-        \Magento\Framework\Filter\FilterManager $filter,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
+        Category $catalogCategory,
+        LoggerInterface $logger,
+        ProductFactory $catalogProduct,
+        FilterManager $filter,
+        ScopeConfigInterface $scopeConfig,
         $connectionName = null
     ){
         parent::__construct(
@@ -164,15 +176,15 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
     /**
      * Format Key for URL
      *
-     * @param \Magento\Catalog\Model\Product $product
+     * @param Product $product
      *
      * @return string
      */
-    public function formatUrlKey(\Magento\Catalog\Model\Product $product)
+    public function formatUrlKey(Product $product)
     {
-        $productNameTemplate = \strtolower($this->scopeConfig->getValue(
+        $productNameTemplate = strtolower($this->scopeConfig->getValue(
             'sinchimport/seo/product_name_template',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_STORE
         ));
 
         $validReplacements = [
@@ -198,13 +210,13 @@ class Url extends \Magento\Catalog\Model\ResourceModel\Url
     /**
      * Save product attribute
      *
-     * @param \Magento\Catalog\Model\Product $product
+     * @param Product $product
      * @param string                         $attributeCode
      *
-     * @return \SITC\Sinchimport\Model\ResourceModel\Product\Url
+     * @return Url
      */
     public function saveProductAttribute(
-        \Magento\Catalog\Model\Product $product,
+        Product $product,
         $attributeCode
     ) {
         $connection = $this->getConnection();

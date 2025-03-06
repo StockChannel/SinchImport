@@ -2,6 +2,8 @@
 
 namespace SITC\Sinchimport\Setup;
 
+use Magento\Catalog\Model\Product;
+use Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface;
 use Magento\Eav\Setup\EavSetup;
 use Magento\Eav\Setup\EavSetupFactory;
 use Magento\Framework\Setup\InstallDataInterface;
@@ -51,7 +53,7 @@ class InstallData implements InstallDataInterface
         
         foreach ($attrVarchar as $key => $value) {
             $eavSetup->addAttribute(
-                \Magento\Catalog\Model\Product::ENTITY,
+                Product::ENTITY,
                 $key,
                 [
                     'label'                      => $value,
@@ -60,7 +62,7 @@ class InstallData implements InstallDataInterface
                     'backend'                    => '',
                     'frontend'                   => '',
                     'source'                     => '',
-                    'global'                     => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                    'global'                     => ScopedAttributeInterface::SCOPE_GLOBAL,
                     'visible'                    => true,
                     'required'                   => false,
                     'user_defined'               => false,
@@ -80,7 +82,7 @@ class InstallData implements InstallDataInterface
         
         foreach ($attrText as $key => $value) {
             $eavSetup->addAttribute(
-                \Magento\Catalog\Model\Product::ENTITY,
+                Product::ENTITY,
                 $key,
                 [
                     'label'                      => $value,
@@ -89,7 +91,7 @@ class InstallData implements InstallDataInterface
                     'backend'                    => '',
                     'frontend'                   => '',
                     'source'                     => '',
-                    'global'                     => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                    'global'                     => ScopedAttributeInterface::SCOPE_GLOBAL,
                     'visible'                    => true,
                     'required'                   => false,
                     'user_defined'               => false,
@@ -119,7 +121,7 @@ class InstallData implements InstallDataInterface
             ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
-                \Magento\Catalog\Model\Product::ENTITY
+                Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
@@ -143,7 +145,7 @@ class InstallData implements InstallDataInterface
             ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
-                \Magento\Catalog\Model\Product::ENTITY
+                Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
@@ -177,7 +179,7 @@ class InstallData implements InstallDataInterface
         
         foreach ($attrText as $key => $value) {
             $eavSetup->addAttribute(
-                \Magento\Catalog\Model\Product::ENTITY,
+                Product::ENTITY,
                 $key,
                 [
                     'label'                      => $value,
@@ -186,7 +188,7 @@ class InstallData implements InstallDataInterface
                     'backend'                    => '',
                     'frontend'                   => '',
                     'source'                     => '',
-                    'global'                     => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                    'global'                     => ScopedAttributeInterface::SCOPE_GLOBAL,
                     'visible'                    => true,
                     'required'                   => false,
                     'user_defined'               => false,
@@ -207,7 +209,7 @@ class InstallData implements InstallDataInterface
             ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
-                \Magento\Catalog\Model\Product::ENTITY
+                Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
@@ -226,7 +228,7 @@ class InstallData implements InstallDataInterface
         
         foreach ($attrText as $key => $value) {
             $eavSetup->addAttribute(
-                \Magento\Catalog\Model\Product::ENTITY,
+                Product::ENTITY,
                 $key,
                 [
                     'label'                      => $value,
@@ -235,7 +237,7 @@ class InstallData implements InstallDataInterface
                     'backend'                    => '',
                     'frontend'                   => '',
                     'source'                     => '',
-                    'global'                     => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                    'global'                     => ScopedAttributeInterface::SCOPE_GLOBAL,
                     'visible'                    => true,
                     'required'                   => false,
                     'user_defined'               => false,
@@ -251,7 +253,7 @@ class InstallData implements InstallDataInterface
             );
             
             $eavSetup->updateAttribute(
-                \Magento\Catalog\Model\Product::ENTITY,
+                Product::ENTITY,
                 $key,
                 'is_searchable',
                 '1'
@@ -264,7 +266,7 @@ class InstallData implements InstallDataInterface
         
         foreach ($attrVarchar as $key => $value) {
             $eavSetup->addAttribute(
-                \Magento\Catalog\Model\Product::ENTITY,
+                Product::ENTITY,
                 $key,
                 [
                     'label'                      => $value,
@@ -273,7 +275,7 @@ class InstallData implements InstallDataInterface
                     'backend'                    => '',
                     'frontend'                   => '',
                     'source'                     => '',
-                    'global'                     => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                    'global'                     => ScopedAttributeInterface::SCOPE_GLOBAL,
                     'visible'                    => true,
                     'required'                   => false,
                     'user_defined'               => false,
@@ -292,7 +294,7 @@ class InstallData implements InstallDataInterface
             ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
-                \Magento\Catalog\Model\Product::ENTITY
+                Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
@@ -315,7 +317,7 @@ class InstallData implements InstallDataInterface
         
         foreach ($attrVarchar as $key => $value) {
             $eavSetup->addAttribute(
-                \Magento\Catalog\Model\Product::ENTITY,
+                Product::ENTITY,
                 $key,
                 [
                     'label'                      => $value,
@@ -324,7 +326,7 @@ class InstallData implements InstallDataInterface
                     'backend'                    => '',
                     'frontend'                   => '',
                     'source'                     => '',
-                    'global'                     => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                    'global'                     => ScopedAttributeInterface::SCOPE_GLOBAL,
                     'visible'                    => true,
                     'required'                   => false,
                     'user_defined'               => false,
@@ -343,7 +345,7 @@ class InstallData implements InstallDataInterface
             ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
-                \Magento\Catalog\Model\Product::ENTITY
+                Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(
@@ -362,7 +364,7 @@ class InstallData implements InstallDataInterface
         
         foreach ($attrVarchar as $key => $value) {
             $eavSetup->addAttribute(
-                \Magento\Catalog\Model\Product::ENTITY,
+                Product::ENTITY,
                 $key,
                 [
                     'label'                      => $value,
@@ -371,7 +373,7 @@ class InstallData implements InstallDataInterface
                     'backend'                    => '',
                     'frontend'                   => '',
                     'source'                     => '',
-                    'global'                     => \Magento\Eav\Model\Entity\Attribute\ScopedAttributeInterface::SCOPE_GLOBAL,
+                    'global'                     => ScopedAttributeInterface::SCOPE_GLOBAL,
                     'visible'                    => true,
                     'required'                   => false,
                     'user_defined'               => false,
@@ -390,7 +392,7 @@ class InstallData implements InstallDataInterface
             ];
             
             $entityTypeId = $eavSetup->getEntityTypeId(
-                \Magento\Catalog\Model\Product::ENTITY
+                Product::ENTITY
             );
             
             if ($id = $eavSetup->getAttribute(

@@ -2,9 +2,11 @@
 
 namespace SITC\Sinchimport\Model\Config\Source;
 
-class Caterewrite implements \Magento\Framework\Option\ArrayInterface
+use Magento\Framework\Option\ArrayInterface;
+
+class Caterewrite implements ArrayInterface
 {
-    public function toOptionArray()
+    public function toOptionArray(): array
     {
         return [
             ['value' => 'REWRITE', 'label' => 'Overwrite'],
@@ -12,7 +14,7 @@ class Caterewrite implements \Magento\Framework\Option\ArrayInterface
         ];
     }
     
-    public function toArray()
+    public function toArray(): array
     {
         return [
             'REWRITE' => 'Overwrite',

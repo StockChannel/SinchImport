@@ -1,13 +1,17 @@
 <?php
 namespace SITC\Sinchimport\Plugin;
+use Magento\Catalog\Model\ResourceModel\Product\Collection;
+use Magento\Framework\DB\Select;
+use SITC\Sinchimport\Helper\Data;
+
 class Layer {
     /**
-     * @var \SITC\Sinchimport\Helper\Data
+     * @var Data
      */
     private $helper;
 
     public function __construct(
-        \SITC\Sinchimport\Helper\Data $helper
+        Data $helper
     ){
         $this->helper = $helper;
     }
@@ -16,7 +20,7 @@ class Layer {
      * Initialize product collection
      *
      * @param \Magento\Catalog\Model\Layer
-     * @param \Magento\Catalog\Model\ResourceModel\Product\Collection $collection
+     * @param Collection $collection
      * @return \Magento\Catalog\Model\Layer
      */
     public function beforePrepareProductCollection($subject, $collection)
@@ -31,7 +35,7 @@ class Layer {
             $collection->getSelect()->where(
                 "(at_sinch_restrict.value IS NULL OR (LEFT(at_sinch_restrict.value, 1) != '!' AND FIND_IN_SET({$account_group_id}, at_sinch_restrict.value) >= 1) OR (LEFT(at_sinch_restrict.value, 1) = '!' AND FIND_IN_SET({$account_group_id}, SUBSTR(at_sinch_restrict.value,2)) = 0))",
                 null,
-                \Magento\Framework\DB\Select::TYPE_CONDITION
+                Select::TYPE_CONDITION
             );
         }
 

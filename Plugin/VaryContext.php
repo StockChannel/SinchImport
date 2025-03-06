@@ -2,6 +2,12 @@
 
 namespace SITC\Sinchimport\Plugin;
 
+use Magento\Customer\Model\Session;
+use Magento\Framework\App\Action\AbstractAction;
+use Magento\Framework\App\Http\Context;
+use Magento\Framework\App\RequestInterface;
+use SITC\Sinchimport\Helper\Data;
+
 /**
  * Plugin on \Magento\Framework\App\Action\AbstractAction, adding account group to the HTTP context
  */
@@ -15,9 +21,9 @@ class VaryContext {
     private $helper;
 
     public function __construct(
-        \Magento\Customer\Model\Session $customerSession,
-        \Magento\Framework\App\Http\Context $httpContext,
-        \SITC\Sinchimport\Helper\Data $helper
+        Session $customerSession,
+        Context $httpContext,
+        Data $helper
     ) {
         $this->customerSession = $customerSession;
         $this->httpContext = $httpContext;
@@ -32,7 +38,7 @@ class VaryContext {
      * @return void
      * @SuppressWarnings(PHPMD.UnusedFormalParameter)
      */
-    public function beforeDispatch(\Magento\Framework\App\Action\AbstractAction $subject, \Magento\Framework\App\RequestInterface $request)
+    public function beforeDispatch(AbstractAction $subject, RequestInterface $request)
     {
         $account_group_id = static::DEFAULT_ACCOUNT_GROUP;
         if ($this->helper->isModuleEnabled('Tigren_CompanyAccount') && $this->customerSession->isLoggedIn()) {

@@ -18,4 +18,35 @@
     <type name="Smile\ElasticsuiteCatalog\Model\ResourceModel\Product\Fulltext\Collection">
         <plugin name="sitc_customcatalog_product_collection" type="SITC\Sinchimport\Plugin\Elasticsuite\Collection" sortOrder="0" />
     </type>
+
+    <!-- Start search stuff -->
+    <type name="Smile\ElasticsuiteCore\Api\Index\MappingInterface">
+        <plugin name="sitc_search_mapping" type="SITC\Sinchimport\Plugin\Elasticsuite\Mapping" />
+    </type>
+    <type name="Smile\ElasticsuiteCore\Search\Request\Query\Fulltext\QueryBuilder">
+        <!-- Specify sort order to ensure that optimizers run as expected -->
+        <plugin name="sitc_query_builder" type="SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder" sortOrder="0"/>
+    </type>
+    <type name="Smile\ElasticsuiteCore\Model\Autocomplete\Terms\DataProvider">
+        <!-- Specify sort order to ensure that optimizers run as expected -->
+        <plugin name="sitc_data_provider" type="SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete\TermsDataProvider" sortOrder="0"/>
+    </type>
+    <!-- Override Elasticsuite's Product attribute autocomplete DataProvider to change suggestion ordering -->
+    <type name="Smile\ElasticsuiteCatalog\Model\Autocomplete\Product\Attribute\DataProvider">
+        <plugin name="sitc_attribute_autocomplete_reorder" type="SITC\Sinchimport\Plugin\Elasticsuite\Autocomplete\ProductAttributeDataProvider" sortOrder="0"/>
+    </type>
+    <!-- Interceptor on the category page load query -->
+    <type name="Smile\ElasticsuiteCore\Search\Request\Query\Builder">
+        <plugin name="sitc_category_provider" type="SITC\Sinchimport\Plugin\Elasticsuite\Provider" sortOrder="0"/>
+    </type>
+    <type name="Magento\Catalog\Block\Product\Image">
+        <plugin name="sitc_product_badges" type="SITC\Sinchimport\Plugin\Catalog\CategoryView" sortOrder="0"/>
+    </type>
+    <!-- End search stuff-->
+
+    <!-- Interceptor for getProductDetailsHtml on ListProduct (or possibly the base AbstractProduct) blocks so we can
+        render our keyfeatures block on themes where it won't natively -->
+    <type name="Magento\Catalog\Block\Product\ListProduct">
+        <plugin name="sitc_keyfeatures_list" type="SITC\Sinchimport\Plugin\InjectFeaturesBlock" sortOrder="0"/>
+    </type>
 </config>

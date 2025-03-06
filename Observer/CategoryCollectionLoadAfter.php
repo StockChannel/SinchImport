@@ -1,28 +1,36 @@
 <?php
 namespace SITC\Sinchimport\Observer;
 
-class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverInterface
+use Magento\Catalog\Model\Category;
+use Magento\Catalog\Model\ResourceModel\Category\Collection;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Event\Observer;
+use Magento\Framework\Event\ObserverInterface;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Model\Import\AccountGroupCategories;
+
+class CategoryCollectionLoadAfter implements ObserverInterface
 {
-    private $resourceConn;
-    private $helper;
+    private ResourceConnection $resourceConn;
+    private Data $helper;
 
     /** 
      * Holds the table name for the visibility mapping
      * @var string
      */
-    private $catVisTable;
+    private string $catVisTable;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \SITC\Sinchimport\Helper\Data $helper
+        ResourceConnection $resourceConn,
+        Data $helper
     ) {
         $this->resourceConn = $resourceConn;
         $this->helper = $helper;
-        $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE);
+        $this->catVisTable = $this->resourceConn->getTableName(AccountGroupCategories::MAPPING_TABLE);
     }
 
 
-    public function execute(\Magento\Framework\Event\Observer $observer)
+    public function execute(Observer $observer): void
     {
         if(!$this->helper->isCategoryVisibilityEnabled()){
             return; //No filtering if the feature isn't enabled
@@ -33,7 +41,7 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
             return; //this is a guest (don't filter)
         }
 
-        /** @var \Magento\Catalog\Model\ResourceModel\Category\Collection $categoryCollection */
+        /** @var Collection $categoryCollection */
         $filteredCategoryCollection = $observer->getCategoryCollection();
         $categoryCollection = clone $filteredCategoryCollection;
         $filteredCategoryCollection->removeAllItems();
@@ -45,7 +53,7 @@ class CategoryCollectionLoadAfter implements \Magento\Framework\Event\ObserverIn
         );
         $noRestrict = empty($visible_cats);
 
-        /** @var \Magento\Catalog\Model\Category $category */
+        /** @var Category $category */
         foreach ($categoryCollection as $category) {
             $sinch_cat_id = $category->getStoreCategoryId();
 

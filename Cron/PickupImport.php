@@ -2,27 +2,32 @@
 
 namespace SITC\Sinchimport\Cron;
 
+use Exception;
+use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Logger\Logger;
+use SITC\Sinchimport\Model\Sinch;
+
 /**
  * Pickup new import runs from the database (triggered by admin panel), and start them
  */
 class PickupImport
 {
-    /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
+    /** @var ResourceConnection $resourceConn */
     private $resourceConn;
 
-    /** @var \SITC\Sinchimport\Model\Sinch $sinch */
+    /** @var Sinch $sinch */
     private $sinch;
 
-    /** @var \SITC\Sinchimport\Logger\Logger $logger */
+    /** @var Logger $logger */
     private $logger;
 
     //Table name
     private $importStatusTable;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \SITC\Sinchimport\Model\Sinch $sinch,
-        \SITC\Sinchimport\Logger\Logger $logger
+        ResourceConnection $resourceConn,
+        Sinch $sinch,
+        Logger $logger
     ) {
         $this->resourceConn = $resourceConn;
         $this->sinch = $sinch;
@@ -54,7 +59,7 @@ class PickupImport
                 AND start_import > NOW() - INTERVAL 5 MINUTE"
         );
 
-        if(!empty($importType) && !$this->sinch->isImportNotRun()) {
+        if(!empty($importType) && !$this->sinch->canImport()) {
             //Import scheduled, but one is already running
             $this->logger->info("An import of type '{$importType}' is scheduled, but an import is already running");
             return;
@@ -75,7 +80,7 @@ class PickupImport
                         $this->logger->info("Unknown import type: " . $importType);
                         break;
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 $this->logger->warning("Caught exception while running import: " . $e->getMessage());
             }
         }

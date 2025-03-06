@@ -2,27 +2,23 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
 use Magento\Framework\App\State as AppState;
+use Magento\Framework\Console\Cli;
+use Magento\Framework\Event\ManagerInterface;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class DebugPostImportCommand extends Command
 {
-    /**
-     * @var AppState
-     */
-    protected $_appState;
-    
-    /**
-     * @var \Magento\Framework\Event\ManagerInterface
-     */
-    protected $eventManager;
+    protected AppState $_appState;
+    protected ManagerInterface $eventManager;
     
     
     public function __construct(
         AppState $appState,
-        \Magento\Framework\Event\ManagerInterface $eventManager
+        ManagerInterface $eventManager
     ) {
         parent::__construct();
         $this->_appState = $appState;
@@ -32,7 +28,7 @@ class DebugPostImportCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('sinch:debug:post-import');
         $this->setDescription('Runs post import handlers');
@@ -41,7 +37,7 @@ class DebugPostImportCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $output->writeln("Dispatching post-import event");
@@ -53,10 +49,10 @@ class DebugPostImportCommand extends Command
                 ]
             );
             $output->writeln("Ran post import hooks without error, see log for more details");
-            return \Magento\Framework\Console\Cli::RETURN_SUCCESS;
-        } catch (\Exception $e) {
+            return Cli::RETURN_SUCCESS;
+        } catch (Exception $e) {
             $output->writeln("<error>{$e->getMessage()}</error>");
         }
-        return \Magento\Framework\Console\Cli::RETURN_FAILURE;
+        return Cli::RETURN_FAILURE;
     }
 }

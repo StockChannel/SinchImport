@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<!--
+/**
+ * Copyright © Magento, Inc. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+<page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
+    <body>
+        <referenceContainer name="content">
+            <!-- Requires help from Plugin/InjectFeaturesBlock or the theme (if its martfury) to render -->
+            <referenceBlock name="category.products.list">
+                <block class="Magento\Catalog\Block\Product\ProductList\Item\Container" name="category.product.keyfeatures" as="keyfeatures">
+                    <block class="Magento\Catalog\Block\Product\ProductList\Item\Block" name="category.product.keyfeatures.summary" as="summary"
+                           ifconfig="sinchimport/attributes/summary_features" template="SITC_Sinchimport::key-features.phtml">
+                    </block>
+                    <block class="Magento\Catalog\Block\Product\ProductList\Item\Block" name="category.product.keyfeatures.bullet_points" as="bullet_points"
+                           ifconfig="sinchimport/attributes/bullet_points" template="SITC_Sinchimport::bullet-points.phtml">
+                    </block>
+                </block>
+            </referenceBlock>
+        </referenceContainer>
+    </body>
+</page>

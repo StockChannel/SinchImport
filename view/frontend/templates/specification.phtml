@@ -1,0 +1,45 @@
+<?php
+	$product = $block->getProduct();
+	$specs = $product->getData('specification');
+	if ( !empty($specs) ) :
+		echo '<div class=" specification-table-wrapper"><div class="specification-table-content">';
+		$specTrim = explode("<tbody>", $specs);
+		$specTrim = explode("</tbody>", $specTrim[1]);
+		$specTable = $specTrim[0];
+		
+		$rows = explode("<tr><th colspan=\"2\" class=\"text-left\">", $specTable);
+		$totalRows = count($rows);
+		$firsthalf = array_slice($rows, 0, (int)($totalRows / 2 + 0.5));
+		$secondhalf = array_slice($rows, (int)($totalRows / 2 + 0.5), $totalRows);
+
+		echo '<div class="row">';
+
+			echo '<div class="col-md-6">';
+
+				echo '<table class="table-left"><tbody>';
+				$i = -1;
+				foreach($firsthalf as $row){
+					$i++;
+					if ($i > 0) {
+						echo '<tr><th colspan="2">'. $row;
+					}
+				}
+				echo '</tbody></table>';
+
+			echo '</div>';
+
+			echo '<div class="col-md-6">';
+			
+				echo '<table class="table-right"><tbody>';
+				foreach($secondhalf as $row){
+					echo '<tr><th colspan="2">'. $row;
+				}
+				echo '</tbody></table>';
+
+			echo '</div>';
+	
+		echo '</div>';
+
+		echo '</div></div>';
+	endif;
+?>

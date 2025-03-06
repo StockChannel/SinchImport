@@ -1,6 +1,11 @@
 <?php
 namespace SITC\Sinchimport\Plugin;
 
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Module\Manager;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Model\Import\Attributes;
+
 class FilterList
 {
     private $moduleManager;
@@ -10,9 +15,9 @@ class FilterList
     private $filterCategoryTable;
 
     public function __construct(
-        \Magento\Framework\Module\Manager $moduleManager,
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \SITC\Sinchimport\Helper\Data $helper
+        Manager $moduleManager,
+        ResourceConnection $resourceConn,
+        Data $helper
     ){
         $this->moduleManager = $moduleManager;
         $this->resourceConn = $resourceConn;
@@ -52,12 +57,12 @@ class FilterList
 
         foreach($result as $idx => $abstractFilter) {
             $attributeCode = $abstractFilter->getRequestVar();
-            if (strpos($attributeCode, \SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX) !== 0){
+            if (strpos($attributeCode, Attributes::ATTRIBUTE_PREFIX) !== 0){
                 //Not a sinch attribute
                 continue;
             }
 
-            $sinch_id = substr($attributeCode, strlen(\SITC\Sinchimport\Model\Import\Attributes::ATTRIBUTE_PREFIX));
+            $sinch_id = substr($attributeCode, strlen(Attributes::ATTRIBUTE_PREFIX));
 
             //If $sinch_feature_ids doesn't contain this filters sinch id, remove it from the results
             if(!in_array($sinch_id, $sinch_feature_ids)) {
@@ -70,6 +75,6 @@ class FilterList
 
     private function getConnection()
     {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
+        return $this->resourceConn->getConnection(ResourceConnection::DEFAULT_CONNECTION);
     }
 }

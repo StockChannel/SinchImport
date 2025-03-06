@@ -2,52 +2,34 @@
 
 namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
+use Magento\Backend\App\Action;
+use Magento\Backend\App\Action\Context;
+use Magento\Framework\Controller\Result\JsonFactory;
+use Magento\Framework\Filesystem\DirectoryList;
+use Magento\Framework\Json\EncoderInterface;
+use SITC\Sinchimport\Logger\Logger;
+use SITC\Sinchimport\Model\Sinch;
+
 /**
  * Class CustomerGroupsPrice
  * @package SITC\Sinchimport\Controller\Adminhtml\Ajax
  */
-class CustomerGroupsPrice extends \Magento\Backend\App\Action
+class CustomerGroupsPrice extends Action
 {
-    /**
-     * @var \Magento\Framework\Controller\Result\JsonFactory
-     */
-    protected $resultJsonFactory;
+    protected JsonFactory $resultJsonFactory;
+    protected Logger $_logger;
+    protected EncoderInterface $_jsonEncoder;
+    protected Sinch $sinch;
+    protected DirectoryList $_directory;
 
-    /**
-     * Logging instance
-     *
-     * @var \SITC\Sinchimport\Logger\Logger
-     */
-    protected $_logger;
 
-    /**
-     * @var \Magento\Framework\Json\EncoderInterface
-     */
-    protected $_jsonEncoder;
-
-    /**
-     * @var \SITC\Sinchimport\Model\Sinch
-     */
-    protected $sinch;
-
-    /**
-     * @var \Magento\Framework\Filesystem\DirectoryList
-     */
-    protected $_directory;
-
-    /**
-     * @param \Magento\Backend\App\Action\Context $context
-     * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\Json\EncoderInterface $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger $logger
-     */
     public function __construct(
-        \Magento\Backend\App\Action\Context $context,
-        \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
-        \Magento\Framework\Json\EncoderInterface $jsonEncoder,
-        \SITC\Sinchimport\Model\Sinch $sinch,
-        \SITC\Sinchimport\Logger\Logger $logger,
-        \Magento\Framework\Filesystem\DirectoryList $directoryList
+        Context $context,
+        JsonFactory $resultJsonFactory,
+        EncoderInterface $jsonEncoder,
+        Sinch $sinch,
+        Logger $logger,
+        DirectoryList $directoryList
     ) {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
@@ -68,11 +50,11 @@ class CustomerGroupsPrice extends \Magento\Backend\App\Action
 
         $rootDir = $this->_directory->getRoot() . '/';
 
-        if (!$this->sinch->isImportNotRun()) {
+        if (!$this->sinch->canImport()) {
             $result = [
                 'success' => false,
                 'message' => 'Import is running now! Please wait...',
-                'reload' => !$this->sinch->isImportNotRun() && !empty($lastImportData) && $lastImportData['import_type'] == 'FULL'
+                'reload' => !$this->sinch->canImport() && !empty($lastImportData) && $lastImportData['import_type'] == 'FULL'
             ];
         } else {
             exec(
@@ -96,7 +78,7 @@ class CustomerGroupsPrice extends \Magento\Backend\App\Action
      *
      * @return bool
      */
-    protected function _isAllowed()
+    protected function _isAllowed(): bool
     {
         return true;
     }

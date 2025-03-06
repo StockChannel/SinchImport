@@ -1,41 +1,36 @@
 <?php
 namespace SITC\Sinchimport\Plugin;
 
+use Magento\Catalog\Model\Category;
+use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Logger\Logger;
+use SITC\Sinchimport\Model\Import\AccountGroupCategories;
+
 class CategoryVisibility {
-    /**
-     * @var \Magento\Framework\App\ResourceConnection
-     */
-    private $resourceConn;
-
-    /**
-     * @var \SITC\Sinchimport\Logger\Logger
-     */
-    private $logger;
-
-    /**
-     * @var \SITC\Sinchimport\Helper\Data
-     */
-    private $helper;
+    private ResourceConnection $resourceConn;
+    private Logger $logger;
+    private Data $helper;
 
     /**
      * The table name of the category visibility mapping
      *
      * @var string
      */
-    private $catVisTable;
+    private string $catVisTable;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \SITC\Sinchimport\Logger\Logger $logger,
-        \SITC\Sinchimport\Helper\Data $helper
+        ResourceConnection $resourceConn,
+        Logger $logger,
+        Data $helper
     ){
         $this->resourceConn = $resourceConn;
         $this->logger = $logger;
         $this->helper = $helper;
-        $this->catVisTable = $this->resourceConn->getTableName(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE);
+        $this->catVisTable = $this->resourceConn->getTableName(AccountGroupCategories::MAPPING_TABLE);
     }
 
-    public function aroundGetIsActive(\Magento\Catalog\Model\Category $subject, $proceed)
+    public function aroundGetIsActive(Category $subject, $proceed)
     {
         if (!$this->isCategoryVisible($subject)) {
             //Prevents the category being visible by direct navigation (i.e. if they have the link)
@@ -47,10 +42,10 @@ class CategoryVisibility {
     /**
      * Establishes whether a category is visible to the current user
      *
-     * @param \Magento\Catalog\Model\Category $category
+     * @param Category $category
      * @return bool
      */
-    private function isCategoryVisible(\Magento\Catalog\Model\Category $category)
+    private function isCategoryVisible(Category $category): bool
     {
         if (!$this->helper->isCategoryVisibilityEnabled()) {
             return true;

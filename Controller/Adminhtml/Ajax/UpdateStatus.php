@@ -2,36 +2,44 @@
 
 namespace SITC\Sinchimport\Controller\Adminhtml\Ajax;
 
-class UpdateStatus extends \Magento\Backend\App\Action
+use Magento\Backend\App\Action;
+use Magento\Backend\App\Action\Context;
+use Magento\Framework\Controller\Result\Json;
+use Magento\Framework\Controller\Result\JsonFactory;
+use SITC\Sinchimport\Logger\Logger;
+use SITC\Sinchimport\Model\Sinch;
+
+class UpdateStatus extends Action
 {
     /**
-     * @var \Magento\Framework\Controller\Result\JsonFactory
+     * @var JsonFactory
      */
     protected $resultJsonFactory;
     
     /**
      * Logging instance
      *
-     * @var \SITC\Sinchimport\Logger\Logger
+     * @var Logger
      */
     protected $_logger;
     
     protected $_jsonEncoder;
     
     protected $sinch;
-    
+
     /**
-     * @param \Magento\Backend\App\Action\Context              $context
-     * @param \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory
-     * @param \Magento\Framework\Json\EncoderInterface         $jsonEncoder
-     * @param \SITC\Sinchimport\Logger\Logger                  $logger
+     * @param Context $context
+     * @param JsonFactory $resultJsonFactory
+     * @param \Magento\Framework\Serialize\Serializer\Json $jsonEncoder
+     * @param Sinch $sinch
+     * @param Logger $logger
      */
     public function __construct(
-        \Magento\Backend\App\Action\Context $context,
-        \Magento\Framework\Controller\Result\JsonFactory $resultJsonFactory,
-        \Magento\Framework\Json\EncoderInterface $jsonEncoder,
-        \SITC\Sinchimport\Model\Sinch $sinch,
-        \SITC\Sinchimport\Logger\Logger $logger
+        Context $context,
+        JsonFactory $resultJsonFactory,
+        \Magento\Framework\Serialize\Serializer\Json $jsonEncoder,
+        Sinch $sinch,
+        Logger $logger
     ) {
         parent::__construct($context);
         $this->resultJsonFactory = $resultJsonFactory;
@@ -43,13 +51,13 @@ class UpdateStatus extends \Magento\Backend\App\Action
     /**
      * Category list suggestion based on already entered symbols
      *
-     * @return \Magento\Framework\Controller\Result\Json
+     * @return Json
      */
-    public function execute()
+    public function execute(): Json
     {
         $resultJson = $this->resultJsonFactory->create();
         $messageData = $this->sinch->getImportStatuses();
-        return $resultJson->setJsonData($this->_jsonEncoder->encode($messageData));
+        return $resultJson->setJsonData($this->_jsonEncoder->serialize($messageData));
     }
     
     /**
@@ -57,7 +65,7 @@ class UpdateStatus extends \Magento\Backend\App\Action
      *
      * @return bool
      */
-    protected function _isAllowed()
+    protected function _isAllowed(): bool
     {
         return true;
     }

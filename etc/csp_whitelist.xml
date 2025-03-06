@@ -12,5 +12,10 @@
                 <value id="sinch_quotes" type="host">*.quotes.stockinthechannel.co.uk</value>
             </values>
         </policy>
+        <policy id="media-src">
+            <values>
+                <value id="icecat_objects" type="host">objects.icecat.biz</value>
+            </values>
+        </policy>
     </policies>
 </csp_whitelist>

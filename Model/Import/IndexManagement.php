@@ -10,6 +10,7 @@ use Magento\Framework\Indexer\StateInterfaceFactory;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Logger\Logger;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use function time;
 
 class IndexManagement {
     /** @var StateInterfaceFactory $stateFactory */
@@ -52,7 +53,7 @@ class IndexManagement {
      * 
      * @return bool True if no indexers are currently in the "working" state
      */
-    public function ensureIndexersNotRunning()
+    public function ensureIndexersNotRunning(): bool
     {
         $waitForIndexers = $this->helper->getStoreConfig('sinchimport/general/wait_for_index_completion');
         if($waitForIndexers) {
@@ -67,7 +68,7 @@ class IndexManagement {
      * 
      * @return bool
      */
-    private function noIndexersRunning()
+    private function noIndexersRunning(): bool
     {
         foreach(array_keys($this->indexerConfig->getIndexers()) as $indexerId) {
             $indexerState = $this->stateFactory->create();
@@ -84,12 +85,12 @@ class IndexManagement {
      * 
      * @return void
      */
-    private function waitForIndexCompletion()
+    private function waitForIndexCompletion(): void
     {
-        $waitStart = \time();
+        $waitStart = time();
         while(!$this->noIndexersRunning()) {
             sleep(5);
-            $now = \time();
+            $now = time();
             if($now - $waitStart > 1800) {
                 $this->print("Waited 30 minutes for index completion, abandoning...");
                 break;
@@ -97,7 +98,7 @@ class IndexManagement {
         }
     }
 
-    private function print($message)
+    private function print(string $message): void
     {
         $this->output->writeln($message);
         $this->logger->info($message);
@@ -108,7 +109,7 @@ class IndexManagement {
      * @param string $indexerName
      * @return void
      */
-    public function invalidateIndex(string $indexerName)
+    public function invalidateIndex(string $indexerName): void
     {
         $indexer = $this->indexerRegistry->get($indexerName);
         $indexer->invalidate();
@@ -119,10 +120,14 @@ class IndexManagement {
      * @param string $indexerName
      * @return void
      */
-    public function runIndex(string $indexerName)
+    public function runIndex(string $indexerName): void
     {
-        $indexer = $this->indexerRegistry->get($indexerName);
-        $indexActions = $this->indexActionFactory->create($indexer->getActionClass());
-        $indexActions->executeFull();
+        //Only actually run the index if "Indexing separately" is off and the current import is not a full import
+        // (as the full import runs a full reindex at the end anyway and its just a waste of time to do the index twice)
+        if (!$this->helper->indexSeparately() && $this->helper->currentImportType() != 'FULL') {
+            $indexer = $this->indexerRegistry->get($indexerName);
+            $indexActions = $this->indexActionFactory->create($indexer->getActionClass());
+            $indexActions->executeFull();
+        }
     }
 }

@@ -6,17 +6,37 @@
 
 namespace SITC\Sinchimport\Setup;
 
+use Magento\Framework\DB\Adapter\AdapterInterface;
+use Magento\Framework\Module\Dir;
 use Magento\Framework\Setup\UpgradeSchemaInterface;
 use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\SchemaSetupInterface;
 use Magento\Framework\DB\Ddl\Table;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Model\Import\AccountGroupCategories;
 use SITC\Sinchimport\Model\Import\StockPrice;
+use Zend_Db_Exception;
 
 /**
  * @codeCoverageIgnore
  */
 class UpgradeSchema implements UpgradeSchemaInterface
 {
+
+	const SYNONYM_FILE = 'es_synonyms.csv';
+
+	const THESAURUS_TABLE = 'smile_elasticsuite_thesaurus';
+	const THESAURUS_STORE_TABLE = 'smile_elasticsuite_thesaurus_store';
+	const THESAURUS_TERMS_TABLE = 'smile_elasticsuite_thesaurus_expanded_terms';
+
+	/** @var Data */
+	private $helper;
+
+	public function __construct(Data $helper)
+	{
+		$this->helper = $helper;
+	}
+
     /**
      * {@inheritdoc}
      */
@@ -25,7 +45,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
         $installer = $setup;
         $installer->startSetup();
 
-        if (version_compare($context->getVersion(), '2.1.1', '<')) {
+	    if (version_compare($context->getVersion(), '2.1.1', '<')) {
             $connection = $installer->getConnection();
             $mappingTable = $installer->getTable('sinch_restrictedvalue_mapping');
             // Check if the table already exists
@@ -123,7 +143,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 price decimal(15,4) NOT NULL,
                 cost decimal(15,4),
                 distributor_id int(11)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
 
             //Now make sure the distributor stock price import table has the layout we want
             $distiTable = $installer->getTable(StockPrice::DISTI_TABLE);
@@ -135,7 +155,87 @@ class UpgradeSchema implements UpgradeSchemaInterface
                 stock int(11) NOT NULL,
                 PRIMARY KEY (distributor_id, product_id),
                 FOREIGN KEY (distributor_id) REFERENCES {$distiTable} (distributor_id) ON DELETE CASCADE ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
+        }
+
+        if (version_compare($context->getVersion(), '2.4.0', '<')) {
+            //Remove store_product_id (duplicate of sinch_product_id) on some tables
+            $affectedTables = [
+                'catalog_product_entity', //int(11) unsigned DEFAULT NULL
+                'products_website_temp', //int(11) DEFAULT NULL
+                'sinch_product_backup', //int(11) unsigned NOT NULL
+                'sinch_products', //int(11) DEFAULT NULL
+                'sinch_products_mapping', //int(11) DEFAULT NULL
+                'sinch_products_pictures_gallery', //int(11) DEFAULT NULL
+                'sinch_related_products' //int(11) DEFAULT NULL
+            ];
+            foreach ($affectedTables as $table) {
+                if ($installer->getConnection()->isTableExists($table)) {
+                    $this->removeStoreProductId($installer, $table);
+                }
+            }
+        }
+
+        if (version_compare($context->getVersion(), '2.5.0', '<')) {
+            $connection = $installer->getConnection();
+
+            //sinch_distributors - DROP website column
+            $sinch_distributors = $installer->getTable('sinch_distributors');
+            if ($installer->getConnection()->tableColumnExists($sinch_distributors, 'website')) {
+                $connection->query("ALTER TABLE {$sinch_distributors} DROP COLUMN website");
+            }
+
+            //sinch_stock_and_prices - DROP distributor_id
+            $sinch_stock_and_prices = $installer->getTable('sinch_stock_and_prices');
+            if ($installer->getConnection()->tableColumnExists($sinch_stock_and_prices, 'distributor_id')) {
+                $connection->query("ALTER TABLE {$sinch_stock_and_prices} DROP COLUMN distributor_id");
+            }
+
+            //sinch_customer_group_price_{cur,nxt} - DROP price_type
+            $sinch_customer_group_price_cur = $installer->getTable('sinch_customer_group_price_cur');
+            $sinch_customer_group_price_nxt = $installer->getTable('sinch_customer_group_price_nxt');
+            //Alter the primary keys to not include price type
+            if ($connection->isTableExists($sinch_customer_group_price_cur)) {
+                $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
+                if ($connection->tableColumnExists($sinch_customer_group_price_cur, 'price_type')) {
+                    $connection->query("ALTER TABLE {$sinch_customer_group_price_cur} DROP COLUMN price_type");
+                }
+            }
+            if ($connection->isTableExists($sinch_customer_group_price_nxt)) {
+                $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP PRIMARY KEY, ADD PRIMARY KEY (sinch_group_id, sinch_product_id)");
+                if ($connection->tableColumnExists($sinch_customer_group_price_nxt, 'price_type')) {
+                    $connection->query("ALTER TABLE {$sinch_customer_group_price_nxt} DROP COLUMN price_type");
+                }
+            }
+            //Add Synonyms
+            $this->insertSynonyms($installer);
+        }
+
+        if (version_compare($context->getVersion(), '2.5.1', '<')) {
+            $connection = $installer->getConnection();
+            $sinch_import_status = $installer->getTable('sinch_import_status');
+
+            if ($connection->isTableExists($sinch_import_status)) {
+                $connection->query("DROP TABLE $sinch_import_status");
+            }
+            $connection->query("CREATE TABLE IF NOT EXISTS $sinch_import_status (
+                id int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
+                message varchar(255) NOT NULL UNIQUE,
+                finished tinyint(1) NOT NULL DEFAULT 0
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
+        }
+
+        if (version_compare($context->getVersion(), '2.5.4', '<')) {
+            // Nile upgrade 2.5.4
+            $connection = $installer->getConnection();
+            $sinch_category_backup = $installer->getTable('sinch_category_backup');
+            // Drop entity_type_id and attribute_set_id as we don't use them
+            if ($connection->tableColumnExists($sinch_category_backup, 'entity_type_id')) {
+                $connection->dropColumn($sinch_category_backup, 'entity_type_id');
+            }
+            if ($connection->tableColumnExists($sinch_category_backup, 'attribute_set_id')) {
+                $connection->dropColumn($sinch_category_backup, 'attribute_set_id');
+            }
         }
 
         $installer->endSetup();
@@ -153,7 +253,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     category_id INT NOT NULL COMMENT 'Sinch Category ID',
                     PRIMARY KEY (feature_id, category_id),
                     INDEX(category_id)
-                ) ENGINE=InnoDB"
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
             );
         }
     }
@@ -161,7 +261,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
     private function upgrade216($installer)
     {
         $connection = $installer->getConnection();
-        $catVisTable = $installer->getTable(\SITC\Sinchimport\Model\Import\CustomerGroupCategories::MAPPING_TABLE); //sinch_cat_visibility at the time of adding
+        $catVisTable = $installer->getTable(AccountGroupCategories::MAPPING_TABLE); //sinch_cat_visibility at the time of adding
         if ($connection->isTableExists($catVisTable) != true) {
             //Ditto of upgrade215
             $connection->query(
@@ -170,7 +270,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     account_group_id INT NOT NULL COMMENT 'Account Group ID',
                     PRIMARY KEY (category_id, account_group_id),
                     INDEX(category_id)
-                ) ENGINE=InnoDB"
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
             );
         }
         //Drop the sinch_filter_products procedure if it exists
@@ -186,7 +286,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
 
     /**
      * @param SchemaSetupInterface $setup
-     * @throws \Zend_Db_Exception
+     * @throws Zend_Db_Exception
      */
     private function createTableCustomerGroup(SchemaSetupInterface $setup)
     {
@@ -214,10 +314,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     $setup->getIdxName(
                         'sinch_customer_group',
                         ['group_id', 'group_name'],
-                        \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                        AdapterInterface::INDEX_TYPE_UNIQUE
                     ),
                     ['group_id', 'group_name'],
-                    ['type' => \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE]
+                    ['type' => AdapterInterface::INDEX_TYPE_UNIQUE]
                 )
                 ->setComment('Sinch Customer Group');
             $setup->getConnection()->createTable($customerGroupTable);
@@ -226,7 +326,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
 
     /**
      * @param SchemaSetupInterface $setup
-     * @throws \Zend_Db_Exception
+     * @throws Zend_Db_Exception
      */
     private function createTableCustomerGroupPrice(SchemaSetupInterface $setup)
     {
@@ -267,10 +367,10 @@ class UpgradeSchema implements UpgradeSchemaInterface
                     $setup->getIdxName(
                         'sinch_customer_group_price',
                         ['group_id', 'product_id', 'sinch_product_id', 'customer_group_price'],
-                        \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                        AdapterInterface::INDEX_TYPE_UNIQUE
                     ),
                     ['group_id', 'product_id','sinch_product_id', 'customer_group_price'],
-                    ['type' => \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE]
+                    ['type' => AdapterInterface::INDEX_TYPE_UNIQUE]
                 )
                 ->setComment('Sinch Customer Group Price');
             $setup->getConnection()->createTable($customerGroupTablePrice);
@@ -318,7 +418,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $setup->getIdxName(
                 'sinch_customer_group_price',
                 ['group_id', 'product_id', 'sinch_product_id', 'customer_group_price'],
-                \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                AdapterInterface::INDEX_TYPE_UNIQUE
             )
         );
         $setup->getConnection()->dropColumn($customerGroupPrice, 'sinch_product_id');
@@ -327,10 +427,73 @@ class UpgradeSchema implements UpgradeSchemaInterface
             $setup->getIdxName(
                 'sinch_customer_group_price',
                 ['group_id', 'product_id', 'price_type_id'],
-                \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+                AdapterInterface::INDEX_TYPE_UNIQUE
             ),
             ['group_id', 'product_id','price_type_id'],
-            \Magento\Framework\DB\Adapter\AdapterInterface::INDEX_TYPE_UNIQUE
+            AdapterInterface::INDEX_TYPE_UNIQUE
         );
+    }
+
+    private function removeStoreProductId(SchemaSetupInterface $setup, string $table) {
+        $conn = $setup->getConnection();
+        $actualTable = $conn->getTableName($table);
+        //Check that both store_product_id and sinch_product_id exist as columns (otherwise what we want to do wont work)
+        if ($conn->tableColumnExists($actualTable, 'store_product_id') && $conn->tableColumnExists($actualTable, 'sinch_product_id')) {
+            //Drop the sinch_product_id column (as its specified second in important tables like catalog_product_entity)
+            // and then rename store_product_id to sinch_product_id (its a better name)
+            $conn->dropColumn($actualTable, 'sinch_product_id');
+            $conn->changeColumn(
+                $actualTable,
+                'store_product_id',
+                'sinch_product_id',
+                [
+                    'unsigned' => true,
+                    'default' => null,
+                    'type' => Table::TYPE_INTEGER,
+                    'scale' => 11,
+                    'nullable' => true,
+                    'comment' => 'Sinch Product Id'
+                ],
+                false
+            );
+        }
+    }
+
+    private function insertSynonyms(SchemaSetupInterface $setup)
+    {
+		$conn = $setup->getConnection();
+		$thesaurusTable = $conn->getTableName(self::THESAURUS_TABLE);
+		$thesaurusStoreTable = $conn->getTableName(self::THESAURUS_STORE_TABLE);
+		$thesaurusTermsTable = $conn->getTableName(self::THESAURUS_TERMS_TABLE);
+
+		$sinchThesaurusExists = true;
+		if (empty($conn->fetchAll("SELECT thesaurus_id FROM {$thesaurusTable} WHERE name = 'Sinch'"))) {
+			$conn->query("INSERT INTO {$thesaurusTable} (name, type, is_active) VALUES ('Sinch', 'synonym', 1)");
+			$sinchThesaurusExists = false;
+		}
+
+	    $thesaurusId = $conn->fetchOne("SELECT thesaurus_id FROM {$thesaurusTable} WHERE name = 'Sinch'");
+
+		if (empty($thesaurusId)) {
+			return;
+		} else {
+			$thesaurusId = (int)$thesaurusId; //Convert to int for insert to db
+		}
+
+		if (!$sinchThesaurusExists)
+			$conn->query("INSERT INTO {$thesaurusStoreTable} VALUES ({$thesaurusId}, 0)");
+
+		//Load the synonym CSV into an array
+	    $filePath = $this->helper->getModuleDirectory(Dir::MODULE_ETC_DIR) . '/' . self::SYNONYM_FILE;
+	    $csvLines = array_map('str_getcsv', file($filePath));
+
+	    $row = 1;
+	    foreach ($csvLines as $line) {
+	    	foreach ($line as $synonym) {
+			    $conn->query("INSERT IGNORE INTO {$thesaurusTermsTable} VALUES (:id, :rowId, :term)",
+				    ['id' => $thesaurusId, 'rowId' => $row, 'term' => $synonym]);
+		    }
+	    	$row++;
+	    }
     }
 }

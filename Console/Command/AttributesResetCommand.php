@@ -2,6 +2,7 @@
 
 namespace SITC\Sinchimport\Console\Command;
 
+use Exception;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Console\Cli;
 use SITC\Sinchimport\Model\Import\Attributes;
@@ -12,7 +13,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class AttributesResetCommand extends Command
 {
     /** @var ResourceConnection */
-    private $resourceConn;
+    private ResourceConnection $resourceConn;
     
     public function __construct(ResourceConnection $resourceConn) {
         parent::__construct();
@@ -22,7 +23,7 @@ class AttributesResetCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('sinch:attributes:reset');
         $this->setDescription('Resets sinch attributes (category filters), ready for a complete reimport');
@@ -31,7 +32,7 @@ class AttributesResetCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $output->write("Resetting attributes...");
@@ -39,7 +40,7 @@ class AttributesResetCommand extends Command
             $conn = $this->resourceConn->getConnection()->query("DELETE FROM {$eavAttr} WHERE attribute_code LIKE '" . Attributes::ATTRIBUTE_PREFIX . "%'");
             $output->writeln("done");
             return Cli::RETURN_SUCCESS;
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $output->writeln("failed");
             $output->writeln("<error>{$e->getMessage()}</error>");
         }

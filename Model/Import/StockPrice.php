@@ -11,6 +11,9 @@ use Magento\InventoryApi\Api\StockRepositoryInterface;
 use Magento\InventoryApi\Api\StockRepositoryInterface\Proxy as StockRepo;
 use SITC\Sinchimport\Helper\Data;
 use Symfony\Component\Console\Output\ConsoleOutput;
+use Magento\Framework\Exception\CouldNotSaveException;
+use Magento\Framework\Validation\ValidationException;
+use SITC\Sinchimport\Helper\Download;
 
 /**
  * Class StockPrice
@@ -65,13 +68,14 @@ class StockPrice extends AbstractImportSection
     public function __construct(
         ResourceConnection $resourceConn,
         ConsoleOutput $output,
+        Download $dlHelper,
         Data $helper,
         StockConfigurationInterface $stockConfiguration,
         IndexManagement $indexManagement,
         StockRepo $stockRepo,
         StockFactory $stockFactory
     ) {
-        parent::__construct($resourceConn, $output);
+        parent::__construct($resourceConn, $output, $dlHelper);
         $this->helper = $helper;
         $this->stockConfiguration = $stockConfiguration;
         $this->indexManagement = $indexManagement;
@@ -102,15 +106,25 @@ class StockPrice extends AbstractImportSection
         $this->inventory_reservation = $this->getTableName('inventory_reservation');
     }
 
+    public function getRequiredFiles(): array
+    {
+        return [
+            Download::FILE_STOCK_AND_PRICES,
+            Download::FILE_DISTRIBUTORS,
+            Download::FILE_DISTRIBUTORS_STOCK
+        ];
+    }
+
     /**
      * Parse the stock files
-     * @param string $stockAndPricesCsv StockAndPrices.csv
-     * @param string $distributorsCsv Distributors.csv
-     * @param string $distiStockAndPricesCsv DistributorStockAndPrices.csv
      */
-    public function parse(string $stockAndPricesCsv, string $distributorsCsv, string $distiStockAndPricesCsv)
+    public function parse(): void
     {
         $conn = $this->getConnection();
+
+        $stockAndPricesCsv = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
+        $distributorsCsv = $this->dlHelper->getSavePath(Download::FILE_DISTRIBUTORS);
+        $distiStockAndPricesCsv = $this->dlHelper->getSavePath(Download::FILE_DISTRIBUTORS_STOCK);
 
         $this->startTimingStep('Load distributors');
         $conn->query("DELETE FROM {$this->distiTable}");
@@ -121,7 +135,7 @@ class StockPrice extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (distributor_id, distributor_name, website)"
+                (distributor_id, distributor_name)"
         );
         $this->endTimingStep();
 
@@ -134,7 +148,7 @@ class StockPrice extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (product_id, stock, @price, @cost, distributor_id)
+                (product_id, stock, @price, @cost)
                 SET price = REPLACE(@price, ',', '.'),
                     cost = REPLACE(@cost, ',', '.')"
         );
@@ -149,7 +163,7 @@ class StockPrice extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (product_id, distributor_id, stock, @cost, @distributor_sku, @distributor_category, @eta, @brand_sku)"
+                (product_id, distributor_id, stock)"
         );
         $this->endTimingStep();
 
@@ -159,7 +173,7 @@ class StockPrice extends AbstractImportSection
      * Uses the distributor stock and price information to populate the supplier_{1,2,3,4,5} attributes
      * @return void
      */
-    public function applyDistributors()
+    public function applyDistributors(): void
     {
         $this->startTimingStep('Apply distributors prep');
         $conn = $this->getConnection();
@@ -177,7 +191,7 @@ class StockPrice extends AbstractImportSection
                 `distributor_id` int(11) NOT NULL,
                 PRIMARY KEY (`distributor_id`,`product_id`),
                 FOREIGN KEY (`distributor_id`) REFERENCES `{$this->distiTable}` (`distributor_id`) ON DELETE CASCADE ON UPDATE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8"
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
         );
 
         //Copy the content into the temp table
@@ -195,7 +209,7 @@ class StockPrice extends AbstractImportSection
             //The group by causes only a single row to be emitted per product (it picks any value for distributor, so supplier order is undefined behaviour)
             $conn->query("INSERT INTO {$tempSingle} SELECT product_id, {$anyValueImplementation}(distributor_id) FROM {$tempTable} GROUP BY product_id");
 
-            $supplierAttrId = $this->getProductAttributeId('supplier_' . $i);
+            $supplierAttrId = $this->helper->getProductAttributeId('supplier_' . $i);
             //Try to clear the attribute value (in case there are less than 5 suppliers for each product, but there was previously more)
             //We just update the value to an empty string, as UPDATE should be faster than DELETE + INSERT, especially with triggers
             $conn->query(
@@ -243,21 +257,21 @@ class StockPrice extends AbstractImportSection
     /**
      * Apply the new stock and price information to the Magento tables
      * @return void
-     * @throws \Magento\Framework\Exception\CouldNotSaveException
-     * @throws \Magento\Framework\Validation\ValidationException
+     * @throws CouldNotSaveException
+     * @throws ValidationException
      */
-    public function apply()
+    public function apply(): void
     {
         $conn = $this->getConnection();
 
-        $priceAttrId = $this->getProductAttributeId('price');
-        $costAttrId = $this->getProductAttributeId('cost');
+        $priceAttrId = $this->helper->getProductAttributeId('price');
+        $costAttrId = $this->helper->getProductAttributeId('cost');
 
         $this->startTimingStep('Add price (global)');
         $conn->query("INSERT INTO {$this->catalog_product_entity_decimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, 0, cpe.entity_id, st.price FROM {$this->catalog_product_entity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id AND st.price != 0
+                    ON cpe.sinch_product_id = st.product_id AND st.price != 0
         ) ON DUPLICATE KEY UPDATE value = st.price");
         $this->endTimingStep();
 
@@ -265,9 +279,9 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$this->catalog_product_entity_decimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$priceAttrId}, w.website, cpe.entity_id, st.price FROM {$this->catalog_product_entity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id  AND st.price != 0
+                    ON cpe.sinch_product_id = st.product_id  AND st.price != 0
                 INNER JOIN {$this->products_website_temp} w
-                    ON cpe.store_product_id = w.store_product_id
+                    ON cpe.sinch_product_id = w.sinch_product_id
         ) ON DUPLICATE KEY UPDATE value = st.price");
         $this->endTimingStep();
 
@@ -275,7 +289,7 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$this->catalog_product_entity_decimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$costAttrId}, 0, cpe.entity_id, st.cost FROM {$this->catalog_product_entity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.sinch_product_id = st.product_id
         ) ON DUPLICATE KEY UPDATE value = st.cost");
         $this->endTimingStep();
 
@@ -283,9 +297,9 @@ class StockPrice extends AbstractImportSection
         $conn->query("INSERT INTO {$this->catalog_product_entity_decimal} (attribute_id, store_id, entity_id, value) (
             SELECT {$costAttrId}, w.website, cpe.entity_id, st.cost FROM {$this->catalog_product_entity} cpe
                 INNER JOIN {$this->stockImportTable} st
-                    ON cpe.store_product_id = st.product_id
+                    ON cpe.sinch_product_id = st.product_id
                 INNER JOIN {$this->products_website_temp} w
-                    ON cpe.store_product_id = w.store_product_id
+                    ON cpe.sinch_product_id = w.sinch_product_id
         ) ON DUPLICATE KEY UPDATE value = st.cost");
         $this->endTimingStep();
 
@@ -301,7 +315,7 @@ class StockPrice extends AbstractImportSection
             SET number_of_products = (
                 SELECT COUNT(*) FROM {$this->catalog_product_entity} cpe
                     INNER JOIN {$this->stockImportTable} st
-                        ON cpe.store_product_id = st.product_id
+                        ON cpe.sinch_product_id = st.product_id
             )
             ORDER BY id DESC LIMIT 1"
         );
@@ -313,10 +327,10 @@ class StockPrice extends AbstractImportSection
 
     /**
      * Apply Stock
-     * @throws \Magento\Framework\Exception\CouldNotSaveException
-     * @throws \Magento\Framework\Validation\ValidationException
+     * @throws CouldNotSaveException
+     * @throws ValidationException
      */
-    private function applyStock()
+    private function applyStock(): void
     {
         $conn = $this->getConnection();
         //Defined in this scope as multi-source path needs it too, for inserting marker records
@@ -368,7 +382,7 @@ class StockPrice extends AbstractImportSection
             $conn->query(
                 "DELETE FROM {$this->inventory_source_item}
                     WHERE source_code = 'default'
-                      AND sku IN (SELECT sku FROM {$this->catalog_product_entity} WHERE store_product_id IS NOT NULL)"
+                      AND sku IN (SELECT sku FROM {$this->catalog_product_entity} WHERE sinch_product_id IS NOT NULL)"
             );
             $this->endTimingStep();
 
@@ -394,8 +408,8 @@ class StockPrice extends AbstractImportSection
                     WHERE sku IN (
                         SELECT cpe.sku FROM {$this->catalog_product_entity} cpe
                         LEFT JOIN {$this->stockImportTable} ssp
-                            ON cpe.store_product_id = ssp.product_id
-                        WHERE cpe.store_product_id IS NOT NULL
+                            ON cpe.sinch_product_id = ssp.product_id
+                        WHERE cpe.sinch_product_id IS NOT NULL
                           AND (ssp.stock IS NULL OR ssp.stock < 1)
                 	)"
                 );
@@ -488,7 +502,7 @@ class StockPrice extends AbstractImportSection
             $conn->query("INSERT INTO {$this->cataloginventory_stock_item} (product_id, stock_id, qty, min_qty, is_in_stock, manage_stock, website_id) (
                     SELECT cpe.entity_id, 1, NULL, :threshold, 0, 1, {$stockItemScope} FROM {$this->catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
-                            ON cpe.store_product_id = ssp.product_id
+                            ON cpe.sinch_product_id = ssp.product_id
                 ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = VALUES(manage_stock), min_qty = VALUES(min_qty)",
                 [':threshold' => $this->outOfStockThreshold]
             );
@@ -508,10 +522,10 @@ class StockPrice extends AbstractImportSection
                 INNER JOIN {$this->catalog_product_entity} cpe
                     ON cpe.entity_id = csi.product_id
                 LEFT JOIN {$this->stockImportTable} st
-                    ON st.product_id = cpe.store_product_id
+                    ON st.product_id = cpe.sinch_product_id
                 SET csi.qty = 0,
                     csi.is_in_stock = 0
-                WHERE cpe.store_product_id IS NOT NULL
+                WHERE cpe.sinch_product_id IS NOT NULL
                     AND st.stock IS NULL"
             );
             $this->endTimingStep();
@@ -531,7 +545,7 @@ class StockPrice extends AbstractImportSection
                 $conn->query("DELETE isi FROM {$this->inventory_source_item} isi
                     INNER JOIN {$this->catalog_product_entity} cpe
                         ON isi.sku = cpe.sku
-                    WHERE cpe.store_product_id IS NOT NULL");
+                    WHERE cpe.sinch_product_id IS NOT NULL");
                 $this->endTimingStep();
             }
 
@@ -548,32 +562,10 @@ class StockPrice extends AbstractImportSection
     }
 
     /**
-     * Get the attribute id for the product attribute with the given $attribute_code
-     * @param string $attribute_code Attribute code
-     * @return int|null
-     */
-    private function getProductAttributeId(string $attribute_code)
-    {
-        $productEavTypeId = $this->getConnection()->fetchOne(
-            "SELECT entity_type_id FROM {$this->eav_entity_type} WHERE entity_type_code = :typeCode",
-            [":typeCode" => \Magento\Catalog\Model\Product::ENTITY]
-        );
-
-
-        return $this->getConnection()->fetchOne(
-            "SELECT attribute_id FROM {$this->eav_attribute} WHERE attribute_code = :attrCode AND entity_type_id = :typeId",
-            [
-                ":typeId" => $productEavTypeId,
-                ":attrCode" => $attribute_code
-            ]
-        );
-    }
-
-    /**
      * Creates the sinch stock source, ready for MSI functionality, returning the stock_id
      * @return int Stock ID
-     * @throws \Magento\Framework\Exception\CouldNotSaveException
-     * @throws \Magento\Framework\Validation\ValidationException
+     * @throws CouldNotSaveException
+     * @throws ValidationException
      */
     private function createStockSource(): int
     {
@@ -585,8 +577,8 @@ class StockPrice extends AbstractImportSection
 
     /**
      * Get or create the sinch MSI stock source, returning it's ID
-     * @throws \Magento\Framework\Validation\ValidationException
-     * @throws \Magento\Framework\Exception\CouldNotSaveException
+     * @throws ValidationException
+     * @throws CouldNotSaveException
      */
     private function getOrCreateStockSource(): int
     {

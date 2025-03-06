@@ -1,41 +1,46 @@
 <?php
 namespace SITC\Sinchimport\Helper;
 
-use Exception;
+use Magento\Catalog\Model\Category;
 use Magento\Catalog\Model\Product;
-use Magento\Framework\App\Area;
+use Magento\Customer\Model\Session;
 use Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Framework\App\Helper\Context;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Filesystem\DirectoryList;
+use Magento\Framework\Module\Dir\Reader;
+use Magento\Framework\App\Http\Context as HttpContext;
+use Magento\Store\Model\ScopeInterface;
+use Exception;
+use Magento\Framework\App\Area;
 use Magento\Framework\Mail\Template\TransportBuilder;
 use Magento\Store\Model\StoreManager;
 use SITC\Sinchimport\Plugin\VaryContext;
 
 class Data extends AbstractHelper
 {
-    /** @var \Magento\Framework\App\ResourceConnection $resourceConn */
-    private \Magento\Framework\App\ResourceConnection $resourceConn;
-    /** @var \Magento\Customer\Model\Session\Proxy $customerSession */
-    private $customerSession;
-    /** @var \Magento\Framework\Filesystem\DirectoryList\Proxy $dir */
-    private \Magento\Framework\Filesystem\DirectoryList\Proxy $dir;
-    /** @var \Magento\Framework\App\Http\Context $httpContext */
-    private \Magento\Framework\App\Http\Context $httpContext;
+    private ResourceConnection $resourceConn;
+    private Session\Proxy $customerSession;
+    private DirectoryList $dir;
+    private HttpContext $httpContext;
     private StoreManager $storeManager;
     private TransportBuilder $transportBuilder;
 
-    /** @var string $accountTable */
     private string $accountTable;
-    /** @var string $groupMappingTable */
     private string $groupMappingTable;
     private ?int $defaultStoreId = null;
 
+    private Reader $moduleReader;
+
     public function __construct(
-        \Magento\Framework\App\Helper\Context $context,
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Magento\Customer\Model\Session\Proxy $customerSession,
-        \Magento\Framework\Filesystem\DirectoryList\Proxy $dir,
-        \Magento\Framework\App\Http\Context $httpContext,
+        Context $context,
+        ResourceConnection $resourceConn,
+        Session\Proxy $customerSession,
+        DirectoryList\Proxy $dir,
+        HttpContext $httpContext,
         StoreManager $storeManager,
-        TransportBuilder $transportBuilder
+        TransportBuilder $transportBuilder,
+        Reader $moduleReader
     ) {
         parent::__construct($context);
         $this->resourceConn = $resourceConn;
@@ -46,18 +51,19 @@ class Data extends AbstractHelper
         $this->transportBuilder = $transportBuilder;
         $this->accountTable = $this->resourceConn->getTableName('tigren_comaccount_account');
         $this->groupMappingTable = $this->resourceConn->getTableName('sinch_group_mapping');
+        $this->moduleReader = $moduleReader;
     }
 
     public function getStoreConfig($configPath, $storeId = null)
     {
         return $this->scopeConfig->getValue(
             $configPath,
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE,
+            ScopeInterface::SCOPE_STORE,
             $storeId
         );
     }
 
-    public function isModuleEnabled($moduleName)
+    public function isModuleEnabled($moduleName): bool
     {
         return $this->_moduleManager->isEnabled($moduleName);
     }
@@ -99,7 +105,7 @@ class Data extends AbstractHelper
         return false;
     }
 
-    public function getAccountGroupForAccount($accountId)
+    public function getAccountGroupForAccount($accountId): ?int
     {
         return $this->resourceConn->getConnection()->fetchOne(
             "SELECT account_group_id FROM {$this->accountTable} WHERE account_id = :account_id",
@@ -112,7 +118,8 @@ class Data extends AbstractHelper
      * @param string $importType The type of import, one of "PRICE STOCK" and "FULL"
      * @return void
      */
-    public function scheduleImport($importType) {
+    public function scheduleImport(string $importType): void
+    {
         $importStatus = $this->resourceConn->getTableName('sinch_import_status');
         //Clear the status table so the admin panel doesn't immediately mark it as complete
         if($this->resourceConn->getConnection()->isTableExists($importStatus)) {
@@ -148,7 +155,7 @@ class Data extends AbstractHelper
      * (indicating a running import, or an intentional indexing pause)
      * @return bool Whether the lock is currently held
      */
-    public function isIndexLockHeld()
+    public function isIndexLockHeld(): bool
     {
         //Manual lock indexing flag (for testing/holding the indexers for other reasons)
         if (file_exists($this->dir->getPath("var") . "/sinch_lock_indexers.flag")) {
@@ -158,7 +165,7 @@ class Data extends AbstractHelper
         //Import lock
         $current_vhost = $this->scopeConfig->getValue(
             'web/unsecure/base_url',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_STORE
         );
         $is_lock_free = $this->resourceConn->getConnection()->fetchOne("SELECT IS_FREE_LOCK('sinchimport_{$current_vhost}')");
         if ($is_lock_free === '0') {
@@ -173,7 +180,7 @@ class Data extends AbstractHelper
      * @param int $accountGroupId
      * @return int|null
      */
-    public function getCustomerGroupForAccountGroup($accountGroupId)
+    public function getCustomerGroupForAccountGroup(int $accountGroupId): ?int
     {
         $res = $this->resourceConn->getConnection()->fetchOne(
             "SELECT magento_id FROM {$this->groupMappingTable} WHERE sinch_id = :accountGroupId",
@@ -185,7 +192,7 @@ class Data extends AbstractHelper
         return (int)$res;
     }
 
-    public function getCustomerGroupForAccount($accountId)
+    public function getCustomerGroupForAccount($accountId): ?int
     {
         $accountGroup = $this->getAccountGroupForAccount($accountId);
         if(empty($accountGroup)) {
@@ -198,9 +205,163 @@ class Data extends AbstractHelper
      * Return whether Multi-source inventory is enabled (both the MSI modules, and the setting within the import)
      * @return bool
      */
-    public function isMSIEnabled()
+    public function isMSIEnabled(): bool
     {
         return $this->isModuleEnabled('Magento_Inventory') && $this->getStoreConfig('sinchimport/general/multisource_stock');
+    }
+
+    public function enhancedSearchEnabled(): bool
+    {
+        return $this->getStoreConfig('sinchimport/search/enable_enhanced') == 1;
+    }
+
+    private const VALID_SCORING_MODES = ['multiply', 'sum', 'avg', 'first', 'max', 'min'];
+    private const VALID_BOOST_MODES = ['multiply', 'replace', 'sum', 'avg', 'max', 'min'];
+    private const VALID_MODIFIERS = ['none', 'log', 'log1p', 'log2p', 'ln', 'ln1p', 'ln2p', 'square', 'sqrt', 'reciprocal'];
+
+    public function popularityBoostEnabled(): bool
+    {
+        return $this->getStoreConfig('sinchimport/popularity_boost/enable') == 1;
+    }
+
+    public function popularityScoringMode(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/scoring_mode');
+        if (!in_array($value, self::VALID_SCORING_MODES)) return 'max';
+        return $value;
+    }
+
+    public function popularityBoostMode(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/boost_mode');
+        if (!in_array($value, self::VALID_BOOST_MODES)) return 'sum';
+        return $value;
+    }
+
+    public function scoreBoostFactor(): float
+    {
+        return (float)$this->getStoreConfig('sinchimport/popularity_boost/score_factor');
+    }
+
+    public function scoreBoostModifier(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/score_modifier');
+        if (!in_array($value, self::VALID_MODIFIERS)) return 'log1p';
+        return $value;
+    }
+
+    public function scoreBoostWeight(): int
+    {
+        return (int)$this->getStoreConfig('sinchimport/popularity_boost/score_weight');
+    }
+
+    public function monthlyPopularityBoostFactor(): float
+    {
+        return (float)$this->getStoreConfig('sinchimport/popularity_boost/monthly_sales_factor');
+    }
+
+    public function monthlyPopularityBoostModifier(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/monthly_sales_modifier');
+        if (!in_array($value, self::VALID_MODIFIERS)) return 'log1p';
+        return $value;
+    }
+
+    public function monthlyPopularityBoostWeight(): int
+    {
+        return (int)$this->getStoreConfig('sinchimport/popularity_boost/monthly_sales_weight');
+    }
+
+    public function yearlyPopularityBoostFactor(): float
+    {
+        return (float)$this->getStoreConfig('sinchimport/popularity_boost/yearly_sales_factor');
+    }
+
+    public function yearlyPopularityBoostModifier(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/yearly_sales_modifier');
+        if (!in_array($value, self::VALID_MODIFIERS)) return 'log1p';
+        return $value;
+    }
+
+    public function yearlyPopularityBoostWeight(): int
+    {
+        return (int)$this->getStoreConfig('sinchimport/popularity_boost/yearly_sales_weight');
+    }
+
+    public function searchesBoostFactor(): float
+    {
+        return (float)$this->getStoreConfig('sinchimport/popularity_boost/searches_factor');
+    }
+
+    public function searchesBoostModifier(): string
+    {
+        $value = $this->getStoreConfig('sinchimport/popularity_boost/searches_modifier');
+        if (!in_array($value, self::VALID_MODIFIERS)) return 'log1p';
+        return $value;
+    }
+
+    public function searchesBoostWeight(): int
+    {
+        return (int)$this->getStoreConfig('sinchimport/popularity_boost/searches_weight');
+    }
+
+    public function badgesEnabled(): bool
+    {
+        return $this->getStoreConfig('sinchimport/badges/enable') == 1;
+    }
+
+    public function getProductAttributeId(string $attributeCode): ?int
+    {
+        return $this->getAttributeId(Product::ENTITY, $attributeCode);
+    }
+
+    public function getCategoryAttributeId(string $attributeCode): ?int
+    {
+        return $this->getAttributeId(Category::ENTITY, $attributeCode);
+    }
+
+    public function getAttributeId(string $type, string $code): ?int
+    {
+        $conn = $this->resourceConn->getConnection();
+
+        $eav_entity_type = $this->resourceConn->getTableName('eav_entity_type');
+        $eav_attribute = $this->resourceConn->getTableName('eav_attribute');
+
+        $attributeId = $conn->fetchOne(
+            "SELECT attribute_id FROM {$eav_attribute} ea
+                INNER JOIN {$eav_entity_type} eet ON ea.entity_type_id = eet.entity_type_id
+                WHERE eet.entity_type_code = :type AND ea.attribute_code = :code",
+            [':type' => $type, ':code' => $code]
+        );
+        if ($attributeId != false) {
+            return (int)$attributeId;
+        }
+        return null;
+    }
+
+    public function getModuleDirectory(string $type): string
+    {
+	    return $this->moduleReader->getModuleDir($type, 'SITC_Sinchimport');
+    }
+
+    /**
+     * @return bool The value of the "Indexing Separately" config option
+     */
+    public function indexSeparately(): bool
+    {
+        return $this->getStoreConfig('sinchimport/sinch_import_fullstatus/indexing_separately') == 1;
+    }
+
+    /**
+     * @return string|null The current import type ('FULL' or 'PRICE STOCK') or null if no import is running
+     */
+    public function currentImportType(): ?string
+    {
+        $sinch_import_status_statistic = $this->resourceConn->getTableName('sinch_import_status_statistic');
+        return $this->resourceConn->getConnection()->fetchOne(
+            "SELECT import_type FROM $sinch_import_status_statistic WHERE global_status_import = 'Run' AND id = (SELECT MAX(id) FROM $sinch_import_status_statistic) ORDER BY start_import DESC LIMIT 1"
+        );
     }
 
     public function isInStockFilterEnabled()
@@ -302,7 +463,7 @@ class Data extends AbstractHelper
     {
 
         if (empty($rule)) return true;
-        $blacklist = substr($rule, 0, 1) == "!";
+        $blacklist = str_starts_with($rule, "!");
         if (empty($currentGroup)) {
             return $blacklist;
         }

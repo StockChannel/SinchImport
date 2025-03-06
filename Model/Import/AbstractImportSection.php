@@ -4,30 +4,29 @@ namespace SITC\Sinchimport\Model\Import;
 
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\DB\Adapter\AdapterInterface;
+use SITC\Sinchimport\Helper\Download;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 abstract class AbstractImportSection {
     const LOG_PREFIX = "AbstractImportSection: ";
     const LOG_FILENAME = "unknown";
 
-    /**
-     * @var \Magento\Framework\App\ResourceConnection $resourceConn
-     */
-    protected $resourceConn;
-    /**
-     * @var Logger
-     */
-    protected $logger;
-    /**
-     * @var \Symfony\Component\Console\Output\ConsoleOutput
-     */
-    protected $output;
+    protected ResourceConnection $resourceConn;
+    protected Logger $logger;
+    protected ConsoleOutput $output;
+    protected Download $dlHelper;
 
     /** @var mixed */
     protected $timingStep = [];
 
+    private string $statusTable;
+
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $downloadHelper
     ){
         $this->resourceConn = $resourceConn;
 
@@ -36,35 +35,38 @@ abstract class AbstractImportSection {
         $logger->pushHandler($writer);
         $this->logger = $logger;
         $this->output = $output;
+        $this->dlHelper = $downloadHelper;
+
+        $this->statusTable = $this->getTableName('sinch_import_status');
     }
 
     /**
      * @return float
      */
-    protected function microtime_float()
+    protected function microtime_float(): float
     {
         list($usec, $sec) = explode(" ", microtime());
         return ((float)$usec + (float)$sec);
     }
 
     /**
-     * @return \Magento\Framework\DB\Adapter\AdapterInterface
+     * @return AdapterInterface
      */
-    protected function getConnection()
+    protected function getConnection(): AdapterInterface
     {
-        return $this->resourceConn->getConnection(\Magento\Framework\App\ResourceConnection::DEFAULT_CONNECTION);
+        return $this->resourceConn->getConnection(ResourceConnection::DEFAULT_CONNECTION);
     }
 
     /**
      * @param string $table Table name
      * @return string Resolved table name
      */
-    protected function getTableName($table)
+    protected function getTableName(string $table): string
     {
         return $this->resourceConn->getTableName($table);
     }
 
-    protected function log($msg, $print = true)
+    protected function log($msg, $print = true): void
     {
         if($print){
             $this->output->writeln(static::LOG_PREFIX . $msg);
@@ -77,31 +79,43 @@ abstract class AbstractImportSection {
      * @param string $name A name to describe what occurs in the step
      * @return void
      */
-    protected function startTimingStep($name)
+    protected function startTimingStep(string $name): void
     {
+        $this->log("Timing Step: " . $name);
         $now = $this->microtime_float();
         $this->timingStep[] = [
             'start' => $now,
             'name' => $name,
             'end' => null
         ];
+        //Insert into the import status table so the admin panel can see the import progressing
+        $this->getConnection()->query(
+            "INSERT INTO {$this->statusTable} (message, finished) VALUES(:msg, 0)",
+            [":msg" => static::LOG_PREFIX . $name]
+        );
     }
 
     /**
      * Ends timing execution for the most recent step
      * @return void
      */
-    protected function endTimingStep()
+    protected function endTimingStep(): void
     {
         $now = $this->microtime_float();
-        $this->timingStep[count($this->timingStep) - 1]['end'] = $now;
+        $endedStepIdx = count($this->timingStep) - 1;
+        $this->timingStep[$endedStepIdx]['end'] = $now;
+        $this->getConnection()->query(
+            "INSERT INTO {$this->statusTable} (message, finished) VALUES(:msg, 1)
+                    ON DUPLICATE KEY UPDATE finished = VALUES(finished)",
+            [":msg" => static::LOG_PREFIX . $this->timingStep[$endedStepIdx]['name']]
+        );
     }
 
     /**
      * Print timing information created by startTimingStep and endTimingStep
      * @return void
      */
-    protected function timingPrint()
+    protected function timingPrint(): void
     {
         $totalElapsed = 0.0;
         foreach ($this->timingStep as $timeStep) {
@@ -114,5 +128,27 @@ abstract class AbstractImportSection {
         }
         $elapsed = number_format($totalElapsed, 2);
         $this->log("Took {$elapsed} seconds total");
+    }
+
+    public abstract function parse(): void;
+
+    /**
+     * Get the filenames required for this import section
+     * @return array filenames needed to successfully run parse
+     */
+    public abstract function getRequiredFiles(): array;
+
+    /**
+     * Get whether we have the files needed for this import section to run
+     * @return bool
+     */
+    public function haveRequiredFiles(): bool
+    {
+        foreach ($this->getRequiredFiles() as $file) {
+            if (!$this->dlHelper->validateFile($file)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

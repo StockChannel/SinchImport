@@ -2,12 +2,18 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Magento\Catalog\Model\ResourceModel\Product\Action;
+use Magento\Framework\App\Cache\TypeListInterface;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Exception\StateException;
+use PDO;
+use SITC\Sinchimport\Helper\Download;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
 class UNSPSC extends AbstractImportSection {
     const LOG_PREFIX = "UNSPSC: ";
     const LOG_FILENAME = "unspsc";
-
     const ATTRIBUTE_NAME = "unspsc";
-    const PRODUCT_PAGE_SIZE = 50;
 
     private $hasParseRun = false;
     private $enableLogging = false;
@@ -24,12 +30,13 @@ class UNSPSC extends AbstractImportSection {
     private $mapping = [];
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \Magento\Framework\App\Cache\TypeListInterface $cacheType,
-        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $dlHelper,
+        TypeListInterface $cacheType,
+        Action $massProdValues
     ){
-        parent::__construct($resourceConn, $output);
+        parent::__construct($resourceConn, $output, $dlHelper);
         $this->cacheType = $cacheType;
         $this->massProdValues = $massProdValues;
 
@@ -37,7 +44,12 @@ class UNSPSC extends AbstractImportSection {
         $this->cpeTable = $this->getTableName('catalog_product_entity');
     }
 
-    public function parse()
+    public function getRequiredFiles(): array
+    {
+        return [];
+    }
+
+    public function parse(): void
     {
         $this->log("--- Begin UNSPSC Mapping ---");
 
@@ -45,7 +57,7 @@ class UNSPSC extends AbstractImportSection {
         foreach($unspsc_values as $unspsc){
             //List of Sinch products with the specified UNSPSC value
             $sinch_ids = $this->getConnection()->fetchCol(
-                "SELECT store_product_id FROM {$this->productTempTable} WHERE unspsc = :unspsc",
+                "SELECT sinch_product_id FROM {$this->productTempTable} WHERE unspsc = :unspsc",
                 [":unspsc" => $unspsc]
             );
 
@@ -56,7 +68,7 @@ class UNSPSC extends AbstractImportSection {
         $this->log("--- Completed UNSPSC mapping ---");
     }
 
-    public function apply()
+    public function apply(): void
     {
         if(!$this->hasParseRun) {
             $this->log("Not applying UNSPSC values as parse hasn't run");
@@ -75,7 +87,7 @@ class UNSPSC extends AbstractImportSection {
             $entityIds = $this->sinchToEntityIds($sinch_ids);
             if($entityIds === false){
                 $this->logger->err("Failed to retreive entity ids");
-                throw new \Magento\Framework\Exception\StateException(__("Failed to retrieve entity ids"));
+                throw new StateException(__("Failed to retrieve entity ids"));
             }
 
             $productCount = count($entityIds);
@@ -102,21 +114,21 @@ class UNSPSC extends AbstractImportSection {
 
     /**
      * Convert Sinch Product IDs to Product Entity IDs
-     * 
+     *
      * @param int[] $sinch_prod_ids Sinch Product IDs
      * @return int[] Product Entity IDs
      */
-    private function sinchToEntityIds($sinch_prod_ids)
+    private function sinchToEntityIds(array $sinch_prod_ids): array
     {
         $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
         $entIdQuery = $this->getConnection()->prepare(
             "SELECT entity_id FROM {$this->cpeTable} WHERE sinch_product_id IN ($placeholders)"
         );
         $entIdQuery->execute($sinch_prod_ids);
-        return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
+        return $entIdQuery->fetchAll(PDO::FETCH_COLUMN, 0);
     }
 
-    protected function log($msg, $print = true)
+    protected function log($msg, $print = true): void
     {
         if($this->enableLogging){
             parent::log($msg, $print);

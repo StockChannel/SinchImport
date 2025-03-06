@@ -2,9 +2,37 @@
 
 namespace SITC\Sinchimport\Model\Import;
 
+use Exception;
+use Magento\Catalog\Api\AttributeSetRepositoryInterface;
+use Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory;
+use Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface;
+use Magento\Catalog\Api\ProductAttributeManagementInterface;
+use Magento\Catalog\Api\ProductAttributeOptionManagementInterface;
+use Magento\Catalog\Api\ProductAttributeRepositoryInterface;
+use Magento\Catalog\Model\Product;
+use Magento\Catalog\Model\ResourceModel\Product\Action;
+use Magento\Eav\Api\Data\AttributeGroupInterface;
+use Magento\Eav\Api\Data\AttributeGroupInterfaceFactory;
+use Magento\Eav\Api\Data\AttributeOptionInterfaceFactory;
+use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\App\Cache\TypeListInterface;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\InputException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Magento\Framework\Exception\StateException;
+use Magento\Framework\File\Csv;
+use Magento\Store\Model\ScopeInterface;
+use PDO;
+use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Model\Sinch;
+use Symfony\Component\Console\Output\ConsoleOutput;
+use Throwable;
+use function array_fill;
+use function array_keys;
+use function count;
+use function implode;
+use function in_array;
 
 class Attributes extends AbstractImportSection {
     const LOG_PREFIX = "Attributes: ";
@@ -17,70 +45,71 @@ class Attributes extends AbstractImportSection {
     const PRODUCT_PAGE_SIZE = 50;
 
     //Stats
-    private $attributeCount = 0;
-    private $attributesCreated = 0;
-    private $attributesUpdated = 0;
-    private $attributesDeleted = 0;
-    private $optionCount = 0;
-    private $optionsCreated = 0;
-    private $optionsUpdated = 0;
-    private $optionsDeleted = 0;
+    private int $attributeCount = 0;
+    private int $attributesCreated = 0;
+    private int $attributesUpdated = 0;
+    private int $attributesDeleted = 0;
+    private int $optionCount = 0;
+    private int $optionsCreated = 0;
+    private int $optionsUpdated = 0;
+    private int $optionsDeleted = 0;
 
     //CSV parser
-    private $csv;
+    private Csv $csv;
 
     //Attributes to produce
-    private $attributes = [];
+    private array $attributes = [];
     //Sinch RV -> [Prod]
-    private $rvProds = [];
+    private array $rvProds = [];
 
-    private $attributeRepository;
-    private $attributeGroupRepository;
-    private $attributeFactory;
-    private $attributeGroupFactory;
-    private $searchCriteriaBuilder;
-    private $optionManagement;
-    private $optionFactory;
-    private $attributeSetRepository;
-    private $attributeManagement;
+    private ProductAttributeRepositoryInterface $attributeRepository;
+    private ProductAttributeGroupRepositoryInterface $attributeGroupRepository;
+    private ProductAttributeInterfaceFactory $attributeFactory;
+    private AttributeGroupInterfaceFactory $attributeGroupFactory;
+    private SearchCriteriaBuilder $searchCriteriaBuilder;
+    private ProductAttributeOptionManagementInterface $optionManagement;
+    private AttributeOptionInterfaceFactory $optionFactory;
+    private AttributeSetRepositoryInterface $attributeSetRepository;
+    private ProductAttributeManagementInterface $attributeManagement;
 
-    private $cacheType;
-    private $massProdValues;
-    private $scopeConfig;
+    private TypeListInterface $cacheType;
+    private Action $massProdValues;
+    private ScopeConfigInterface $scopeConfig;
 
     private $attributeSetCache = null;
-    private $attributeGroupIds = [];
+    private array $attributeGroupIds = [];
 
-    private $mappingTable;
-    private $cpeTable;
-    private $filterCategoriesTable;
-    private $eavAttrTable;
-    private $eavOptionValueTable;
+    private string $mappingTable;
+    private string $cpeTable;
+    private string $filterCategoriesTable;
+    private string $eavAttrTable;
+    private string $eavOptionValueTable;
 
     private $mappingInsert = null;
     private $mappingQuery = null;
     private $filterMappingInsert = null;
 
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \Magento\Framework\File\Csv $csv,
-        \Magento\Catalog\Api\ProductAttributeRepositoryInterface $attributeRepository,
-        \Magento\Catalog\Api\ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
-        \Magento\Catalog\Api\Data\ProductAttributeInterfaceFactory $attributeFactory,
-        \Magento\Eav\Api\Data\AttributeGroupInterfaceFactory $attributeGroupFactory,
-        \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder,
-        \Magento\Catalog\Api\ProductAttributeOptionManagementInterface $optionManagement,
-        \Magento\Eav\Api\Data\AttributeOptionInterfaceFactory $optionFactory,
-        \Magento\Catalog\Api\AttributeSetRepositoryInterface $attributeSetRepository,
-        \Magento\Catalog\Api\ProductAttributeManagementInterface $attributeManagement,
-        \Magento\Framework\App\Cache\TypeListInterface $cacheType,
-        \Magento\Catalog\Model\ResourceModel\Product\Action $massProdValues,
-        \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $dlHelper,
+        Csv $csv,
+        ProductAttributeRepositoryInterface $attributeRepository,
+        ProductAttributeGroupRepositoryInterface $attributeGroupRepository,
+        ProductAttributeInterfaceFactory $attributeFactory,
+        AttributeGroupInterfaceFactory $attributeGroupFactory,
+        SearchCriteriaBuilder $searchCriteriaBuilder,
+        ProductAttributeOptionManagementInterface $optionManagement,
+        AttributeOptionInterfaceFactory $optionFactory,
+        AttributeSetRepositoryInterface $attributeSetRepository,
+        ProductAttributeManagementInterface $attributeManagement,
+        TypeListInterface $cacheType,
+        Action $massProdValues,
+        ScopeConfigInterface $scopeConfig
     )
     {
-        parent::__construct($resourceConn, $output);
-        $this->csv = $csv->setLineLength(256)->setDelimiter("|");
+        parent::__construct($resourceConn, $output, $dlHelper);
+        $this->csv = $csv->setLineLength(256)->setDelimiter(Sinch::FIELD_TERMINATED_CHAR);
         $this->attributeRepository = $attributeRepository;
         $this->attributeGroupRepository = $attributeGroupRepository;
         $this->attributeFactory = $attributeFactory;
@@ -101,18 +130,28 @@ class Attributes extends AbstractImportSection {
         $this->eavOptionValueTable = $this->getTableName("eav_attribute_option_value");
     }
 
+    public function getRequiredFiles(): array
+    {
+        return [
+            Download::FILE_CATEGORIES_FEATURES,
+            Download::FILE_RESTRICTED_VALUES,
+            Download::FILE_PRODUCT_FEATURES
+        ];
+    }
+
     /**
-     * @param string $categoryFeaturesFile CategoryFeatures.csv
-     * @param string $restrictedValuesFile RestrictedValues.csv
-     * @param string $productFeaturesFile ProductFeatures.csv
      * @throws InputException
      * @throws NoSuchEntityException
      * @throws StateException
-     * @throws \Exception
+     * @throws Exception
      */
-    public function parse(string $categoryFeaturesFile, string $restrictedValuesFile, string $productFeaturesFile)
+    public function parse(): void
     {
         $this->log("--- Begin Attribute Parse ---");
+
+        $categoryFeaturesFile = $this->dlHelper->getSavePath(Download::FILE_CATEGORIES_FEATURES);
+        $restrictedValuesFile = $this->dlHelper->getSavePath(Download::FILE_RESTRICTED_VALUES);
+        $productFeaturesFile = $this->dlHelper->getSavePath(Download::FILE_PRODUCT_FEATURES);
 
         $this->startTimingStep("Parse raw files");
         //ID, CategoryID, Name, Order
@@ -170,14 +209,14 @@ class Attributes extends AbstractImportSection {
 
         //Establish attribute names
         $attrNames = [];
-        foreach (\array_keys($this->attributes) as $sinchAttrId) {
+        foreach (array_keys($this->attributes) as $sinchAttrId) {
             $attrNames[] = self::ATTRIBUTE_PREFIX . $sinchAttrId;
         }
 
 
         $this->log("Figuring out which attributes have been removed");
         $this->startTimingStep("Removals");
-        $replacement = \implode(",", \array_fill(0, \count($attrNames), '?'));
+        $replacement = implode(",", array_fill(0, count($attrNames), '?'));
         $removedAttributes = [];
         if (!empty($replacement)) {
             $removedAttributes = $this->getConnection()->fetchCol(
@@ -187,7 +226,7 @@ class Attributes extends AbstractImportSection {
         }
         if (count($removedAttributes) > 0) {
             $this->log("Removing " . count($removedAttributes) . " old filterable attributes");
-            $replacement = \implode(",", \array_fill(0, \count($removedAttributes), '?'));
+            $replacement = implode(",", array_fill(0, count($removedAttributes), '?'));
             $this->getConnection()->query("DELETE FROM {$this->eavAttrTable} WHERE attribute_code IN ({$replacement})", $removedAttributes);
             $this->attributesDeleted = count($removedAttributes);
         }
@@ -198,14 +237,14 @@ class Attributes extends AbstractImportSection {
         $existingAttributes = $this->getConnection()->fetchCol("SELECT attribute_code FROM {$this->eavAttrTable} WHERE attribute_code LIKE '". self::ATTRIBUTE_PREFIX ."%'");
         $missingAttributes = [];
         foreach ($attrNames as $attrName) {
-            if (!\in_array($attrName, $existingAttributes)) {
+            if (!in_array($attrName, $existingAttributes)) {
                 $missingAttributes[] = $attrName;
             }
         }
 
         $this->log("Creating missing attributes");
         foreach ($this->attributes as $sinch_id => $data) {
-            if (!\in_array(self::ATTRIBUTE_PREFIX . $sinch_id, $missingAttributes)) {
+            if (!in_array(self::ATTRIBUTE_PREFIX . $sinch_id, $missingAttributes)) {
                 continue;
             }
             $this->createAttribute($sinch_id, $data);
@@ -239,11 +278,11 @@ class Attributes extends AbstractImportSection {
      * @throws NoSuchEntityException
      * @throws StateException
      */
-    private function createAttribute($sinch_id, $data)
+    private function createAttribute($sinch_id, $data): void
     {
         $this->logger->info("Creating attribute " . self::ATTRIBUTE_PREFIX . $sinch_id);
         $attribute = $this->attributeFactory->create()
-            ->setEntityTypeId(\Magento\Catalog\Model\Product::ENTITY)
+            ->setEntityTypeId(Product::ENTITY)
             ->setAttributeCode(self::ATTRIBUTE_PREFIX . $sinch_id)
             ->setBackendType('int')
             ->setFrontendInput('select')
@@ -269,7 +308,7 @@ class Attributes extends AbstractImportSection {
     {
         $attr_visible_in_admin = $this->scopeConfig->getValue(
             'sinchimport/attributes/visible_in_admin',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_STORE
         );
         return $attribute->setDefaultFrontendLabel($data["name"])
             ->setIsVisible($attr_visible_in_admin)
@@ -293,7 +332,7 @@ class Attributes extends AbstractImportSection {
      * @throws NoSuchEntityException
      * @throws StateException
      */
-    private function updateAttributeOptions($sinch_feature_id, $data)
+    private function updateAttributeOptions($sinch_feature_id, $data): void
     {
         $attribute_code = self::ATTRIBUTE_PREFIX . $sinch_feature_id;
         $attribute = $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_feature_id);
@@ -387,9 +426,9 @@ class Attributes extends AbstractImportSection {
      * @throws NoSuchEntityException
      * @throws StateException
      */
-    private function createAttributeGroups()
+    private function createAttributeGroups(): void
     {
-        $criteria = $this->searchCriteriaBuilder->addFilter(\Magento\Eav\Api\Data\AttributeGroupInterface::GROUP_NAME, self::ATTRIBUTE_GROUP_NAME, "eq")->create();
+        $criteria = $this->searchCriteriaBuilder->addFilter(AttributeGroupInterface::GROUP_NAME, self::ATTRIBUTE_GROUP_NAME, "eq")->create();
         $groups = $this->attributeGroupRepository->getList($criteria)->getItems();
         $this->logger->info("Matching attribute groups: " . count($groups));
 
@@ -431,7 +470,7 @@ class Attributes extends AbstractImportSection {
      * @return array
      * @throws StateException
      */
-    private function getAttributeSetIds()
+    private function getAttributeSetIds(): array
     {
         if($this->attributeSetCache == null){
             $attributeSets = $this->attributeSetRepository->getList(
@@ -450,7 +489,7 @@ class Attributes extends AbstractImportSection {
         return $this->attributeSetCache;
     }
 
-    private function addMapping($sinch_id, $sinch_feature_id, $option_id)
+    private function addMapping($sinch_id, $sinch_feature_id, $option_id): void
     {
         if(empty($this->mappingInsert)){
             $this->mappingInsert = $this->getConnection()->prepare(
@@ -458,9 +497,9 @@ class Attributes extends AbstractImportSection {
             );
         }
 
-        $this->mappingInsert->bindValue(":sinch_id", $sinch_id, \PDO::PARAM_INT);
-        $this->mappingInsert->bindValue(":sinch_feature_id", $sinch_feature_id, \PDO::PARAM_INT);
-        $this->mappingInsert->bindValue(":option_id", $option_id, \PDO::PARAM_INT);
+        $this->mappingInsert->bindValue(":sinch_id", $sinch_id, PDO::PARAM_INT);
+        $this->mappingInsert->bindValue(":sinch_feature_id", $sinch_feature_id, PDO::PARAM_INT);
+        $this->mappingInsert->bindValue(":option_id", $option_id, PDO::PARAM_INT);
         $this->mappingInsert->execute();
         $this->mappingInsert->closeCursor();
     }
@@ -473,28 +512,28 @@ class Attributes extends AbstractImportSection {
             );
         }
 
-        $this->mappingQuery->bindValue(":rv_id", $rv_id, \PDO::PARAM_INT);
+        $this->mappingQuery->bindValue(":rv_id", $rv_id, PDO::PARAM_INT);
         $this->mappingQuery->execute();
-        $result = $this->mappingQuery->fetch(\PDO::FETCH_ASSOC);
+        $result = $this->mappingQuery->fetch(PDO::FETCH_ASSOC);
         $this->mappingQuery->closeCursor();
         return $result;
     }
 
-    private function sinchToEntityIds($sinch_prod_ids)
+    private function sinchToEntityIds($sinch_prod_ids): array
     {
         $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
         $entIdQuery = $this->getConnection()->prepare(
             "SELECT entity_id FROM {$this->cpeTable} WHERE sinch_product_id IN ($placeholders)"
         );
         $entIdQuery->execute($sinch_prod_ids);
-        return $entIdQuery->fetchAll(\PDO::FETCH_COLUMN, 0);
+        return $entIdQuery->fetchAll(PDO::FETCH_COLUMN, 0);
     }
 
     /**
      * @throws StateException
-     * @throws \Exception
+     * @throws Exception
      */
-    public function applyAttributeValues()
+    public function applyAttributeValues(): void
     {
         $applyStart = $this->microtime_float();
         $this->logger->info("--- Begin applying attribute values to products ---");
@@ -509,17 +548,22 @@ class Attributes extends AbstractImportSection {
                 continue;
             }
             $entityIds = $this->sinchToEntityIds($products);
-            if($entityIds === false){
-                $this->logger->error("Failed to retrieve entity ids");
-                throw new StateException(__("Failed to retrieve entity ids"));
-            }
             $prodCount = count($entityIds);
             $this->logger->info("({$currVal}/{$valueCount}) Setting option id {$attrData['option_id']} for {$prodCount} products");
-            $this->massProdValues->updateAttributes(
-                $entityIds, 
-                [self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] => $attrData['option_id']],
-                0 //store id (dummy value as they're global attributes)
-            );
+            try {
+                $this->massProdValues->updateAttributes(
+                    $entityIds,
+                    [self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] => $attrData['option_id']],
+                    0 //store id (dummy value as they're global attributes)
+                );
+            } catch (Throwable $t) {
+                $this->logger->err("Caught error during apply for " . self::ATTRIBUTE_PREFIX . $attrData['sinch_feature_id'] . ", assuming attribute doesn't exist for some reason");
+                if ($this->getConnection()->getTransactionLevel() != 0) {
+                    $this->logger->err("The error we caught crashed out of an open transaction, make sure we roll it back so it doesn't affect other sections of the import");
+                    $this->getConnection()->rollBack();
+                }
+                continue;
+            }
         }
 
         $elapsed = number_format($this->microtime_float() - $applyStart, 2);
@@ -528,7 +572,7 @@ class Attributes extends AbstractImportSection {
         );
     }
 
-    private function updateFilterCategoryMapping($sinch_feature_id, $sinch_category_id)
+    private function updateFilterCategoryMapping($sinch_feature_id, $sinch_category_id): void
     {
         if(empty($this->filterMappingInsert)){
             $this->filterMappingInsert = $this->getConnection()->prepare(
@@ -536,8 +580,8 @@ class Attributes extends AbstractImportSection {
             );
         }
 
-        $this->filterMappingInsert->bindValue(":feature_id", $sinch_feature_id, \PDO::PARAM_INT);
-        $this->filterMappingInsert->bindValue(":category_id", $sinch_category_id, \PDO::PARAM_INT);
+        $this->filterMappingInsert->bindValue(":feature_id", $sinch_feature_id, PDO::PARAM_INT);
+        $this->filterMappingInsert->bindValue(":category_id", $sinch_category_id, PDO::PARAM_INT);
         $this->filterMappingInsert->execute();
         $this->filterMappingInsert->closeCursor();
     }

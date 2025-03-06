@@ -2,6 +2,7 @@
 <page xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:View/Layout/etc/page_configuration.xsd">
     <head>
         <script src="SITC_Sinchimport::js/catalog.js"/>
+        <css src="SITC_Sinchimport::css/styles.css" />
     </head>
     <body>
     </body>

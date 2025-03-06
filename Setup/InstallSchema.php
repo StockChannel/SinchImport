@@ -328,7 +328,6 @@ class InstallSchema implements InstallSchemaInterface
             ) . "(
                 shop_entity_id int(11) unsigned NOT NULL,
                 shop_entity_type_id int(11),
-                shop_attribute_set_id int(11),
                 shop_parent_id int(11),
                 shop_store_category_id int(11),
                 shop_parent_store_category_id int(11),

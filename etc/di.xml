@@ -44,6 +44,9 @@
         <plugin name="mb_change_category_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Category" sortOrder="0"/>
         <plugin name="sinchimport_category_visibility" type="SITC\Sinchimport\Plugin\CategoryVisibility" sortOrder="1" />
     </type>
+    <type name="Magento\Catalog\Model\Category\Image">
+        <plugin name="sinchimport_category_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Category\Image" sortOrder="0" />
+    </type>
     <type name="Magento\Catalog\Model\Product\Image">
         <plugin name="mb_change_product_image_url" type="SITC\Sinchimport\Plugin\Catalog\Model\Product\Image" sortOrder="0"/>
     </type>
@@ -62,31 +65,35 @@
     </type>
     <preference for="Magento\Indexer\Console\Command\IndexerReindexCommand" type="SITC\Sinchimport\Console\Command\IndexerReindexCommand" />
     <!-- End section -->
-    <!-- The following plugin is for ElasticSuite 2.6.x and 2.7.x -->
-    <type name="Smile\ElasticsuiteCatalog\Model\Layer\RelevantFilterList">
-        <plugin name="sinchimport_override_elasticsuite_filters_26_27" type="SITC\Sinchimport\Plugin\Elasticsuite\Coverage26" sortOrder="0" />
-    </type>
     <!-- The following plugin is for ElasticSuite 2.8.x and above -->
     <type name="Smile\ElasticsuiteCatalog\Search\Request\Product\Aggregation\Provider\FilterableAttributes\Modifier\Coverage">
         <plugin name="sinchimport_override_elasticsuite_filters_28" type="SITC\Sinchimport\Plugin\Elasticsuite\Coverage28" sortOrder="0" />
     </type>
+
     <!-- The following is to allow additional Elasticsearch query types in ElasticSuite -->
+    <!-- Virtual types for Elasticsuite custom query types -->
+    <virtualType name="sitcAccountGroupQueryFactory" type="SITC\Sinchimport\Search\Request\Query\AccountGroupFilterFactory" />
+    <virtualType name="sitcCategoryBoostQueryFactory" type="SITC\Sinchimport\Search\Request\Query\CategoryBoostFilterFactory" />
+    <virtualType name="sitcPriceRangeQueryFactory" type="SITC\Sinchimport\Search\Request\Query\PriceRangeQueryFactory" />
+    <virtualType name="sitcAttributeValueQueryFactory" type="SITC\Sinchimport\Search\Request\Query\AttributeValueFilterFactory" />
     <type name="Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory">
         <arguments>
             <argument name="factories" xsi:type="array">
                 <item name="sitcAccountGroupQuery" xsi:type="object">sitcAccountGroupQueryFactory</item>
+                <item name="sitcCategoryBoostQuery" xsi:type="object">sitcCategoryBoostQueryFactory</item>
+                <item name="sitcPriceRangeQuery" xsi:type="object">sitcPriceRangeQueryFactory</item>
+                <item name="sitcAttributeValueQuery" xsi:type="object">sitcAttributeValueQueryFactory</item>
             </argument>
         </arguments>
     </type>
-    <!-- The following override is to prevent DI compilation errors on sites without ES -->
-    <preference for="Magento\Framework\Code\Generator" type="SITC\Sinchimport\Override\Generator" />
-
-    <virtualType name="sitcAccountGroupQueryFactory" type="SITC\Sinchimport\Search\Request\Query\AccountGroupFilterFactory" />
 
     <type name="Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder">
         <arguments>
             <argument name="builders" xsi:type="array">
                 <item name="sitcAccountGroupQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\AccountGroupFilter\Proxy</item>
+                <item name="sitcCategoryBoostQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\CategoryBoostFilter\Proxy</item>
+                <item name="sitcPriceRangeQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\PriceRangeQuery\Proxy</item>
+                <item name="sitcAttributeValueQuery" xsi:type="object">SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder\AttributeValueFilter\Proxy</item>
             </argument>
         </arguments>
     </type>
@@ -100,4 +107,26 @@
 
     <!-- Override for the sinch_restrict attribute on composite/grouped/bundle products (to merge their attribute values together) -->
     <preference for="Smile\ElasticsuiteCatalog\Model\Product\Indexer\Fulltext\Datasource\AttributeData" type="SITC\Sinchimport\Plugin\Elasticsuite\AttributeData" />
+
+    <type name="Magento\Catalog\Block\Product\Image">
+        <plugin name="image_badge_overlay" type="SITC\Sinchimport\Helper\Badges" sortOrder="0" />
+    </type>
+
+    <!-- Proxies config for classes, so we don't have the "Incompatible types" error in the IDE -->
+    <type name="SITC\Sinchimport\Helper\SearchProcessing">
+        <arguments>
+            <argument name="queryFactory" xsi:type="object">Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory\Proxy</argument>
+            <argument name="thesaurus" xsi:type="object">Smile\ElasticsuiteThesaurus\Model\Index\Proxy</argument>
+            <argument name="resourceConn" xsi:type="object">Magento\Framework\App\ResourceConnection\Proxy</argument>
+            <argument name="requestBuilder" xsi:type="object">Smile\ElasticsuiteCore\Search\Request\Builder\Proxy</argument>
+            <argument name="searchEngine" xsi:type="object">Magento\Search\Model\SearchEngine\Proxy</argument>
+            <argument name="storeManager" xsi:type="object">Magento\Store\Model\StoreManagerInterface\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="SITC\Sinchimport\Plugin\Catalog\CategoryView">
+        <arguments>
+            <argument name="badgeHelper" xsi:type="object">SITC\Sinchimport\Helper\Badges\Proxy</argument>
+            <argument name="productRepository" xsi:type="object">Magento\Catalog\Model\ProductRepository\Proxy</argument>
+        </arguments>
+    </type>
 </config>

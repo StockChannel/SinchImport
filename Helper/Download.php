@@ -1,46 +1,110 @@
 <?php
 namespace SITC\Sinchimport\Helper;
 
-class Download extends \Magento\Framework\App\Helper\AbstractHelper
-{
-    /** @var \Symfony\Component\Console\Output\ConsoleOutput $output */
-    private $output;
-    /** @var \SITC\Sinchimport\Logger\Logger $logger */
-    private $logger;
+use Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Framework\App\Helper\Context;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\Framework\App\Filesystem\DirectoryList;
+use Magento\Store\Model\ScopeInterface;
+use SITC\Sinchimport\Logger\Logger;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
+class Download extends AbstractHelper
+{
+    public const FILE_ACCOUNT_GROUP_CATEGORIES = 'AccountGroupCategories.csv';
+    public const FILE_ACCOUNT_GROUP_PRICE = 'AccountGroupPrices.csv';
+    public const FILE_ACCOUNT_GROUPS = 'AccountGroups.csv';
+    public const FILE_BRANDS = 'Brands.csv';
+    public const FILE_BULLET_POINTS = 'BulletPoints.csv';
+    public const FILE_CATEGORIES = 'Categories.csv';
+    public const FILE_CATEGORIES_FEATURES = 'CategoryFeatures.csv';
+    public const FILE_DISTRIBUTORS = 'Distributors.csv';
+    public const FILE_DISTRIBUTORS_STOCK = 'DistributorStock.csv';
+    public const FILE_FAMILIES = 'Families.csv';
+    public const FILE_FAMILY_SERIES = 'FamilySeries.csv';
+    public const FILE_MULTIMEDIA = 'Multimedia.csv';
+    public const FILE_PRODUCTS_GALLERY_PICTURES = 'Pictures.csv';
+    public const FILE_PRODUCT_CATEGORIES = 'ProductCategories.csv';
+    public const FILE_PRODUCT_FEATURES = 'ProductFeatures.csv';
+    public const FILE_PRODUCTS = 'Products.csv';
+    public const FILE_REASONS_TO_BUY = 'ReasonsToBuy.csv';
+    public const FILE_RELATED_PRODUCTS = 'RelatedProducts.csv';
+    public const FILE_RESTRICTED_VALUES = 'RestrictedValues.csv';
+    public const FILE_STOCK_AND_PRICES = 'StockAndPrices.csv';
+    public const FILE_REVIEWS = 'Reviews.csv';
+
+    private const EXPECTED_HEADER = [
+        self::FILE_ACCOUNT_GROUP_CATEGORIES => 'AccountGroupID|CategoryID',
+        self::FILE_ACCOUNT_GROUP_PRICE => 'AccountGroupID|ProductID|Price',
+        self::FILE_ACCOUNT_GROUPS => 'ID|Name',
+        self::FILE_BRANDS => 'ID|Name',
+        self::FILE_BULLET_POINTS => 'ID|No|Value',
+        self::FILE_CATEGORIES => 'ID|ParentID|Name|Order|IsHidden|ProductCount|SubCategoryProductCount|ThumbImageURL|NestLevel|SubCategoryCount|UNSPSC|TypeID|MainImageURL|MetaTitle|MetaDescription|Description|VirtualCategory',
+        self::FILE_CATEGORIES_FEATURES => 'ID|CategoryID|Name|Order',
+        self::FILE_DISTRIBUTORS => 'ID|Name',
+        self::FILE_DISTRIBUTORS_STOCK => 'ProductID|DistributorID|Stock',
+        self::FILE_FAMILIES => 'ID|BrandID|Name',
+        self::FILE_FAMILY_SERIES => 'ID|Name|FamilyID',
+        self::FILE_MULTIMEDIA => 'ID|ProductID|Description|URL|ContentType',
+        self::FILE_PRODUCTS_GALLERY_PICTURES => 'ProductID|MainImageURL|ThumbImageURL',
+        self::FILE_PRODUCT_CATEGORIES => 'ProductID|CategoryID',
+        self::FILE_PRODUCT_FEATURES => 'ID|ProductID|RestrictedValueID',
+        self::FILE_PRODUCTS => 'ID|Sku|Name|BrandID|MainImageURL|ThumbImageURL|Specifications|Description|DescriptionType|MediumImageURL|Title|Weight|ShortDescription|UNSPSC|EANCode|FamilyID|SeriesID|Score|ReleaseDate|EndOfLifeDate|Searches|Feature1|Value1|Feature2|Value2|Feature3|Value3|Feature4|Value4|LastYearSales|LastMonthSales',
+        self::FILE_REASONS_TO_BUY => 'ID|No|Value|Title|HighPic',
+        self::FILE_RELATED_PRODUCTS => 'ProductID|RelatedProductID',
+        self::FILE_RESTRICTED_VALUES => 'ID|CategoryFeatureID|Text|Order',
+        self::FILE_STOCK_AND_PRICES => 'ProductID|Stock|Price|Cost',
+        self::FILE_REVIEWS => 'ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageURL|AwardImage80URL|AwardImage200URL'
+    ];
+
+    private ConsoleOutput $output;
+    private Logger $logger;
     
     /** @var string $server The FTP server to use */
-    private $server;
+    private string $server;
     /** @var string $username The username to login to FTP as */
-    private $username;
+    private string $username;
     /** @var string $password The password for logging in to FTP */
-    private $password;
+    private string $password;
 
     /** @var resource $ftpConn The active FTP connection, if any */
     private $ftpConn = null;
     /** @var string $pendingLog Data waiting for newline to write to log */
-    private $pendingLog = "";
+    private string $pendingLog = "";
     /** @var string $saveDir The directory within var to save files to */
-    private $saveDir;
+    private string $saveDir;
 
     public function __construct(
-        \Magento\Framework\App\Helper\Context $context,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \SITC\Sinchimport\Logger\Logger $logger,
-        \Magento\Framework\Filesystem\DirectoryList $dir
+        Context $context,
+        ConsoleOutput $output,
+        Logger $logger,
+        DirectoryList $dir
     ){
         parent::__construct($context);
         $this->output = $output;
         $this->logger = $logger->withName("Download");
 
-        $this->saveDir = $dir->getPath(\Magento\Framework\App\Filesystem\DirectoryList::VAR_DIR) . '/SITC/Sinchimport/';
+        $this->saveDir = $dir->getPath(DirectoryList::VAR_DIR) . '/SITC/Sinchimport/';
         $ftp_data = $this->scopeConfig->getValue(
             'sinchimport/sinch_ftp',
-            \Magento\Store\Model\ScopeInterface::SCOPE_STORE
+            ScopeInterface::SCOPE_STORE
         );
-        $this->username = isset($ftp_data['username']) ? $ftp_data['username'] : "";
-        $this->password = isset($ftp_data['password']) ? $ftp_data['password'] : "";
-        $this->server = isset($ftp_data['ftp_server']) ? $ftp_data['ftp_server'] : "";
+        $this->username = $ftp_data['username'] ?? "";
+        $this->password = $ftp_data['password'] ?? "";
+        $this->server = $ftp_data['ftp_server'] ?? "";
+    }
+
+    /**
+     * Create the import save directory if it doesn't exist (including any parents where necessary)
+     * @throws LocalizedException when it fails to create it
+     */
+    public function createSaveDir(): void
+    {
+        if (!is_dir($this->saveDir)) {
+            if (!mkdir($this->saveDir, 0777, true)) {
+                throw new LocalizedException(__("Failed to create import directory. Check filesystem permissions"));
+            }
+        }
     }
 
     /**
@@ -48,7 +112,7 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
      * Returns true on success, or an error message on failure
      * @return bool|string
      */
-    public function connect()
+    public function connect(): bool|string
     {
         if (empty($this->username) || empty($this->password)) {
             return 'FTP login or password has not been defined';
@@ -78,7 +142,7 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
      * @param string $file
      * @return bool
      */
-    public function downloadFile($file)
+    public function downloadFile(string $file): bool
     {
         if($this->ftpConn == null) {
             $this->print("You aren't connected to Sinch FTP");
@@ -173,7 +237,7 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
      * Disconnect from the FTP server, cleaning up its connected resource
      * @return void
      */
-    public function disconnect()
+    public function disconnect(): void
     {
         if($this->ftpConn != null){
             ftp_close($this->ftpConn);
@@ -181,7 +245,48 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    private function print($message, $newline = true)
+    /**
+     * Return the save path for the given file
+     * @param string $filename File to determine save location for
+     * @return string Path to the file on disk (whether it exists or not)
+     */
+    public function getSavePath(string $filename): string
+    {
+        return $this->saveDir . $filename;
+    }
+
+    /**
+     * Validate whether a file downloaded correctly (based on existence and file size)
+     * and matches the expected format (based on the header row in the file)
+     * @param string $filename
+     * @return bool
+     */
+    public function validateFile(string $filename): bool
+    {
+        $saveFile = $this->saveDir . $filename;
+        if (!file_exists($saveFile) || @filesize($saveFile) < 1) return false;
+
+        //Read the header row from the given file and validate it matches the header we expect for it
+        $fileHandle = fopen($saveFile, 'r');
+        if ($fileHandle === false) {
+            $this->print("Failed to open $filename for validation");
+            return false;
+        }
+        $headerLine = fgets($fileHandle);
+        fclose($fileHandle);
+        if ($headerLine === false) {
+            $this->print("Failed to read header line from $filename for validation");
+            return false;
+        }
+        $headerLine = trim($headerLine);
+        if (mb_strtolower($headerLine) != mb_strtolower(self::EXPECTED_HEADER[$filename])) {
+            $this->print("Header line for file {$filename} doesn't match expected header: {$headerLine} != " . self::EXPECTED_HEADER[$filename]);
+            return false;
+        }
+        return true;
+    }
+
+    private function print($message, $newline = true): void
     {
         if($newline){
             $this->output->writeln($message);
@@ -193,7 +298,7 @@ class Download extends \Magento\Framework\App\Helper\AbstractHelper
         }
     }
 
-    private function wget($file)
+    private function wget($file): bool
     {
         $url = \escapeshellarg("ftp://{$this->server}/{$file}");
         $outputLoc = \escapeshellarg($this->saveDir . $file);

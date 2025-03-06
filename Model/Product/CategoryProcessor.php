@@ -3,8 +3,12 @@
 namespace SITC\Sinchimport\Model\Product;
 
 use Magento\Catalog\Model\Category;
+use Magento\Catalog\Model\CategoryFactory;
+use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory;
 use Magento\CatalogUrlRewrite\Model\CategoryUrlPathGenerator;
 use Magento\CatalogUrlRewrite\Model\CategoryUrlRewriteGenerator;
+use Magento\Framework\Exception\LocalizedException;
+use Magento\UrlRewrite\Model\Exception\UrlAlreadyExistsException;
 use Magento\UrlRewrite\Model\UrlPersistInterface;
 
 class CategoryProcessor
@@ -14,47 +18,26 @@ class CategoryProcessor
      *
      * @var array
      */
-    protected $categoriesCache = [];
-
-    /**
-     * @var \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory
-     */
-    protected $categoryColFactory;
-
-    /**
-     * @var \Magento\Catalog\Model\CategoryFactory
-     */
-    protected $categoryFactory;
-
-    /**
-     * @var CategoryUrlPathGenerator
-     */
-
-    protected $categoryUrlPathGenerator;
-
-    /**
-     * @var CategoryUrlRewriteGenerator
-     */
-    protected $categoryUrlRewriteGenerator;
-
-    /**
-     * @var UrlPersistInterface
-     */
-    protected $urlPersist;
+    protected array $categoriesCache = [];
+    protected CollectionFactory $categoryColFactory;
+    protected CategoryFactory $categoryFactory;
+    protected CategoryUrlPathGenerator $categoryUrlPathGenerator;
+    protected CategoryUrlRewriteGenerator $categoryUrlRewriteGenerator;
+    protected UrlPersistInterface $urlPersist;
 
     /**
      * CategoryProcessor constructor.
-     * @param \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory $categoryColFactory
-     * @param \Magento\Catalog\Model\CategoryFactory $categoryFactory
+     * @param CollectionFactory $categoryColFactory
+     * @param CategoryFactory $categoryFactory
      * @param CategoryUrlPathGenerator $categoryUrlPathGenerator
      * @param CategoryUrlRewriteGenerator $categoryUrlRewriteGenerator
      * @param UrlPersistInterface $urlPersist
-     * @throws \Magento\Framework\Exception\LocalizedException
-     * @throws \Magento\UrlRewrite\Model\Exception\UrlAlreadyExistsException
+     * @throws LocalizedException
+     * @throws UrlAlreadyExistsException
      */
     public function __construct(
-        \Magento\Catalog\Model\ResourceModel\Category\CollectionFactory $categoryColFactory,
-        \Magento\Catalog\Model\CategoryFactory $categoryFactory,
+        CollectionFactory $categoryColFactory,
+        CategoryFactory $categoryFactory,
         CategoryUrlPathGenerator $categoryUrlPathGenerator,
         CategoryUrlRewriteGenerator $categoryUrlRewriteGenerator,
         UrlPersistInterface $urlPersist
@@ -70,10 +53,10 @@ class CategoryProcessor
 
     /**
      * @return $this
-     * @throws \Magento\Framework\Exception\LocalizedException
-     * @throws \Magento\UrlRewrite\Model\Exception\UrlAlreadyExistsException
+     * @throws LocalizedException
+     * @throws UrlAlreadyExistsException
      */
-    protected function initCategories()
+    protected function initCategories(): static
     {
         if (empty($this->categoriesCache)) {
             $collection = $this->categoryColFactory->create()
@@ -124,10 +107,10 @@ class CategoryProcessor
      *
      * @param int $categoryId
      *
-     * @return \Magento\Catalog\Model\Category|null
+     * @return Category|null
      */
-    public function getCategoryById($categoryId)
+    public function getCategoryById(int $categoryId): ?Category
     {
-        return isset($this->categoriesCache[$categoryId]) ? $this->categoriesCache[$categoryId] : null;
+        return $this->categoriesCache[$categoryId] ?? null;
     }
 }

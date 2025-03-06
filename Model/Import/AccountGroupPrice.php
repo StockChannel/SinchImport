@@ -1,58 +1,67 @@
 <?php
 namespace SITC\Sinchimport\Model\Import;
 
+use Exception;
+use Magento\Catalog\Api\Data\TierPriceInterface;
+use Magento\Catalog\Api\Data\TierPriceInterfaceFactory;
+use Magento\Catalog\Api\TierPriceStorageInterface;
+use Magento\Customer\Api\Data\GroupInterfaceFactory;
+use Magento\Customer\Api\GroupRepositoryInterface;
+use Magento\Framework\Api\SearchCriteriaBuilder;
+use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\Exception\State\InvalidTransitionException;
+use SITC\Sinchimport\Helper\Data;
+use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Util\CsvIterator;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
 /**
- * Class CustomerGroupPrice
+ * Class AccountGroupPrice
  *
  * NOTE: ScopedProductTierPriceManagementInterface is avoided because its too slow
  *
  * @package SITC\Sinchimport\Model\Import
  */
-class CustomerGroupPrice extends AbstractImportSection
+class AccountGroupPrice extends AbstractImportSection
 {
-    const LOG_PREFIX = "CustomerGroupPrice: ";
-    const LOG_FILENAME = "customer_groups_price";
-
-    const CUSTOMER_GROUPS = 'group_name';
-    const PRICE_COLUMN = 'customer_group_price';
-    const CHUNK_SIZE = 1000;
-    const INSERT_THRESHOLD = 500; //Inserts are most efficient around batches of 500 (possibly related to TierPricePersistence inserting in batches of 500?)
+    const LOG_PREFIX = "AccountGroupPrice: ";
+    const LOG_FILENAME = "account_group_price";
 
     const GROUP_SUFFIX = " (SITC)";
 
     const PRICE_TABLE_CURRENT = "sinch_customer_group_price_cur";
     const PRICE_TABLE_NEXT = "sinch_customer_group_price_nxt";
 
-    private $customerGroupCount = 0;
-    private $customerGroupPriceCount = 0;
+    private int $customerGroupCount = 0;
+    private int $customerGroupPriceCount = 0;
 
     /**
-     * @var \SITC\Sinchimport\Helper\Data
+     * @var Data
      */
     private $helper;
     /**
      * CSV parser
-     * @var \SITC\Sinchimport\Util\CsvIterator
+     * @var CsvIterator
      */
     private $csv;
     /**
-     * @var \Magento\Customer\Api\Data\GroupInterfaceFactory
+     * @var GroupInterfaceFactory
      */
     private $groupFactory;
     /**
-     * @var \Magento\Customer\Api\GroupRepositoryInterface
+     * @var GroupRepositoryInterface
      */
     private $groupRepository;
     /**
-     * @var \Magento\Catalog\Api\TierPriceStorageInterface
+     * @var TierPriceStorageInterface
      */
     private $tierPriceStorage;
     /**
-     * @var \Magento\Catalog\Api\Data\TierPriceInterface
+     * @var TierPriceInterface
      */
     private $tierPriceFactory;
     /**
-     * @var \Magento\Framework\Api\SearchCriteriaBuilder
+     * @var SearchCriteriaBuilder
      */
     private $searchCriteriaBuilder;
 
@@ -91,24 +100,19 @@ class CustomerGroupPrice extends AbstractImportSection
     private $groupCodeCache = [];
 
 
-    /**
-     * CustomerGroupPrice constructor.
-     * @param \SITC\Sinchimport\Util\CsvIterator $csv
-     * @param \Magento\Framework\App\ResourceConnection $resource
-     * @param \Symfony\Component\Console\Output\ConsoleOutput $output
-     */
     public function __construct(
-        \Magento\Framework\App\ResourceConnection $resourceConn,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        \SITC\Sinchimport\Helper\Data $helper,
-        \SITC\Sinchimport\Util\CsvIterator $csv,
-        \Magento\Customer\Api\Data\GroupInterfaceFactory $groupFactory,
-        \Magento\Customer\Api\GroupRepositoryInterface $groupRepository,
-        \Magento\Catalog\Api\TierPriceStorageInterface $tierPriceStorage,
-        \Magento\Catalog\Api\Data\TierPriceInterfaceFactory $tierPriceFactory,
-        \Magento\Framework\Api\SearchCriteriaBuilder $searchCriteriaBuilder
+        ResourceConnection $resourceConn,
+        ConsoleOutput $output,
+        Download $dlHelper,
+        Data $helper,
+        CsvIterator $csv,
+        GroupInterfaceFactory $groupFactory,
+        GroupRepositoryInterface $groupRepository,
+        TierPriceStorageInterface $tierPriceStorage,
+        TierPriceInterfaceFactory $tierPriceFactory,
+        SearchCriteriaBuilder $searchCriteriaBuilder
     ) {
-        parent::__construct($resourceConn, $output);
+        parent::__construct($resourceConn, $output, $dlHelper);
         $this->helper = $helper;
         $this->csv = $csv->setLineLength(256)->setDelimiter("|");
         $this->groupFactory = $groupFactory;
@@ -124,6 +128,14 @@ class CustomerGroupPrice extends AbstractImportSection
 
         $this->groupPriceTableCurrent = $this->getTableName(self::PRICE_TABLE_CURRENT);
         $this->groupPriceTableNext = $this->getTableName(self::PRICE_TABLE_NEXT);
+    }
+
+    public function getRequiredFiles(): array
+    {
+        return [
+            Download::FILE_ACCOUNT_GROUPS,
+            Download::FILE_ACCOUNT_GROUP_PRICE
+        ];
     }
 
     private function createMappingTable()
@@ -148,10 +160,9 @@ class CustomerGroupPrice extends AbstractImportSection
         $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->groupPriceTableCurrent} (
             sinch_group_id int(10) unsigned NOT NULL,
             sinch_product_id int(10) unsigned NOT NULL,
-            price_type int(10) unsigned NOT NULL DEFAULT 1,
             price decimal(12,4) NOT NULL,
             magento_value_id int(11) DEFAULT NULL UNIQUE KEY,
-            PRIMARY KEY (sinch_group_id, sinch_product_id, price_type),
+            PRIMARY KEY (sinch_group_id, sinch_product_id),
             FOREIGN KEY (magento_value_id) REFERENCES {$this->tierPriceTable} (value_id) ON UPDATE CASCADE ON DELETE SET NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
 
@@ -161,26 +172,26 @@ class CustomerGroupPrice extends AbstractImportSection
         $this->getConnection()->query("CREATE TABLE IF NOT EXISTS {$this->groupPriceTableNext} (
             sinch_group_id int(10) unsigned NOT NULL,
             sinch_product_id int(10) unsigned NOT NULL,
-            price_type int(10) unsigned NOT NULL DEFAULT 1,
             price decimal(12,4) NOT NULL DEFAULT -1,
-            PRIMARY KEY (sinch_group_id, sinch_product_id, price_type)
+            PRIMARY KEY (sinch_group_id, sinch_product_id)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
     }
 
 
     /**
-     * @param string $customerGroupFile
-     * @param string $customerGroupPriceFile
-     * @throws \Exception
+     * @throws Exception
      */
-    public function parse($customerGroupFile, $customerGroupPriceFile)
+    public function parse(): void
     {
+        $accountGroupFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUPS);
+        $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
+
         $this->log("Starting CustomerGroupPrice parse");
         $this->createMappingTable();
         $this->initDeltaPricing();
 
         $this->startTimingStep('Group parsing');
-        $customerGroupCsv = $this->csv->getData($customerGroupFile);
+        $customerGroupCsv = $this->csv->getData($accountGroupFile);
         unset($customerGroupCsv[0]);
 
         foreach ($customerGroupCsv as $groupData) {
@@ -188,26 +199,24 @@ class CustomerGroupPrice extends AbstractImportSection
             $this->createOrUpdateGroup($groupData[0], $groupData[1]);
         }
         $this->endTimingStep();
-
         $this->log("Processed {$this->customerGroupCount} customer groups");
-        $parseStart = $this->microtime_float();
-        
+
         $this->startTimingStep('Group prices - LOAD DATA');
         $this->log("Loading new values into database for processing");
         // We need the special logic for the price column to ensure empty fields are interpreted as -1, not 0
         $this->getConnection()->query(
-            "LOAD DATA LOCAL INFILE '{$customerGroupPriceFile}'
+            "LOAD DATA LOCAL INFILE '{$accountGroupPriceFile}'
                 INTO TABLE {$this->groupPriceTableNext}
                 FIELDS TERMINATED BY '|'
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (sinch_group_id, sinch_product_id, price_type, @price)
+                (sinch_group_id, sinch_product_id, @price)
                 SET price = IF(CHAR_LENGTH(TRIM(@price)) = 0, -1, @price)"
         );
         $permitZero = $this->helper->getStoreConfig('sinchimport/general/permit_zero_price');
         $this->getConnection()->query(
-            "DELETE FROM {$this->groupPriceTableNext} WHERE price < 0 OR price_type != 1 OR (price = 0 AND :permitZero = 0)",
+            "DELETE FROM {$this->groupPriceTableNext} WHERE price < 0 OR (price = 0 AND :permitZero = 0)",
             [':permitZero' => (int)$permitZero]
         );
         $this->endTimingStep();
@@ -224,11 +233,10 @@ class CustomerGroupPrice extends AbstractImportSection
         $this->getConnection()->beginTransaction();
         try {
             $toDelete = $this->getConnection()->fetchAll(
-                "SELECT current.sinch_group_id, current.sinch_product_id, current.price_type, current.magento_value_id FROM {$this->groupPriceTableCurrent} current
+                "SELECT current.sinch_group_id, current.sinch_product_id, current.magento_value_id FROM {$this->groupPriceTableCurrent} current
                     LEFT JOIN {$this->groupPriceTableNext} next
                         ON current.sinch_group_id = next.sinch_group_id
                         AND current.sinch_product_id = next.sinch_product_id
-                        AND current.price_type = next.price_type
                     WHERE next.price IS NULL"
             );
             $deletedCount = count($toDelete);
@@ -243,18 +251,16 @@ class CustomerGroupPrice extends AbstractImportSection
                 $this->getConnection()->query(
                     "DELETE FROM {$this->groupPriceTableCurrent}
                         WHERE sinch_group_id = :sinch_group_id
-                        AND sinch_product_id = :sinch_product_id
-                        AND price_type = :price_type",
+                        AND sinch_product_id = :sinch_product_id",
                     [
                         ":sinch_group_id" => $rule['sinch_group_id'],
                         ":sinch_product_id" => $rule['sinch_product_id'],
-                        ":price_type" => $rule['price_type']
                     ]
                 );
             }
             $toDelete = null;
             $this->getConnection()->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->getConnection()->rollBack();
             throw $e;
         } finally {
@@ -295,7 +301,6 @@ class CustomerGroupPrice extends AbstractImportSection
                 INNER JOIN {$this->groupPriceTableCurrent} current
                     ON next.sinch_group_id = current.sinch_group_id
                     AND next.sinch_product_id = current.sinch_product_id
-                    AND next.price_type = current.price_type
                 WHERE next.price != current.price AND current.magento_value_id IS NOT NULL"
             );
             $updatedCount = count($toUpdate);
@@ -311,7 +316,7 @@ class CustomerGroupPrice extends AbstractImportSection
             }
             $toUpdate = null;
             $this->getConnection()->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->getConnection()->rollBack();
             throw $e;
         } finally {
@@ -325,8 +330,8 @@ class CustomerGroupPrice extends AbstractImportSection
         try {
             //Pull all updated data into current from next (this includes changed prices which were updated by the previous step)
             $this->getConnection()->query(
-                "INSERT INTO {$this->groupPriceTableCurrent} (sinch_group_id, sinch_product_id, price_type, price)
-                    SELECT sinch_group_id, sinch_product_id, price_type, price FROM {$this->groupPriceTableNext} next
+                "INSERT INTO {$this->groupPriceTableCurrent} (sinch_group_id, sinch_product_id, price)
+                    SELECT sinch_group_id, sinch_product_id, price FROM {$this->groupPriceTableNext} next
                 ON DUPLICATE KEY UPDATE price = next.price"
             );
 
@@ -348,7 +353,7 @@ class CustomerGroupPrice extends AbstractImportSection
 
             $this->getConnection()->query("DELETE FROM {$this->groupPriceTableNext}");
             $this->getConnection()->commit();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $this->getConnection()->rollBack();
             throw $e;
         } finally {
@@ -366,7 +371,7 @@ class CustomerGroupPrice extends AbstractImportSection
      * @param string $groupName The Sinch Group Name
      * @return void
      */
-    private function createOrUpdateGroup($sinchGroupId, $groupName)
+    private function createOrUpdateGroup(int $sinchGroupId, string $groupName)
     {
         $fullGroupName = $groupName . self::GROUP_SUFFIX;
         $this->customerGroupCount += 1;
@@ -396,7 +401,7 @@ class CustomerGroupPrice extends AbstractImportSection
         try {
             $group = $this->groupRepository->save($group);
             $this->insertMapping($sinchGroupId, $group->getId());
-        } catch (\Magento\Framework\Exception\State\InvalidTransitionException $e) {
+        } catch (InvalidTransitionException $e) {
             $this->log("Group unexpectedly exists, trying to remap it: {$groupName} ({$sinchGroupId})");
             $criteria = $this->searchCriteriaBuilder
                 ->addFilter('code', $fullGroupName, 'eq')

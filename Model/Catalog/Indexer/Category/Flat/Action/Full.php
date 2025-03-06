@@ -2,14 +2,17 @@
 
 namespace SITC\Sinchimport\Model\Catalog\Indexer\Category\Flat\Action;
 
+use Magento\Catalog\Model\Category;
+use Magento\Store\Model\Store;
+
 class Full extends \Magento\Catalog\Model\Indexer\Category\Flat\Action\Full
 {
     public function populateFlatTables(array $stores)
     {
-        $rootId = \Magento\Catalog\Model\Category::TREE_ROOT_ID;
+        $rootId = Category::TREE_ROOT_ID;
         $categories = [];
         $categoriesIds = [];
-        /* @var $store \Magento\Store\Model\Store */
+        /* @var $store Store */
         foreach ($stores as $store) {
             if (!isset($categories[$store->getRootCategoryId()])) {
                 $select = $this->connection->select()->from(

@@ -2,14 +2,24 @@
 
 namespace SITC\Sinchimport\Model\Product;
 
+use Exception;
+use Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator;
 use Magento\Framework\App\ObjectManager;
 use Magento\Catalog\Model\Category;
+use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Framework\Filter\FilterManager;
+use Magento\Framework\Session\SidResolverInterface;
+use Magento\Framework\UrlFactory;
+use Magento\Store\Api\Data\StoreInterface;
+use Magento\Store\Model\StoreManagerInterface;
 use Magento\UrlRewrite\Model\OptionProvider;
 use Magento\CatalogUrlRewrite\Model\ProductUrlRewriteGenerator;
 use Magento\UrlRewrite\Model\UrlFinderInterface;
 use Magento\UrlRewrite\Model\UrlPersistInterface;
 use Magento\UrlRewrite\Service\V1\Data\UrlRewrite;
 use Magento\UrlRewrite\Service\V1\Data\UrlRewriteFactory;
+use SITC\Sinchimport\Logger\Logger;
+use Symfony\Component\Console\Output\ConsoleOutput;
 
 class Url extends \Magento\Catalog\Model\Product\Url
 {
@@ -22,7 +32,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
     protected $categoryProcessor;
 
     /**
-     * @var \SITC\Sinchimport\Logger\Logger
+     * @var Logger
      */
     protected $sinchLogger;
 
@@ -35,46 +45,46 @@ class Url extends \Magento\Catalog\Model\Product\Url
     /** @var UrlRewriteFactory */
     protected $urlRewriteFactory;
 
-    /** @var \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator */
+    /** @var ProductUrlPathGenerator */
     protected $productUrlPathGenerator;
 
     /** @var array */
     protected $storesCache = [];
 
     /**
-     * @var \Symfony\Component\Console\Output\ConsoleOutput
+     * @var ConsoleOutput
      */
     protected $_outPut;
 
     /**
      * Url constructor.
      *
-     * @param \Magento\Framework\UrlFactory $urlFactory
-     * @param \Magento\Store\Model\StoreManagerInterface $storeManager
-     * @param \Magento\Framework\Filter\FilterManager $filter
-     * @param \Magento\Framework\Session\SidResolverInterface $sidResolver
-     * @param \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator $productUrlPathGenerator
-     * @param \SITC\Sinchimport\Model\Product\CategoryProcessor $categoryProcessor
-     * @param \SITC\Sinchimport\Logger\Logger $sinchLogger
+     * @param UrlFactory $urlFactory
+     * @param StoreManagerInterface $storeManager
+     * @param FilterManager $filter
+     * @param SidResolverInterface $sidResolver
+     * @param ProductUrlPathGenerator $productUrlPathGenerator
+     * @param CategoryProcessor $categoryProcessor
+     * @param Logger $sinchLogger
      * @param UrlPersistInterface $urlPersist
      * @param UrlRewriteFactory $urlRewriteFactory
      * @param UrlFinderInterface $urlFinder
-     * @param \Symfony\Component\Console\Output\ConsoleOutput $output
+     * @param ConsoleOutput $output
      * @param array $data
      */
     public function __construct(
-        \Magento\Framework\UrlFactory $urlFactory,
-        \Magento\Store\Model\StoreManagerInterface $storeManager,
-        \Magento\Framework\Filter\FilterManager $filter,
-        \Magento\Framework\Session\SidResolverInterface $sidResolver,
-        \Magento\CatalogUrlRewrite\Model\ProductUrlPathGenerator $productUrlPathGenerator,
-        \SITC\Sinchimport\Model\Product\CategoryProcessor $categoryProcessor,
-        \SITC\Sinchimport\Logger\Logger $sinchLogger,
-        UrlPersistInterface $urlPersist,
-        UrlRewriteFactory $urlRewriteFactory,
-        UrlFinderInterface $urlFinder,
-        \Symfony\Component\Console\Output\ConsoleOutput $output,
-        array $data = []
+        UrlFactory                            $urlFactory,
+        StoreManagerInterface               $storeManager,
+        FilterManager                  $filter,
+        SidResolverInterface          $sidResolver,
+        ProductUrlPathGenerator $productUrlPathGenerator,
+        CategoryProcessor                                        $categoryProcessor,
+        Logger                                                   $sinchLogger,
+        UrlPersistInterface                                      $urlPersist,
+        UrlRewriteFactory                                        $urlRewriteFactory,
+        UrlFinderInterface                                       $urlFinder,
+        ConsoleOutput                                            $output,
+        array                                                    $data = []
     ) {
         parent::__construct(
             $urlFactory, $storeManager, $filter, $sidResolver, $urlFinder, $data
@@ -91,7 +101,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
     /**
      * @param null $storeId
      * @return $this
-     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @throws NoSuchEntityException
      */
     public function refreshRewrites($storeId = null)
     {
@@ -108,8 +118,8 @@ class Url extends \Magento\Catalog\Model\Product\Url
 
     /**
      * @param null $storeId
-     * @return \Magento\Store\Api\Data\StoreInterface|\Magento\Store\Api\Data\StoreInterface[]
-     * @throws \Magento\Framework\Exception\NoSuchEntityException
+     * @return StoreInterface|StoreInterface[]
+     * @throws NoSuchEntityException
      */
     public function getStores($storeId = null)
     {
@@ -145,9 +155,9 @@ class Url extends \Magento\Catalog\Model\Product\Url
             if ($productUrls) {
                 try {
                     $this->urlPersist->replace($productUrls);
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                     $logString = "[ERROR] " . $e->getMessage();
-                    $this->sinchLogger->info($logString);;
+                    $this->sinchLogger->info($logString);
                 }
             }
             //display in run command
@@ -156,7 +166,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
             if ($step > 38){
                 $this->_outPut->writeln("");
                 $step = 0;
-            };
+            }
         }
 
         return $this;
@@ -179,7 +189,7 @@ class Url extends \Magento\Catalog\Model\Product\Url
     protected function generateUrls($storeId)
     {
         /**
-         * @var $urls \Magento\UrlRewrite\Service\V1\Data\UrlRewrite[]
+         * @var $urls UrlRewrite[]
          */
         $urls = array_merge(
             $this->canonicalUrlRewriteGenerate($storeId), //Regular product URLs with target /catalog/product/view/id/{ID}

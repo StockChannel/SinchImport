@@ -1,0 +1,89 @@
+.sitc-bullet-points {
+    clear: both;
+}
+.sitc-bullet-points ul {
+    list-style-type: disc;
+}
+.product.attribute.description b {
+    display: block;
+    margin-top: 10px;
+}
+.product.attribute.description b:nth-child(1) {
+    margin: 0;
+}
+.sitc-videos ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+.sitc-manuals ul {
+    margin: 0;
+    padding: 0;
+}
+.sitc-manuals iframe {
+    border: none;
+    width: 100%;
+    min-height: 400px;
+}
+.badge-custom{
+    width: auto;
+    display: inline;
+    position: absolute;
+    left: 0;
+    color: #fff;
+    padding: 7px 10px;
+    z-index: 2;
+    top: 0;
+    border-radius: 5px;
+}
+a.product-item-photo {
+    position: relative;
+}
+
+.badge-custom svg {
+    width: 17px;
+}
+.badge-custom svg, .badge-custom span {
+    display: inline-block;
+    vertical-align: middle;
+}
+.badge-custom span {
+    margin-left: 6px;
+    font-weight: bold;
+    font-family: sans-serif;
+    font-size: 11px;
+}
+.HotProduct {
+    width: auto;
+    background: #fd0000;
+}
+.HotProduct svg {
+    fill: #f2f545;
+}
+.HotProduct svg, .HotProduct span {
+    color: #ffffff;
+}
+.Recommended svg {
+    fill: #fff;
+}
+.Recommended {
+    background: #5c76da;
+}
+.Popular {
+    background: #199aa7;
+}
+.Popular svg {
+    fill: #aff9ff;
+}
+.New svg {
+    fill: #ffe400;
+}
+.New {
+    background: #f6ae15;
+}
+.Bestseller span {
+    color: #000;
+}
+.Bestseller {
+    background: #dddd;
+}

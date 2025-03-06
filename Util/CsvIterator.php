@@ -2,12 +2,11 @@
 
 namespace SITC\Sinchimport\Util;
 
-class CsvIterator extends \Magento\Framework\File\Csv {
+use Exception;
+use Magento\Framework\File\Csv;
 
-    /**
-     * @var string $currentFilename
-     */
-    protected $currentFilename;
+class CsvIterator extends Csv {
+    protected ?string $currentFilename = null;
 
     /**
      * File handle
@@ -16,17 +15,17 @@ class CsvIterator extends \Magento\Framework\File\Csv {
 
     /**
      * Open a file ready for iteration
-     * @var string $file
-     * @throws \Exception
+     * @throws Exception
+     *@var string $file
      */
-    public function openIter($file)
+    public function openIter(string $file): void
     {
         if(!is_null($this->fh) || $this->currentFilename != null){
-            throw new \Exception("A file is already open for iteration");
+            throw new Exception("A file is already open for iteration");
         }
 
         if (!file_exists($file)) {
-            throw new \Exception('File "' . $file . '" does not exist');
+            throw new Exception('File "' . $file . '" does not exist');
         }
         $this->fh = fopen($file, 'r');
         $this->currentFilename = $file;
@@ -35,7 +34,7 @@ class CsvIterator extends \Magento\Framework\File\Csv {
     /**
      * End the current iteration, closing the file
      */
-    public function closeIter()
+    public function closeIter(): void
     {
         if(!is_null($this->fh)){
             fclose($this->fh);
@@ -47,13 +46,13 @@ class CsvIterator extends \Magento\Framework\File\Csv {
     /**
      * Retrieve CSV file data row by row
      *
-     * @return  array
-     * @throws \Exception
+     * @return  array|bool|null
+     * @throws Exception
      */
-    public function getIter()
+    public function getIter(): array|bool|null
     {
         if(is_null($this->fh) && is_null($this->currentFilename)){
-            throw new \Exception("No file is currently open for iteration");
+            throw new Exception("No file is currently open for iteration");
         }
 
         $rowData = fgetcsv($this->fh, $this->_lineLength, $this->_delimiter, $this->_enclosure);
@@ -64,12 +63,12 @@ class CsvIterator extends \Magento\Framework\File\Csv {
     /**
      * Take up to $count lines from file,
      * leaving the file open for further calls
-     * 
-     * @param string $file
+     *
      * @param int $count
-     * @throws \Exception
+     * @return array
+     * @throws Exception
      */
-    public function take($count)
+    public function take(int $count): array
     {
         $current = 0;
         $data = [];

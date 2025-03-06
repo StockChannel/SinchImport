@@ -41,6 +41,10 @@
                     <label>Import Success notification email destination</label>
                     <comment>If blank or not a valid email, does not send success emails</comment>
                 </field>
+                <field id="debug" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Debug Mode</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
             </group>
 
             <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
@@ -104,9 +108,12 @@
                 </field>
             </group>
             <group id="sinch_import_history" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
-                <label>Import History</label>
+                <label>Import Status and History</label>
                 <field id="start_sinch_import" translate="label" type="button" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0">
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Importhistory</frontend_model>
+                </field>
+                <field id="import_status_block" translate="label" type="button" sortOrder="10" showInWebsite="1" showInDefault="1" showInStore="1">
+                    <frontend_model>SITC\Sinchimport\Block\System\Config\ImportStatus</frontend_model>
                 </field>
             </group>
 
@@ -136,6 +143,16 @@
                     <label>Override Elasticsuite</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>When enabled, overrides Elasticsuite's "Facet Min Coverage" functionality for Stockinthechannel Filterable Attributes, reverting them to default behaviour</comment>
+                </field>
+                <field id="summary_features" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Summary Features Display</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When enabled, injects Stockinthechannel Summary Features into Magento product list pages. Please note this does not affect blocks in grid mode</comment>
+                </field>
+                <field id="bullet_points" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Bullet Points Display</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When enabled, injects Stockinthechannel Bullet Points into Magento product list pages. Please note this does not affect blocks in grid mode</comment>
                 </field>
             </group>
             <group id="cron" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0" >
@@ -240,6 +257,357 @@
                 </field>
             </group>
 
+            <group id="search" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Search</label>
+                <field id="category_field_search_weight" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Category search weight</label>
+                    <comment><![CDATA[The search weight for the category name field]]></comment>
+                </field>
+                <field id="brand_field_search_weight" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Brand name search weight</label>
+                    <comment><![CDATA[The search weight for the brand name field]]></comment>
+                </field>
+                <field id="enable_enhanced" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable Enhanced Search</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, attempt to refine searches to improve their relevance and specificity]]></comment>
+                </field>
+            </group>
+
+            <group id="enhanced_search" translate="label" type="text" sortOrder="90" showInDefault="1" showInStore="1" showInWebsite="1">
+                <label>Enhanced Search</label>
+                <field id="enable_price" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable automatic price filtering</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, strip terms like "between 100 and 200", "below 500", "above 666" from searches and turn them into price filters]]></comment>
+                </field>
+                <field id="enable_category" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable automatic category filtering</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, strip terms like "in Computers", "in Notebooks", etc from searches and turn them into category filters]]></comment>
+                </field>
+                <field id="enable_attribute" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable automatic attribute filtering</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, strip terms matching manufacturer, sinch_family, or sinch_family_series attribute values from searches and turn them into attribute filters]]></comment>
+                </field>
+                <field id="enable_category_dynamic" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable automatic dynamic category filtering</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Provides the same functionality as the above category filtering option, but doesn't require "in" to be present in the search terms. This runs separately after the above filters, and thus can be controlled independently]]></comment>
+                </field>
+                <field id="enable_redirects" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable automatic redirects from search results to more appropriate category pages</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Whether to enable redirects during enhanced search processing.
+                        Without this enabled, filters are simply added to the constructed query to further limit it]]></comment>
+                </field>
+                <field id="redirects_only_strip_regex_terms" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Redirects only strip regex terms</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[With this enabled, only redirect to strip the regex based enhanced terms (price and category).
+                        Otherwise, redirects are used wherever possible]]></comment>
+                    <depends>
+                        <field id="sinchimport/enhanced_search/enable_redirects">1</field>
+                    </depends>
+                </field>
+                <field id="redirects_avoid_categories" translate="label" type="select" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Redirects avoid categories</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[With this enabled, redirects avoid automatically selecting categories due to empty query text (or remaining text being a category name),
+                        instead rolling it back to the original minus regex terms]]></comment>
+                    <depends>
+                        <field id="sinchimport/enhanced_search/enable_redirects">1</field>
+                        <field id="sinchimport/enhanced_search/redirects_only_strip_regex_terms">0</field>
+                    </depends>
+                </field>
+                <field id="empty_query_restore_mode" translate="label" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable empty query restore mode</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[When enabled, unwinds query text modification if the result is empty.
+                        Otherwise, replaces the entire must clause of the generated query to ensure it remains valid, but might cause minor incompatibilities.
+                        Probably worth leaving this on]]></comment>
+                </field>
+                <field id="filter_validate_min_prods" translate="label" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Minimum matching products to consider filter valid</label>
+                    <comment><![CDATA[The minimum number of products required to match a filter in order for it to be considered valid.
+                            A value of 0 disables the validation, slightly reducing the number of queries to ES, however it will worsen search results noticeably in some cases.
+                        ]]></comment>
+                    <validate>required-entry integer</validate>
+                </field>
+                <field id="enable_autocomplete_suggestions" translate="label" type="select" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable Additional Autocomplete Suggestions</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Whether to produce additional autocomplete suggestions based on automatic category filtering (non-dynamic)]]></comment>
+                    <depends>
+                        <field id="sinchimport/enhanced_search/enable_category">1</field>
+                    </depends>
+                </field>
+                <field id="enable_log_to_file" translate="label" type="select" sortOrder="100" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable Debug Logging to File</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Whether SearchProcessing and QueryBuilder also log to file in addition to the browser loggers]]></comment>
+                    <depends>
+                        <field id="sinchimport/general/debug">1</field>
+                    </depends>
+                </field>
+                <depends>
+                    <field id="sinchimport/search/enable_enhanced">1</field>
+                </depends>
+            </group>
+
+            <group id="popularity_boost" translate="label" type="text" sortOrder="100" showInDefault="1" showInStore="1" showInWebsite="1">
+                <label>Popularity Boost</label>
+                <comment><![CDATA[Boost the position of products in collections based on additional Stockinthechannel provided attributes]]></comment>
+                <!-- Main toggles -->
+                <field id="enable" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Enable</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="advanced_settings_visible" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show Advanced Settings</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Only enable if you know what you're doing and are happy with fixing things yourself]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                    </depends>
+                </field>
+                <field id="really_show_advanced" translate="label" type="select" sortOrder="21" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Really Show Advanced Settings</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[By enabling this you agree that you won't whine to Stockinthechannel if you break things. That's twice you've been warned now. On your head be it]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                    </depends>
+                </field>
+                <field id="show_really_advanced" translate="label" type="select" sortOrder="22" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Show Really Advanced Settings</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment><![CDATA[Looks like the above setting, but this one controls whether you can change even deeper logic. You should probably avoid this unless you're Nick or Joe]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                    </depends>
+                </field>
+                <!-- End Main toggles -->
+                <!-- Advanced "Global" Boost settings -->
+                <field id="scoring_mode" translate="label" type="text" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Scoring Mode</label>
+                    <comment><![CDATA[]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="boost_mode" translate="label" type="text" sortOrder="26" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Boost Mode</label>
+                    <comment><![CDATA[]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <!-- End Advanced "Global" Boost settings -->
+                <!-- Score -->
+                <field id="score_factor" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Score Boost Factor</label>
+                    <comment><![CDATA[Factor used for the "sinch_score" attribute]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="score_modifier" translate="label" type="text" sortOrder="31" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Score Boost Modifier</label>
+                    <comment><![CDATA[Modifier used for the "sinch_score" attribute. Must be one of: none, log, log1p, log2p, ln, ln1p, ln2p, square, sqrt, reciprocal]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="score_weight" translate="label" type="text" sortOrder="32" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Score Boost Weight</label>
+                    <comment><![CDATA[Weight used for the "sinch_score" attribute relative to the other boosts]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <!-- End Score -->
+                <!-- Monthly Sales -->
+                <field id="monthly_sales_factor" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Monthly Popularity Boost Factor</label>
+                    <comment><![CDATA[Factor to use for the "sinch_popularity_month" attribute (Monthly Stockinthechannel Implied Sales)]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="monthly_sales_modifier" translate="label" type="text" sortOrder="41" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Monthly Popularity Boost Modifier</label>
+                    <comment><![CDATA[Modifier used for the "sinch_popularity_month" attribute. Must be one of: none, log, log1p, log2p, ln, ln1p, ln2p, square, sqrt, reciprocal]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="monthly_sales_weight" translate="label" type="text" sortOrder="42" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Monthly Popularity Boost Weight</label>
+                    <comment><![CDATA[Weight used for the "sinch_popularity_month" attribute relative to the other boosts]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <!-- End Monthly Sales -->
+                <!-- Yearly Sales -->
+                <field id="yearly_sales_factor" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Yearly Popularity Boost Factor</label>
+                    <comment><![CDATA[Factor to use for the "sinch_popularity_year" attribute (Yearly Stockinthechannel Implied Sales)]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="yearly_sales_modifier" translate="label" type="text" sortOrder="51" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Yearly Popularity Boost Modifier</label>
+                    <comment><![CDATA[Modifier used for the "sinch_popularity_year" attribute. Must be one of: none, log, log1p, log2p, ln, ln1p, ln2p, square, sqrt, reciprocal]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="yearly_sales_weight" translate="label" type="text" sortOrder="52" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Yearly Popularity Boost Weight</label>
+                    <comment><![CDATA[Weight used for the "sinch_popularity_year" attribute relative to the other boosts]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <!-- End Yearly Sales -->
+                <!-- Searches -->
+                <field id="searches_factor" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Search Data Boost Factor</label>
+                    <comment><![CDATA[Factor to use for the "sinch_searches" attribute (Stockinthechannel search data)]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="searches_modifier" translate="label" type="text" sortOrder="61" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Search Data Boost Modifier</label>
+                    <comment><![CDATA[Modifier used for the "sinch_searches" attribute. Must be one of: none, log, log1p, log2p, ln, ln1p, ln2p, square, sqrt, reciprocal]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <field id="searches_weight" translate="label" type="text" sortOrder="62" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Search Data Boost Weight</label>
+                    <comment><![CDATA[Weight used for the "sinch_searches" attribute relative to the other boosts]]></comment>
+                    <depends>
+                        <field id="sinchimport/popularity_boost/enable">1</field>
+                        <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
+                        <field id="sinchimport/popularity_boost/really_show_advanced">1</field>
+                        <field id="sinchimport/popularity_boost/show_really_advanced">1</field>
+                    </depends>
+                </field>
+                <!-- End Searches -->
+            </group>
+
+            <group id="badges" translate="label" type="text" sortOrder="110" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Product Badges</label>
+                <comment><![CDATA[Badges for notable products on the first page of collections. Works best in combination with Popularity Boost, but not required]]></comment>
+                <field id="enable" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="enable_bestseller" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable Bestseller</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="bestseller" translate="label" type="text" sortOrder="21" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Bestseller Badge Content</label>
+                    <comment><![CDATA[Content used for bestseller product badge, typically SVG]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                        <field id="sinchimport/badges/enable_bestseller">1</field>
+                    </depends>
+                </field>
+                <field id="enable_hot_product" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable Hot Product</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="hot_product" translate="label" type="text" sortOrder="31" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Hot Product Badge Content</label>
+                    <comment><![CDATA[Content used for hot product badge, typically SVG]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                        <field id="sinchimport/badges/enable_hot_product">1</field>
+                    </depends>
+                </field>
+                <field id="enable_new" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable New Product</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="new" translate="label" type="text" sortOrder="41" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>New Product Badge Content</label>
+                    <comment><![CDATA[Content used for new product badge, typically SVG]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                        <field id="sinchimport/badges/enable_new">1</field>
+                    </depends>
+                </field>
+                <field id="enable_popular" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable Popular Product</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="popular" translate="label" type="text" sortOrder="51" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Popular Product Badge Content</label>
+                    <comment><![CDATA[Content used for popular product badge, typically SVG]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                        <field id="sinchimport/badges/enable_popular">1</field>
+                    </depends>
+                </field>
+                <field id="enable_recommended" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable Recommended Product</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="recommended" translate="label" type="text" sortOrder="61" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Recommended Product Badge Content</label>
+                    <comment><![CDATA[Content used for recommended product badge, typically SVG]]></comment>
+                    <depends>
+                        <field id="sinchimport/badges/enable">1</field>
+                        <field id="sinchimport/badges/enable_recommended">1</field>
+                    </depends>
+                </field>
+            </group>
         </section>
     </system>
 </config>
