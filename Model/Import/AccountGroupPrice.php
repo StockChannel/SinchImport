@@ -181,7 +181,7 @@ class AccountGroupPrice extends AbstractImportSection
     /**
      * @throws Exception
      */
-    public function parse()
+    public function parse(): void
     {
         $accountGroupFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUPS);
         $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);

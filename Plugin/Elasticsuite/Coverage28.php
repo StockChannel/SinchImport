@@ -11,14 +11,9 @@ use Smile\ElasticsuiteCatalog\Search\Request\Product\Aggregation\Provider\Filter
  * This class implements compatibility for the Sinch filters to be excluded from Elasticsuite 2.8.x's "Facet Min Coverage"
  */
 class Coverage28 {
-    /** @var Data $helper */
-    private $helper;
-
     public function __construct(
-        Data $helper
-    ){
-        $this->helper = $helper;
-    }
+        private readonly Data $helper
+    ){}
 
     /**
      * Makes sure that Elasticsearch doesn't exclude Sinch filters
@@ -34,10 +29,10 @@ class Coverage28 {
      */
     public function afterModifyAttributes(
         Coverage $subject,
-        $result,
-        $storeId,
-        $requestName,
-        $attributes
+        array    $result,
+        int      $storeId,
+        string   $requestName,
+        array $attributes
     ){
         if($this->helper->getStoreConfig('sinchimport/attributes/override_elasticsuite') != 1){
             //Leave ElasticSuite to do its thing

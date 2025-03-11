@@ -16,39 +16,13 @@ use SITC\Sinchimport\Model\Sinch;
  */
 class CustomerGroupsPrice extends Action
 {
-    /**
-     * @var JsonFactory
-     */
-    protected $resultJsonFactory;
+    protected JsonFactory $resultJsonFactory;
+    protected Logger $_logger;
+    protected EncoderInterface $_jsonEncoder;
+    protected Sinch $sinch;
+    protected DirectoryList $_directory;
 
-    /**
-     * Logging instance
-     *
-     * @var Logger
-     */
-    protected $_logger;
 
-    /**
-     * @var EncoderInterface
-     */
-    protected $_jsonEncoder;
-
-    /**
-     * @var Sinch
-     */
-    protected $sinch;
-
-    /**
-     * @var DirectoryList
-     */
-    protected $_directory;
-
-    /**
-     * @param Context $context
-     * @param JsonFactory $resultJsonFactory
-     * @param EncoderInterface $jsonEncoder
-     * @param Logger $logger
-     */
     public function __construct(
         Context $context,
         JsonFactory $resultJsonFactory,
@@ -104,7 +78,7 @@ class CustomerGroupsPrice extends Action
      *
      * @return bool
      */
-    protected function _isAllowed()
+    protected function _isAllowed(): bool
     {
         return true;
     }

@@ -30,7 +30,7 @@ class RelatedProducts extends AbstractImportSection
         $this->relatedProductsTable = $this->getTableName('sinch_related_products');
     }
 
-    public function parse()
+    public function parse(): void
     {
         $relatedProductsCsv = $this->dlHelper->getSavePath(Download::FILE_RELATED_PRODUCTS);
 

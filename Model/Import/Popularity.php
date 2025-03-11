@@ -22,7 +22,7 @@ class Popularity extends AbstractImportSection {
         $this->dataHelper = $dataHelper;
     }
 
-    public function parse()
+    public function parse(): void
     {
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
         $catalog_product_entity_int = $this->getTableName('catalog_product_entity_int');

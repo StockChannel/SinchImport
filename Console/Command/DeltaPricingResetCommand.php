@@ -12,8 +12,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class DeltaPricingResetCommand extends Command
 {
-    /** @var ResourceConnection */
-    private $resourceConn;
+    private ResourceConnection $resourceConn;
     
     public function __construct(ResourceConnection $resourceConn) {
         parent::__construct();
@@ -23,7 +22,7 @@ class DeltaPricingResetCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('sinch:delta-pricing:reset');
         $this->setDescription('Resets delta pricing, causing tier prices to be cleared and rebuilt from scratch upon the next import');
@@ -32,7 +31,7 @@ class DeltaPricingResetCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $output->write("Resetting delta pricing...");

@@ -22,7 +22,7 @@ class Reviews extends AbstractImportSection {
         $this->reviewsTable = $this->getTableName('sinch_reviews');
     }
 
-    public function parse()
+    public function parse(): void
     {
         $this->createTableIfRequired();
         $conn = $this->getConnection();
@@ -59,7 +59,7 @@ class Reviews extends AbstractImportSection {
         return [Download::FILE_REVIEWS];
     }
 
-    private function createTableIfRequired()
+    private function createTableIfRequired(): void
     {
         //ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageUrl|AwardImage80Url|AwardImage200Url
         //We only store a single award image (do we really need a link to lower res copies?)

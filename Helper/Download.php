@@ -98,7 +98,7 @@ class Download extends AbstractHelper
      * Create the import save directory if it doesn't exist (including any parents where necessary)
      * @throws LocalizedException when it fails to create it
      */
-    public function createSaveDir()
+    public function createSaveDir(): void
     {
         if (!is_dir($this->saveDir)) {
             if (!mkdir($this->saveDir, 0777, true)) {
@@ -112,7 +112,7 @@ class Download extends AbstractHelper
      * Returns true on success, or an error message on failure
      * @return bool|string
      */
-    public function connect()
+    public function connect(): bool|string
     {
         if (empty($this->username) || empty($this->password)) {
             return 'FTP login or password has not been defined';
@@ -237,7 +237,7 @@ class Download extends AbstractHelper
      * Disconnect from the FTP server, cleaning up its connected resource
      * @return void
      */
-    public function disconnect()
+    public function disconnect(): void
     {
         if($this->ftpConn != null){
             ftp_close($this->ftpConn);
@@ -286,7 +286,7 @@ class Download extends AbstractHelper
         return true;
     }
 
-    private function print($message, $newline = true)
+    private function print($message, $newline = true): void
     {
         if($newline){
             $this->output->writeln($message);

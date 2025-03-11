@@ -16,33 +16,18 @@ class CustomCatalogVisibility extends AbstractImportSection {
     const CHUNK_SIZE = 1000;
     const ATTRIBUTE_NAME = "sinch_restrict";
 
-    private $tmpTable = "sinch_custom_catalog_tmp";
-    private $finalRulesTable = "sinch_custom_catalog_final_tmp";
-    private $flagTable = "sinch_custom_catalog_flag";
+    private string $tmpTable = "sinch_custom_catalog_tmp";
+    private string $finalRulesTable = "sinch_custom_catalog_final_tmp";
+    private string $flagTable = "sinch_custom_catalog_flag";
 
-    /**
-     * @var CsvIterator $stockPriceCsv
-     */
-    private $stockPriceCsv;
-    /**
-     * @var CsvIterator $groupPriceCsv
-     */
-    private $groupPriceCsv;
+    private CsvIterator $stockPriceCsv;
+    private CsvIterator $groupPriceCsv;
+    private Action $massProdValues;
 
-    /**
-     * @var Action $massProdValues
-     */
-    private $massProdValues;
+    private string $cpeTable;
+    private string $productMappingTable;
 
-    /** @var string */
-    private $cpeTable;
-    /** @var string */
-    private $productMappingTable;
-
-    /**
-     * @var int
-     */
-    private $restrictCount = 0;
+    private int $restrictCount = 0;
 
     public function __construct(
         ResourceConnection $resourceConn,
@@ -68,14 +53,14 @@ class CustomCatalogVisibility extends AbstractImportSection {
         ];
     }
 
-    private function cleanupTempTables()
+    private function cleanupTempTables(): void
     {
         $this->getConnection()->query("DROP TABLE IF EXISTS {$this->flagTable}");
         $this->getConnection()->query("DROP TABLE IF EXISTS {$this->tmpTable}");
         $this->getConnection()->query("DROP TABLE IF EXISTS {$this->finalRulesTable}");
     }
 
-    private function createTempTable()
+    private function createTempTable(): void
     {
         $this->cleanupTempTables();
         $this->getConnection()->query("SET SESSION group_concat_max_len = 102400");
@@ -102,7 +87,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         );
     }
 
-    public function parse()
+    public function parse(): void
     {
         $parseStart = $this->microtime_float();
 
@@ -118,7 +103,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
 
     /**
      */
-    private function checkProductModes()
+    private function checkProductModes(): void
     {
         $stockPriceFile = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
 
@@ -152,7 +137,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
 
     /**
      */
-    private function processGroupPrices()
+    private function processGroupPrices(): void
     {
         $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
 
@@ -180,7 +165,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->groupPriceCsv->closeIter();
     }
 
-    private function buildFinalRules()
+    private function buildFinalRules(): void
     {
         $this->log("Building final ruleset");
 
@@ -247,7 +232,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
      * @param int $product_id the Sinch product ID
      * @return bool
      */
-    private function isWhitelisted($product_id): bool
+    private function isWhitelisted(int $product_id): bool
     {
         return $this->getConnection()->fetchOne(
             "SELECT whitelist FROM {$this->flagTable} WHERE product_id = :product_id",

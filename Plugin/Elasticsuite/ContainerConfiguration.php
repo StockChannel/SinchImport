@@ -9,23 +9,10 @@ use Smile\ElasticsuiteCore\Api\Search\ContextInterface;
 use Smile\ElasticsuiteCore\Search\Request\QueryInterface;
 
 class ContainerConfiguration {
-    /** @var Data $helper */
-    private $helper;
-    /** @var QueryFactory $queryFactory */
-    private $queryFactory;
-    /** @var ContextInterface $searchContext */
-    private $searchContext;
-
-
     public function __construct(
-        Data $helper,
-        QueryFactory $queryFactory,
-        ContextInterface $searchContext
-    ){
-        $this->helper = $helper;
-        $this->queryFactory = $queryFactory;
-        $this->searchContext = $searchContext;
-    }
+        private readonly Data         $helper,
+        private readonly QueryFactory $queryFactory
+    ){}
 
     /**
      * Add the account group filter for custom catalog

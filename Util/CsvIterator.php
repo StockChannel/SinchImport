@@ -6,11 +6,7 @@ use Exception;
 use Magento\Framework\File\Csv;
 
 class CsvIterator extends Csv {
-
-    /**
-     * @var string $currentFilename
-     */
-    protected $currentFilename;
+    protected ?string $currentFilename = null;
 
     /**
      * File handle
@@ -19,10 +15,10 @@ class CsvIterator extends Csv {
 
     /**
      * Open a file ready for iteration
-     * @var string $file
      * @throws Exception
+     *@var string $file
      */
-    public function openIter($file)
+    public function openIter(string $file): void
     {
         if(!is_null($this->fh) || $this->currentFilename != null){
             throw new Exception("A file is already open for iteration");
@@ -38,7 +34,7 @@ class CsvIterator extends Csv {
     /**
      * End the current iteration, closing the file
      */
-    public function closeIter()
+    public function closeIter(): void
     {
         if(!is_null($this->fh)){
             fclose($this->fh);
@@ -50,10 +46,10 @@ class CsvIterator extends Csv {
     /**
      * Retrieve CSV file data row by row
      *
-     * @return  array
+     * @return  array|bool|null
      * @throws Exception
      */
-    public function getIter()
+    public function getIter(): array|bool|null
     {
         if(is_null($this->fh) && is_null($this->currentFilename)){
             throw new Exception("No file is currently open for iteration");
@@ -67,12 +63,12 @@ class CsvIterator extends Csv {
     /**
      * Take up to $count lines from file,
      * leaving the file open for further calls
-     * 
-     * @param string $file
+     *
      * @param int $count
+     * @return array
      * @throws Exception
      */
-    public function take($count)
+    public function take(int $count): array
     {
         $current = 0;
         $data = [];

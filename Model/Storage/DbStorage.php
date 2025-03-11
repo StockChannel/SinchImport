@@ -8,7 +8,7 @@ use Magento\UrlRewrite\Service\V1\Data\UrlRewriteFactory;
 
 class DbStorage extends \Magento\UrlRewrite\Model\Storage\DbStorage
 {
-    private function deleteOldUrls(array $urls)
+    private function deleteOldUrls(array $urls): void
     {
         $oldUrlsSelect = $this->connection->select();
         $oldUrlsSelect->from(

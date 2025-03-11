@@ -13,7 +13,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class AttributesResetCommand extends Command
 {
     /** @var ResourceConnection */
-    private $resourceConn;
+    private ResourceConnection $resourceConn;
     
     public function __construct(ResourceConnection $resourceConn) {
         parent::__construct();
@@ -23,7 +23,7 @@ class AttributesResetCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('sinch:attributes:reset');
         $this->setDescription('Resets sinch attributes (category filters), ready for a complete reimport');
@@ -32,7 +32,7 @@ class AttributesResetCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $output->write("Resetting attributes...");

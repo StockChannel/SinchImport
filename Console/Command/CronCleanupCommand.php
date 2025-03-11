@@ -11,8 +11,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class CronCleanupCommand extends Command
 {
-    /** @var CronCleanup */
-    private $cleaner;
+    private CronCleanup $cleaner;
     
     public function __construct(CronCleanup $cleaner) {
         parent::__construct();
@@ -22,7 +21,7 @@ class CronCleanupCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('sinch:cron:cleanup');
         $this->setDescription('Clean up the Magento cron schedule table, resolving potential issues with the running of cron tasks');
@@ -31,7 +30,7 @@ class CronCleanupCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $this->cleaner->cleanup($output);

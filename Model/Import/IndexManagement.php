@@ -85,7 +85,7 @@ class IndexManagement {
      * 
      * @return void
      */
-    private function waitForIndexCompletion()
+    private function waitForIndexCompletion(): void
     {
         $waitStart = time();
         while(!$this->noIndexersRunning()) {
@@ -98,7 +98,7 @@ class IndexManagement {
         }
     }
 
-    private function print($message)
+    private function print(string $message): void
     {
         $this->output->writeln($message);
         $this->logger->info($message);
@@ -109,7 +109,7 @@ class IndexManagement {
      * @param string $indexerName
      * @return void
      */
-    public function invalidateIndex(string $indexerName)
+    public function invalidateIndex(string $indexerName): void
     {
         $indexer = $this->indexerRegistry->get($indexerName);
         $indexer->invalidate();
@@ -120,7 +120,7 @@ class IndexManagement {
      * @param string $indexerName
      * @return void
      */
-    public function runIndex(string $indexerName)
+    public function runIndex(string $indexerName): void
     {
         //Only actually run the index if "Indexing separately" is off and the current import is not a full import
         // (as the full import runs a full reindex at the end anyway and its just a waste of time to do the index twice)

@@ -896,7 +896,6 @@ class Sinch {
 
         $rootCatNames = $this->getDistinctRootCatNames();
 
-        //TODO: Made multistore default here with =
         if (count($rootCatNames) >= 1) { // multistore logic
 
             $this->print("==========MULTI STORE LOGIC==========");
@@ -1998,7 +1997,6 @@ class Sinch {
 
             $this->mapProducts(true);
 
-            //TODO: Check manufacturer apply works ok here
             //$this->addManufacturer_attribute();
             $this->brandImport->apply();
 

@@ -10,7 +10,7 @@ class EANCodes extends AbstractImportSection {
     const LOG_PREFIX = "EANCodes: ";
     const LOG_FILENAME = "ean_codes";
 
-    private $dataHelper;
+    private Data $dataHelper;
 
     public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper, Data $dataHelper)
     {
@@ -18,7 +18,7 @@ class EANCodes extends AbstractImportSection {
         $this->dataHelper = $dataHelper;
     }
 
-    public function parse()
+    public function parse(): void
     {
         $eanAttr = $this->dataHelper->getProductAttributeId('ean');
 

@@ -25,14 +25,14 @@ class TonerFinderCommand extends Command {
     }
 
 
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('sinch:tonerfinder')
             ->setDescription('Create product part finder multi-store.');
         parent::configure();
     }
 
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $returnValue = Cli::RETURN_FAILURE;
         try {

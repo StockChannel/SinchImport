@@ -118,7 +118,8 @@ class Data extends AbstractHelper
      * @param string $importType The type of import, one of "PRICE STOCK" and "FULL"
      * @return void
      */
-    public function scheduleImport(string $importType) {
+    public function scheduleImport(string $importType): void
+    {
         $importStatus = $this->resourceConn->getTableName('sinch_import_status');
         //Clear the status table so the admin panel doesn't immediately mark it as complete
         if($this->resourceConn->getConnection()->isTableExists($importStatus)) {
@@ -462,7 +463,7 @@ class Data extends AbstractHelper
     {
 
         if (empty($rule)) return true;
-        $blacklist = substr($rule, 0, 1) == "!";
+        $blacklist = str_starts_with($rule, "!");
         if (empty($currentGroup)) {
             return $blacklist;
         }

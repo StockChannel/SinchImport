@@ -22,7 +22,7 @@ class ProductDates extends AbstractImportSection {
         $this->dataHelper = $dataHelper;
     }
 
-    public function parse()
+    public function parse(): void
     {
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
         $catalog_product_entity_datetime = $this->getTableName('catalog_product_entity_datetime');

@@ -11,14 +11,14 @@ use SITC\Sinchimport\Model\Import\AccountGroupCategories;
 
 class CategoryCollectionLoadAfter implements ObserverInterface
 {
-    private $resourceConn;
-    private $helper;
+    private ResourceConnection $resourceConn;
+    private Data $helper;
 
     /** 
      * Holds the table name for the visibility mapping
      * @var string
      */
-    private $catVisTable;
+    private string $catVisTable;
 
     public function __construct(
         ResourceConnection $resourceConn,
@@ -30,7 +30,7 @@ class CategoryCollectionLoadAfter implements ObserverInterface
     }
 
 
-    public function execute(Observer $observer)
+    public function execute(Observer $observer): void
     {
         if(!$this->helper->isCategoryVisibilityEnabled()){
             return; //No filtering if the feature isn't enabled

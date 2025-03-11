@@ -15,7 +15,6 @@ namespace SITC\Sinchimport\Search\Adapter\Elasticsuite\Request\Query\Builder;
 
 use InvalidArgumentException;
 use Magento\Framework\App\ResourceConnection;
-use SITC\Sinchimport\Helper\Data;
 use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder;
 use Smile\ElasticsuiteCore\Search\Adapter\Elasticsuite\Request\Query\Builder\AbstractComplexBuilder;
 use Smile\ElasticsuiteCore\Search\Request\Query\QueryFactory;
@@ -36,10 +35,9 @@ class AttributeValueFilter extends AbstractComplexBuilder implements BuilderInte
     private readonly string $eav_attribute;
 
     public function __construct(
-        Builder $builder,
-        private QueryFactory\Proxy $queryFactory,
-        private Data $helper,
-        private ResourceConnection $resourceConn,
+        Builder                             $builder,
+        private readonly QueryFactory\Proxy $queryFactory,
+        private readonly ResourceConnection $resourceConn,
     ) {
         parent::__construct($builder);
         $this->eav_attribute_option_value = $this->resourceConn->getTableName('eav_attribute_option_value');

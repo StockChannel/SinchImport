@@ -18,33 +18,12 @@ class CategoryProcessor
      *
      * @var array
      */
-    protected $categoriesCache = [];
-
-    /**
-     * @var CollectionFactory
-     */
-    protected $categoryColFactory;
-
-    /**
-     * @var CategoryFactory
-     */
-    protected $categoryFactory;
-
-    /**
-     * @var CategoryUrlPathGenerator
-     */
-
-    protected $categoryUrlPathGenerator;
-
-    /**
-     * @var CategoryUrlRewriteGenerator
-     */
-    protected $categoryUrlRewriteGenerator;
-
-    /**
-     * @var UrlPersistInterface
-     */
-    protected $urlPersist;
+    protected array $categoriesCache = [];
+    protected CollectionFactory $categoryColFactory;
+    protected CategoryFactory $categoryFactory;
+    protected CategoryUrlPathGenerator $categoryUrlPathGenerator;
+    protected CategoryUrlRewriteGenerator $categoryUrlRewriteGenerator;
+    protected UrlPersistInterface $urlPersist;
 
     /**
      * CategoryProcessor constructor.
@@ -77,7 +56,7 @@ class CategoryProcessor
      * @throws LocalizedException
      * @throws UrlAlreadyExistsException
      */
-    protected function initCategories()
+    protected function initCategories(): static
     {
         if (empty($this->categoriesCache)) {
             $collection = $this->categoryColFactory->create()
@@ -130,8 +109,8 @@ class CategoryProcessor
      *
      * @return Category|null
      */
-    public function getCategoryById($categoryId)
+    public function getCategoryById(int $categoryId): ?Category
     {
-        return isset($this->categoriesCache[$categoryId]) ? $this->categoriesCache[$categoryId] : null;
+        return $this->categoriesCache[$categoryId] ?? null;
     }
 }

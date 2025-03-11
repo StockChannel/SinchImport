@@ -12,15 +12,8 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class DebugPostImportCommand extends Command
 {
-    /**
-     * @var AppState
-     */
-    protected $_appState;
-    
-    /**
-     * @var ManagerInterface
-     */
-    protected $eventManager;
+    protected AppState $_appState;
+    protected ManagerInterface $eventManager;
     
     
     public function __construct(
@@ -35,7 +28,7 @@ class DebugPostImportCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('sinch:debug:post-import');
         $this->setDescription('Runs post import handlers');
@@ -44,7 +37,7 @@ class DebugPostImportCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $output->writeln("Dispatching post-import event");

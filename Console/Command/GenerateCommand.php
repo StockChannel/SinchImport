@@ -35,7 +35,7 @@ class GenerateCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function configure()
+    protected function configure(): void
     {
         $this->setName('sinch:url:generate');
         $this->setDescription('Product Urls');
@@ -44,7 +44,7 @@ class GenerateCommand extends Command
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         try {
             $this->_appState->setAreaCode('adminhtml');

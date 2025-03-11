@@ -49,7 +49,7 @@ class UNSPSC extends AbstractImportSection {
         return [];
     }
 
-    public function parse()
+    public function parse(): void
     {
         $this->log("--- Begin UNSPSC Mapping ---");
 
@@ -68,7 +68,7 @@ class UNSPSC extends AbstractImportSection {
         $this->log("--- Completed UNSPSC mapping ---");
     }
 
-    public function apply()
+    public function apply(): void
     {
         if(!$this->hasParseRun) {
             $this->log("Not applying UNSPSC values as parse hasn't run");
@@ -128,7 +128,7 @@ class UNSPSC extends AbstractImportSection {
         return $entIdQuery->fetchAll(PDO::FETCH_COLUMN, 0);
     }
 
-    protected function log($msg, $print = true)
+    protected function log($msg, $print = true): void
     {
         if($this->enableLogging){
             parent::log($msg, $print);

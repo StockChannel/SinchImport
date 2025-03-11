@@ -45,7 +45,7 @@ class AccountGroupCategories extends AbstractImportSection {
     /**
      * Parses the customer group categories file into the mapping table
      */
-    public function parse()
+    public function parse(): void
     {
         $accountGroupCatsFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_CATEGORIES);
 

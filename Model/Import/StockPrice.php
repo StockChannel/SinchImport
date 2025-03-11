@@ -118,7 +118,7 @@ class StockPrice extends AbstractImportSection
     /**
      * Parse the stock files
      */
-    public function parse()
+    public function parse(): void
     {
         $conn = $this->getConnection();
 
@@ -173,7 +173,7 @@ class StockPrice extends AbstractImportSection
      * Uses the distributor stock and price information to populate the supplier_{1,2,3,4,5} attributes
      * @return void
      */
-    public function applyDistributors()
+    public function applyDistributors(): void
     {
         $this->startTimingStep('Apply distributors prep');
         $conn = $this->getConnection();
@@ -260,7 +260,7 @@ class StockPrice extends AbstractImportSection
      * @throws CouldNotSaveException
      * @throws ValidationException
      */
-    public function apply()
+    public function apply(): void
     {
         $conn = $this->getConnection();
 
@@ -330,7 +330,7 @@ class StockPrice extends AbstractImportSection
      * @throws CouldNotSaveException
      * @throws ValidationException
      */
-    private function applyStock()
+    private function applyStock(): void
     {
         $conn = $this->getConnection();
         //Defined in this scope as multi-source path needs it too, for inserting marker records

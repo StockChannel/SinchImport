@@ -33,7 +33,7 @@ class BulletPoints extends AbstractImportSection {
         return [Download::FILE_BULLET_POINTS];
     }
 
-    public function parse()
+    public function parse(): void
     {
         $this->createTableIfRequired();
         $conn = $this->getConnection();
@@ -55,7 +55,8 @@ class BulletPoints extends AbstractImportSection {
         $this->endTimingStep();
     }
 
-    public function apply() {
+    public function apply(): void
+    {
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
         $catalog_product_entity_text = $this->getTableName('catalog_product_entity_text');
 
@@ -103,7 +104,7 @@ class BulletPoints extends AbstractImportSection {
         $this->timingPrint();
     }
 
-    private function createTableIfRequired()
+    private function createTableIfRequired(): void
     {
         $this->getConnection()->query(
             "CREATE TABLE IF NOT EXISTS {$this->bulletPointsTable} (

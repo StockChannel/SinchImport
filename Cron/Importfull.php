@@ -25,7 +25,7 @@ class Importfull
      *
      * @return void
      */
-    public function execute()
+    public function execute(): void
     {
         $this->sinch->startCronFullImport();
     }

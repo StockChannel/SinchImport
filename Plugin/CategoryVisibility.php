@@ -8,27 +8,16 @@ use SITC\Sinchimport\Logger\Logger;
 use SITC\Sinchimport\Model\Import\AccountGroupCategories;
 
 class CategoryVisibility {
-    /**
-     * @var ResourceConnection
-     */
-    private $resourceConn;
-
-    /**
-     * @var Logger
-     */
-    private $logger;
-
-    /**
-     * @var Data
-     */
-    private $helper;
+    private ResourceConnection $resourceConn;
+    private Logger $logger;
+    private Data $helper;
 
     /**
      * The table name of the category visibility mapping
      *
      * @var string
      */
-    private $catVisTable;
+    private string $catVisTable;
 
     public function __construct(
         ResourceConnection $resourceConn,
@@ -56,7 +45,7 @@ class CategoryVisibility {
      * @param Category $category
      * @return bool
      */
-    private function isCategoryVisible(Category $category)
+    private function isCategoryVisible(Category $category): bool
     {
         if (!$this->helper->isCategoryVisibilityEnabled()) {
             return true;

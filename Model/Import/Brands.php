@@ -11,8 +11,7 @@ class Brands extends AbstractImportSection {
     const LOG_PREFIX = "Brands: ";
     const LOG_FILENAME = "brands";
 
-    /** @var Data */
-    private $dataHelper;
+    private Data $dataHelper;
 
     public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper, Data $dataHelper)
     {
@@ -28,7 +27,7 @@ class Brands extends AbstractImportSection {
     /**
      * Replaces parseManufacturers
      */
-    public function parse()
+    public function parse(): void
     {
         $parseFile = $this->dlHelper->getSavePath(Download::FILE_BRANDS);
 
@@ -143,7 +142,8 @@ class Brands extends AbstractImportSection {
         $this->timingPrint();
     }
 
-    public function apply() {
+    public function apply(): void
+    {
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
         $catalog_product_entity_int = $this->getTableName('catalog_product_entity_int');
         $products_temp = $this->getTableName('products_temp');

@@ -27,7 +27,7 @@ class ReasonsToBuy extends AbstractImportSection {
         return [Download::FILE_REASONS_TO_BUY];
     }
 
-    public function parse()
+    public function parse(): void
     {
         $this->createTableIfRequired();
         $conn = $this->getConnection();

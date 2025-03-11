@@ -34,10 +34,11 @@ class IndexerReindexCommand extends \Magento\Indexer\Console\Command\IndexerRein
      * @param InputInterface $input The input interface to pass to the original function
      * @param OutputInterface $output The output interface to pass to the original function
      * 
-     * @return int|null null or 0 if everything went fine, or an error code
+     * @return int 0 if everything went fine, or an error code
      * @throws LogicException when the index lock is held
      */
-    protected function execute(InputInterface $input, OutputInterface $output):int{
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
         if($this->helper->isIndexLockHeld()){
             $output->writeln("Reindexing is disabled while the Sinchimport index lock is held");
             return Cli::RETURN_FAILURE;

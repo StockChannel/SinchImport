@@ -118,7 +118,7 @@ class Badges extends AbstractHelper
         $serializedProductIds = $this->serializer->serialize($badgeProducts);
         $cacheId = self::CACHE_ID . '|' . implode(",", $loadedCollectionIds);
         //Save IDs of badge products to cache with 5 min lifetime
-        $this->cache->save($serializedProductIds, $cacheId, ['SITC_Sinchimport'], 60);
+        $this->cache->save($serializedProductIds, $cacheId, ['SITC_Sinchimport'], 300);
     }
 
     /**

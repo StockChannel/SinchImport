@@ -41,7 +41,7 @@ class CategoryBoostFilter implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function getType()
+    public function getType(): string
     {
         return 'sitcCategoryBoostQuery';
     }
@@ -49,7 +49,7 @@ class CategoryBoostFilter implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function getName()
+    public function getName(): ?string
     {
         return $this->name;
     }
@@ -57,7 +57,7 @@ class CategoryBoostFilter implements QueryInterface
     /**
      * {@inheritDoc}
      */
-    public function getBoost()
+    public function getBoost(): ?int
     {
         return QueryInterface::DEFAULT_BOOST_VALUE;
     }

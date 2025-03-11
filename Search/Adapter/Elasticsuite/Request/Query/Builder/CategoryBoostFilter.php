@@ -34,7 +34,7 @@ class CategoryBoostFilter extends AbstractComplexBuilder implements BuilderInter
     /** @var QueryFactory $queryFactory */
     private $queryFactory;
     /** @var Data $helper */
-    private $helper;
+    private Data $helper;
 
     public function __construct(Builder $builder, QueryFactory\Proxy $queryFactory, Data $helper) {
         parent::__construct($builder);
@@ -45,7 +45,7 @@ class CategoryBoostFilter extends AbstractComplexBuilder implements BuilderInter
     /**
      * {@inheritDoc}
      */
-    public function buildQuery(QueryInterface $query)
+    public function buildQuery(QueryInterface $query): bool|array
     {
         if ($query->getType() !== 'sitcCategoryBoostQuery') {
             throw new InvalidArgumentException("Query builder : invalid query type {$query->getType()}");

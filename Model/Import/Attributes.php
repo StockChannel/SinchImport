@@ -45,45 +45,45 @@ class Attributes extends AbstractImportSection {
     const PRODUCT_PAGE_SIZE = 50;
 
     //Stats
-    private $attributeCount = 0;
-    private $attributesCreated = 0;
-    private $attributesUpdated = 0;
-    private $attributesDeleted = 0;
-    private $optionCount = 0;
-    private $optionsCreated = 0;
-    private $optionsUpdated = 0;
-    private $optionsDeleted = 0;
+    private int $attributeCount = 0;
+    private int $attributesCreated = 0;
+    private int $attributesUpdated = 0;
+    private int $attributesDeleted = 0;
+    private int $optionCount = 0;
+    private int $optionsCreated = 0;
+    private int $optionsUpdated = 0;
+    private int $optionsDeleted = 0;
 
     //CSV parser
-    private $csv;
+    private Csv $csv;
 
     //Attributes to produce
-    private $attributes = [];
+    private array $attributes = [];
     //Sinch RV -> [Prod]
-    private $rvProds = [];
+    private array $rvProds = [];
 
-    private $attributeRepository;
-    private $attributeGroupRepository;
-    private $attributeFactory;
-    private $attributeGroupFactory;
-    private $searchCriteriaBuilder;
-    private $optionManagement;
-    private $optionFactory;
-    private $attributeSetRepository;
-    private $attributeManagement;
+    private ProductAttributeRepositoryInterface $attributeRepository;
+    private ProductAttributeGroupRepositoryInterface $attributeGroupRepository;
+    private ProductAttributeInterfaceFactory $attributeFactory;
+    private AttributeGroupInterfaceFactory $attributeGroupFactory;
+    private SearchCriteriaBuilder $searchCriteriaBuilder;
+    private ProductAttributeOptionManagementInterface $optionManagement;
+    private AttributeOptionInterfaceFactory $optionFactory;
+    private AttributeSetRepositoryInterface $attributeSetRepository;
+    private ProductAttributeManagementInterface $attributeManagement;
 
-    private $cacheType;
-    private $massProdValues;
-    private $scopeConfig;
+    private TypeListInterface $cacheType;
+    private Action $massProdValues;
+    private ScopeConfigInterface $scopeConfig;
 
     private $attributeSetCache = null;
-    private $attributeGroupIds = [];
+    private array $attributeGroupIds = [];
 
-    private $mappingTable;
-    private $cpeTable;
-    private $filterCategoriesTable;
-    private $eavAttrTable;
-    private $eavOptionValueTable;
+    private string $mappingTable;
+    private string $cpeTable;
+    private string $filterCategoriesTable;
+    private string $eavAttrTable;
+    private string $eavOptionValueTable;
 
     private $mappingInsert = null;
     private $mappingQuery = null;
@@ -145,7 +145,7 @@ class Attributes extends AbstractImportSection {
      * @throws StateException
      * @throws Exception
      */
-    public function parse()
+    public function parse(): void
     {
         $this->log("--- Begin Attribute Parse ---");
 
@@ -278,7 +278,7 @@ class Attributes extends AbstractImportSection {
      * @throws NoSuchEntityException
      * @throws StateException
      */
-    private function createAttribute($sinch_id, $data)
+    private function createAttribute($sinch_id, $data): void
     {
         $this->logger->info("Creating attribute " . self::ATTRIBUTE_PREFIX . $sinch_id);
         $attribute = $this->attributeFactory->create()
@@ -332,7 +332,7 @@ class Attributes extends AbstractImportSection {
      * @throws NoSuchEntityException
      * @throws StateException
      */
-    private function updateAttributeOptions($sinch_feature_id, $data)
+    private function updateAttributeOptions($sinch_feature_id, $data): void
     {
         $attribute_code = self::ATTRIBUTE_PREFIX . $sinch_feature_id;
         $attribute = $this->attributeRepository->get(self::ATTRIBUTE_PREFIX . $sinch_feature_id);
@@ -426,7 +426,7 @@ class Attributes extends AbstractImportSection {
      * @throws NoSuchEntityException
      * @throws StateException
      */
-    private function createAttributeGroups()
+    private function createAttributeGroups(): void
     {
         $criteria = $this->searchCriteriaBuilder->addFilter(AttributeGroupInterface::GROUP_NAME, self::ATTRIBUTE_GROUP_NAME, "eq")->create();
         $groups = $this->attributeGroupRepository->getList($criteria)->getItems();
@@ -489,7 +489,7 @@ class Attributes extends AbstractImportSection {
         return $this->attributeSetCache;
     }
 
-    private function addMapping($sinch_id, $sinch_feature_id, $option_id)
+    private function addMapping($sinch_id, $sinch_feature_id, $option_id): void
     {
         if(empty($this->mappingInsert)){
             $this->mappingInsert = $this->getConnection()->prepare(
@@ -519,7 +519,7 @@ class Attributes extends AbstractImportSection {
         return $result;
     }
 
-    private function sinchToEntityIds($sinch_prod_ids)
+    private function sinchToEntityIds($sinch_prod_ids): array
     {
         $placeholders = implode(',', array_fill(0, count($sinch_prod_ids), '?'));
         $entIdQuery = $this->getConnection()->prepare(
@@ -533,7 +533,7 @@ class Attributes extends AbstractImportSection {
      * @throws StateException
      * @throws Exception
      */
-    public function applyAttributeValues()
+    public function applyAttributeValues(): void
     {
         $applyStart = $this->microtime_float();
         $this->logger->info("--- Begin applying attribute values to products ---");
@@ -548,10 +548,6 @@ class Attributes extends AbstractImportSection {
                 continue;
             }
             $entityIds = $this->sinchToEntityIds($products);
-            if($entityIds === false){
-                $this->logger->error("Failed to retrieve entity ids");
-                throw new StateException(__("Failed to retrieve entity ids"));
-            }
             $prodCount = count($entityIds);
             $this->logger->info("({$currVal}/{$valueCount}) Setting option id {$attrData['option_id']} for {$prodCount} products");
             try {
@@ -576,7 +572,7 @@ class Attributes extends AbstractImportSection {
         );
     }
 
-    private function updateFilterCategoryMapping($sinch_feature_id, $sinch_category_id)
+    private function updateFilterCategoryMapping($sinch_feature_id, $sinch_category_id): void
     {
         if(empty($this->filterMappingInsert)){
             $this->filterMappingInsert = $this->getConnection()->prepare(

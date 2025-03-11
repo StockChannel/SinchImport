@@ -66,7 +66,7 @@ abstract class AbstractImportSection {
         return $this->resourceConn->getTableName($table);
     }
 
-    protected function log($msg, $print = true)
+    protected function log($msg, $print = true): void
     {
         if($print){
             $this->output->writeln(static::LOG_PREFIX . $msg);
@@ -79,7 +79,7 @@ abstract class AbstractImportSection {
      * @param string $name A name to describe what occurs in the step
      * @return void
      */
-    protected function startTimingStep(string $name)
+    protected function startTimingStep(string $name): void
     {
         $this->log("Timing Step: " . $name);
         $now = $this->microtime_float();
@@ -99,7 +99,7 @@ abstract class AbstractImportSection {
      * Ends timing execution for the most recent step
      * @return void
      */
-    protected function endTimingStep()
+    protected function endTimingStep(): void
     {
         $now = $this->microtime_float();
         $endedStepIdx = count($this->timingStep) - 1;
@@ -115,7 +115,7 @@ abstract class AbstractImportSection {
      * Print timing information created by startTimingStep and endTimingStep
      * @return void
      */
-    protected function timingPrint()
+    protected function timingPrint(): void
     {
         $totalElapsed = 0.0;
         foreach ($this->timingStep as $timeStep) {
@@ -130,7 +130,7 @@ abstract class AbstractImportSection {
         $this->log("Took {$elapsed} seconds total");
     }
 
-    public abstract function parse();
+    public abstract function parse(): void;
 
     /**
      * Get the filenames required for this import section

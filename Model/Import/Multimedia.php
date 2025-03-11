@@ -29,7 +29,7 @@ class Multimedia extends AbstractImportSection {
         return [Download::FILE_MULTIMEDIA];
     }
 
-    public function parse()
+    public function parse(): void
     {
         $this->createTableIfRequired();
         $multimediaCsv = $this->dlHelper->getSavePath(Download::FILE_MULTIMEDIA);
