@@ -4,6 +4,7 @@ namespace SITC\Sinchimport\Model\Import;
 
 use Magento\Catalog\Model\ResourceModel\Product\Action;
 use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
 use SITC\Sinchimport\Model\Sinch;
 use SITC\Sinchimport\Util\CsvIterator;
@@ -34,7 +35,9 @@ class CustomCatalogVisibility extends AbstractImportSection {
         ConsoleOutput $output,
         Download $dlHelper,
         CsvIterator $csv,
-        Action $massProdValues
+        Action $massProdValues,
+        private readonly IndexManagement $indexManagement,
+        private readonly Data $helper,
     ){
         parent::__construct($resourceConn, $output, $dlHelper);
         $this->stockPriceCsv = $csv->setLineLength(256)->setDelimiter(Sinch::FIELD_TERMINATED_CHAR);
@@ -96,18 +99,25 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->processGroupPrices();
         $this->buildFinalRules();
         //$this->cleanupTempTables();
-
+        if ($this->helper->getStoreConfig('sinchimport/general/cc_triggers_indexers_in_stockprice')== 1) {
+            $this->startTimingStep("Reindex catalog_product_attribute");
+            $this->indexManagement->runIndex('catalog_product_attribute');
+            $this->endTimingStep();
+            $this->startTimingStep("Reindex catalogsearch_fulltext");
+            $this->indexManagement->runIndex('catalogsearch_fulltext');
+            $this->endTimingStep();
+        }
         $elapsed = number_format($this->microtime_float() - $parseStart, 2);
         $this->log("Imported {$this->restrictCount} restrictions in {$elapsed} seconds");
+        $this->timingPrint();
     }
 
-    /**
-     */
     private function checkProductModes(): void
     {
         $stockPriceFile = $this->dlHelper->getSavePath(Download::FILE_STOCK_AND_PRICES);
 
         $this->log("Checking product modes");
+        $this->startTimingStep("Check product modes");
         $this->stockPriceCsv->openIter($stockPriceFile);
         $this->stockPriceCsv->take(1); //Discard first row
 
@@ -133,6 +143,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         );
         $this->log("{$numWhitelist} products in whitelist mode");
         $this->log("{$numBlacklist} products in blacklist mode");
+        $this->endTimingStep();
     }
 
     /**
@@ -141,6 +152,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
     {
         $accountGroupPriceFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_PRICE);
 
+        $this->startTimingStep("Process group prices");
         $this->log("Processing group prices");
         $this->groupPriceCsv->openIter($accountGroupPriceFile);
         $this->groupPriceCsv->take(1); //Discard first row
@@ -163,12 +175,12 @@ class CustomCatalogVisibility extends AbstractImportSection {
             $this->getConnection()->insertOnDuplicate($this->tmpTable, $rulesForInsertion);
         }
         $this->groupPriceCsv->closeIter();
+        $this->endTimingStep();
     }
 
     private function buildFinalRules(): void
     {
-        $this->log("Building final ruleset");
-
+        $this->startTimingStep("Building final ruleset");
         //Prepare the final rules ready for attributes
         $this->getConnection()->query(
         "INSERT INTO {$this->finalRulesTable} (product_id, rule)
@@ -183,7 +195,9 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $distinctRules = $this->getConnection()->fetchCol("SELECT DISTINCT rule FROM {$this->finalRulesTable}");
         $ruleCount = count($distinctRules);
         $this->log("{$ruleCount} distinct rules");
+        $this->endTimingStep();
 
+        $this->startTimingStep("Apply final rules to products");
         foreach($distinctRules as $rule) {
             $products = $this->getConnection()->fetchCol(
                 "SELECT product_id FROM {$this->finalRulesTable} WHERE rule = :value",
@@ -200,7 +214,9 @@ class CustomCatalogVisibility extends AbstractImportSection {
             }
         }
         $this->log("Rule attribute values have been applied");
+        $this->endTimingStep();
 
+        $this->startTimingStep("Clear value for unrestricted products");
         //Clear the sinch_restrict value for products that no longer have a rule (but not non-sinch products)
         $noValueSinchProds = $this->getConnection()->fetchCol(
             "SELECT entity_id FROM {$this->cpeTable}
@@ -217,6 +233,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
                 0
             );
         }
+        $this->endTimingStep();
     }
 
     /**

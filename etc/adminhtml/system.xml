@@ -41,9 +41,17 @@
                     <label>Import Success notification email destination</label>
                     <comment>If blank or not a valid email, does not send success emails</comment>
                 </field>
-                <field id="debug" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="debug" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Debug Mode</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="cc_triggers_indexers_in_stockprice" translate="label" type="select" sortOrder="70" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Custom Catalog triggers Indexers during Stock &amp; Price imports</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enable this if you need the effects of CC rule changes to become available immediately after Stock &amp; Price imports.
+                        Otherwise, their values will be updated, but the relevant indexers not invalidated or triggered, resulting in a significantly faster Stock &amp; Price import,
+                        at the cost of some minor inconsistencies in CC visibility state for products whose rule changed during the import.
+                        This option has no effect on Full imports, they always fully reindex</comment>
                 </field>
             </group>
 

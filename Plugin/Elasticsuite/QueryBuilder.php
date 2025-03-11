@@ -34,17 +34,8 @@ class QueryBuilder
 	private Logger $logger;
 	private ResourceConnection $resourceConnection;
 	private AdapterInterface $connection;
-	private string $categoryTableVarchar;
-	private string $categoryTable;
-	private string $eavTable;
-    private string $sinchCategoriesTable;
-	private string $sinchCategoriesMappingTable;
-	private string $productFamilyTable;
-	private string $sinchProductsTable;
-
 	private Data $helper;
-	/** @var QueryFactory $queryFactory */
-	private $queryFactory;
+	private QueryFactory $queryFactory;
     private SearchProcessing $spHelper;
     private RequestInterface $request;
     private UrlInterface $urlBuilder;
@@ -54,7 +45,7 @@ class QueryBuilder
         HttpResponse $response,
         ResourceConnection $resourceConnection,
         Data $helper,
-        QueryFactory\Proxy $queryFactory,
+        QueryFactory $queryFactory,
         SearchProcessing $spHelper,
         RequestInterface $request,
         UrlInterface $urlBuilder
@@ -63,13 +54,6 @@ class QueryBuilder
 		$this->response = $response;
 		$this->resourceConnection = $resourceConnection;
 		$this->connection = $this->resourceConnection->getConnection();
-		$this->categoryTableVarchar = $this->connection->getTableName('catalog_category_entity_varchar');
-		$this->categoryTable = $this->connection->getTableName('catalog_category_entity');
-		$this->eavTable = $this->connection->getTableName('eav_attribute');
-		$this->sinchCategoriesTable = $this->connection->getTableName('sinch_categories');
-		$this->sinchCategoriesMappingTable = $this->connection->getTableName('sinch_categories_mapping');
-		$this->productFamilyTable = $this->connection->getTableName('sinch_family');
-		$this->sinchProductsTable = $this->connection->getTableName('sinch_products');
 		$this->helper = $helper;
 		$this->queryFactory = $queryFactory;
 		$this->spHelper = $spHelper;
