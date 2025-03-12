@@ -2,7 +2,7 @@
 	$product = $block->getProduct();
 	$specs = $product->getData('specification');
 	if ( !empty($specs) ) :
-		echo '<div class=" specification-table-wrapper"><div class="specification-table-content">';
+		echo '<div class="table-wrapper specification-table-wrapper"><div class="specification-table-content">';
 		$specTrim = explode("<tbody>", $specs);
 		$specTrim = explode("</tbody>", $specTrim[1]);
 		$specTable = $specTrim[0];
