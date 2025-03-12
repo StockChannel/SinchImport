@@ -142,28 +142,28 @@
 
             <group id="attributes" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Attributes</label>
-                <field id="visible_in_admin" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="visible_in_admin" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Visible in Admin</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Enable this if you want to check/edit attribute values within the Admin panel. It is applied on import</comment>
                 </field>
-                <field id="override_elasticsuite" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="override_elasticsuite" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Override Elasticsuite</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>When enabled, overrides Elasticsuite's "Facet Min Coverage" functionality for Stockinthechannel Filterable Attributes, reverting them to default behaviour</comment>
                 </field>
-                <field id="summary_features" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="summary_features" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Enable Summary Features Display</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>When enabled, injects Stockinthechannel Summary Features into Magento product list pages. Please note this does not affect blocks in grid mode</comment>
                 </field>
-                <field id="bullet_points" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="bullet_points" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Enable Bullet Points Display</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>When enabled, injects Stockinthechannel Bullet Points into Magento product list pages. Please note this does not affect blocks in grid mode</comment>
                 </field>
             </group>
-            <group id="cron" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0" >
+            <group id="cron" translate="label comment" type="text" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>Cron Schedule</label>
                 <field id="full" translate="label" type="text" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Full Import</label>
@@ -188,12 +188,12 @@
 
             <group id="category_visibility" translate="label" type="text" sortOrder="60" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Category Visibility Functionality</label>
-                <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Enable</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <comment>Requires disabling the "Blocks HTML output" cache (block_html) for the menu to update correctly</comment>
+                    <comment>May require disabling the "Blocks HTML output" cache (block_html) for the menu to update correctly on some themes</comment>
                 </field>
-                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Disable import section</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>If you have no intention of using the Category visibility functionality in the near future, enable this option to skip this section of the import</comment>
@@ -202,12 +202,12 @@
 
             <group id="product_visibility" translate="label" type="text" sortOrder="70" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Product Visibility Functionality</label>
-                <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="enable" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Enable</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Requires disabling the "Page Cache" cache (full_page). Recommended to be using Smile ElasticSuite for full functionality</comment>
                 </field>
-                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="disable_import" translate="label" type="select" sortOrder="2" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Disable import section</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>If you have no intention of using the Product visibility functionality in the near future, enable this option to skip this section of the import</comment>
@@ -216,7 +216,7 @@
 
             <group id="stock" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Stock handling</label>
-                <field id="clear_reservations" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="clear_reservations" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Clear reservations on imported products</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <depends>
@@ -243,7 +243,7 @@
                         <field id="sinchimport/stock/in_stock_filter_enable">1</field>
                     </depends>
                 </group>
-                <field id="manual_source_assignment" translate="label" type="select" sortOrder="4" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="manual_source_assignment" translate="label" type="select" sortOrder="4" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Manual Source Assignment</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>When enabled, the import will not assign sources (distributors) to the Sinch stock</comment>
@@ -252,13 +252,13 @@
 
             <group id="misc" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Miscellaneous</label>
-                <field id="quotes_fix_verify_name" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0">
+                <field id="quotes_fix_verify_name" translate="label" type="select" sortOrder="1" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
                     <label>Verify name match when fixing quote items</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment><![CDATA[When disabled, SKU is assumed to be GLOBALLY UNIQUE (i.e. a product with a given SKU always represents the same product, even if the names differ)<br>
                     When enabled (the default), checks that the item name and the replacement candidate name identically match before updating quote item records (the replacement candidate is still matched based on SKU)]]></comment>
                 </field>
-                <field id="any_value_implementation" translate="label" type="text" sortOrder="10" showInDefault="1" showInStore="0" showInWebsite="0">
+                <field id="any_value_implementation" translate="label" type="text" sortOrder="10" showInDefault="1" showInStore="0" showInWebsite="0" canRestore="1">
                     <label>ANY_VALUE Implementation</label>
                     <comment><![CDATA[The implementation of ANY_VALUE to use when selecting records not specified in the GROUP BY condition (primarily Product Supplier).<br>
                     The default is acceptable on all databases except MariaDB, which fails to implement ANY_VALUE]]></comment>
@@ -267,15 +267,15 @@
 
             <group id="search" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Search</label>
-                <field id="category_field_search_weight" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="category_field_search_weight" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Category search weight</label>
                     <comment><![CDATA[The search weight for the category name field]]></comment>
                 </field>
-                <field id="brand_field_search_weight" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="brand_field_search_weight" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Brand name search weight</label>
                     <comment><![CDATA[The search weight for the brand name field]]></comment>
                 </field>
-                <field id="enable_enhanced" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="enable_enhanced" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Enable Enhanced Search</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment><![CDATA[When enabled, attempt to refine searches to improve their relevance and specificity]]></comment>
@@ -368,11 +368,11 @@
                 <label>Popularity Boost</label>
                 <comment><![CDATA[Boost the position of products in collections based on additional Stockinthechannel provided attributes]]></comment>
                 <!-- Main toggles -->
-                <field id="enable" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="enable" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Enable</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="advanced_settings_visible" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="advanced_settings_visible" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Show Advanced Settings</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment><![CDATA[Only enable if you know what you're doing and are happy with fixing things yourself]]></comment>
@@ -380,7 +380,7 @@
                         <field id="sinchimport/popularity_boost/enable">1</field>
                     </depends>
                 </field>
-                <field id="really_show_advanced" translate="label" type="select" sortOrder="21" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="really_show_advanced" translate="label" type="select" sortOrder="21" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Really Show Advanced Settings</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment><![CDATA[By enabling this you agree that you won't whine to Stockinthechannel if you break things. That's twice you've been warned now. On your head be it]]></comment>
@@ -389,7 +389,7 @@
                         <field id="sinchimport/popularity_boost/advanced_settings_visible">1</field>
                     </depends>
                 </field>
-                <field id="show_really_advanced" translate="label" type="select" sortOrder="22" showInDefault="1" showInWebsite="1" showInStore="1">
+                <field id="show_really_advanced" translate="label" type="select" sortOrder="22" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
                     <label>Show Really Advanced Settings</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment><![CDATA[Looks like the above setting, but this one controls whether you can change even deeper logic. You should probably avoid this unless you're Nick or Joe]]></comment>
