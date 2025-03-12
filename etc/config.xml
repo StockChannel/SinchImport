@@ -11,6 +11,7 @@
                 <permit_zero_price>0</permit_zero_price>
                 <success_email_dest></success_email_dest>
                 <debug>0</debug>
+                <cc_triggers_indexers_in_stockprice>0</cc_triggers_indexers_in_stockprice>
             </general>
             <sinch_ftp>
                 <replace_category>REWRITE</replace_category>

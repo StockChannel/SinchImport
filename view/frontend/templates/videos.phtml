@@ -1,21 +1,23 @@
-<div class='sitc-manuals'>
-<ul>
 <?php
-	$product = $block->getProduct();
-	$videos = $product->getData('sinch_videos');
-	$manuals = $product->getData('sinch_manuals');
-	echo "";
-	if (!empty($videos)) {
-		foreach (explode(";", $videos) as $video) {
-			echo '<li><video controls><source src="' . $video . '" type="video/mp4">Your browser does not support the video tag.</video></li>';
-		}
-	}
+$product = $block->getProduct();
+$videos = $product->getData('sinch_videos');
+$manuals = $product->getData('sinch_manuals');
+if(!empty($videos) || !empty($manuals)): ?>
+	<div class='sitc-manuals'>
+		<div class="row align-items-center">
+			<?php
+				if (!empty($videos)) {
+					foreach (explode(";", $videos) as $video) {
+						echo '<div class="col-12 col-md-6"><video class="w-100" controls><source src="' . $video . '" type="video/mp4">Your browser does not support the video tag.</video></div>';
+					}
+				}
 
-	if (!empty($manuals)) {
-		foreach (explode(";", $manuals) as $manual) {
-			echo '<li><iframe src="' . $manual . '">Your browser does not support the iframe tag.</iframe></li>';
-		}
-	}
-?>
-</ul>
-</div>
+				if (!empty($manuals)) {
+					foreach (explode(";", $manuals) as $manual) {
+						echo '<div class="col-12 col-md-6"><iframe class="w-100" src="' . $manual . '">Your browser does not support the iframe tag.</iframe></div>';
+					}
+				}
+			?>
+		</div>
+	</div>
+<?php endif;

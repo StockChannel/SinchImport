@@ -87,3 +87,28 @@ a.product-item-photo {
 .Bestseller {
     background: #dddd;
 }
+.specification-table-content tr {
+    border-bottom: 1px solid #eeeeee;
+}
+.specification-table-content th {
+    font-size: 18px;
+    margin-top: 15px;
+}
+.specification-table-content th, .specification-table-content td {
+    padding: 10px 0px;
+    width: 50%;
+    padding-right: 15px;
+    max-height: 200px;
+    overflow: auto;
+    display: inline-block;
+}
+.specification-table-content tr td {
+    width: 50%;
+    padding-right: 15px;
+}
+.icon-attribute {
+    width: 15px;
+    margin-right: 6px;
+    position: relative;
+    top: 2px;
+}

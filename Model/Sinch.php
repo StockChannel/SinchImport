@@ -5,16 +5,15 @@ namespace SITC\Sinchimport\Model;
 use DateTime;
 use Exception;
 use Magento\Eav\Model\ResourceModel\Entity\Attribute;
-use Magento\Framework\App\Cache\Frontend\Pool;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\DeploymentConfig;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Framework\DB\Adapter\AdapterInterface;
 use Magento\Framework\DB\Adapter\DeadlockException;
 use Magento\Framework\Event\ManagerInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Model\Context;
 use Magento\Indexer\Model\Indexer\CollectionFactory;
-use Magento\Indexer\Model\Processor;
 use Magento\Store\Model\ScopeInterface;
 use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Helper\Data;
@@ -54,11 +53,7 @@ class Sinch {
     protected ScopeConfigInterface $scopeConfig;
     protected Logger $_sinchLogger;
     protected ResourceConnection $_resourceConnection;
-    protected \Magento\Framework\DB\Adapter\AdapterInterface $conn;
-    protected Processor $_indexProcessor;
-    protected Pool $_cacheFrontendPool;
-    protected UrlFactory $_productUrlFactory;
-    protected CollectionFactory $indexersFactory;
+    protected AdapterInterface $conn;
     protected Attribute $_eavAttribute;
     private ConsoleOutput $output;
     private array $galleryPhotos = [];
@@ -106,15 +101,10 @@ class Sinch {
 
     public function __construct(
         Context $context,
-        StoreManagerInterface $storeManager,
         ScopeConfigInterface $scopeConfig,
         Logger $sinchLogger,
         ResourceConnection $resourceConnection,
-        Processor $indexProcessor,
-        Pool $cacheFrontendPool,
         DeploymentConfig $deploymentConfig,
-        UrlFactory $productUrlFactory,
-        CollectionFactory $indexersFactory,
         Attribute $eavAttribute,
         ConsoleOutput $output,
         IndexManagement $sitcIndexMgmt,
@@ -164,14 +154,9 @@ class Sinch {
         $this->helperUrl = $helperUrl;
 
         $this->output = $output;
-        $this->_storeManager = $storeManager;
         $this->scopeConfig = $scopeConfig;
         $this->_sinchLogger = $sinchLogger->withName("SinchImport");
         $this->_resourceConnection = $resourceConnection;
-        $this->_indexProcessor = $indexProcessor;
-        $this->_cacheFrontendPool = $cacheFrontendPool;
-        $this->_productUrlFactory = $productUrlFactory;
-        $this->indexersFactory = $indexersFactory;
         $this->_eventManager = $context->getEventDispatcher();
         $this->conn = $this->_resourceConnection->getConnection();
         $this->_eavAttribute = $eavAttribute;
@@ -511,21 +496,21 @@ class Sinch {
 
                 if (!$this->dataHelper->indexSeparately()) {
                     $this->addImportStatus('Run indexing');
-                    $this->runIndexer();
+                    $this->sitcIndexMgmt->runFullIndex();
                     $this->addImportStatus('Run indexing', true);
                 } else {
                     $this->addImportStatus('Invalidate indexes');
-                    $this->invalidateIndexers();
+                    $this->sitcIndexMgmt->invalidateIndexers();
                     $this->addImportStatus('Invalidate indexes', true);
                 }
 
                 $this->addImportStatus('Index catalog url rewrites');
-                $this->reindexProductUrls();
+                $this->sitcIndexMgmt->reindexProductUrls();
                 $this->helperUrl->generateCategoryUrl();
                 $this->addImportStatus('Index catalog url rewrites', true);
 
                 $this->addImportStatus('Clean cache');
-                $this->runCleanCache();
+                $this->sitcIndexMgmt->clearCaches();
                 $this->addImportStatus('Clean cache', true);
 
 
@@ -3089,94 +3074,6 @@ class Sinch {
         }
     }
 
-    private function runIndexer(): void
-    {
-        $this->_indexProcessor->reindexAll();
-        //Clear changelogs explicitly after finishing a full reindex
-        $this->_indexProcessor->clearChangelog();
-        //Then make sure all materialized views reflect actual state
-        $this->_indexProcessor->updateMview();
-
-        $configTonerFinder = $this->scopeConfig->getValue(
-            'sinchimport/general/index_tonerfinder',
-            ScopeInterface::SCOPE_STORE);
-
-        if ($configTonerFinder == 1) {
-            $this->insertCategoryIdForFinder();
-        } else {
-            $this->_logImportInfo("Configuration ignores indexing tonerfinder");
-        }
-    }
-
-    /**
-     * @insertCategoryIdForFinder
-     */
-    public function insertCategoryIdForFinder(): void
-    {
-        $tbl_store = $this->getTableName('store');
-        $tbl_cat = $this->getTableName('catalog_category_product');
-
-        //TODO: Remove operations on index tables
-        $this->_doQuery("INSERT INTO " . $this->getTableName('catalog_category_product_index') . " (
-            category_id, product_id, position, is_parent, store_id, visibility) (
-                SELECT ccp.category_id, ccp.product_id, ccp.position, 1, store.store_id, 4
-                FROM " . $tbl_cat . " ccp
-                JOIN " . $tbl_store . " store
-            )
-            ON DUPLICATE KEY UPDATE visibility = 4"
-        );
-
-        foreach ($this->_storeManager->getStores() as $store) {
-            $storeId = $store->getId();
-
-            //TODO: Remove operations on index tables
-            $table = $this->getTableName('catalog_category_product_index_store' . $storeId);
-            if ($this->conn->isTableExists($table)) {
-                $this->_doQuery(" 
-                  INSERT INTO " . $table . " (category_id, product_id, position, is_parent, store_id, visibility) (
-                      SELECT  ccp.category_id, ccp.product_id, ccp.position, 1, store.store_id, 4
-                      FROM " . $tbl_cat . " ccp
-                        JOIN " . $tbl_store . " store )
-                  ON DUPLICATE KEY UPDATE visibility = 4"
-                );
-            }
-        }
-    }
-
-    private function invalidateIndexers(): void
-    {
-        /**
-         * @var IndexerInterface[] $indexers
-         */
-        $indexers = $this->indexersFactory->create()->getItems();
-        foreach ($indexers as $indexer) {
-            $indexer->invalidate();
-        }
-    }
-
-    private function reindexProductUrls(): void
-    {
-        $url_rewrite = $this->getTableName('url_rewrite');
-        $catalog_product_entity_varchar = $this->getTableName('catalog_product_entity_varchar');
-
-        $conn = $this->_resourceConnection->getConnection();
-        $conn->query("DELETE FROM $url_rewrite WHERE is_autogenerated = 1 AND entity_type = 'product'");
-        $conn->query(
-            "UPDATE $catalog_product_entity_varchar SET value = '' WHERE attribute_id = :attrId",
-            [':attrId' => $this->dataHelper->getProductAttributeId('url_key')]
-        );
-
-        $this->_productUrlFactory->create()->refreshRewrites();
-    }
-
-    public function runCleanCache(): void
-    {
-        foreach ($this->_cacheFrontendPool as $cacheFrontend) {
-            $cacheFrontend->getBackend()->clean();
-            $cacheFrontend->clean();
-        }
-    }
-
     /**
      * @throws LocalizedException
      */
@@ -3310,7 +3207,7 @@ class Sinch {
                 }
 
                 $this->addImportStatus('Clean cache');
-                $this->runCleanCache();
+                $this->sitcIndexMgmt->clearCaches();
                 $this->addImportStatus('Clean cache', true);
 
                 try {
@@ -3366,7 +3263,7 @@ class Sinch {
             $this->print("========REINDEX CATALOG URL REWRITE========");
 
             $this->print("Start indexing catalog url rewrites...");
-            $this->reindexProductUrls();
+            $this->sitcIndexMgmt->reindexProductUrls();
             $this->print("Finish indexing catalog url rewrites...");
 
             $this->print("========>FINISH REINDEX CATALOG URL REWRITE...");

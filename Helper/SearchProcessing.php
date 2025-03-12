@@ -274,7 +274,7 @@ class SearchProcessing extends AbstractHelper
                 $query,
                 [], // sort
                 [], // filter
-                [], // built filter
+                $containerConfig->getFilters(), // built filter
                 $containerConfig->getAggregations($query), // facets
                 true
             );

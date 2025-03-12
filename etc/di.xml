@@ -129,4 +129,34 @@
             <argument name="productRepository" xsi:type="object">Magento\Catalog\Model\ProductRepository\Proxy</argument>
         </arguments>
     </type>
+    <type name="SITC\Sinchimport\Plugin\Elasticsuite\QueryBuilder">
+        <arguments>
+            <argument name="categoryRepository" xsi:type="object">Magento\Catalog\Api\CategoryRepositoryInterface\Proxy</argument>
+            <argument name="response" xsi:type="object">Magento\Framework\App\Response\Http\Proxy</argument>
+            <argument name="resourceConnection" xsi:type="object">Magento\Framework\App\ResourceConnection\Proxy</argument>
+            <argument name="helper" xsi:type="object">SITC\Sinchimport\Helper\Data\Proxy</argument>
+            <argument name="spHelper" xsi:type="object">SITC\Sinchimport\Helper\SearchProcessing\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="SITC\Sinchimport\Model\Import\CustomCatalogVisibility">
+        <arguments>
+            <argument name="resourceConn" xsi:type="object">Magento\Framework\App\ResourceConnection\Proxy</argument>
+            <argument name="output" xsi:type="object">Symfony\Component\Console\Output\ConsoleOutput</argument>
+            <argument name="dlHelper" xsi:type="object">SITC\Sinchimport\Helper\Download\Proxy</argument>
+            <argument name="csv" xsi:type="object">SITC\Sinchimport\Util\CsvIterator\Proxy</argument>
+            <argument name="massProdValues" xsi:type="object">Magento\Catalog\Model\ResourceModel\Product\Action\Proxy</argument>
+        </arguments>
+    </type>
+    <type name="SITC\Sinchimport\Model\Import\IndexManagement">
+        <arguments>
+            <argument name="indexerConfig" xsi:type="object">Magento\Framework\Indexer\ConfigInterface\Proxy</argument>
+            <argument name="indexerRegistry" xsi:type="object">Magento\Framework\Indexer\IndexerRegistry\Proxy</argument>
+            <argument name="helper" xsi:type="object">SITC\Sinchimport\Helper\Data\Proxy</argument>
+            <argument name="output" xsi:type="object">Symfony\Component\Console\Output\ConsoleOutput\Proxy</argument>
+            <argument name="resourceConn" xsi:type="object">Magento\Framework\App\ResourceConnection\Proxy</argument>
+            <argument name="storeManager" xsi:type="object">Magento\Store\Model\StoreManagerInterface\Proxy</argument>
+            <argument name="indexProcessor" xsi:type="object">Magento\Indexer\Model\Processor\Proxy</argument>
+            <argument name="cacheFrontendPool" xsi:type="object">Magento\Framework\App\Cache\Frontend\Pool\Proxy</argument>
+        </arguments>
+    </type>
 </config>
