@@ -3,6 +3,10 @@
 }
 .sitc-bullet-points ul {
     list-style-type: disc;
+    padding-left: 15px;
+}
+.product-bullet-points-container {
+    margin-top: 20px;
 }
 .product.attribute.description b {
     display: block;
@@ -90,6 +94,10 @@ a.product-item-photo {
 .specification-table-content tr {
     border-bottom: 1px solid #eeeeee;
 }
+.specification-table-content tr td:nth-child(2) {
+    text-align: right;
+    padding-right: 30px;
+}
 .specification-table-content th {
     font-size: 18px;
     margin-top: 15px;
@@ -100,15 +108,45 @@ a.product-item-photo {
     padding-right: 15px;
     max-height: 200px;
     overflow: auto;
-    display: inline-block;
 }
 .specification-table-content tr td {
     width: 50%;
     padding-right: 15px;
 }
+.specification-table-content tr td:nth-child(1) {
+    font-weight: 500;
+}
+
+.specification-table-content tr td:nth-child(1)::after {
+    content: ':';
+}
+.specification-table-content th {
+    font-size: 20px;
+    margin-top: 30px;
+    font-weight: 700;
+}
 .icon-attribute {
-    width: 15px;
+    height: 15px;
     margin-right: 6px;
     position: relative;
     top: 2px;
+}
+
+/*Video Gallery*/
+.videoicon {
+    width: 88px;
+    height: 90px;
+    background: #000;
+    display: inline-block;
+    margin: 1px;
+}
+.videoicon svg {
+    fill: #fff;
+    width: 30px;
+    margin: auto;
+}
+.videoicon a {
+    height: 100%;
+    display: flex;
+    width: 100%;
 }

@@ -3,7 +3,10 @@
 
 $product = $block->getProduct();
 $bulletPoints = $product->getData('sinch_bullet_points');
-
+$_title = $block->getData('title');
+if($_title){
+    echo '<h3>' . $_title . '</h3>';
+}
 if (!empty($bulletPoints)):
     echo "<div class='sitc-bullet-points'><ul>";
     foreach (explode("|||", $bulletPoints) as $bulletPoint) {
