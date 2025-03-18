@@ -34,6 +34,7 @@ class ReasonsToBuy extends AbstractImportSection {
         $reasonsToBuyCsv = $this->dlHelper->getSavePath(Download::FILE_REASONS_TO_BUY);
 
         $this->startTimingStep('Load Reasons to Buy');
+        /** @noinspection SqlWithoutWhere */
         $conn->query("DELETE FROM {$this->reasonsToBuyTable}");
         //ID|No|Value
         $conn->query(
@@ -48,10 +49,10 @@ class ReasonsToBuy extends AbstractImportSection {
         $this->endTimingStep();
     }
 
-    public function apply()
+    public function apply(): void
     {
-        $catalog_product_entity = $this->getTableName('catalog_product_entity');
         $catalog_product_entity_text = $this->getTableName('catalog_product_entity_text');
+        $sinch_products_mapping = $this->getTableName('sinch_products_mapping');
 
         $reasonsToBuyAttr = $this->dataHelper->getProductAttributeId('sinch_reasons_to_buy');
 
@@ -60,10 +61,10 @@ class ReasonsToBuy extends AbstractImportSection {
         $this->startTimingStep('Insert Reasons to Buy values');
         //Fetch all product entity IDs which have values for reasons to buy
         $ids = $conn->fetchCol(
-            "SELECT DISTINCT cpe.entity_id
-                    FROM {$catalog_product_entity} cpe
+            "SELECT DISTINCT spm.entity_id
+                    FROM {$sinch_products_mapping} spm
                     INNER JOIN {$this->reasonsToBuyTable} srtb
-                        ON cpe.sinch_product_id = srtb.id
+                        ON spm.sinch_product_id = srtb.id
                     WHERE srtb.value IS NOT NULL"
         );
         //Now select the values for each product and JSON encode them for storage in the attribute
@@ -71,14 +72,16 @@ class ReasonsToBuy extends AbstractImportSection {
             $prodReasonsToBuy = $conn->fetchAll(
                 "SELECT srtb.title, srtb.pic, srtb.value
                         FROM {$this->reasonsToBuyTable} srtb
-                        WHERE srtb.id = :entityId
+                        INNER JOIN {$sinch_products_mapping} spm
+                            ON srtb.id = spm.sinch_product_id
+                        WHERE spm.entity_id = :entityId
                         ORDER BY srtb.number",
                 [':entityId' => $productEntityId]
             );
             //Is inserting row by row too slow? (seems to be fast enough, but we should keep an eye on this)
             $conn->query(
                 "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value)
-                        VALUES (:reasonsToBuyAttr, 0, :entityId, :reasons)",
+                        VALUES (:reasonsToBuyAttr, 0, :entityId, :reasons) ON DUPLICATE KEY UPDATE value = VALUES(value)",
                 [
                     ':reasonsToBuyAttr' => $reasonsToBuyAttr,
                     ':entityId' => $productEntityId,
@@ -91,10 +94,10 @@ class ReasonsToBuy extends AbstractImportSection {
             "UPDATE {$catalog_product_entity_text}
                     SET value = NULL
                     WHERE entity_id NOT IN (
-                        SELECT DISTINCT cpe.entity_id
+                        SELECT DISTINCT spm.entity_id
                             FROM {$this->reasonsToBuyTable} srtb
-                            INNER JOIN {$catalog_product_entity} cpe
-                                ON srtb.id = cpe.sinch_product_id
+                            INNER JOIN {$sinch_products_mapping} spm
+                                ON srtb.id = spm.sinch_product_id
                     )"
         );
         $this->endTimingStep();
@@ -102,7 +105,7 @@ class ReasonsToBuy extends AbstractImportSection {
         $this->timingPrint();
     }
 
-    private function createTableIfRequired()
+    private function createTableIfRequired(): void
     {
         $this->getConnection()->query(
             "CREATE TABLE IF NOT EXISTS {$this->reasonsToBuyTable} (
