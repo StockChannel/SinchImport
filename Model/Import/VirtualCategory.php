@@ -35,6 +35,12 @@ class VirtualCategory extends AbstractImportSection {
 
         $conn = $this->getConnection();
 
+        if (!$conn->tableColumnExists($sinch_categories, "VirtualCategory")) {
+            $this->logger->warning("VirtualCategory column doesn't exist on sinch_categories yet");
+            $this->logger->warning("Assuming this is the first import after Nile upgrade and skipping section...");
+            return;
+        }
+
         $this->startTimingStep('Delete removed virtual category values');
         $conn->query(
             "DELETE eao, eaov FROM $eav_attribute_option eao
