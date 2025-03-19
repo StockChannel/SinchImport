@@ -88,7 +88,7 @@ class Badges extends AbstractHelper
 
     public function badgeEnabled(string $badgeType): bool
     {
-        return match ($badgeType) {
+        return (bool) match ($badgeType) {
             self::BADGE_BESTSELLER => $this->helper->getStoreConfig('sinchimport/badges/enable_bestseller'),
             self::BADGE_HOT_PRODUCT => $this->helper->getStoreConfig('sinchimport/badges/enable_hot_product'),
             self::BADGE_NEW => $this->helper->getStoreConfig('sinchimport/badges/enable_new'),
