@@ -372,6 +372,10 @@ class SearchProcessing extends AbstractHelper
                             ON eao.attribute_id = ea.attribute_id
                         WHERE ea.attribute_code = ?
                             AND CHAR_LENGTH(eaov.value) >= ?
+                            AND eaov.value NOT LIKE '%?%'
+                            AND eaov.value NOT LIKE '%+%'
+                            AND eaov.value NOT LIKE '%(%'
+                            AND eaov.value NOT LIKE '%)%'
                             AND ? REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                             AND eao.option_id IN ($placeholders)
                         ORDER BY CHAR_LENGTH(eaov.value) DESC",
@@ -386,6 +390,10 @@ class SearchProcessing extends AbstractHelper
                             ON eao.attribute_id = ea.attribute_id
                         WHERE ea.attribute_code = :attribute
                             AND CHAR_LENGTH(eaov.value) >= :valMinLength
+                            AND eaov.value NOT LIKE '%?%'
+                            AND eaov.value NOT LIKE '%+%'
+                            AND eaov.value NOT LIKE '%(%'
+                            AND eaov.value NOT LIKE '%)%'
                             AND :queryText REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                         ORDER BY CHAR_LENGTH(eaov.value) DESC",
             [
