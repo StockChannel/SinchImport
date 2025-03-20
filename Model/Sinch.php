@@ -212,30 +212,39 @@ class Sinch {
      */
     private function backupIDs(): void
     {
-        $catalog_product_entity = $this->conn->getTableName('catalog_product_entity');
-        $catalog_category_entity = $this->conn->getTableName('catalog_category_entity');
+        // Ensure that the backup tables are empty so they're ignored by the rest of the process,
+        // even if they happened to contain data
         $sinch_product_backup = $this->conn->getTableName('sinch_product_backup');
         $sinch_category_backup = $this->conn->getTableName('sinch_category_backup');
 
         $conn = $this->conn->getConnection();
         // Clear any data currently in the backup tables
+        /** @noinspection SqlWithoutWhere */
         $conn->query(
             "DELETE FROM $sinch_product_backup"
         );
+        /** @noinspection SqlWithoutWhere */
         $conn->query(
             "DELETE FROM $sinch_category_backup"
         );
-        // Backup the current IDs to the tables
-        $conn->query(
-            "INSERT INTO $sinch_product_backup (entity_id, sku, sinch_product_id)
+
+        if ($this->dataHelper->getStoreConfig('sinchimport/sinch_ftp/backup_data') == 1) {
+            $this->print("Backing up product and category IDs for reuse");
+            $catalog_product_entity = $this->conn->getTableName('catalog_product_entity');
+            $catalog_category_entity = $this->conn->getTableName('catalog_category_entity');
+
+            // Backup the current IDs to the tables
+            $conn->query(
+                "INSERT INTO $sinch_product_backup (entity_id, sku, sinch_product_id)
                 SELECT entity_id, sku, sinch_product_id FROM $catalog_product_entity"
-        );
-        // Don't think we need to have attribute_set_id
-        $conn->query(
-            "INSERT INTO $sinch_category_backup (entity_id, parent_id, store_category_id, parent_store_category_id)
+            );
+            // Don't think we need to have attribute_set_id
+            $conn->query(
+                "INSERT INTO $sinch_category_backup (entity_id, parent_id, store_category_id, parent_store_category_id)
                 SELECT entity_id, parent_id, store_category_id, parent_store_category_id
                 FROM $catalog_category_entity"
-        );
+            );
+        }
     }
 
     /**
@@ -316,10 +325,9 @@ class Sinch {
                 $this->downloadFiles($requiredFiles, $optionalFiles);
                 $this->addImportStatus('Download Files', true);
 
-                if ($this->dataHelper->getStoreConfig('sinchimport/sinch_ftp/backup_data') == 1) {
-                    $this->print("Backing up product and category IDs for reuse");
-                    $this->backupIDs();
-                }
+                // Backup IDs if its enabled, otherwise clear the backup tables to ensure it doesn't fuck with
+                // later data processing
+                $this->backupIDs();
 
                 $this->addImportStatus('Parse Categories');
                 $this->parseCategories();
@@ -1190,7 +1198,7 @@ class Sinch {
     }
 
     //TODO: Remove pointless attribute ids passed as args
-    private function mapSinchCategories($name_attrid, $mapping_again = false)
+    private function mapSinchCategories($name_attrid, $mapping_again = false): void
     {
         $sinch_categories_mapping = $this->getTableName('sinch_categories_mapping');
         $sinch_categories_mapping_temp = $this->getTableName('sinch_categories_mapping_temp');
@@ -1264,6 +1272,7 @@ class Sinch {
             SET cmt.shop_parent_id = cce.entity_id"
         );
 
+        // Update the mapping with the correct parent info for each root
         foreach ($rootCategories as $rootCat) {
             $this->_doQuery(
                 "UPDATE $sinch_categories_mapping_temp cmt
