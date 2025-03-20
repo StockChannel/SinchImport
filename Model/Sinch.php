@@ -3271,9 +3271,13 @@ class Sinch {
         try {
             $this->print("========REINDEX CATALOG URL REWRITE========");
 
-            $this->print("Start indexing catalog url rewrites...");
+            $this->print("Start indexing product URL rewrites...");
             $this->sitcIndexMgmt->reindexProductUrls();
-            $this->print("Finish indexing catalog url rewrites...");
+            $this->print("Finish indexing product URL rewrites...");
+
+            $this->print("Start indexing category URL rewrites...");
+            $this->helperUrl->generateCategoryUrl();
+            $this->print("Finish indexing category URL rewrites...");
 
             $this->print("========>FINISH REINDEX CATALOG URL REWRITE...");
             $this->_doQuery(
