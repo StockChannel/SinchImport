@@ -35,7 +35,8 @@
     position: absolute;
     left: 0;
     color: #fff;
-    padding: 7px 10px;
+    background: #3a3a3a;
+    padding: 7px 15px;
     z-index: 2;
     top: 0;
     border-radius: 5px;
@@ -45,7 +46,7 @@ a.product-item-photo {
 }
 
 .badge-custom svg {
-    width: 17px;
+    width: 15px;
 }
 .badge-custom svg, .badge-custom span {
     display: inline-block;
@@ -55,9 +56,9 @@ a.product-item-photo {
     margin-left: 6px;
     font-weight: bold;
     font-family: sans-serif;
-    font-size: 11px;
+    font-size: 12px;
 }
-.HotProduct {
+/*.HotProduct {
     width: auto;
     background: #fd0000;
 }
@@ -90,7 +91,7 @@ a.product-item-photo {
 }
 .Bestseller {
     background: #dddd;
-}
+}*/
 .specification-table-content tr {
     border-bottom: 1px solid #eeeeee;
 }
@@ -101,6 +102,8 @@ a.product-item-photo {
 .specification-table-content th {
     font-size: 18px;
     margin-top: 15px;
+    padding-top: 35px;
+    font-weight: 700;
 }
 .specification-table-content th, .specification-table-content td {
     padding: 10px 0px;
@@ -113,17 +116,14 @@ a.product-item-photo {
     width: 50%;
     padding-right: 15px;
 }
+.specification-table-content .table-left tr:nth-child(1) th {
+    padding-top: 0px;
+}
 .specification-table-content tr td:nth-child(1) {
     font-weight: 500;
 }
-
 .specification-table-content tr td:nth-child(1)::after {
     content: ':';
-}
-.specification-table-content th {
-    font-size: 20px;
-    margin-top: 30px;
-    font-weight: 700;
 }
 .icon-attribute {
     height: 15px;
@@ -149,4 +149,30 @@ a.product-item-photo {
     height: 100%;
     display: flex;
     width: 100%;
+}
+
+/*Category Page*/
+.sitc-summary-features {
+    font-size: 10px;
+    margin-bottom: 20px;
+    margin-top: 20px;
+}
+.sitc-summary-features strong {
+    display: block;
+}
+
+/*Reasons To Buy*/
+.sitc-reasons-to-buy .reason-to-buy {
+    margin-bottom: 40px;
+}
+.sitc-reasons-to-buy .reason-to-buy .reason-to-buy-image img {
+    border-radius: 3px;
+}
+.sitc-reasons-to-buy .reason-to-buy:nth-child(even) .reason-to-buy-image {
+    float: left;
+    margin-right: 20px;
+}
+.sitc-reasons-to-buy .reason-to-buy:nth-child(odd) .reason-to-buy-image {
+    float: right;
+    margin-left: 20px;
 }

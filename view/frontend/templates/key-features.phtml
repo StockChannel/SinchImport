@@ -9,12 +9,42 @@ for ($i = 1; $i <= 4; $i++) {
     $title = $product->getData("sinch_summary_title_{$i}");
     $value = $product->getData("sinch_summary_value_{$i}");
     if (empty($title) || empty($value)) continue;
-    $summaryFeatures[] = $title . ": " . $value;
+    $summaryFeatures[] = "<strong>" . $title . ":</strong><span>" . $value . "</span>";
 }
-if (!empty($summaryFeatures)) {
-    echo "<div class='sitc-summary-features'><ul>";
-    foreach ($summaryFeatures as $feature) {
-        echo "<li>" . $feature . "</li>";
+    echo "<div class='sitc-summary-features'><div class='row no-gutters'>";
+    $countSummaryFeatures = count($summaryFeatures);
+    switch($countSummaryFeatures){
+        case 1:
+            foreach ($summaryFeatures as $feature) {
+                echo "<div class='col-6 col-md-3 pr-2'>" . $feature . "</div>";
+            }
+            echo "<div class='col-6 col-md-3 pr-2'><strong>Manufacturer:</strong>" . $product->getAttributeText('manufacturer') . "</div>";
+            echo "<div class='col-6 col-md-3 pr-2'><strong>SKU:</strong>" . $product->getSku('sku') . "</div>";
+            echo "<div class='col-6 col-md-3 pr-2'><strong>EAN:</strong>" . $product->getData('ean') . "</div>";
+            break;
+        case 2:
+            foreach ($summaryFeatures as $feature) {
+                echo "<div class='col-6 col-md-3 pr-2'>" . $feature . "</div>";
+            }
+            echo "<div class='col-6 col-md-3 pr-2'><strong>Manufacturer:</strong>" . $product->getAttributeText('manufacturer') . "</div>";
+            echo "<div class='col-6 col-md-3 pr-2'><strong>SKU:</strong>" . $product->getSku('sku') . "</div>";
+            break;
+        case 3:
+            foreach ($summaryFeatures as $feature) {
+                echo "<div class='col-6 col-md-3 pr-2'>" . $feature . "</div>";
+            }
+            echo "<div class='col-6 col-md-3 pr-2'><strong>Manufacturer:</strong>" . $product->getAttributeText('manufacturer') . "</div>";
+            break;
+        case 4:
+            foreach ($summaryFeatures as $feature) {
+                echo "<div class='col-6 col-md-3 pr-2'>" . $feature . "</div>";
+            }
+            break;
+        default:
+            echo "<div class='col-6 col-md-3 pr-2'><strong>Manufacturer:</strong>" . $product->getAttributeText('manufacturer') . "</div>";
+            echo "<div class='col-6 col-md-3 pr-2'><strong>SKU:</strong>" . $product->getSku('sku') . "</div>";
+            echo "<div class='col-6 col-md-3 pr-2'><strong>EAN:</strong>" . $product->getData('ean') . "</div>";
     }
-    echo "</ul></div>";
-}
+    
+
+    echo "</div></div>";

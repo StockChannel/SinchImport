@@ -1,10 +1,22 @@
 <?php
-	$product = $block->getProduct();
-	$reasonsToBuy = json_decode($product->getData('sinch_reasons_to_buy') ?? '[]', true);
-	if (!empty($reasonsToBuy) && is_array($reasonsToBuy)) {
-        echo "<div class='sitc-reasons-to-buy'><ul>";
-        foreach ($reasonsToBuy as $reason) {
-            echo "<li>" . $reason["value"] . "</li>";
-        }
-        echo "</ul></div>";
+$product = $block->getProduct();
+$reasonsToBuy = json_decode($product->getData('sinch_reasons_to_buy') ?? '[]', true);
+if (!empty($reasonsToBuy) && is_array($reasonsToBuy)) {
+    echo "<div class='sitc-reasons-to-buy'>";
+    foreach ($reasonsToBuy as $reason) {
+        echo '<div class="reason-to-buy">';
+            if (!empty($reason["pic"])) {
+                echo "<div class='reason-to-buy-image'>";
+                    echo "<img src='" . $reason["pic"] . "' alt='" . ($reason["title"] ?? '') . "' style=\"max-height: 100px;\"\"/>";
+                echo "</div>";
+            }
+            echo "<div class='reason-to-buy-content'>";
+                if (!empty($reason["title"])) {
+                    echo "<h3>" . $reason["title"] . "</h3>";
+                }
+                echo "<p>" . $reason["value"] . "</p>";
+            echo "</div>";
+        echo "</div>";
     }
+    echo "</div>";
+}
