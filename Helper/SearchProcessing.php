@@ -372,7 +372,11 @@ class SearchProcessing extends AbstractHelper
                             ON eao.attribute_id = ea.attribute_id
                         WHERE ea.attribute_code = ?
                             AND CHAR_LENGTH(eaov.value) >= ?
-                            AND REGEXP_LIKE(?, CONCAT('\\\\b', eaov.value, '\\\\b'), 'i')
+                            AND eaov.value NOT LIKE '%?%'
+                            AND eaov.value NOT LIKE '%+%'
+                            AND eaov.value NOT LIKE '%(%'
+                            AND eaov.value NOT LIKE '%)%'
+                            AND ? REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                             AND eao.option_id IN ($placeholders)
                         ORDER BY CHAR_LENGTH(eaov.value) DESC",
                 $params
@@ -386,7 +390,11 @@ class SearchProcessing extends AbstractHelper
                             ON eao.attribute_id = ea.attribute_id
                         WHERE ea.attribute_code = :attribute
                             AND CHAR_LENGTH(eaov.value) >= :valMinLength
-                            AND REGEXP_LIKE(:queryText, CONCAT('\\\\b', eaov.value, '\\\\b'), 'i')
+                            AND eaov.value NOT LIKE '%?%'
+                            AND eaov.value NOT LIKE '%+%'
+                            AND eaov.value NOT LIKE '%(%'
+                            AND eaov.value NOT LIKE '%)%'
+                            AND :queryText REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                         ORDER BY CHAR_LENGTH(eaov.value) DESC",
             [
                 ':attribute' => $attributeCode,
@@ -793,7 +801,7 @@ class SearchProcessing extends AbstractHelper
                   AND eet.entity_type_code = :entityTypeCode
                   AND ccev.store_id = :storeId
                   AND CHAR_LENGTH(ccev.value) >= :valMinLength
-                  AND REGEXP_LIKE(:queryText, CONCAT('\\\\b', ccev.value, '\\\\b'), 'i')
+                  AND :queryText REGEXP CONCAT('\\\\b', ccev.value, '\\\\b')
                 ORDER BY CHAR_LENGTH(ccev.value) DESC
                 LIMIT 1",
             [
@@ -832,7 +840,7 @@ class SearchProcessing extends AbstractHelper
                   AND eet.entity_type_code = :entityTypeCode
                   AND ccei.store_id = 0 -- Virtual category values are always inserted into scope 0 by the import
                   AND CHAR_LENGTH(eaov.value) >= :valMinLength
-                  AND REGEXP_LIKE(:queryText, CONCAT('\\\\b', eaov.value, '\\\\b'), 'i')
+                  AND :queryText REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                 ORDER BY CHAR_LENGTH(eaov.value) DESC
                 LIMIT 1",
             [
