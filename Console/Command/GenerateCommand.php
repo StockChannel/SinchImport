@@ -38,7 +38,7 @@ class GenerateCommand extends Command
     protected function configure(): void
     {
         $this->setName('sinch:url:generate');
-        $this->setDescription('Product Urls');
+        $this->setDescription('Regenerate Product and Category Urls');
     }
     
     /**
