@@ -103,7 +103,7 @@ a.product-item-photo {
     font-size: 18px;
     margin-top: 15px;
     padding-top: 35px;
-    font-weight: 700;
+    font-weight: 500;
 }
 .specification-table-content th, .specification-table-content td {
     padding: 10px 0px;
@@ -175,4 +175,7 @@ a.product-item-photo {
 .sitc-reasons-to-buy .reason-to-buy:nth-child(odd) .reason-to-buy-image {
     float: right;
     margin-left: 20px;
+}
+.reason-to-buy-content {
+    text-align: justify;
 }
