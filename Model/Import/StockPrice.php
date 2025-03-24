@@ -364,7 +364,7 @@ class StockPrice extends AbstractImportSection
                 $conn->query(
                     "INSERT INTO {$this->inventory_source_stock_link} (stock_id, source_code, priority) (
                     SELECT :stockId, CONCAT('sinch_', distributor_id), 1 FROM {$this->distiTable}
-                ) ON DUPLICATE KEY UPDATE priority = VALUES(priority)",
+                ) ON DUPLICATE KEY UPDATE priority = 1",
                     [":stockId" => $stockId]
                 );
             }
@@ -444,10 +444,15 @@ class StockPrice extends AbstractImportSection
 
             if ($this->helper->clearStockReservations()) {
                 $conn->query(
-                    "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status) (
-                    SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock > (0 + :threshold), 1, 0) FROM {$this->distiStockImportTable} sdsp  
-                        INNER JOIN {$this->catalog_product_entity} cpe ON sdsp.product_id = cpe.sinch_product_id
-                ) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), status = VALUES(status)",
+                    "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status)
+                    SELECT source_code, sku, quantity, status FROM
+                    (
+                        SELECT CONCAT('sinch_', sdsp.distributor_id) as source_code, cpe.sku, sdsp.stock as quantity, IF(sdsp.stock > (0 + :threshold), 1, 0) as status
+                        FROM {$this->distiStockImportTable} sdsp  
+                        INNER JOIN {$this->catalog_product_entity} cpe
+                            ON sdsp.product_id = cpe.sinch_product_id
+                    ) new_data
+                    ON DUPLICATE KEY UPDATE quantity = new_data.quantity, status = new_data.status",
                     [':threshold' => $this->outOfStockThreshold]
                 );
             } else {
@@ -460,8 +465,11 @@ class StockPrice extends AbstractImportSection
                    */
                 /** @noinspection SqlAggregates as it incorrectly categorizes reserved as not being aggregate */
                 $conn->query(
-                    "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status) (
-                    SELECT CONCAT('sinch_', sdsp.distributor_id), cpe.sku, sdsp.stock, IF(sdsp.stock - COALESCE(reserv.reserved, 0) > (0 + :threshold), 1, 0) FROM {$this->distiStockImportTable} sdsp  
+                    "INSERT INTO {$this->inventory_source_item} (source_code, sku, quantity, status)
+                SELECT source_code, sku, quantity, status FROM
+                (
+                    SELECT CONCAT('sinch_', sdsp.distributor_id) as source_code, cpe.sku, sdsp.stock as quantity, IF(sdsp.stock - COALESCE(reserv.reserved, 0) > (0 + :threshold), 1, 0) as status
+                    FROM {$this->distiStockImportTable} sdsp  
                     INNER JOIN {$this->catalog_product_entity} cpe
                         ON sdsp.product_id = cpe.sinch_product_id
                     LEFT JOIN (
@@ -487,7 +495,8 @@ class StockPrice extends AbstractImportSection
                         HAVING reserved > 0
                     ) reserv
                         ON cpe.sku = reserv.sku
-                ) ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), status = VALUES(status)",
+                ) new_data
+                ON DUPLICATE KEY UPDATE quantity = new_data.quantity, status = new_data.status",
                     [
                         ':threshold' => $this->outOfStockThreshold,
                         ':sinchStockId' => $stockId
@@ -503,7 +512,7 @@ class StockPrice extends AbstractImportSection
                     SELECT cpe.entity_id, 1, NULL, :threshold, 0, 1, {$stockItemScope} FROM {$this->catalog_product_entity} cpe
                         INNER JOIN {$this->stockImportTable} ssp
                             ON cpe.sinch_product_id = ssp.product_id
-                ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = VALUES(manage_stock), min_qty = VALUES(min_qty)",
+                ) ON DUPLICATE KEY UPDATE qty = NULL, is_in_stock = 0, manage_stock = 1, min_qty = :threshold",
                 [':threshold' => $this->outOfStockThreshold]
             );
             $this->endTimingStep();
@@ -531,11 +540,21 @@ class StockPrice extends AbstractImportSection
             $this->endTimingStep();
 
             $this->startTimingStep('Insert new stock levels');
-            $conn->query("INSERT INTO {$this->cataloginventory_stock_item} (product_id, stock_id, qty, min_qty, is_in_stock, manage_stock, website_id) (
-                    SELECT cpe.entity_id, 1, ssp.stock, :threshold, IF(ssp.stock > (0 + :threshold), 1, 0), 1, {$stockItemScope} FROM {$this->catalog_product_entity} cpe
-                        INNER JOIN {$this->stockImportTable} ssp
-                            ON cpe.sinch_product_id = ssp.product_id
-                ) ON DUPLICATE KEY UPDATE qty = VALUES(qty), is_in_stock = VALUES(is_in_stock), manage_stock = 1, min_qty = VALUES(min_qty)",
+            $conn->query("INSERT INTO {$this->cataloginventory_stock_item} (product_id, stock_id, qty, min_qty, is_in_stock, manage_stock, website_id)
+                SELECT product_id, stock_id, qty, min_qty, is_in_stock, manage_stock, website_id FROM
+                (
+                    SELECT cpe.entity_id as product_id,
+                           1 as stock_id,
+                           ssp.stock as qty,
+                           :threshold as min_qty,
+                           IF(ssp.stock > (0 + :threshold), 1, 0) as is_in_stock,
+                           1 as manage_stock,
+                           {$stockItemScope} as website_id
+                    FROM {$this->catalog_product_entity} cpe
+                    INNER JOIN {$this->stockImportTable} ssp
+                        ON cpe.sinch_product_id = ssp.product_id
+                ) new_data
+                ON DUPLICATE KEY UPDATE qty = new_data.qty, is_in_stock = new_data.is_in_stock, manage_stock = new_data.manage_stock, min_qty = new_data.min_qty",
                 [':threshold' => $this->outOfStockThreshold]
             );
             $this->endTimingStep();

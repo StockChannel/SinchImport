@@ -81,7 +81,7 @@ class ReasonsToBuy extends AbstractImportSection {
             //Is inserting row by row too slow? (seems to be fast enough, but we should keep an eye on this)
             $conn->query(
                 "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value)
-                        VALUES (:reasonsToBuyAttr, 0, :entityId, :reasons) ON DUPLICATE KEY UPDATE value = VALUES(value)",
+                        VALUES (:reasonsToBuyAttr, 0, :entityId, :reasons) ON DUPLICATE KEY UPDATE value = :reasons",
                 [
                     ':reasonsToBuyAttr' => $reasonsToBuyAttr,
                     ':entityId' => $productEntityId,
@@ -90,6 +90,8 @@ class ReasonsToBuy extends AbstractImportSection {
             );
         }
         //Now clear the reasons to buy for any other products we haven't seen in the reasons to buy table
+        // This query previously failed to specify the attribute ID, and thus actually changed records from other text
+        // attributes too.
         $conn->query(
             "UPDATE {$catalog_product_entity_text}
                     SET value = NULL
@@ -98,7 +100,9 @@ class ReasonsToBuy extends AbstractImportSection {
                             FROM {$this->reasonsToBuyTable} srtb
                             INNER JOIN {$sinch_products_mapping} spm
                                 ON srtb.id = spm.sinch_product_id
-                    )"
+                    )
+                    AND attribute_id = :reasonsToBuyAttr",
+            [':reasonsToBuyAttr' => $reasonsToBuyAttr]
         );
         $this->endTimingStep();
 

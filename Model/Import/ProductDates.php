@@ -41,7 +41,7 @@ class ProductDates extends AbstractImportSection {
                     ON cpe.sinch_product_id = sp.sinch_product_id
             )
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = sp.release_date",
             [":releaseDate" => $releaseDateAttr]
         );
         $this->endTimingStep();
@@ -56,7 +56,7 @@ class ProductDates extends AbstractImportSection {
                     ON cpe.sinch_product_id = sp.sinch_product_id
             )
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = sp.eol_date",
             [":eolDate" => $eolDateAttr]
         );
         $this->endTimingStep();

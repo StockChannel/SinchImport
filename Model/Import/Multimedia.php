@@ -99,16 +99,18 @@ class Multimedia extends AbstractImportSection {
 
         //Concat all available PDF Urls for each product into the attribute, and put the onus on the frontend rendering to display it nicely
         $conn->query(
-            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
-                    SELECT :pdfAttr, 0, cpe.entity_id, GROUP_CONCAT(DISTINCT smm.url SEPARATOR ';')
+            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) 
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                    SELECT :pdfAttr as attribute_id, 0 as store_id, cpe.entity_id, GROUP_CONCAT(DISTINCT smm.url SEPARATOR ';') as value
                     FROM {$this->multimediaTable} smm
                     INNER JOIN {$catalog_product_entity} cpe
                         ON smm.sinch_product_id = cpe.sinch_product_id
                     WHERE smm.content_type = 'application/pdf'
                     GROUP BY cpe.entity_id
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = new_data.value",
             [":pdfAttr" => $pdfAttr]
         );
         $this->endTimingStep();
@@ -116,16 +118,18 @@ class Multimedia extends AbstractImportSection {
         $this->startTimingStep('Product Videos');
         //We assume that all video types can be handled on the frontend
         $conn->query(
-            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
-                    SELECT :videosAttr, 0, cpe.entity_id, GROUP_CONCAT(DISTINCT smm.url SEPARATOR ';')
+            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value)
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                    SELECT :videosAttr as attribute_id, 0 as store_id, cpe.entity_id, GROUP_CONCAT(DISTINCT smm.url SEPARATOR ';') as value
                     FROM {$this->multimediaTable} smm
                     INNER JOIN {$catalog_product_entity} cpe
                         ON smm.sinch_product_id = cpe.sinch_product_id
                     WHERE smm.content_type LIKE 'video/%'
                     GROUP BY cpe.entity_id
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = new_data.value",
             [":videosAttr" => $videosAttr]
         );
         $this->endTimingStep();
@@ -133,16 +137,18 @@ class Multimedia extends AbstractImportSection {
         $this->startTimingStep('Product Manuals');
         //Realistically these are just the same as PDF Urls, but HTML
         $conn->query(
-            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
-                    SELECT :manualsAttr, 0, cpe.entity_id, GROUP_CONCAT(DISTINCT smm.url SEPARATOR ';')
+            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value)
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                    SELECT :manualsAttr as attribute_id, 0 as store_id, cpe.entity_id, GROUP_CONCAT(DISTINCT smm.url SEPARATOR ';') as value
                     FROM {$this->multimediaTable} smm
                     INNER JOIN {$catalog_product_entity} cpe
                         ON smm.sinch_product_id = cpe.sinch_product_id
                     WHERE smm.content_type = 'text/html'
                     GROUP BY cpe.entity_id
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = new_data.value",
             [":manualsAttr" => $manualsAttr]
         );
         $this->endTimingStep();
@@ -150,16 +156,18 @@ class Multimedia extends AbstractImportSection {
         $this->startTimingStep('Product Additional Images');
         //We assume that all image types can be handled on the frontend
         $conn->query(
-            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
-                    SELECT :additionalImg, 0, cpe.entity_id, GROUP_CONCAT(DISTINCT smm.url SEPARATOR ';')
+            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value)
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                    SELECT :additionalImg as attribute_id, 0 as store_id, cpe.entity_id, GROUP_CONCAT(DISTINCT smm.url SEPARATOR ';') as value
                     FROM {$this->multimediaTable} smm
                     INNER JOIN {$catalog_product_entity} cpe
                         ON smm.sinch_product_id = cpe.sinch_product_id
                     WHERE smm.content_type LIKE 'image/%'
                     GROUP BY cpe.entity_id
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = new_data.value",
             [":additionalImg" => $additionalImgAttr]
         );
         $this->endTimingStep();
@@ -167,7 +175,7 @@ class Multimedia extends AbstractImportSection {
         $this->timingPrint();
     }
 
-    private function createTableIfRequired()
+    private function createTableIfRequired(): void
     {
         //Ideally this would have a foreign key to sinch_products, but the way we currently handle that table precludes it
         // and would likely slow down the load data anyway

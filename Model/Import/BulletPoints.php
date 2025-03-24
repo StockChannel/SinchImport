@@ -66,15 +66,16 @@ class BulletPoints extends AbstractImportSection {
         $this->startTimingStep('Insert Bullet Point values');
         //Triple pipe delimited to reduce the likelihood of colliding with text in the value
         $this->getConnection()->query(
-            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
-                SELECT :bulletPointsAttr, 0, cpe.entity_id, GROUP_CONCAT(sbp.value ORDER BY sbp.number SEPARATOR '|||')
+            "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) 
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                SELECT :bulletPointsAttr as attribute_id, 0 as store_id, cpe.entity_id, GROUP_CONCAT(sbp.value ORDER BY sbp.number SEPARATOR '|||') as value
                 FROM {$this->bulletPointsTable} sbp
                 INNER JOIN {$catalog_product_entity} cpe
                     ON sbp.id = cpe.sinch_product_id
                 GROUP BY sbp.id, cpe.entity_id
-            )
-            ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+            ) new_data
+            ON DUPLICATE KEY UPDATE value = new_data.value",
             [":bulletPointsAttr" => $bulletPointsAttr]
         );
         $this->endTimingStep();
@@ -88,14 +89,16 @@ class BulletPoints extends AbstractImportSection {
         }
         foreach ($summaryVals as $field => $attributeId) {
             $this->getConnection()->query(
-                "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
-                    SELECT :summaryAttr, 0, cpe.entity_id, sp.{$field}
+                "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value)
+                SELECT attribute_id, store_id, entity_id, value FROM
+                (
+                    SELECT :summaryAttr as attribute_id, 0 as store_id, cpe.entity_id, sp.{$field} as value
                     FROM {$this->sinchProductsTable} sp
                     INNER JOIN {$catalog_product_entity} cpe
                         ON sp.sinch_product_id = cpe.sinch_product_id
-                )
+                ) new_data
                 ON DUPLICATE KEY UPDATE
-                    value = VALUES(value)",
+                    value = new_data.value",
                 [":summaryAttr" => $attributeId]
             );
         }
