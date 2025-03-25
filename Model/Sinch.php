@@ -717,8 +717,8 @@ class Sinch {
         $this->print("-- " . $message . ($finished ? " - Done" : ""));
         $this->conn->query(
             "INSERT INTO {$this->import_status_table} (message, finished)
-                    VALUES(:msg, :finished) as new_data
-                    ON DUPLICATE KEY UPDATE finished = new_data.finished",
+                    VALUES(:msg, :finished)
+                    ON DUPLICATE KEY UPDATE finished = :finished",
             [":msg" => $message, ":finished" => $finished]
         );
         $this->conn->query(
