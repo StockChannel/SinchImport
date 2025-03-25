@@ -2367,7 +2367,7 @@ class Sinch {
 
             // Meta title (global scope)
             $this->_doQuery(
-                "INSERT INTO {$this->getTableName('catalog_product_entity_varchar')} (
+                "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_varchar')} (
                     attribute_id,
                     store_id,
                     entity_id,
