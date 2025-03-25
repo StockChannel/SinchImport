@@ -36,56 +36,64 @@ class Popularity extends AbstractImportSection {
         //Insert global values for Popularity Score
         $this->startTimingStep('Insert Popularity Score values');
         $this->getConnection()->query(
-            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
-                SELECT :scoreAttr, 0, cpe.entity_id, sp.score
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value)
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                SELECT :scoreAttr as attribute_id, 0 as store_id, cpe.entity_id, sp.score as value
                 FROM {$catalog_product_entity} cpe
                 INNER JOIN {$sinch_products} sp
                     ON cpe.sinch_product_id = sp.sinch_product_id
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = new_data.value",
             [":scoreAttr" => $scoreAttr]
         );
         $this->endTimingStep();
 
         $this->startTimingStep('Insert Implied Sales values (1m)');
         $this->getConnection()->query(
-            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
-                SELECT :impliedMonth, 0, cpe.entity_id, sp.implied_sales_month
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) 
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                SELECT :impliedMonth as attribute_id, 0 as store_id, cpe.entity_id, sp.implied_sales_month as value
                 FROM {$catalog_product_entity} cpe
                 INNER JOIN {$sinch_products} sp
                     ON cpe.sinch_product_id = sp.sinch_product_id
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = new_data.value",
             [":impliedMonth" => $impliedSalesMonth]
         );
         $this->endTimingStep();
 
         $this->startTimingStep('Insert Implied Sales values (1y)');
         $this->getConnection()->query(
-            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
-                SELECT :impliedYear, 0, cpe.entity_id, sp.implied_sales_year
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value)
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                SELECT :impliedYear as attribute_id, 0 as store_id, cpe.entity_id, sp.implied_sales_year as value
                 FROM {$catalog_product_entity} cpe
                 INNER JOIN {$sinch_products} sp
                     ON cpe.sinch_product_id = sp.sinch_product_id
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = new_data.value",
             [":impliedYear" => $impliedSalesYear]
         );
         $this->endTimingStep();
 
         $this->startTimingStep('Insert Sinch Searches');
         $this->getConnection()->query(
-            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
-                SELECT :searches, 0, cpe.entity_id, sp.searches
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value)
+            SELECT attribute_id, store_id, entity_id, value FROM
+            (
+                SELECT :searches as attribute_id, 0 as store_id, cpe.entity_id, sp.searches as value
                 FROM {$catalog_product_entity} cpe
                 INNER JOIN {$sinch_products} sp
                     ON cpe.sinch_product_id = sp.sinch_product_id
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = new_data.value",
             [":searches" => $searches]
         );
         $this->endTimingStep();

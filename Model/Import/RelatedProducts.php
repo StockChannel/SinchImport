@@ -227,18 +227,20 @@ class RelatedProducts extends AbstractImportSection
 
         $this->startTimingStep('Insert related product links');
         $conn->query(
-            "INSERT INTO $catalog_product_link (product_id, linked_product_id, link_type_id) (
-                SELECT srp.entity_id, srp.related_entity_id, link_type.link_type_id
+            "INSERT INTO $catalog_product_link (product_id, linked_product_id, link_type_id)
+            SELECT product_id, linked_product_id, link_type_id FROM
+            (
+                SELECT srp.entity_id as product_id, srp.related_entity_id as linked_product_id, link_type.link_type_id
                 FROM {$this->relatedProductsTable} srp
                 INNER JOIN $catalog_product_link_type link_type
                     ON srp.link_type = link_type.code
                 WHERE srp.entity_id IS NOT NULL
                     AND srp.related_entity_id IS NOT NULL
-            )
+            ) new_data
             ON DUPLICATE KEY UPDATE
-                product_id = VALUES(product_id),
-                linked_product_id = VALUES(linked_product_id),
-                link_type_id = VALUES(link_type_id)"
+                product_id = new_data.product_id,
+                linked_product_id = new_data.linked_product_id,
+                link_type_id = new_data.link_type_id"
         );
         $this->endTimingStep();
 
@@ -361,7 +363,7 @@ class RelatedProducts extends AbstractImportSection
                         ON link_type.link_type_id = link_attr.link_type_id
                         AND link_attr.product_link_attribute_code = :linkAttrCode
             ) ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = srp.position",
             [":linkAttrCode" => 'position']
         );
         $this->endTimingStep();

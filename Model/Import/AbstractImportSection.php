@@ -106,7 +106,7 @@ abstract class AbstractImportSection {
         $this->timingStep[$endedStepIdx]['end'] = $now;
         $this->getConnection()->query(
             "INSERT INTO {$this->statusTable} (message, finished) VALUES(:msg, 1)
-                    ON DUPLICATE KEY UPDATE finished = VALUES(finished)",
+                    ON DUPLICATE KEY UPDATE finished = 1",
             [":msg" => static::LOG_PREFIX . $this->timingStep[$endedStepIdx]['name']]
         );
     }

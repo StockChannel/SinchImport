@@ -717,8 +717,8 @@ class Sinch {
         $this->print("-- " . $message . ($finished ? " - Done" : ""));
         $this->conn->query(
             "INSERT INTO {$this->import_status_table} (message, finished)
-                    VALUES(:msg, :finished)
-                    ON DUPLICATE KEY UPDATE finished = VALUES(finished)",
+                    VALUES(:msg, :finished) as new_data
+                    ON DUPLICATE KEY UPDATE finished = new_data.finished",
             [":msg" => $message, ":finished" => $finished]
         );
         $this->conn->query(
@@ -2182,7 +2182,7 @@ class Sinch {
     private function addDescriptions(bool $merge): void
     {
         $ignore = $merge ? "IGNORE" : "";
-        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = pt.description";
 
         // product description (website scope)
         $this->_doQuery(
@@ -2241,7 +2241,7 @@ class Sinch {
     private function addWeight(bool $merge): void
     {
         $ignore = $merge ? "IGNORE" : "";
-        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = pt.Weight";
 
         // product weight (website scope)
         $this->_doQuery(
@@ -2289,7 +2289,7 @@ class Sinch {
     private function addShortDescriptions(bool $merge): void
     {
         $ignore = $merge ? "IGNORE" : "";
-        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = pt.short_description";
 
         // product short description (website scope)
         $this->_doQuery(
@@ -2341,7 +2341,7 @@ class Sinch {
 
         if ($configMetaTitle == 1) {
             $ignore = $merge ? "IGNORE" : "";
-            $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+            $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = pt.Title";
 
             // Meta title (website scope)
             $this->_doQuery(
@@ -2404,7 +2404,7 @@ class Sinch {
     private function addMetaDescriptions(bool $merge): void
     {
         $ignore = $merge ? "IGNORE" : "";
-        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = pt.short_description";
 
         // product meta description (website scope)
         $this->_doQuery(
@@ -2451,7 +2451,7 @@ class Sinch {
     private function addSpecification(bool $merge): void
     {
         $ignore = $merge ? "IGNORE" : "";
-        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+        $onDuplicate = $merge ? "" : "ON DUPLICATE KEY UPDATE value = pt.specifications";
 
         // product specification (website scope)
         $this->_doQuery(
@@ -2477,7 +2477,7 @@ class Sinch {
 
         // product specification (global scope)
         $this->_doQuery(
-            "INSERT INTO {$this->getTableName('catalog_product_entity_text')} (
+            "INSERT $ignore INTO {$this->getTableName('catalog_product_entity_text')} (
                 attribute_id,
                 store_id,
                 entity_id,
@@ -2590,7 +2590,7 @@ class Sinch {
         );
 
         $ignore = $merge_mode ? "IGNORE" : "";
-        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = VALUES(value)";
+        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = 1";
 
         $this->_doQuery(
             "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
@@ -2764,7 +2764,7 @@ class Sinch {
             LEFT JOIN $catalog_category_entity cce
                 ON scm.shop_entity_id = cce.entity_id
             WHERE cce.entity_id IS NOT NULL
-        ) ON DUPLICATE KEY UPDATE product_id = VALUES(product_id), category_id = VALUES(category_id)");
+        ) ON DUPLICATE KEY UPDATE product_id = cpe.entity_id, category_id = scm.shop_entity_id");
 
         $this->print("--Replace Magento Multistore 17...");
         $this->print("--Replace Magento Multistore 18....");
@@ -2779,6 +2779,8 @@ class Sinch {
                 ON cpev.entity_id = cpe.entity_id
             WHERE cpe.entity_id IS NULL"
         );
+
+        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = pt.product_name";
 
         // Product name (website scope)
         $this->retriableQuery(
@@ -2849,6 +2851,8 @@ class Sinch {
 
         $this->print("--Replace Magento Multistore 23...");
 
+        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = 4";
+
         //Make product visible to catalog and search (website scope)
         $this->retriableQuery(
             "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
@@ -2911,6 +2915,8 @@ class Sinch {
 
         $this->print("--Replace Magento Multistore 27...");
 
+        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = 2";
+
         //Adding tax class "Taxable Goods" (website scope)
         $this->retriableQuery(
             "INSERT $ignore INTO $catalog_product_entity_int (attribute_id, store_id, entity_id, value)
@@ -2942,6 +2948,7 @@ class Sinch {
 
         $this->print("--Replace Magento Multistore 29...");
 
+        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = pt.main_image_url";
         // Image Url (website scope)
         $this->retriableQuery(
             "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
@@ -2975,6 +2982,7 @@ class Sinch {
 
         $this->print("--Replace Magento Multistore 31...");
 
+        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = pt.medium_image_url";
         // small_image (website scope)
         $this->retriableQuery(
             "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)
@@ -3008,6 +3016,7 @@ class Sinch {
 
         $this->print("--Replace Magento Multistore 33...");
 
+        $onDuplicate = $merge_mode ? "" : "ON DUPLICATE KEY UPDATE value = pt.thumb_image_url";
         // thumbnail (website scope)
         $this->retriableQuery(
             "INSERT $ignore INTO $catalog_product_entity_varchar (attribute_id, store_id, entity_id, value)

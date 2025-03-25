@@ -96,7 +96,7 @@ class VirtualCategory extends AbstractImportSection {
                     ON sc.VirtualCategory = vcm.value
             )
             ON DUPLICATE KEY UPDATE
-                value = VALUES(value)",
+                value = vcm.option_id",
             [":virtualCat" => $virtualCatAttr]
         );
         $this->endTimingStep();
