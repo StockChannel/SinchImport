@@ -3291,7 +3291,7 @@ class Sinch {
             $this->print("========>FINISH REINDEX CATALOG URL REWRITE...");
             $this->_doQuery(
                 "INSERT INTO $this->import_status_table (message, finished)
-                    VALUES('Indexing data separately', 1)"
+                    VALUES('Indexing data separately', 1) ON DUPLICATE KEY UPDATE finished = 1"
             );
         } catch (Exception $e) {
             $this->_setErrorMessage($e);

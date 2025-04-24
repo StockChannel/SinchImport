@@ -75,7 +75,6 @@ class Importbutton extends Field
         $postUrl = $this->getUrl('sinchimport/ajax');
         $postStockPriceUrl = $this->getUrl('sinchimport/ajax/stockPrice');
         $postCustomerGroupsStockPriceUrl = $this->getUrl('sinchimport/ajax/customergroupsPrice');
-        $indexingUrl = $this->getUrl('sinchimport/ajax/indexingData');
 
         return "<script>
     require([
@@ -87,7 +86,6 @@ class Importbutton extends Field
                 this.postUrl = '" . $postUrl . "';
                 this.postStockPriceUrl = '" . $postStockPriceUrl . "';
                 this.postCustomerGroupsPriceUrl = '" . $postCustomerGroupsStockPriceUrl . "';
-                this.indexingUrl = '" . $indexingUrl . "';
                 this.failureUrl = document.URL;
 
                 elem = 'checkoutSteps';
@@ -104,11 +102,6 @@ class Importbutton extends Field
                 let stockPriceBtn = $('mb-sinch-stock-price-import-button');
                 if (stockPriceBtn) {
                     Event.observe(stockPriceBtn, 'click', this.beforeStockPriceImport.bind(this));
-                }
-                
-                let indexingBtn = $('mb-sinch-indexing-data-button');
-                if (indexingBtn) {
-                    Event.observe(indexingBtn, 'click', this.beforeIndexing.bind(this));
                 }
                 
                 let cgpBtn = $('mb-sinch-customer-groups-price-import-button');
@@ -134,10 +127,6 @@ class Importbutton extends Field
                 let curr_status_div = document.getElementById('sinchimport_customer_groups_price_current_status_message');
                 curr_status_div.style.display = 'none';
                 this.startSinchImport(this.postCustomerGroupsPriceUrl);
-            },
-            
-            beforeIndexing: function () {
-                this.startSinchImport(this.indexingUrl);
             },
 
             startSinchImport: function (url) {

@@ -14,6 +14,7 @@
                 <cc_triggers_indexers_in_stockprice>0</cc_triggers_indexers_in_stockprice>
             </general>
             <sinch_ftp>
+                <use_ftpes>0</use_ftpes>
                 <replace_category>REWRITE</replace_category>
                 <replace_product>REWRITE</replace_product>
                 <backup_data>0</backup_data>

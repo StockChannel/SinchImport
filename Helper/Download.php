@@ -67,6 +67,8 @@ class Download extends AbstractHelper
     /** @var string $password The password for logging in to FTP */
     private string $password;
 
+    private bool $useFTPES;
+
     /** @var resource $ftpConn The active FTP connection, if any */
     private $ftpConn = null;
     /** @var string $pendingLog Data waiting for newline to write to log */
@@ -92,6 +94,7 @@ class Download extends AbstractHelper
         $this->username = $ftp_data['username'] ?? "";
         $this->password = $ftp_data['password'] ?? "";
         $this->server = $ftp_data['ftp_server'] ?? "";
+        $this->useFTPES = $ftp_data['use_ftpes'] == 1;
     }
 
     /**
@@ -118,7 +121,11 @@ class Download extends AbstractHelper
             return 'FTP login or password has not been defined';
         }
 
-        $this->ftpConn = \ftp_connect($this->server);
+        if ($this->useFTPES) {
+            $this->ftpConn = \ftp_ssl_connect($this->server);
+        } else {
+            $this->ftpConn = \ftp_connect($this->server);
+        }
         if(!$this->ftpConn) {
             $this->ftpConn = null;
             return "Failed to connect to {$this->server}";
@@ -240,7 +247,7 @@ class Download extends AbstractHelper
     public function disconnect(): void
     {
         if($this->ftpConn != null){
-            ftp_close($this->ftpConn);
+            @ftp_close($this->ftpConn);
             $this->ftpConn = null;
         }
     }

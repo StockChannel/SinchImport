@@ -64,6 +64,11 @@
                     <label>FTP Server</label>
                     <source_model>SITC\Sinchimport\Model\Config\Source\Serverlist</source_model>
                 </field>
+                <field id="use_ftpes" translate="label" type="select" sortOrder="5" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Use FTPES</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>Enables FTPES, triggering a TLS exchange for encrypted data transfer where possible</comment>
+                </field>
                 <field id="username" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>FTP User Name</label>
                 </field>
@@ -95,12 +100,6 @@
                     <label>Run the Indexing Separately</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                     <comment>Run the re-indexing as a separate task.</comment>
-                </field>
-                <field id="indexing_data" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
-                    <frontend_model>SITC\Sinchimport\Block\System\Config\Indexingbutton</frontend_model>
-                    <depends>
-                        <field id="indexing_separately">1</field>
-                    </depends>
                 </field>
                 <field id="start_sinch_import" translate="label" type="button" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
                     <frontend_model>SITC\Sinchimport\Block\System\Config\Importbutton</frontend_model>
