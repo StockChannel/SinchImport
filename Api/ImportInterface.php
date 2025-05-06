@@ -3,6 +3,17 @@
 namespace SITC\Sinchimport\Api;
 
 interface ImportInterface {
+    
+    
+    /**
+     * Retrieves the status for the most recent import and parses and understandable response for Zabbix.
+     * Returns an array of values used by Zabbix to validate or alert about an import failure.
+     *
+     * @api
+     * @return \SITC\Sinchimport\Api\Data\ImportStatusInterface|null
+     */
+    public function zabbixChecksStatus();
+    
     /**
      * Returns the status information for the most recent import
      * 
