@@ -293,6 +293,17 @@ class Sinch {
                 }
                 $this->addImportStatus('Start Import', true);
 
+                $this->addImportStatus('Run pre-import hooks');
+                $this->_eventManager->dispatch(
+                    'sinchimport_import_start_full',
+                    [
+                        "productMode" => $this->categoryImportMode,
+                        "categoryMode" => $this->productImportMode,
+                        "backupIds" => $this->dataHelper->getStoreConfig('sinchimport/sinch_ftp/backup_data') == 1
+                    ]
+                );
+                $this->addImportStatus('Run pre-import hooks', true);
+
                 $this->print("========IMPORTING DATA IN {$this->categoryImportMode} MODE========");
 
                 $requiredFiles = [
