@@ -396,8 +396,8 @@ class StockPrice extends AbstractImportSection
                     WHERE sku IN (
                         SELECT cpe.sku FROM {$this->catalog_product_entity} cpe
                         LEFT JOIN {$this->stockImportTable} ssp
-                            ON cpe.store_product_id = ssp.product_id
-                        WHERE cpe.store_product_id IS NOT NULL
+                            ON cpe.sinch_product_id = ssp.product_id
+                        WHERE cpe.sinch_product_id IS NOT NULL
                           AND ssp.stock IS NULL
                 	)"
                 );
