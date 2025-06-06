@@ -7,7 +7,7 @@
                 <meta_title>1</meta_title>
                 <index_tonerfinder>1</index_tonerfinder>
                 <wait_for_index_completion>1</wait_for_index_completion>
-                <multisource_stock>0</multisource_stock>
+                <multisource_stock>1</multisource_stock>
                 <permit_zero_price>0</permit_zero_price>
                 <success_email_dest></success_email_dest>
                 <debug>0</debug>
@@ -110,6 +110,16 @@
                 <enable_recommended>1</enable_recommended>
                 <recommended><![CDATA[<?xml version="1.0" encoding="UTF-8"?> <svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">   <path d="M0,0h48v48H0V0Z" style="fill: rgba(255, 255, 255, 0);"/>   <path d="M0,0h48v48H0V0Z" style="fill: rgba(255, 255, 255, 0);"/>   <g>     <path d="M27.6,18.6v-7.2c0-2.98-2.42-5.4-5.4-5.4l-7.2,16.2v19.8h20.92c1.8.02,3.33-1.29,3.6-3.06l2.48-16.2c.16-1.04-.15-2.11-.84-2.9-.69-.8-1.7-1.25-2.76-1.24h-10.8Z" style="fill: #fff; stroke: #000; stroke-linejoin: round; stroke-width: 4px;"/>     <path d="M15,22h-4.81c-2.11-.04-3.91,1.71-4.19,3.8v12.6c.28,2.09,2.09,3.64,4.19,3.6h4.81v-20Z" style="fill: #2f88ff; stroke: #000; stroke-linejoin: round; stroke-width: 4px;"/>   </g> </svg>]]></recommended>
             </badges>
+            <related_products>
+                <imported_as>relation</imported_as>
+                <generate_upsell>1</generate_upsell>
+                <generate_related>0</generate_related>
+                <popularity_boost>1</popularity_boost>
+                <monthly_sales_boost>1</monthly_sales_boost>
+                <yearly_sales_boost>1</yearly_sales_boost>
+                <profit_boost>1</profit_boost>
+                <family_boost>1</family_boost>
+            </related_products>
         </sinchimport>
     </default>
 </config>
