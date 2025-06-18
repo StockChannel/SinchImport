@@ -119,6 +119,8 @@
                 <yearly_sales_boost>1</yearly_sales_boost>
                 <profit_boost>1</profit_boost>
                 <family_boost>1</family_boost>
+                <include_block>1</include_block>
+                <upsell_compare_num_products>6</upsell_compare_num_products>
             </related_products>
         </sinchimport>
     </default>

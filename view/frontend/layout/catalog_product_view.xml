@@ -53,5 +53,15 @@
 
 		<move element="product.bullet.points.container" destination="product.info.main" after="-"/>
 		<move element="product.videos.short" destination="product.info.media" after="product.info.media.image"/>
+
+		<!-- Upsell comparison block -->
+		<referenceContainer name="content.aside">
+			<block class="SITC\Sinchimport\Block\Product\Compare\Upsell" name="product.info.upsell_compare" template="SITC_Sinchimport::relation-compare-list.phtml" ifconfig="sinchimport/related_products/include_block">
+				<arguments>
+					<argument name="type" xsi:type="string">upsell</argument>
+					<argument name="view_model" xsi:type="object">Magento\Catalog\ViewModel\Product\Listing\PreparePostData</argument>
+				</arguments>
+			</block>
+		</referenceContainer>
     </body>
 </page>
