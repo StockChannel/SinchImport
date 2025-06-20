@@ -123,5 +123,10 @@
                 <upsell_compare_num_products>6</upsell_compare_num_products>
             </related_products>
         </sinchimport>
+        <general>
+            <locale>
+                <weight_unit>kgs</weight_unit>
+            </locale>
+        </general>
     </default>
 </config>

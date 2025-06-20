@@ -2266,7 +2266,7 @@ class Sinch {
                 :attributeId,
                 pwt.website,
                 cpe.entity_id,
-                pt.Weight
+                pt.Weight / 1000
               FROM {$this->getTableName('catalog_product_entity')} cpe
               INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
@@ -2288,7 +2288,7 @@ class Sinch {
                 :attributeId,
                 0,
                 cpe.entity_id,
-                pt.Weight
+                pt.Weight / 1000
               FROM {$this->getTableName('catalog_product_entity')} cpe
               INNER JOIN {$this->getTableName('products_temp')} pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
