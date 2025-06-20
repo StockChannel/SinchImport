@@ -2,6 +2,7 @@
 namespace SITC\Sinchimport\Model\Import;
 
 use Magento\Framework\App\ResourceConnection;
+use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
@@ -23,11 +24,18 @@ class RelatedProducts extends AbstractImportSection
     const UPSELL_DEARER_MIN_RELATIVE_PROFIT = 0.9;
 
     private string $relatedProductsTable;
+    private string $importedRelationType;
+    private bool $generateUpsell;
+    private bool $generateRelated;
 
-    public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper)
+
+    public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper, private readonly Data $dataHelper)
     {
         parent::__construct($resourceConn, $output, $downloadHelper);
         $this->relatedProductsTable = $this->getTableName('sinch_related_products');
+        $this->importedRelationType = $this->dataHelper->getStoreConfig('sinchimport/related_products/imported_as') ?? 'unused';
+        $this->generateUpsell = $this->dataHelper->getStoreConfig('sinchimport/related_products/generate_upsell') == 1;
+        $this->generateRelated = $this->dataHelper->getStoreConfig('sinchimport/related_products/generate_related') == 1;
     }
 
     public function parse(): void
@@ -71,8 +79,11 @@ class RelatedProducts extends AbstractImportSection
                       LINES TERMINATED BY \"\r\n\"
                       IGNORE 1 LINES
                       (sinch_product_id, related_sinch_product_id)
-                      SET link_type = 'unused'",
-            [":relatedProductsCsv" => $relatedProductsCsv]
+                      SET link_type = :relationType",
+            [
+                ":relatedProductsCsv" => $relatedProductsCsv,
+                ":relationType" => $this->importedRelationType
+            ]
         );
         $this->endTimingStep();
 
@@ -94,20 +105,21 @@ class RelatedProducts extends AbstractImportSection
 
         $conn = $this->getConnection();
 
-        $this->startTimingStep('Generate upsell products');
-        //Join every product to every other product in every category it's in under the following conditions:
-        //  - The category they share has 0 < products < 10k and is a leaf
-        //  - Neither the main nor reference product can have a public price of 0 (it would indicate a private product)
-        //  - Both products are currently in stock
-        //  - Products which share more than 1 category have their position increased by 1 for each additional category (not really a condition but it is something this query does)
-        //  - The reference product public price must be dearer than UPSELL_CHEAPER_ABOVE * the main products public price
-        //  - The reference product public price must be cheaper than UPSELL_DEARER_BELOW * the main products public price
-        //  - If the reference product is cheaper than the main product, it must have a profit ratio at least
-        //      UPSELL_CHEAPER_MIN_RELATIVE_PROFIT * the main product profit ratio
-        //  - If the reference product is dearer than the main product, it must have a profit ratio at least
-        //      UPSELL_DEARER_MIN_RELATIVE_PROFIT * the main product profit ratio
-        $conn->query(
-            "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type) (
+        if ($this->importedRelationType != 'up_sell' && $this->generateUpsell) {
+            $this->startTimingStep('Generate upsell products');
+            //Join every product to every other product in every category it's in under the following conditions:
+            //  - The category they share has 0 < products < 10k and is a leaf
+            //  - Neither the main nor reference product can have a public price of 0 (it would indicate a private product)
+            //  - Both products are currently in stock
+            //  - Products which share more than 1 category have their position increased by 1 for each additional category (not really a condition but it is something this query does)
+            //  - The reference product public price must be dearer than UPSELL_CHEAPER_ABOVE * the main products public price
+            //  - The reference product public price must be cheaper than UPSELL_DEARER_BELOW * the main products public price
+            //  - If the reference product is cheaper than the main product, it must have a profit ratio at least
+            //      UPSELL_CHEAPER_MIN_RELATIVE_PROFIT * the main product profit ratio
+            //  - If the reference product is dearer than the main product, it must have a profit ratio at least
+            //      UPSELL_DEARER_MIN_RELATIVE_PROFIT * the main product profit ratio
+            $conn->query(
+                "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type) (
                 SELECT spc.store_product_id, spc2.store_product_id, 'up_sell' FROM $sinch_product_categories spc
                     INNER JOIN $sinch_product_categories spc2
                         ON spc.store_category_id = spc2.store_category_id
@@ -153,19 +165,21 @@ class RelatedProducts extends AbstractImportSection
                         AND sc.products_within_this_category < 10000
             ) ON DUPLICATE KEY UPDATE
                 position = position + 1",
-            [
-                ":upsellCheaperAbove" => self::UPSELL_CHEAPER_ABOVE,
-                ":upsellCheaperMinRelativeProfit" => self::UPSELL_CHEAPER_MIN_RELATIVE_PROFIT,
-                ":upsellDearerBelow" => self::UPSELL_DEARER_BELOW,
-                ":upsellDearerMinRelativeProfit" => self::UPSELL_DEARER_MIN_RELATIVE_PROFIT
-            ]
-        );
-        $this->endTimingStep();
+                [
+                    ":upsellCheaperAbove" => self::UPSELL_CHEAPER_ABOVE,
+                    ":upsellCheaperMinRelativeProfit" => self::UPSELL_CHEAPER_MIN_RELATIVE_PROFIT,
+                    ":upsellDearerBelow" => self::UPSELL_DEARER_BELOW,
+                    ":upsellDearerMinRelativeProfit" => self::UPSELL_DEARER_MIN_RELATIVE_PROFIT
+                ]
+            );
+            $this->endTimingStep();
+        }
 
-        $this->startTimingStep('Generate related products');
-        //The main determining factor for speed here is the family_id != 0 (as otherwise all products without family match all other products without family)
-        $conn->query(
-            "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type) (
+        if ($this->importedRelationType != 'relation' && $this->generateRelated) {
+            $this->startTimingStep('Generate related products');
+            //The main determining factor for speed here is the family_id != 0 (as otherwise all products without family match all other products without family)
+            $conn->query(
+                "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type) (
                 SELECT spc.store_product_id, spc2.store_product_id, 'relation' FROM $sinch_product_categories spc
                     INNER JOIN $sinch_product_categories spc2    
                         ON spc.store_product_id != spc2.store_product_id
@@ -194,8 +208,9 @@ class RelatedProducts extends AbstractImportSection
                         AND sp.series_id = sp2.series_id
             ) ON DUPLICATE KEY UPDATE
                 position = position + 1"
-        );
-        $this->endTimingStep();
+            );
+            $this->endTimingStep();
+        }
 
         //Update the entity id's for the products in sinch_related_products
         $this->startTimingStep('Map main products to Magento products');
@@ -244,10 +259,11 @@ class RelatedProducts extends AbstractImportSection
         );
         $this->endTimingStep();
 
-        $this->startTimingStep('Increase relation positions based on popularity');
-        //Increase the position of relationships based on popularity score
-        $conn->query(
-            "UPDATE {$this->relatedProductsTable} srp
+        if ($this->dataHelper->getStoreConfig('sinchimport/related_products/popularity_boost') == 1) {
+            $this->startTimingStep('Increase relation positions based on popularity');
+            //Increase the position of relationships based on popularity score
+            $conn->query(
+                "UPDATE {$this->relatedProductsTable} srp
                     INNER JOIN $sinch_products sp
                         ON srp.related_sinch_product_id = sp.sinch_product_id
                     INNER JOIN (
@@ -260,12 +276,16 @@ class RelatedProducts extends AbstractImportSection
                         ON srp.sinch_product_id = scores.sinch_product_id
                     SET position = position + (((sp.score - scores.min) * :popularityBoostMax) / (scores.max - scores.min))
                     WHERE sp.score > scores.min",
-            [":popularityBoostMax" => self::POPULARITY_BOOST_MAX]
-        );
+                [":popularityBoostMax" => self::POPULARITY_BOOST_MAX]
+            );
+            $this->endTimingStep();
+        }
 
-        //Increase the position of relationships based on monthly implied sales
-        $conn->query(
-            "UPDATE {$this->relatedProductsTable} srp
+        if ($this->dataHelper->getStoreConfig('sinchimport/related_products/monthly_sales_boost') == 1) {
+            //Increase the position of relationships based on monthly implied sales
+            $this->startTimingStep('Increase relation positions based on monthly sales');
+            $conn->query(
+                "UPDATE {$this->relatedProductsTable} srp
                     INNER JOIN $sinch_products sp
                         ON srp.related_sinch_product_id = sp.sinch_product_id
                     INNER JOIN (
@@ -278,12 +298,16 @@ class RelatedProducts extends AbstractImportSection
                         ON srp.sinch_product_id = implied_sales.sinch_product_id
                     SET position = position + (((sp.implied_sales_month - implied_sales.min) * :monthlySalesBoostMax) / (implied_sales.max - implied_sales.min))
                     WHERE sp.implied_sales_month > implied_sales.min",
-            [":monthlySalesBoostMax" => self::MONTHLY_SALES_BOOST_MAX]
-        );
+                [":monthlySalesBoostMax" => self::MONTHLY_SALES_BOOST_MAX]
+            );
+            $this->endTimingStep();
+        }
 
-        //Increase the position of relationships based on yearly implied sales
-        $conn->query(
-            "UPDATE {$this->relatedProductsTable} srp
+        if ($this->dataHelper->getStoreConfig('sinchimport/related_products/yearly_sales_boost') == 1) {
+            //Increase the position of relationships based on yearly implied sales
+            $this->startTimingStep('Increase relation positions based on yearly sales');
+            $conn->query(
+                "UPDATE {$this->relatedProductsTable} srp
                     INNER JOIN $sinch_products sp
                         ON srp.related_sinch_product_id = sp.sinch_product_id
                     INNER JOIN (
@@ -296,13 +320,15 @@ class RelatedProducts extends AbstractImportSection
                         ON srp.sinch_product_id = implied_sales.sinch_product_id
                     SET position = position + (((sp.implied_sales_year - implied_sales.min) * :yearlySalesBoostMax) / (implied_sales.max - implied_sales.min))
                     WHERE sp.implied_sales_year > implied_sales.min",
-            [":yearlySalesBoostMax" => self::YEARLY_SALES_BOOST_MAX]
-        );
-        $this->endTimingStep();
+                [":yearlySalesBoostMax" => self::YEARLY_SALES_BOOST_MAX]
+            );
+            $this->endTimingStep();
+        }
 
-        $this->startTimingStep('Increase relation positions based on price/cost ratio');
-        $conn->query(
-            "UPDATE {$this->relatedProductsTable} srp
+        if ($this->dataHelper->getStoreConfig('sinchimport/related_products/profit_boost') == 1) {
+            $this->startTimingStep('Increase relation positions based on price/cost ratio');
+            $conn->query(
+                "UPDATE {$this->relatedProductsTable} srp
                     INNER JOIN $sinch_stock_and_prices ssp_main
                         ON srp.sinch_product_id = ssp_main.product_id
                     INNER JOIN $sinch_stock_and_prices ssp_ref
@@ -311,14 +337,16 @@ class RelatedProducts extends AbstractImportSection
                     WHERE ssp_main.cost IS NOT NULL
                       AND ssp_ref.cost IS NOT NULL
                       AND ssp_ref.price / ssp_ref.cost > ssp_main.price / ssp_main.cost",
-            [":profitBoost" => self::PROFIT_BOOST]
-        );
-        $this->endTimingStep();
+                [":profitBoost" => self::PROFIT_BOOST]
+            );
+            $this->endTimingStep();
+        }
 
-        $this->startTimingStep('Increase relation positions based on Product Family/Series');
-        //Increase the position of relationships between products in the same family
-        $conn->query(
-            "UPDATE {$this->relatedProductsTable} srp
+        if ($this->dataHelper->getStoreConfig('sinchimport/related_products/family_boost') == 1) {
+            $this->startTimingStep('Increase relation positions based on Product Family/Series');
+            //Increase the position of relationships between products in the same family
+            $conn->query(
+                "UPDATE {$this->relatedProductsTable} srp
                     INNER JOIN $sinch_products sp1
                         ON srp.sinch_product_id = sp1.sinch_product_id
                     INNER JOIN $sinch_products sp2
@@ -326,12 +354,13 @@ class RelatedProducts extends AbstractImportSection
                     SET position = position + :familyBoost
                     WHERE sp1.family_id = sp2.family_id
                         AND sp1.family_id IS NOT NULL",
-            [":familyBoost" => self::FAMILY_BOOST]
-        );
+                [":familyBoost" => self::FAMILY_BOOST]
+            );
 
-        //Further increase the position of relationships between products in the same family and family series
-        $conn->query(
-            "UPDATE {$this->relatedProductsTable} srp
+
+            //Further increase the position of relationships between products in the same family and family series
+            $conn->query(
+                "UPDATE {$this->relatedProductsTable} srp
                     INNER JOIN $sinch_products sp1
                         ON srp.sinch_product_id = sp1.sinch_product_id
                     INNER JOIN $sinch_products sp2
@@ -341,9 +370,10 @@ class RelatedProducts extends AbstractImportSection
                         AND sp1.series_id = sp2.series_id
                         AND sp1.family_id IS NOT NULL
                         AND sp1.series_id IS NOT NULL",
-            [":seriesBoost" => self::SERIES_BOOST]
-        );
-        $this->endTimingStep();
+                [":seriesBoost" => self::SERIES_BOOST]
+            );
+            $this->endTimingStep();
+        }
 
         $this->startTimingStep('Update relation position/ordering');
         //This insert used to use the magic value '2', which corresponds to the up_sell position attribute as far as I can tell on normal installations

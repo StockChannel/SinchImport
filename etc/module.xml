@@ -8,6 +8,7 @@
             <module name="Magento_Catalog" />
             <module name="Magento_Eav" />
             <module name="Magento_Ui" />
+            <module name="Magento_Directory" />
             <!-- Load after the Elasticsuite modules, so their interceptors run first -->
             <module name="Smile_ElasticsuiteCore" />
             <module name="Smile_ElasticsuiteThesaurus" />

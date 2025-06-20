@@ -615,6 +615,63 @@
                     </depends>
                 </field>
             </group>
+
+            <group id="related_products" translate="label" type="text" sortOrder="120" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Related Products</label>
+                <field id="imported_as" translate="label" type="select" sortOrder="0" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Feed Provided Relation Type</label>
+                    <comment><![CDATA[The type of relation to use for feed specified related products]]></comment>
+                    <source_model>SITC\Sinchimport\Model\Config\Source\RelationType</source_model>
+                </field>
+                <field id="generate_upsell" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Generate Upsell Products</label>
+                    <comment><![CDATA[Whether the import module should generate its own Upsell products. Ignored if Feed Provided Relation Type is Upsell]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="generate_related" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Generate Related Products</label>
+                    <comment><![CDATA[Whether the import module should generate its own Related products. Ignored if Feed Provided Relation Type is Related]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="popularity_boost" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Popularity Boost</label>
+                    <comment><![CDATA[Whether relation positions should be adjusted to make more popular products appear higher]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="monthly_sales_boost" translate="label" type="select" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Monthly Sales Boost</label>
+                    <comment><![CDATA[Whether relation positions should be adjusted to make products with higher monthly implied sales appear higher]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="yearly_sales_boost" translate="label" type="select" sortOrder="50" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Yearly Sales Boost</label>
+                    <comment><![CDATA[Whether relation positions should be adjusted to make products with higher yearly implied sales appear higher]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="profit_boost" translate="label" type="select" sortOrder="60" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Profit Boost</label>
+                    <comment><![CDATA[Whether relation positions should be adjusted to make products with a higher profit ratio appear higher]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="family_boost" translate="label" type="select" sortOrder="70" showInDefault="1" showInWebsite="0" showInStore="0" canRestore="1">
+                    <label>Product Family Boost</label>
+                    <comment><![CDATA[Whether relation positions should be adjusted to make products sharing its Family/Series appear higher]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="include_block" translate="label" type="select" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Include Upsell Comparison Block</label>
+                    <comment><![CDATA[Whether Product view pages include our version of the Upsell block, which compares similar attributes]]></comment>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                </field>
+                <field id="upsell_compare_num_products" translate="label" type="text" sortOrder="80" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Upsell Comparison Block Number of Products</label>
+                    <comment><![CDATA[The limit on the number of products to display in the Upsell Comparison Block]]></comment>
+                    <validate>validate-digits validate-zero-or-greater</validate>
+                    <depends>
+                        <field id="sinchimport/related_products/enable">1</field>
+                    </depends>
+                </field>
+            </group>
         </section>
     </system>
 </config>

@@ -94,7 +94,7 @@ class Download extends AbstractHelper
         $this->username = $ftp_data['username'] ?? "";
         $this->password = $ftp_data['password'] ?? "";
         $this->server = $ftp_data['ftp_server'] ?? "";
-        $this->useFTPES = $ftp_data['use_ftpes'] == 1;
+        $this->useFTPES = ($ftp_data['use_ftpes'] ?? 0) == 1;
     }
 
     /**

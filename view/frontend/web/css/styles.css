@@ -179,3 +179,49 @@ a.product-item-photo {
 .reason-to-buy-content {
     text-align: justify;
 }
+
+.this-product {
+    border-left: 2px solid #879f79;
+    border-right: 2px solid #879f79;
+}
+.first-this-product {
+    border-top: 2px solid #879f79;
+}
+tbody.comparison-section tr:last-child .this-product {
+    border-bottom: 2px solid #879f79;
+}
+.table-comparison .cell.label, .table-comparison td:last-child {
+    border: none;
+}
+.comparison-section tr td {
+    text-align: center;
+}
+.table-comparison .cell.product.info {
+    text-align: center;
+    padding: 10px;
+}
+.table-comparison .product-image-container {
+    text-align: center;
+    margin: auto;
+}
+.table-comparison .product-item-name {
+    font-size: 13px;
+}
+.table-comparison .cell.product.info .badge-custom {
+    top: -15px;
+    left: -5px;
+}
+tbody.comparison-section tr:nth-child(even) {
+    background: #f9f9f9;
+}
+.table-comparison .action.tocart {
+    font-size: 13px;
+    padding: 0px 10px !important;
+    min-width: auto;
+}
+.table-comparison .cell.product.info, .table-comparison .cell.product.label {
+    border-bottom: 1px solid #f4f4f4;
+}
+.table-wrapper.comparison {
+    margin-top: 40px;
+}
