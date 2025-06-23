@@ -278,7 +278,7 @@ class UpgradeData implements UpgradeDataInterface
             'sinch_reasons_to_buy',
             [
                 'label' => 'Reasons to Buy',
-                'note' => 'Key Reasons to buy this product, expected to be triple pipe (|||) delimited',
+                'note' => 'Key Reasons to buy this product, expected to be JSON encoded',
                 'type' => 'text',
                 'input' => 'text',
                 'backend' => '',
