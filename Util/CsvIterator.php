@@ -55,7 +55,7 @@ class CsvIterator extends Csv {
             throw new Exception("No file is currently open for iteration");
         }
 
-        $rowData = fgetcsv($this->fh, $this->_lineLength, $this->_delimiter, $this->_enclosure);
+        $rowData = fgetcsv($this->fh, $this->_lineLength, $this->_delimiter, $this->_enclosure, "\\");
         
         return $rowData;
     }
