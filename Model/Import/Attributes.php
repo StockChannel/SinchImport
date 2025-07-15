@@ -320,7 +320,8 @@ class Attributes extends AbstractImportSection {
             ->setIsFilterableInGrid(0)
             ->setIsFilterableInSearch(0)
             ->setIsSearchable(0)
-            ->setIsComparable(0)
+            // Our attributes are comparable
+            ->setIsComparable(1)
             ->setUsedInProductListing(0)
             ->setPosition($data["order"]);
     }

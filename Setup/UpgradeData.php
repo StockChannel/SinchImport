@@ -123,6 +123,10 @@ class UpgradeData implements UpgradeDataInterface
             $this->nileUpgrade254($eavSetup);
         }
 
+        if (version_compare($context->getVersion(), '2.5.5', '<')) {
+            $this->nileUpgrade255($eavSetup);
+        }
+
         $installer->endSetup();
     }
 
@@ -727,6 +731,29 @@ class UpgradeData implements UpgradeDataInterface
         $eavSetup->updateAttribute($entityTypeId, 'sinch_family', 'facet_min_coverage_rate', 50);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_family_series', 'facet_min_coverage_rate', 75);
         $eavSetup->updateAttribute($entityTypeId, 'sinch_family_series', 'is_displayed_in_autocomplete', 0);
+    }
+
+    public function nileUpgrade255(EavSetup $eavSetup): void
+    {
+        $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
+        // Mark all our attributes as comparable
+        $conn = $this->getConnection();
+        $catalog_eav_attribute = $conn->getTableName('catalog_eav_attribute');
+        $eav_attribute = $conn->getTableName('eav_attribute');
+        $this->getConnection()->query(
+            "UPDATE $catalog_eav_attribute
+                SET is_comparable = 1
+                WHERE attribute_id IN (
+                    SELECT attribute_id FROM $eav_attribute
+                        WHERE attribute_code LIKE 'sinch_attr_%'
+                        AND entity_type_id = :entityTypeId
+                )",
+            [":entityTypeId" => $entityTypeId]
+        );
+
+        // Remove description and short description from the compared attributes
+        $eavSetup->updateAttribute($entityTypeId, 'description', 'is_comparable', 0);
+        $eavSetup->updateAttribute($entityTypeId, 'short_description', 'is_comparable', 0);
     }
 
     private function getConnection(): AdapterInterface
