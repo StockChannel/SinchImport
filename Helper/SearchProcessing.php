@@ -376,6 +376,8 @@ class SearchProcessing extends AbstractHelper
                             AND eaov.value NOT LIKE '%+%'
                             AND eaov.value NOT LIKE '%(%'
                             AND eaov.value NOT LIKE '%)%'
+                            AND eaov.value NOT LIKE '%\"%'
+                            AND eaov.value NOT LIKE '%*%'
                             AND ? REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                             AND eao.option_id IN ($placeholders)
                         ORDER BY CHAR_LENGTH(eaov.value) DESC",
@@ -394,6 +396,8 @@ class SearchProcessing extends AbstractHelper
                             AND eaov.value NOT LIKE '%+%'
                             AND eaov.value NOT LIKE '%(%'
                             AND eaov.value NOT LIKE '%)%'
+                            AND eaov.value NOT LIKE '%\"%'
+                            AND eaov.value NOT LIKE '%*%'
                             AND :queryText REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                         ORDER BY CHAR_LENGTH(eaov.value) DESC",
             [
