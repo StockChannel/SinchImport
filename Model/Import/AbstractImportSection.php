@@ -90,7 +90,8 @@ abstract class AbstractImportSection {
         ];
         //Insert into the import status table so the admin panel can see the import progressing
         $this->getConnection()->query(
-            "INSERT INTO {$this->statusTable} (message, finished) VALUES(:msg, 0)",
+            "INSERT INTO {$this->statusTable} (message, finished) VALUES(:msg, 0)
+                ON DUPLICATE KEY UPDATE message = :msg, finished = 0",
             [":msg" => static::LOG_PREFIX . $name]
         );
     }
