@@ -1,5 +1,12 @@
 <?xml version="1.0"?>
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Webapi:etc/webapi.xsd">
+    <!-- Zabbix import status check info -->
+    <route url="/V1/sinchimport/zCheck" method="GET">
+        <service class="SITC\Sinchimport\Api\ImportInterface" method="zabbixChecksStatus"/>
+        <resources>
+            <resource ref="anonymous"/>
+        </resources>
+    </route>
     <!-- Latest import status info -->
     <route url="/V1/sinchimport/latestImport" method="GET">
         <service class="SITC\Sinchimport\Api\ImportInterface" method="getLatestStatus"/>
