@@ -419,7 +419,7 @@ class AccountGroupPrice extends AbstractImportSection
     private function insertMapping($sinchId, $magentoId)
     {
         $this->getConnection()->query(
-            "INSERT INTO {$this->mappingTable} (sinch_id, magento_id) VALUES(:sinch_id, :magento_id) as new_vals ON DUPLICATE KEY UPDATE magento_id = new_vals.magento_id",
+            "INSERT INTO {$this->mappingTable} (sinch_id, magento_id) VALUES(:sinch_id, :magento_id) ON DUPLICATE KEY UPDATE magento_id = :magento_id",
             [
                 ":sinch_id" => $sinchId,
                 ":magento_id" => $magentoId
