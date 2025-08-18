@@ -435,7 +435,7 @@ class Data extends AbstractHelper
         $children = $product->getTypeInstance()->getChildrenIds($product->getId());
         if (!empty($children)) {
             $conn = $this->resourceConn->getConnection();
-            $catalog_product_entity_varchar = $conn->getTableName('catalog_product_entity_varchar');
+            $catalog_product_entity_text = $conn->getTableName('catalog_product_entity_text');
             $eav_attribute = $conn->getTableName('eav_attribute');
 
             // Return of getChildrenIds is a bit fucking weird, so normalize the array layout, so we can use it for binds
@@ -443,7 +443,7 @@ class Data extends AbstractHelper
 
             $childSub = implode(", ", array_fill(0, count($children), '?'));
             return $conn->fetchCol(
-                "SELECT value FROM $catalog_product_entity_varchar cpev
+                "SELECT value FROM $catalog_product_entity_text cpev
                         WHERE attribute_id = (SELECT attribute_id FROM $eav_attribute WHERE attribute_code = 'sinch_restrict')
                         AND entity_id IN ($childSub)",
                 $children
@@ -516,8 +516,8 @@ class Data extends AbstractHelper
         }
         $second = $additional[0];
         // An empty rule is considered to be an empty blacklist
-        $mainBlacklist = strpos($main, "!") === 0 || strlen($main) === 0;
-        $secondBlacklist = strpos($second, "!") === 0 || strlen($second) === 0;
+        $mainBlacklist = str_starts_with($main, "!") || strlen($main) === 0;
+        $secondBlacklist = str_starts_with($second, "!") || strlen($second) === 0;
         if ($mainBlacklist) {
             $main = substr($main, 1);
         }
