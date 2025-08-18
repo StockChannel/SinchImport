@@ -11,6 +11,7 @@ use Magento\Eav\Setup\EavSetup;
 use Magento\Eav\Setup\EavSetupFactory;
 use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\DB\Adapter\AdapterInterface;
+use Magento\Framework\DB\Ddl\Table;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\Setup\UpgradeDataInterface;
@@ -18,6 +19,7 @@ use Magento\Framework\Setup\ModuleContextInterface;
 use Magento\Framework\Setup\ModuleDataSetupInterface;
 use Magento\Framework\Validator\ValidateException;
 use SITC\Sinchimport\Plugin\Elasticsuite\InventoryData;
+use Zend_Db_Expr;
 
 /**
  * @codeCoverageIgnore
@@ -83,20 +85,20 @@ class UpgradeData implements UpgradeDataInterface
         }
 
         if (version_compare($context->getVersion(), '2.3.2', '<')) {
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', 'is_visible', 0);
         }
 
         if (version_compare($context->getVersion(), '2.3.3', '<')) {
             // It has been established that this was completely pointless for rather obvious reasons...
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $label = $this->scopeConfig->getValue('sinchimport/stock/stock_filter/stock_filter_label') ?? 'Availability';
             $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', EavAttributeInterface::FRONTEND_LABEL, $label);
         }
 
         if (version_compare($context->getVersion(), '2.3.4', '<')) {
             // Make the attr visible again so that users can configure the label for the attribute in admin
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, InventoryData::IN_STOCK_FILTER_CODE, EavAttributeInterface::IS_VISIBLE, 1);
             $eavSetup->updateAttribute($entityTypeId, InventoryData::IN_STOCK_FILTER_CODE, EavAttributeInterface::FRONTEND_LABEL, 'Availability');
         }
@@ -125,6 +127,10 @@ class UpgradeData implements UpgradeDataInterface
 
         if (version_compare($context->getVersion(), '2.5.5', '<')) {
             $this->nileUpgrade255($eavSetup);
+        }
+
+        if (version_compare($context->getVersion(), '2.5.6', '<')) {
+            $this->restrictAttrToText($eavSetup);
         }
 
         $installer->endSetup();
@@ -754,6 +760,30 @@ class UpgradeData implements UpgradeDataInterface
         // Remove description and short description from the compared attributes
         $eavSetup->updateAttribute($entityTypeId, 'description', 'is_comparable', 0);
         $eavSetup->updateAttribute($entityTypeId, 'short_description', 'is_comparable', 0);
+    }
+
+    // Converts the sinch_restrict attribute from varchar to text
+    private function restrictAttrToText(EavSetup $eavSetup): void
+    {
+        $conn = $this->getConnection();
+        $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
+        $varcharTable = $conn->getTableName('catalog_product_entity_varchar');
+        $textTable = $conn->getTableName('catalog_product_entity_text');
+        // copy everything except value_id
+        $fieldsToCopy = array_keys($conn->describeTable($varcharTable));
+        $fieldsToCopy = array_combine($fieldsToCopy, $fieldsToCopy);
+        $fieldsToCopy['value_id'] = new Zend_Db_Expr('NULL');
+
+        // Now convert its values
+        $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'backend_type', Table::TYPE_TEXT);
+        $attributeId = $eavSetup->getAttributeId($entityTypeId, 'sinch_restrict');
+        $select = $conn->select()->from($varcharTable, $fieldsToCopy)->where('attribute_id = ?', $attributeId);
+        $query = $conn->insertFromSelect($select, $textTable);
+        $conn->query($query);
+        $query = $conn->deleteFromSelect($select, $varcharTable);
+        $conn->query($query);
+        // While we're at it, fix the note
+        $eavSetup->updateAttribute($entityTypeId, 'sinch_restrict', 'note', "Enter a comma separated list of Account Group IDs. An exclamation mark at the start of the list inverts the matched groups");
     }
 
     private function getConnection(): AdapterInterface
