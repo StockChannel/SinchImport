@@ -85,20 +85,20 @@ class UpgradeData implements UpgradeDataInterface
         }
 
         if (version_compare($context->getVersion(), '2.3.2', '<')) {
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', 'is_visible', 0);
         }
 
         if (version_compare($context->getVersion(), '2.3.3', '<')) {
             // It has been established that this was completely pointless for rather obvious reasons...
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $label = $this->scopeConfig->getValue('sinchimport/stock/stock_filter/stock_filter_label') ?? 'Availability';
             $eavSetup->updateAttribute($entityTypeId, 'sinch_in_stock', EavAttributeInterface::FRONTEND_LABEL, $label);
         }
 
         if (version_compare($context->getVersion(), '2.3.4', '<')) {
             // Make the attr visible again so that users can configure the label for the attribute in admin
-            $entityTypeId = $eavSetup->getEntityTypeId(\Magento\Catalog\Model\Product::ENTITY);
+            $entityTypeId = $eavSetup->getEntityTypeId(Product::ENTITY);
             $eavSetup->updateAttribute($entityTypeId, InventoryData::IN_STOCK_FILTER_CODE, EavAttributeInterface::IS_VISIBLE, 1);
             $eavSetup->updateAttribute($entityTypeId, InventoryData::IN_STOCK_FILTER_CODE, EavAttributeInterface::FRONTEND_LABEL, 'Availability');
         }
