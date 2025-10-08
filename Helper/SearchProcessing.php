@@ -866,8 +866,8 @@ class SearchProcessing extends AbstractHelper
     {
         $sql = '';
         foreach (self::QUERY_TEXT_BANNED_CHARS as $char) {
-            $separator = empty($sql) ? 'AND' : '';
-            $sql .= "{$separator} {$field} NOT LIKE '%{$char}%'";
+            $sql .= !empty($sql) ? 'AND' : '';
+            $sql .= "{$field} NOT LIKE '%{$char}%'";
         }
         return $sql;
     }
