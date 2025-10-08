@@ -862,7 +862,7 @@ class SearchProcessing extends AbstractHelper
         return null;
     }
 
-    private function getBannedQueryTextSql(string $field = 'AND eaov.value'): string
+    private function getBannedQueryTextSql(string $field = 'eaov.value'): string
     {
         $sql = '';
         foreach (self::QUERY_TEXT_BANNED_CHARS as $char) {
