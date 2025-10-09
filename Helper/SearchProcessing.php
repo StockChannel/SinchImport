@@ -40,6 +40,8 @@ class SearchProcessing extends AbstractHelper
     public const FILTER_TYPE_ATTRIBUTE = "attribute";
     public const FILTER_TYPE_CATEGORY_DYNAMIC = "category_dynamic";
 
+    private const QUERY_TEXT_BANNED_CHARS = ['?', '+', '(', ')', '\"', '*'];
+
     // All known textual filters to look for. All types are expected to return a named capture "query" containing the remaining query text, if any
     private const QUERY_REGEXES = [
         self::FILTER_TYPE_PRICE => "/(?(DEFINE)(?<price>[0-9]+(?:.[0-9]+)?)(?<cur>(?:\p{Sc}|[A-Z]{3})\s?))(?<query>.+?)\s+(?J:(?:below|under|(?:cheaper|less)\sthan)\s+(?&cur)?(?<below>(?&price))|(?:between|from)?\s*(?&cur)?(?<above>(?&price))\s*(?:and|to|-)\s*(?&cur)?(?<below>(?&price)))/u",
@@ -372,12 +374,7 @@ class SearchProcessing extends AbstractHelper
                             ON eao.attribute_id = ea.attribute_id
                         WHERE ea.attribute_code = ?
                             AND CHAR_LENGTH(eaov.value) >= ?
-                            AND eaov.value NOT LIKE '%?%'
-                            AND eaov.value NOT LIKE '%+%'
-                            AND eaov.value NOT LIKE '%(%'
-                            AND eaov.value NOT LIKE '%)%'
-                            AND eaov.value NOT LIKE '%\"%'
-                            AND eaov.value NOT LIKE '%*%'
+                            AND {$this->getBannedQueryTextSql()}
                             AND ? REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                             AND eao.option_id IN ($placeholders)
                         ORDER BY CHAR_LENGTH(eaov.value) DESC",
@@ -392,12 +389,7 @@ class SearchProcessing extends AbstractHelper
                             ON eao.attribute_id = ea.attribute_id
                         WHERE ea.attribute_code = :attribute
                             AND CHAR_LENGTH(eaov.value) >= :valMinLength
-                            AND eaov.value NOT LIKE '%?%'
-                            AND eaov.value NOT LIKE '%+%'
-                            AND eaov.value NOT LIKE '%(%'
-                            AND eaov.value NOT LIKE '%)%'
-                            AND eaov.value NOT LIKE '%\"%'
-                            AND eaov.value NOT LIKE '%*%'
+                            AND {$this->getBannedQueryTextSql()}
                             AND :queryText REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                         ORDER BY CHAR_LENGTH(eaov.value) DESC",
             [
@@ -806,6 +798,7 @@ class SearchProcessing extends AbstractHelper
                   AND ccev.store_id = :storeId
                   AND CHAR_LENGTH(ccev.value) >= :valMinLength
                   AND :queryText REGEXP CONCAT('\\\\b', ccev.value, '\\\\b')
+                  AND {$this->getBannedQueryTextSql('ccev.value')}
                 ORDER BY CHAR_LENGTH(ccev.value) DESC
                 LIMIT 1",
             [
@@ -845,6 +838,7 @@ class SearchProcessing extends AbstractHelper
                   AND ccei.store_id = 0 -- Virtual category values are always inserted into scope 0 by the import
                   AND CHAR_LENGTH(eaov.value) >= :valMinLength
                   AND :queryText REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
+                  AND {$this->getBannedQueryTextSql()}
                 ORDER BY CHAR_LENGTH(eaov.value) DESC
                 LIMIT 1",
             [
@@ -866,5 +860,15 @@ class SearchProcessing extends AbstractHelper
             );
         }
         return null;
+    }
+
+    private function getBannedQueryTextSql(string $field = 'eaov.value'): string
+    {
+        $sql = '';
+        foreach (self::QUERY_TEXT_BANNED_CHARS as $char) {
+            $sql .= !empty($sql) ? 'AND ' : '';
+            $sql .= "{$field} NOT LIKE '%{$char}%'";
+        }
+        return $sql;
     }
 }
