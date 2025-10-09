@@ -40,7 +40,7 @@ class SearchProcessing extends AbstractHelper
     public const FILTER_TYPE_ATTRIBUTE = "attribute";
     public const FILTER_TYPE_CATEGORY_DYNAMIC = "category_dynamic";
 
-    private const QUERY_TEXT_BANNED_CHARS = ['?', '+', '(', ')', '\"', '*'];
+    private const QUERY_TEXT_BANNED_CHARS = ['?', '+', '(', ')', '\"', '*', '[', ']'];
 
     // All known textual filters to look for. All types are expected to return a named capture "query" containing the remaining query text, if any
     private const QUERY_REGEXES = [
@@ -797,8 +797,8 @@ class SearchProcessing extends AbstractHelper
                   AND eet.entity_type_code = :entityTypeCode
                   AND ccev.store_id = :storeId
                   AND CHAR_LENGTH(ccev.value) >= :valMinLength
-                  AND :queryText REGEXP CONCAT('\\\\b', ccev.value, '\\\\b')
                   AND {$this->getBannedQueryTextSql('ccev.value')}
+                  AND :queryText REGEXP CONCAT('\\\\b', ccev.value, '\\\\b')
                 ORDER BY CHAR_LENGTH(ccev.value) DESC
                 LIMIT 1",
             [
@@ -837,8 +837,8 @@ class SearchProcessing extends AbstractHelper
                   AND eet.entity_type_code = :entityTypeCode
                   AND ccei.store_id = 0 -- Virtual category values are always inserted into scope 0 by the import
                   AND CHAR_LENGTH(eaov.value) >= :valMinLength
-                  AND :queryText REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                   AND {$this->getBannedQueryTextSql()}
+                  AND :queryText REGEXP CONCAT('\\\\b', eaov.value, '\\\\b')
                 ORDER BY CHAR_LENGTH(eaov.value) DESC
                 LIMIT 1",
             [
@@ -866,7 +866,7 @@ class SearchProcessing extends AbstractHelper
     {
         $sql = '';
         foreach (self::QUERY_TEXT_BANNED_CHARS as $char) {
-            $sql .= !empty($sql) ? 'AND ' : '';
+            $sql .= !empty($sql) ? ' AND ' : '';
             $sql .= "{$field} NOT LIKE '%{$char}%'";
         }
         return $sql;
