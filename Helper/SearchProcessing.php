@@ -798,7 +798,7 @@ class SearchProcessing extends AbstractHelper
                   AND ccev.store_id = :storeId
                   AND CHAR_LENGTH(ccev.value) >= :valMinLength
                   AND :queryText REGEXP CONCAT('\\\\b', ccev.value, '\\\\b')
-                  AND {$this->getBannedQueryTextSql()}
+                  AND {$this->getBannedQueryTextSql('ccev.value')}
                 ORDER BY CHAR_LENGTH(ccev.value) DESC
                 LIMIT 1",
             [
