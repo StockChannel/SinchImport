@@ -297,8 +297,8 @@ class Sinch {
                 $this->_eventManager->dispatch(
                     'sinchimport_import_start_full',
                     [
-                        "productMode" => $this->categoryImportMode,
-                        "categoryMode" => $this->productImportMode,
+                        "productMode" => $this->productImportMode,
+                        "categoryMode" => $this->categoryImportMode,
                         "backupIds" => $this->dataHelper->getStoreConfig('sinchimport/sinch_ftp/backup_data') == 1
                     ]
                 );

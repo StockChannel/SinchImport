@@ -238,6 +238,11 @@ class UpgradeSchema implements UpgradeSchemaInterface
             }
         }
 
+        // Add the table for bundles backups
+        if (version_compare($context->getVersion(), '2.5.7', '<')) {
+            $this->upgradeForBundlesBackup($installer);
+        }
+
         $installer->endSetup();
     }
 
@@ -495,5 +500,52 @@ class UpgradeSchema implements UpgradeSchemaInterface
 		    }
 	    	$row++;
 	    }
+    }
+
+    /**
+     * Add the backup table for the import to store backups of the bundle products' options
+     * @throws Zend_Db_Exception
+     */
+    private function upgradeForBundlesBackup(SchemaSetupInterface $installer): void
+    {
+        $cpeTable = $installer->getTable('catalog_product_entity');
+        $cpboTable = $installer->getTable('catalog_product_bundle_option');
+        $tableName = $installer->getTable('sinchimport_bundle_product_backup');
+        $table = $installer->getConnection()->newTable($tableName)
+            ->addColumn('id', Table::TYPE_INTEGER, null, ['identity' => true, 'unsigned' => true, 'nullable' => false, 'primary' => true], 'ID')
+            ->addColumn('selection_id', Table::TYPE_INTEGER, null, ['unsigned' => true, 'nullable' => false], 'Original Selection ID')
+            ->addColumn('option_id', Table::TYPE_INTEGER, null, ['unsigned' => true, 'nullable' => false], 'Option ID')
+            ->addColumn('parent_product_id', Table::TYPE_INTEGER, null, ['unsigned' => true, 'nullable' => false], 'Parent Product ID')
+            ->addColumn('product_sku', Table::TYPE_TEXT, 64, ['nullable' => false], 'Product SKU')
+            ->addColumn('position', Table::TYPE_INTEGER, null, ['unsigned' => true, 'nullable' => false], 'Position')
+            ->addColumn('is_default', Table::TYPE_SMALLINT, null, ['unsigned' => true, 'nullable' => false], 'Is Default')
+            ->addColumn('selection_price_type', Table::TYPE_SMALLINT, null, ['unsigned' => true, 'nullable' => false], 'Selection Price Type')
+            ->addColumn('selection_price_value', Table::TYPE_DECIMAL, '12,4', ['nullable' => false], 'Selection Price Value')
+            ->addColumn('selection_qty', Table::TYPE_DECIMAL, '12,4', ['nullable' => false], 'Selection Qty')
+            ->addColumn('selection_can_change_qty', Table::TYPE_SMALLINT, null, ['nullable' => false], 'Selection Can Change Qty')
+            // Add a unique index on selection ID so we can differentiate if we're trying to add another backup row for the same source item after a failed import (or failed restore)
+            ->addIndex(
+                $installer->getIdxName($tableName, 'selection_id', AdapterInterface::INDEX_TYPE_UNIQUE),
+                'selection_id',
+                ['type' => AdapterInterface::INDEX_TYPE_UNIQUE]
+            )
+            // Add FK for the parent
+            ->addForeignKey(
+                $installer->getFkName($tableName, 'parent_product_id', $cpeTable, 'entity_id'),
+                'parent_product_id',
+                $cpeTable,
+                'entity_id',
+                Table::ACTION_CASCADE
+            )
+            // Add FK for the option
+            ->addForeignKey(
+                $installer->getFkName($tableName, 'option_id', $cpboTable, 'option_id'),
+                'option_id',
+                $cpboTable,
+                'option_id'
+            )
+            ->setComment('Sinchimport Bundle Product Options Backup Table');
+        // Now actually create the table
+        $installer->getConnection()->createTable($table);
     }
 }

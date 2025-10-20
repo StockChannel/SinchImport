@@ -4,6 +4,7 @@
         <!-- Fix private tier pricing should occur before fixing quote items, to prevent cart items being updated to a 0 price on private products -->
         <observer name="sitc_fix_private_tier_pricing" instance="SITC\Sinchimport\Observer\PostImport\FixPrivateTierPricing" />
         <observer name="sitc_fix_quote_items" instance="SITC\Sinchimport\Observer\PostImport\FixQuoteItems" />
+        <observer name="sitc_import_restore_bundles" instance="SITC\Sinchimport\Observer\PostImport\RestoreBundles" />
     </event>
     <!-- Allow us to manually call the quote item fix without the potential future implications of calling sinchimport_post_import -->
     <event name="sinchimport_fix_quote_items">
@@ -12,5 +13,10 @@
     <!-- Expose a separate event for import complete post-index so the success email waits for indexing if the import is configured to run them -->
     <event name="sinchimport_import_complete_post_index">
         <observer name="sitc_notify_success" instance="SITC\Sinchimport\Observer\PostImport\SendSuccessEmail" />
+    </event>
+
+    <!-- Listen to sinchimport_import_start_full so we can backup bundle products -->
+    <event name="sinchimport_import_start_full">
+        <observer name="sitc_import_backup_bundles" instance="SITC\Sinchimport\Observer\PreImport\BackupBundles" />
     </event>
 </config>
