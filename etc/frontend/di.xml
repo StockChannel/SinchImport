@@ -49,4 +49,9 @@
     <type name="Magento\Catalog\Block\Product\ListProduct">
         <plugin name="sitc_keyfeatures_list" type="SITC\Sinchimport\Plugin\InjectFeaturesBlock" sortOrder="0"/>
     </type>
+
+    <!-- Add an interceptor for Magento's stupid customer address upload functionality, as nobody uses it, and it's the primary entrypoint for SessionReaper -->
+    <type name="Magento\Customer\Controller\Address\File\Upload">
+        <plugin name="sitc_sinchimport_disable_customer_address_upload" type="SITC\Sinchimport\Plugin\Security\DisableAddressUpload" sortOrder="0" />
+    </type>
 </config>
