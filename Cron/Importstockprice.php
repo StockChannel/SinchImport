@@ -2,6 +2,10 @@
 
 namespace SITC\Sinchimport\Cron;
 
+use Magento\Config\Model\Placeholder\Environment;
+use Magento\Framework\App\Area;
+use Magento\Store\Model\App\Emulation;
+use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Model\Sinch;
 
 class Importstockprice
@@ -15,7 +19,9 @@ class Importstockprice
      * @param Sinch
      */
     public function __construct(
-        Sinch $sinch
+        Sinch $sinch,
+        private readonly Emulation $emulation,
+        private readonly StoreManagerInterface $storeManager
     ) {
         $this->sinch = $sinch;
     }
@@ -27,6 +33,10 @@ class Importstockprice
      */
     public function execute()
     {
+        $this->emulation->startEnvironmentEmulation($this->storeManager->getDefaultStoreView()->getId(), Area::AREA_ADMINHTML);
+
         $this->sinch->startCronStockPriceImport();
+
+        $this->emulation->stopEnvironmentEmulation();
     }
 }

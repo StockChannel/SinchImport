@@ -3,7 +3,10 @@
 namespace SITC\Sinchimport\Cron;
 
 use Exception;
+use Magento\Framework\App\Area;
 use Magento\Framework\App\ResourceConnection;
+use Magento\Store\Model\App\Emulation;
+use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Logger\Logger;
 use SITC\Sinchimport\Model\Sinch;
 
@@ -27,7 +30,9 @@ class PickupImport
     public function __construct(
         ResourceConnection $resourceConn,
         Sinch $sinch,
-        Logger $logger
+        Logger $logger,
+        private readonly Emulation $emulation,
+        private readonly StoreManagerInterface $storeManager
     ) {
         $this->resourceConn = $resourceConn;
         $this->sinch = $sinch;
@@ -64,9 +69,10 @@ class PickupImport
             $this->logger->info("An import of type '{$importType}' is scheduled, but an import is already running");
             return;
         }
-
         if(!empty($importType)) {
             try {
+                $this->emulation->startEnvironmentEmulation($this->storeManager->getDefaultStoreView()->getId(), Area::AREA_ADMINHTML);
+
                 switch (strtoupper($importType)) {
                     case 'FULL':
                         $this->logger->info("Starting scheduled full import");
@@ -80,6 +86,8 @@ class PickupImport
                         $this->logger->info("Unknown import type: " . $importType);
                         break;
                 }
+
+                $this->emulation->stopEnvironmentEmulation();
             } catch (Exception $e) {
                 $this->logger->warning("Caught exception while running import: " . $e->getMessage());
             }

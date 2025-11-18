@@ -2,6 +2,9 @@
 
 namespace SITC\Sinchimport\Cron;
 
+use Magento\Framework\App\Area;
+use Magento\Store\Model\App\Emulation;
+use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Model\Sinch;
 
 class Importfull
@@ -10,12 +13,16 @@ class Importfull
      * @var Sinch
      */
     private $sinch;
-    
+
     /**
-     * @param Sinch
+     * @param Sinch $sinch
+     * @param Emulation $emulation
+     * @param StoreManagerInterface $storeManager
      */
     public function __construct(
-        Sinch $sinch
+        Sinch $sinch,
+        private readonly Emulation $emulation,
+        private readonly StoreManagerInterface $storeManager
     ) {
         $this->sinch = $sinch;
     }
@@ -27,6 +34,10 @@ class Importfull
      */
     public function execute(): void
     {
+        $this->emulation->startEnvironmentEmulation($this->storeManager->getDefaultStoreView()->getId(), Area::AREA_ADMINHTML);
+
         $this->sinch->startCronFullImport();
+
+        $this->emulation->stopEnvironmentEmulation();
     }
 }
