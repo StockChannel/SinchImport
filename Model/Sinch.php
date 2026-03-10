@@ -1914,12 +1914,12 @@ class Sinch {
                             product_sku,
                             product_name,
                             sinch_manufacturer_id,
-                            main_image_url,
-                            thumb_image_url,
+                            @main_image_url,
+                            @thumb_image_url,
                             specifications,
                             description,
                             description_type,
-                            medium_image_url,
+                            @medium_image_url,
                             Title,
                             Weight,
                             short_description,
@@ -1942,7 +1942,10 @@ class Sinch {
                             implied_sales_year,
                             implied_sales_month
                           )
-                          SET unspsc = IF(CHAR_LENGTH(TRIM(@unspsc)) = 0, NULL, @unspsc)"
+                          SET unspsc = IF(CHAR_LENGTH(TRIM(@unspsc)) = 0, NULL, @unspsc),
+                          main_image_url = IF(CHAR_LENGTH(TRIM(@main_image_url)) = 0, NULL, @main_image_url),
+                          thumb_image_url = IF(CHAR_LENGTH(TRIM(@thumb_image_url)) = 0, NULL, @thumb_image_url),
+                          medium_image_url = IF(CHAR_LENGTH(TRIM(@medium_image_url)) = 0, NULL, @medium_image_url)"
             );
 
 
@@ -2972,6 +2975,7 @@ class Sinch {
             JOIN $core_store store
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
+            WHERE pt.main_image_url IS NOT NULL
             ) $onDuplicate"
         );
 
@@ -2988,6 +2992,7 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
+            WHERE pt.main_image_url IS NOT NULL
             ) $onDuplicate"
         );
 
@@ -3006,6 +3011,7 @@ class Sinch {
             JOIN $core_store store
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
+            WHERE pt.medium_image_url IS NOT NULL
             ) $onDuplicate"
         );
 
@@ -3022,6 +3028,7 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
+            WHERE pt.medium_image_url IS NOT NULL
             ) $onDuplicate"
         );
 
@@ -3040,6 +3047,7 @@ class Sinch {
             JOIN $core_store store
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
+            WHERE pt.thumb_image_url IS NOT NULL
             ) $onDuplicate"
         );
 
@@ -3056,6 +3064,7 @@ class Sinch {
             FROM $catalog_product_entity cpe
             JOIN $products_temp pt
                 ON cpe.sinch_product_id = pt.sinch_product_id
+            WHERE pt.thumb_image_url IS NOT NULL
             ) $onDuplicate"
         );
 
