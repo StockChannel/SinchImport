@@ -155,13 +155,13 @@ class Attributes extends AbstractImportSection {
 
         $this->startTimingStep("Parse raw files");
         //ID, CategoryID, Name, Order
-        $category_features = $this->csv->getData($categoryFeaturesFile);
+        $category_features = $this->csv->setDelimiter(Sinch::FIELD_TERMINATED_CHAR)->getData($categoryFeaturesFile);
         unset($category_features[0]); //Unset the first entry as the sinch export files have a header row
         //ID, CategoryFeatureID, Text, Order
-        $attribute_values = $this->csv->getData($restrictedValuesFile);
+        $attribute_values = $this->csv->setDelimiter(Sinch::FIELD_TERMINATED_CHAR)->getData($restrictedValuesFile);
         unset($attribute_values[0]);
         //ID, ProductID, RestrictedValueID
-        $product_features = $this->csv->getData($productFeaturesFile);
+        $product_features = $this->csv->setDelimiter(Sinch::FIELD_TERMINATED_CHAR)->getData($productFeaturesFile);
         unset($product_features[0]);
         $this->endTimingStep();
 
@@ -171,7 +171,7 @@ class Attributes extends AbstractImportSection {
         $this->log("Parsing category features file");
         foreach($category_features as $feature_row){
             if(count($feature_row) != 4) {
-                $this->logger->warning("Feature row not 4 columns");
+                $this->logger->warning("Category features row not 4 columns");
                 $this->logger->debug(print_r($feature_row, true));
                 continue;
             }
@@ -187,6 +187,11 @@ class Attributes extends AbstractImportSection {
         $this->startTimingStep("Parse restricted values");
         $this->log("Parsing attribute values file");
         foreach($attribute_values as $rv_row){
+            if(count($rv_row) != 4) {
+                $this->logger->warning("Restricted values row not 4 columns");
+                $this->logger->debug(print_r($rv_row, true));
+                continue;
+            }
             $this->attributes[$rv_row[1]]["values"][$rv_row[0]] = [
                 "text" => $rv_row[2],
                 "order" => $rv_row[3]
@@ -197,6 +202,11 @@ class Attributes extends AbstractImportSection {
         $this->startTimingStep("Parse product features");
         //RV -> [Product]
         foreach($product_features as $pf_row){
+            if(count($pf_row) != 3) {
+                $this->logger->warning("Product features row not 4 columns");
+                $this->logger->debug(print_r($pf_row, true));
+                continue;
+            }
             $this->rvProds[$pf_row[2]][] = $pf_row[1];
         }
         $this->endTimingStep();

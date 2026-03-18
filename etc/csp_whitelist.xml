@@ -5,6 +5,7 @@
         <policy id="img-src">
             <values>
                 <value id="sinch_media" type="host">media.stockinthechannel.com</value>
+	            <value id="icecat_images" type="host">images.icecat.biz</value>
             </values>
         </policy>
         <policy id="frame-src">

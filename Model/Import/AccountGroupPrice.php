@@ -12,6 +12,7 @@ use Magento\Framework\App\ResourceConnection;
 use Magento\Framework\Exception\State\InvalidTransitionException;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
+use SITC\Sinchimport\Model\Sinch;
 use SITC\Sinchimport\Util\CsvIterator;
 use Symfony\Component\Console\Output\ConsoleOutput;
 
@@ -191,7 +192,7 @@ class AccountGroupPrice extends AbstractImportSection
         $this->initDeltaPricing();
 
         $this->startTimingStep('Group parsing');
-        $customerGroupCsv = $this->csv->getData($accountGroupFile);
+        $customerGroupCsv = $this->csv->setDelimiter(Sinch::FIELD_TERMINATED_CHAR)->getData($accountGroupFile);
         unset($customerGroupCsv[0]);
 
         foreach ($customerGroupCsv as $groupData) {

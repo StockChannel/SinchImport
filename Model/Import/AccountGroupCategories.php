@@ -50,7 +50,7 @@ class AccountGroupCategories extends AbstractImportSection {
         $accountGroupCatsFile = $this->dlHelper->getSavePath(Download::FILE_ACCOUNT_GROUP_CATEGORIES);
 
         $this->log("--- Begin Account Group Categories Parse ---");
-        $customerGroupCats = $this->csv->getData($accountGroupCatsFile);
+        $customerGroupCats = $this->csv->setDelimiter(Sinch::FIELD_TERMINATED_CHAR)->getData($accountGroupCatsFile);
         unset($customerGroupCats[0]); //Unset the first entry as the sinch export files have a header row
 
         $this->log("Deleting existing entries in customer group categories mapping table");
