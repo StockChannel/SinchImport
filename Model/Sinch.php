@@ -863,7 +863,7 @@ class Sinch {
                     is_anchor                      TINYINT(1) NOT NULL DEFAULT 1,
                     KEY(store_category_id),
                     KEY(parent_store_category_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+                ) ENGINE=InnoDB"
         );
 
         //ID|ParentID|Name|Order|IsHidden|ProductCount|SubCategoryProductCount|ThumbImageURL|NestLevel|SubCategoryCount|UNSPSC|TypeID|MainImageURL|MetaTitle|MetaDescription|Description|VirtualCategory
@@ -1347,7 +1347,7 @@ class Sinch {
                     UNIQUE KEY store_category_id (store_category_id),
                     KEY parent_store_category_id (parent_store_category_id),
                     UNIQUE KEY(shop_entity_id)
-                )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+                )ENGINE=InnoDB"
         );
 
         $this->_doQuery(
@@ -1822,7 +1822,7 @@ class Sinch {
                           store_category_id int(11),
                           key(store_product_id),
                           key(store_category_id)
-                )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+                )ENGINE=InnoDB"
             );
 
             $this->_doQuery(
@@ -1896,7 +1896,7 @@ class Sinch {
                          KEY pt_sinch_product_id (`sinch_product_id`),
                          KEY pt_sinch_manufacturer_id (`sinch_manufacturer_id`),
                          KEY pt_manufacturer_name (`manufacturer_name`)
-                      ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+                      ) ENGINE=InnoDB"
             );
             $this->print("--Parse Products 2");
 
@@ -2046,7 +2046,7 @@ class Sinch {
                     `website_id` int(11) default NULL,
                     PRIMARY KEY  (`id`),
                     KEY sinch_product_id (`sinch_product_id`)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+                ) ENGINE=InnoDB"
         );
         $result = $this->_doQuery(
             "SELECT
@@ -3087,7 +3087,7 @@ class Sinch {
                     image_url varchar(255),
                     thumb_image_url varchar(255),
                     KEY(sinch_product_id)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+                ) ENGINE=InnoDB"
             );
 
             $this->_doQuery(

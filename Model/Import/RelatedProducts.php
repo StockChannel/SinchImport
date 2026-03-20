@@ -64,7 +64,7 @@ class RelatedProducts extends AbstractImportSection
                      UNIQUE KEY(entity_id, related_entity_id, link_type),
                      FOREIGN KEY(entity_id) REFERENCES $catalog_product_entity (entity_id) ON DELETE CASCADE,
                      FOREIGN KEY(related_entity_id) REFERENCES $catalog_product_entity (entity_id) ON DELETE CASCADE
-            )ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+            )ENGINE=InnoDB"
         );
         $this->endTimingStep();
 

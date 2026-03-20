@@ -146,7 +146,7 @@ class AccountGroupPrice extends AbstractImportSection
             sinch_id int(10) unsigned NOT NULL UNIQUE KEY PRIMARY KEY,
             magento_id int(10) unsigned NOT NULL UNIQUE KEY,
             FOREIGN KEY (magento_id) REFERENCES {$groupTable} (customer_group_id) ON UPDATE CASCADE ON DELETE CASCADE
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
+        ) ENGINE=InnoDB");
     }
 
     private function initDeltaPricing()
@@ -165,7 +165,7 @@ class AccountGroupPrice extends AbstractImportSection
             magento_value_id int(11) DEFAULT NULL UNIQUE KEY,
             PRIMARY KEY (sinch_group_id, sinch_product_id),
             FOREIGN KEY (magento_value_id) REFERENCES {$this->tierPriceTable} (value_id) ON UPDATE CASCADE ON DELETE SET NULL
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
+        ) ENGINE=InnoDB");
 
         //Drop the table and make sure that the price column has a default negative value
         // Should ensure that we don't end up reading NULL as 0
@@ -175,7 +175,7 @@ class AccountGroupPrice extends AbstractImportSection
             sinch_product_id int(10) unsigned NOT NULL,
             price decimal(12,4) NOT NULL DEFAULT -1,
             PRIMARY KEY (sinch_group_id, sinch_product_id)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci");
+        ) ENGINE=InnoDB");
     }
 
 

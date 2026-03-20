@@ -186,7 +186,7 @@ class Multimedia extends AbstractImportSection {
                 description varchar(255),
                 url varchar(255),
                 content_type varchar(128) NOT NULL
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+            ) ENGINE=InnoDB"
         );
     }
 }

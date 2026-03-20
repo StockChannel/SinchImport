@@ -77,7 +77,7 @@ class Reviews extends AbstractImportSection {
                 bottom_line varchar(1000),
                 review_site varchar(255),
                 award_image varchar(1000)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+            ) ENGINE=InnoDB"
         );
     }
 }

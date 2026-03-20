@@ -117,7 +117,7 @@ class ReasonsToBuy extends AbstractImportSection {
                 number int(10) unsigned NOT NULL COMMENT 'Reason Number',
                 value text,
                 PRIMARY KEY (id, number)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+            ) ENGINE=InnoDB"
         );
 
         if (!$this->getConnection()->tableColumnExists($this->reasonsToBuyTable, "title")) {

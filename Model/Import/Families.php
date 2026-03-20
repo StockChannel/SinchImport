@@ -255,7 +255,7 @@ class Families extends AbstractImportSection {
                 brand_id int(10) unsigned COMMENT 'Parent Brand ID',
                 name varchar(255),
                 shop_option_id int(10) unsigned COMMENT 'Magento Option ID'
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+            ) ENGINE=InnoDB"
         );
         $conn->query(
             "CREATE TABLE IF NOT EXISTS {$this->familySeriesTable} (
@@ -263,7 +263,7 @@ class Families extends AbstractImportSection {
                 name varchar(255),
                 family_id int(10) unsigned COMMENT 'Parent Family ID',
                 shop_option_id int(10) unsigned COMMENT 'Magento Option ID'
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+            ) ENGINE=InnoDB"
         );
     }
 }

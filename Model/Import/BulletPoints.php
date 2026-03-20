@@ -115,7 +115,7 @@ class BulletPoints extends AbstractImportSection {
                 number int(10) unsigned NOT NULL COMMENT 'Bullet Point Number',
                 value text,
                 PRIMARY KEY (id, number)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci"
+            ) ENGINE=InnoDB"
         );
     }
 }

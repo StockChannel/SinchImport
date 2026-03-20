@@ -273,7 +273,7 @@ class InstallSchema implements InstallSchemaInterface
                 KEY(store_product_id),
                 KEY(sinch_manufacturer_id),
                 KEY(store_category_id)
-            )DEFAULT CHARSET=utf8;
+            );
         "
         );
         
@@ -409,7 +409,7 @@ class InstallSchema implements InstallSchemaInterface
               KEY sku (sku),
               KEY store_product_id (store_product_id),
               KEY sinch_product_id (sinch_product_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            ) ENGINE=InnoDB;
         "
         );
         
@@ -436,7 +436,7 @@ class InstallSchema implements InstallSchemaInterface
               KEY parent_id (parent_id),
               KEY store_category_id (store_category_id),
               KEY parent_store_category_id (parent_store_category_id)
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+            ) ENGINE=InnoDB;
 
         "
         );
