@@ -33,6 +33,11 @@ class Download extends AbstractHelper
     public const FILE_STOCK_AND_PRICES = 'StockAndPrices.csv';
     public const FILE_REVIEWS = 'Reviews.csv';
     public const FILE_PRODUCT_DISTRIBUTOR = 'ProductDistributor.csv';
+    public const FILE_BUNDLES = 'Bundles.csv';
+    public const FILE_BUNDLE_CATEGORIES = 'BundlesCategories.csv';
+    public const FILE_BUNDLE_ITEMS = 'BundlesItems.csv';
+    public const FILE_BUNDLE_ITEMS_PRODUCTS = 'BundlesItemsProducts.csv';
+    public const FILE_BUNDLE_GROUPS = 'BundlesAccountGroups.csv';
 
     private const EXPECTED_HEADER = [
         self::FILE_ACCOUNT_GROUP_CATEGORIES => 'AccountGroupID|CategoryID',
@@ -57,6 +62,11 @@ class Download extends AbstractHelper
         self::FILE_STOCK_AND_PRICES => 'ProductID|Stock|Price|Cost',
         self::FILE_REVIEWS => 'ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageURL|AwardImage80URL|AwardImage200URL',
         self::FILE_PRODUCT_DISTRIBUTOR => 'ProductID|DistributorID',
+        self::FILE_BUNDLES => 'ID|Name|Price|Sku|ImageURL|Visibility',
+        self::FILE_BUNDLE_CATEGORIES => 'BundleID|CategoryID',
+        self::FILE_BUNDLE_ITEMS => 'ID|BundleID|Title|InputType|Required',
+        self::FILE_BUNDLE_ITEMS_PRODUCTS => 'BundleItemID|ProductID|Quantity|Order|IsDefault',
+        self::FILE_BUNDLE_GROUPS => 'BundleID|AccountGroupID'
     ];
 
     private ConsoleOutput $output;

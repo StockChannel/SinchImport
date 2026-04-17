@@ -2136,15 +2136,7 @@ class Sinch {
     private function _getProductDefaulAttributeSetId()
     {
         if (!$this->defaultAttributeSetId) {
-            $sql
-                = "
-                SELECT entity_type_id, default_attribute_set_id
-                FROM " . $this->getTableName('eav_entity_type') . "
-                WHERE entity_type_code = 'catalog_product'
-                LIMIT 1
-                ";
-            $result = $this->_doQuery($sql)->fetch();
-            $this->defaultAttributeSetId = $result['default_attribute_set_id'];
+            $this->defaultAttributeSetId = $this->dataHelper->getDefaultProductAttributeSet();
         }
 
         return $this->defaultAttributeSetId;
