@@ -32,6 +32,7 @@ class Download extends AbstractHelper
     public const FILE_RESTRICTED_VALUES = 'RestrictedValues.csv';
     public const FILE_STOCK_AND_PRICES = 'StockAndPrices.csv';
     public const FILE_REVIEWS = 'Reviews.csv';
+    public const FILE_PRODUCT_DISTRIBUTOR = 'ProductDistributor.csv';
 
     private const EXPECTED_HEADER = [
         self::FILE_ACCOUNT_GROUP_CATEGORIES => 'AccountGroupID|CategoryID',
@@ -54,7 +55,8 @@ class Download extends AbstractHelper
         self::FILE_RELATED_PRODUCTS => 'ProductID|RelatedProductID',
         self::FILE_RESTRICTED_VALUES => 'ID|CategoryFeatureID|Text|Order',
         self::FILE_STOCK_AND_PRICES => 'ProductID|Stock|Price|Cost',
-        self::FILE_REVIEWS => 'ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageURL|AwardImage80URL|AwardImage200URL'
+        self::FILE_REVIEWS => 'ID|Score|Date|URL|Author|Comment|Good|Bad|BottomLine|Site|AwardImageURL|AwardImage80URL|AwardImage200URL',
+        self::FILE_PRODUCT_DISTRIBUTOR => 'ProductID|DistributorID',
     ];
 
     private ConsoleOutput $output;
