@@ -671,6 +671,14 @@
                         <field id="sinchimport/related_products/enable">1</field>
                     </depends>
                 </field>
+                <field id="limit_per_type" translate="label" type="text" sortOrder="90" showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Related products limit per product</label>
+                    <comment><![CDATA[The limit on the number of products to generate for each product per relation type]]></comment>
+                    <validate>validate-digits validate-zero-or-greater</validate>
+                    <depends>
+                        <field id="sinchimport/related_products/enable">1</field>
+                    </depends>
+                </field>
             </group>
         </section>
     </system>

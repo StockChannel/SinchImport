@@ -121,6 +121,7 @@
                 <family_boost>1</family_boost>
                 <include_block>1</include_block>
                 <upsell_compare_num_products>6</upsell_compare_num_products>
+                <limit_per_type>20</limit_per_type>
             </related_products>
         </sinchimport>
         <general>

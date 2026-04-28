@@ -27,6 +27,7 @@ class RelatedProducts extends AbstractImportSection
     private string $importedRelationType;
     private bool $generateUpsell;
     private bool $generateRelated;
+    private int $relatedPerProduct;
 
 
     public function __construct(ResourceConnection $resourceConn, ConsoleOutput $output, Download $downloadHelper, private readonly Data $dataHelper)
@@ -36,6 +37,7 @@ class RelatedProducts extends AbstractImportSection
         $this->importedRelationType = $this->dataHelper->getStoreConfig('sinchimport/related_products/imported_as') ?? 'unused';
         $this->generateUpsell = $this->dataHelper->getStoreConfig('sinchimport/related_products/generate_upsell') == 1;
         $this->generateRelated = $this->dataHelper->getStoreConfig('sinchimport/related_products/generate_related') == 1;
+        $this->relatedPerProduct = (int)$this->dataHelper->getStoreConfig('sinchimport/related_products/limit_per_type') ?? 20;
     }
 
     public function parse(): void
@@ -105,6 +107,20 @@ class RelatedProducts extends AbstractImportSection
 
         $conn = $this->getConnection();
 
+        // TODO: Prior to importing new rules we should delete any rules from catalog_product_link that match Sinch products
+        // This is to avoid a situation where the import is in merge mode and rules just gradually begin to pile up
+        $this->startTimingStep('Delete Sinch product relations');
+        $conn->query(
+            "DELETE link FROM {$catalog_product_link} link
+            INNER JOIN $sinch_products_mapping spm
+                ON link.product_id = spm.entity_id
+                AND spm.sinch_product_id IS NOT NULL
+            INNER JOIN $sinch_products_mapping spm2
+                ON link.linked_product_id = spm2.entity_id
+                AND spm2.sinch_product_id IS NOT NULL"
+        );
+        $this->endTimingStep();
+
         if ($this->importedRelationType != 'up_sell' && $this->generateUpsell) {
             $this->startTimingStep('Generate upsell products');
             //Join every product to every other product in every category it's in under the following conditions:
@@ -119,57 +135,63 @@ class RelatedProducts extends AbstractImportSection
             //  - If the reference product is dearer than the main product, it must have a profit ratio at least
             //      UPSELL_DEARER_MIN_RELATIVE_PROFIT * the main product profit ratio
             $conn->query(
-                "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type) (
-                SELECT spc.store_product_id, spc2.store_product_id, 'up_sell' FROM $sinch_product_categories spc
-                    INNER JOIN $sinch_product_categories spc2
-                        ON spc.store_category_id = spc2.store_category_id
-                        AND spc.store_product_id != spc2.store_product_id
-                    INNER JOIN $sinch_categories sc
-                        ON spc.store_category_id = sc.store_category_id
-                    INNER JOIN $sinch_stock_and_prices ssp_main
-                        ON spc.store_product_id = ssp_main.product_id
-                    INNER JOIN $sinch_stock_and_prices ssp_ref
-                        ON spc2.store_product_id = ssp_ref.product_id
-                    WHERE ssp_main.stock > 0
-                        AND ssp_main.price != 0
-                        AND ssp_ref.stock > 0
-                        AND ssp_ref.price != 0
-                        AND (
-                            (
-                                ssp_ref.price >= ssp_main.price * :upsellCheaperAbove AND ssp_ref.price < ssp_main.price
-                                AND (
-                                    ssp_ref.cost IS NULL
-                                    OR ssp_main.cost IS NULL
-                                    OR (
-                                        ssp_ref.cost IS NOT NULL
-                                        AND ssp_main.cost IS NOT NULL
-                                        AND ssp_ref.price / ssp_ref.cost >= (ssp_main.price / ssp_main.cost) * :upsellCheaperMinRelativeProfit
-                                    )
-                                )
-                            )
-                            OR (
-                                ssp_ref.price >= ssp_main.price AND ssp_ref.price < ssp_main.price * :upsellDearerBelow
-                                AND (
-                                    ssp_ref.cost IS NULL
-                                    OR ssp_main.cost IS NULL
-                                    OR (
-                                        ssp_ref.cost IS NOT NULL
-                                        AND ssp_main.cost IS NOT NULL
-                                        AND ssp_ref.price / ssp_ref.cost >= (ssp_main.price / ssp_ref.cost) * :upsellDearerMinRelativeProfit
-                                    )
-                                )
-                            )
-                        )
-                        AND sc.children_count = 0
-                        AND sc.products_within_this_category > 0
-                        AND sc.products_within_this_category < 10000
-            ) ON DUPLICATE KEY UPDATE
-                position = position + 1",
+                "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type, position) (
+                    SELECT main_id, ref_id, 'up_sell' as type, repeat_cnt - 1 FROM (
+                        SELECT main_id, ref_id, ROW_NUMBER() OVER (PARTITION BY main_id ORDER BY repeat_cnt DESC) as row_num, repeat_cnt FROM (
+                             SELECT DISTINCT spc.store_product_id as main_id, spc2.store_product_id as ref_id, COUNT(*) OVER(PARTITION BY spc.store_product_id, spc2.store_product_id) as repeat_cnt
+                             FROM $sinch_product_categories spc
+                                      INNER JOIN $sinch_product_categories spc2
+                                                 ON spc.store_category_id = spc2.store_category_id
+                                                     AND spc.store_product_id != spc2.store_product_id
+                                      INNER JOIN $sinch_categories sc
+                                                 ON spc.store_category_id = sc.store_category_id
+                                      INNER JOIN $sinch_stock_and_prices ssp_main
+                                                 ON spc.store_product_id = ssp_main.product_id
+                                      INNER JOIN $sinch_stock_and_prices ssp_ref
+                                                 ON spc2.store_product_id = ssp_ref.product_id
+                             WHERE ssp_main.stock > 0
+                               AND ssp_main.price != 0
+                               AND ssp_ref.stock > 0
+                               AND ssp_ref.price != 0
+                               AND (
+                                 (
+                                     ssp_ref.price >= ssp_main.price * :upsellCheaperAbove AND ssp_ref.price < ssp_main.price
+                                         AND (
+                                         ssp_ref.cost IS NULL
+                                             OR ssp_main.cost IS NULL
+                                             OR (
+                                             ssp_ref.cost IS NOT NULL
+                                                 AND ssp_main.cost IS NOT NULL
+                                                 AND ssp_ref.price / ssp_ref.cost >= (ssp_main.price / ssp_main.cost) * :upsellCheaperMinRelativeProfit
+                                             )
+                                         )
+                                     )
+                                     OR (
+                                     ssp_ref.price >= ssp_main.price AND ssp_ref.price < ssp_main.price * :upsellDearerBelow
+                                         AND (
+                                         ssp_ref.cost IS NULL
+                                             OR ssp_main.cost IS NULL
+                                             OR (
+                                             ssp_ref.cost IS NOT NULL
+                                                 AND ssp_main.cost IS NOT NULL
+                                                 AND ssp_ref.price / ssp_ref.cost >= (ssp_main.price / ssp_ref.cost) * :upsellDearerMinRelativeProfit
+                                             )
+                                         )
+                                     )
+                                 )
+                               AND sc.children_count = 0
+                               AND sc.products_within_this_category > 0
+                               AND sc.products_within_this_category < 10000
+                        ) sub_inner
+                    ) sub
+                    WHERE sub.row_num <= :relatedPerProduct * 2
+                )",
                 [
                     ":upsellCheaperAbove" => self::UPSELL_CHEAPER_ABOVE,
                     ":upsellCheaperMinRelativeProfit" => self::UPSELL_CHEAPER_MIN_RELATIVE_PROFIT,
                     ":upsellDearerBelow" => self::UPSELL_DEARER_BELOW,
-                    ":upsellDearerMinRelativeProfit" => self::UPSELL_DEARER_MIN_RELATIVE_PROFIT
+                    ":upsellDearerMinRelativeProfit" => self::UPSELL_DEARER_MIN_RELATIVE_PROFIT,
+                    ":relatedPerProduct" => $this->relatedPerProduct
                 ]
             );
             $this->endTimingStep();
@@ -179,35 +201,41 @@ class RelatedProducts extends AbstractImportSection
             $this->startTimingStep('Generate related products');
             //The main determining factor for speed here is the family_id != 0 (as otherwise all products without family match all other products without family)
             $conn->query(
-                "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type) (
-                SELECT spc.store_product_id, spc2.store_product_id, 'relation' FROM $sinch_product_categories spc
-                    INNER JOIN $sinch_product_categories spc2    
-                        ON spc.store_product_id != spc2.store_product_id
-                        AND spc.store_category_id NOT IN (
-                            SELECT spc_sub.store_category_id FROM $sinch_product_categories spc_sub
-                            WHERE spc_sub.store_product_id = spc2.store_product_id
-                        )
-                    INNER JOIN $sinch_categories sc2
-                        ON spc2.store_category_id = sc2.store_category_id
-                    INNER JOIN $sinch_products sp
-                        ON spc.store_product_id = sp.sinch_product_id
-                    INNER JOIN $sinch_products sp2
-                        ON spc2.store_product_id = sp2.sinch_product_id
-                    INNER JOIN $sinch_stock_and_prices ssp_main
-                        ON spc.store_product_id = ssp_main.product_id
-                    INNER JOIN $sinch_stock_and_prices ssp_ref
-                        ON spc2.store_product_id = ssp_ref.product_id
-                    WHERE ssp_main.stock > 0
-                        AND ssp_main.price != 0
-                        AND ssp_ref.stock > 0
-                        AND ssp_ref.price != 0
-                        AND sc2.children_count = 0
-                        AND sc2.products_within_this_category < 10000
-                        AND sp.family_id != 0
-                        AND sp.family_id = sp2.family_id
-                        AND sp.series_id = sp2.series_id
-            ) ON DUPLICATE KEY UPDATE
-                position = position + 1"
+                "INSERT INTO {$this->relatedProductsTable} (sinch_product_id, related_sinch_product_id, link_type, position) (
+                    SELECT main_id, ref_id, 'relation' as type, repeat_cnt - 1 FROM (
+                        SELECT main_id, ref_id, ROW_NUMBER() OVER (PARTITION BY main_id ORDER BY repeat_cnt DESC) as row_num, repeat_cnt FROM (
+                            SELECT spc.store_product_id as main_id, spc2.store_product_id as ref_id, COUNT(*) OVER (PARTITION BY spc.store_product_id, spc2.store_product_id) as repeat_cnt
+                            FROM $sinch_product_categories spc
+                            INNER JOIN $sinch_product_categories spc2
+                                ON spc.store_product_id != spc2.store_product_id
+                                AND spc.store_category_id NOT IN (
+                                    SELECT spc_sub.store_category_id
+                                    FROM $sinch_product_categories spc_sub
+                                    WHERE spc_sub.store_product_id = spc2.store_product_id
+                                )
+                            INNER JOIN $sinch_categories sc2
+                                ON spc2.store_category_id = sc2.store_category_id
+                            INNER JOIN $sinch_products sp
+                                ON spc.store_product_id = sp.sinch_product_id
+                            INNER JOIN $sinch_products sp2
+                                ON spc2.store_product_id = sp2.sinch_product_id
+                            INNER JOIN $sinch_stock_and_prices ssp_main
+                                ON spc.store_product_id = ssp_main.product_id
+                            INNER JOIN $sinch_stock_and_prices ssp_ref
+                                ON spc2.store_product_id = ssp_ref.product_id
+                            WHERE ssp_main.stock > 0
+                            AND ssp_main.price != 0
+                            AND ssp_ref.stock > 0
+                            AND ssp_ref.price != 0
+                            AND sc2.children_count = 0
+                            AND sc2.products_within_this_category < 10000
+                            AND sp.family_id != 0
+                            AND sp.family_id = sp2.family_id
+                            AND sp.series_id = sp2.series_id
+                        ) sub_inner
+                    ) sub
+                    WHERE sub.row_num <= :relatedPerProduct * 2
+                )"
             );
             $this->endTimingStep();
         }
@@ -237,6 +265,23 @@ class RelatedProducts extends AbstractImportSection
                       SET srp.related_entity_id = spm.entity_id
                       WHERE srp.related_entity_id != spm.entity_id
                         OR (srp.related_entity_id IS NULL XOR spm.entity_id IS NULL)"
+        );
+        $this->endTimingStep();
+
+
+        // Limit the total number of related product records per product
+        $this->startTimingStep('Limit number of related products per product');
+        $conn->query(
+            "DELETE related FROM {$this->relatedProductsTable} related
+            INNER JOIN (
+                SELECT sinch_product_id, related_sinch_product_id, link_type, ROW_NUMBER() OVER(PARTITION BY sinch_product_id, link_type ORDER BY position DESC) as row_num
+                FROM {$this->relatedProductsTable}
+            ) sub
+                ON related.sinch_product_id = sub.sinch_product_id
+                AND related.related_sinch_product_id = sub.related_sinch_product_id
+                AND related.link_type = sub.link_type
+            WHERE row_num > :relatedPerProduct",
+            [":relatedPerProduct" => $this->relatedPerProduct]
         );
         $this->endTimingStep();
 
