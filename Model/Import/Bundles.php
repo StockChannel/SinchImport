@@ -54,9 +54,18 @@ class Bundles extends AbstractImportSection
         $bundleItemProdFile = $this->dlHelper->getSavePath(Download::FILE_BUNDLE_ITEMS_PRODUCTS);
         $bundleGroupFile = $this->dlHelper->getSavePath(Download::FILE_BUNDLE_GROUPS);
 
+        $this->startTimingStep('Clear import tables');
+        $this->getConnection()->query("DELETE FROM {$this->bundleTable}");
+        $this->getConnection()->query("DELETE FROM {$this->bundleCategoryTable}");
+        $this->getConnection()->query("DELETE FROM {$this->bundleGroupTable}");
+        $this->getConnection()->query("DELETE FROM {$this->bundleItemsTable}");
+        $this->getConnection()->query("DELETE FROM {$this->bundleItemsProductTable}");
+        $this->endTimingStep();
+
         $this->startTimingStep('Load Data');
         // Bundles themselves
         // ID|Name|Price|Sku|ImageURL|Visibility
+        // We have a special condition for price as we want NULL values inserted instead of empty fields
         $this->getConnection()->query(
             "LOAD DATA LOCAL INFILE '{$bundleFile}'
                 INTO TABLE {$this->bundleTable}
@@ -64,7 +73,8 @@ class Bundles extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (sinch_id, name, price, sku, image_url, visibility)"
+                (sinch_id, name, @price, sku, image_url, visibility)
+                SET price = IF(CHAR_LENGTH(TRIM(@price)) = 0, NULL, @price)"
         );
 
         // Bundle Categories
@@ -122,6 +132,7 @@ class Bundles extends AbstractImportSection
         $catalog_product_entity_int = $this->getTableName('catalog_product_entity_int');
         $catalog_product_entity_text = $this->getTableName('catalog_product_entity_text');
         $catalog_product_entity_varchar = $this->getTableName('catalog_product_entity_varchar');
+        $catalog_product_entity_decimal = $this->getTableName('catalog_product_entity_decimal');
         $catalog_product_bundle_option = $this->getTableName('catalog_product_bundle_option');
         $catalog_product_bundle_selection = $this->getTableName('catalog_product_bundle_selection');
         $catalog_category_product = $this->getTableName('catalog_category_product');
@@ -134,7 +145,7 @@ class Bundles extends AbstractImportSection
         $this->getConnection()->query(
             "DELETE FROM {$catalog_product_entity}
                 WHERE entity_id IN (
-                    SELECT magento_id
+                    SELECT bm.magento_id
                     FROM {$this->bundleMappingTable} bm
                     LEFT JOIN {$this->bundleTable} b
                         ON bm.sinch_id = b.sinch_id
@@ -149,11 +160,11 @@ class Bundles extends AbstractImportSection
         $this->getConnection()->query(
             "DELETE FROM {$catalog_product_bundle_option}
                 WHERE option_id IN (
-                    SELECT magento_option
+                    SELECT bim.magento_option
                     FROM {$this->bundleItemsMappingTable} bim
                     LEFT JOIN {$this->bundleItemsTable} bi
-                        ON bim.sinch_id = bi.sinch_id
-                    WHERE bi.sinch_id IS NULL
+                        ON bim.sinch_id = bi.sinch_item_id
+                    WHERE bi.sinch_item_id IS NULL
                 )"
         );
         $this->endTimingStep();
@@ -164,11 +175,13 @@ class Bundles extends AbstractImportSection
         $this->getConnection()->query(
             "DELETE FROM {$catalog_product_bundle_selection}
                 WHERE selection_id IN (
-                    SELECT magento_selection
+                    SELECT bipm.magento_selection
                     FROM {$this->bundleItemsProductMappingTable} bipm
                     LEFT JOIN {$this->bundleItemsProductTable} bip
-                        ON bipm.sinch_id = bip.sinch_id
-                    WHERE bip.sinch_id IS NULL
+                        ON bipm.sinch_item_id = bip.sinch_item_id
+                        AND bipm.sinch_product_id = bip.sinch_product_id
+                    WHERE bip.sinch_item_id IS NULL
+                    AND bip.sinch_product_id IS NULL
                 )"
         );
         $this->endTimingStep();
@@ -201,6 +214,8 @@ class Bundles extends AbstractImportSection
                 LEFT JOIN {$this->bundleMappingTable} bm
                     ON cpe.sinch_product_id = bm.sinch_id
                 WHERE bm.sinch_id IS NULL
+                AND cpe.sinch_product_id IS NOT NULL
+                AND cpe.type_id = 'bundle'
             )"
         );
         $this->endTimingStep();
@@ -216,7 +231,7 @@ class Bundles extends AbstractImportSection
                 SELECT
                     :attrStatus,
                     0,
-                    cpe.entity_id,
+                    magento_id,
                     1
                 FROM {$this->bundleMappingTable}
             ) $onDuplicate",
@@ -284,7 +299,7 @@ class Bundles extends AbstractImportSection
                 SELECT
                     :attrImage,
                     0,
-                    cpe.entity_id,
+                    bm.magento_id,
                     b.image_url
                 FROM {$this->bundleMappingTable} bm
                 INNER JOIN {$this->bundleTable} b
@@ -293,8 +308,57 @@ class Bundles extends AbstractImportSection
             [":attrImage" => $attrImage]
         );
 
-        // TODO: Bundle product price
-        // Price is going to be phased out of the files as its not used by Magento (at least not in the form the files provide)
+        // Bundle product price
+        $this->startTimingStep('Set price_type');
+        $attrPriceType = $this->dataHelper->getProductAttributeId('price_type');
+        // We need to establish which entries in the main bundle table had a price, and for those set price_type to 0
+        // All the others need price_type 1. This does its own ON DUPLICATE because it should always apply the update
+        $this->getConnection()->query(
+            "INSERT INTO {$catalog_product_entity_int} (attribute_id, store_id, entity_id, value) (
+                SELECT
+                    :attrPriceType,
+                    0,
+                    bm.magento_id,
+                    IF(b.price IS NULL, 0, 1)
+                FROM {$this->bundleMappingTable} bm
+                INNER JOIN {$this->bundleTable} b
+                    ON bm.sinch_id = b.sinch_id
+            ) ON DUPLICATE KEY UPDATE value = IF(b.price IS NULL, 0, 1)",
+            [":attrPriceType" => $attrPriceType]
+        );
+        $this->endTimingStep();
+        // Delete price records for any bundles not set as fixed price (if they exist)
+        $this->startTimingStep('Delete pricing records for dynamic price bundles');
+        $attrPrice = $this->dataHelper->getProductAttributeId('price');
+        $this->getConnection()->query(
+            "DELETE cped FROM {$catalog_product_entity_decimal} cped
+            INNER JOIN {$this->bundleMappingTable} bm
+                ON bm.magento_id = cped.entity_id
+                AND cped.attribute_id = :attrPrice
+            INNER JOIN {$this->bundleTable} b
+                ON bm.sinch_id = b.sinch_id
+            WHERE b.price IS NULL",
+            [":attrPrice" => $attrPrice]
+        );
+        $this->endTimingStep();
+
+        // Then insert price records (this also does its own ON DUPLICATE as price should always be updated from the file
+        $this->startTimingStep('Insert pricing records');
+        $this->getConnection()->query(
+            "INSERT INTO {$catalog_product_entity_decimal} (attribute_id, store_id, entity_id, value) (
+                SELECT
+                    :attrPrice,
+                    0,
+                    bm.magento_id,
+                    b.price
+                FROM {$this->bundleMappingTable} bm
+                INNER JOIN {$this->bundleTable} b
+                    ON bm.sinch_id = b.sinch_id
+                WHERE b.price IS NOT NULL
+            ) ON DUPLICATE KEY UPDATE value = b.price",
+            [":attrPrice" => $attrPrice]
+        );
+        $this->endTimingStep();
 
 
         // Now the missing options
@@ -390,20 +454,22 @@ class Bundles extends AbstractImportSection
         // Now the rest of the bundles
         $this->getConnection()->query(
             "INSERT INTO {$catalog_product_entity_text} (attribute_id, store_id, entity_id, value) (
-                SELECT :attrId, 0, bm.magento_id, GROUP_CONCAT(gm.magento_id SEPARATOR ',')
-                FROM {$this->bundleGroupTable} bg
-                INNER JOIN {$this->bundleMappingTable} bm
-                    ON bg.sinch_bundle_id = bm.sinch_id
-                INNER JOIN {$sinch_group_mapping} gm
-                    ON bg.sinch_account_group = gm.sinch_id
-                GROUP BY bg.sinch_bundle_id
-            ) ON DUPLICATE KEY UPDATE value = GROUP_CONCAT(gm.magento_id SEPARATOR ',')",
+                SELECT * FROM (
+                    SELECT :attrId as attr, 0 as store, bm.magento_id as entity_id, GROUP_CONCAT(gm.magento_id SEPARATOR ',') as value
+                    FROM {$this->bundleGroupTable} bg
+                    INNER JOIN {$this->bundleMappingTable} bm
+                        ON bg.sinch_bundle_id = bm.sinch_id
+                    INNER JOIN {$sinch_group_mapping} gm
+                        ON bg.sinch_account_group = gm.sinch_id
+                    GROUP BY bg.sinch_bundle_id
+                ) new_values
+            ) ON DUPLICATE KEY UPDATE value = new_values.value",
             [":attrId" => $sinchRestrictAttr]
         );
         $this->endTimingStep();
 
         // TODO: This is only really necessary if we're going to run this section in StockPrice imports as well as full ones
-        $this->indexManagement->runIndex('catalog_product_attribute');
+        // $this->indexManagement->runIndex('catalog_product_attribute');
     }
 
     /**
@@ -423,9 +489,7 @@ class Bundles extends AbstractImportSection
     private function createTablesIfRequired(): void
     {
         $catalog_product_entity = $this->getTableName('catalog_product_entity');
-        $sinch_categories = $this->getTableName('sinch_categories');
         $sinch_group_mapping = $this->getTableName('sinch_group_mapping');
-        $sinch_products = $this->getTableName('sinch_products');
 
         // Bundles
         // ID|Name|Price|Sku|ImageURL|Visibility
@@ -433,25 +497,26 @@ class Bundles extends AbstractImportSection
             "CREATE TABLE IF NOT EXISTS {$this->bundleTable} (
                 sinch_id int(10) UNSIGNED NOT NULL PRIMARY KEY,
                 name varchar(255) NOT NULL,
-                price decimal(10,2) NOT NULL,
+                price decimal(10,2),
                 sku varchar(128) NOT NULL UNIQUE,
                 image_url varchar(255),
-                visibility int(1) NOT NULL DEFAULT 0,
-                magento_id int(10) UNSIGNED,
-                FOREIGN KEY (magento_id) REFERENCES {$catalog_product_entity} (entity_id) ON UPDATE CASCADE ON DELETE CASCADE
+                visibility int(1) NOT NULL DEFAULT 0
             )"
         );
 
         // Bundle Categories
         // BundleID|CategoryID
+        // sinch_category_id can't be unsigned as store_category_id is not unsigned on the sinch_categories table
+        // TODO: Can't reference sinch_categories as it precludes the rest of the import dropping and recreating it
+        // TODO: Need to rethink the links as the import drops and recreates the mapping tables too
         $this->getConnection()->query(
             "CREATE TABLE IF NOT EXISTS {$this->bundleCategoryTable} (
                 sinch_bundle_id int(10) UNSIGNED NOT NULL,
-                sinch_category_id int(10) UNSIGNED NOT NULL,
+                sinch_category_id int(10) NOT NULL,
                 PRIMARY KEY (sinch_bundle_id, sinch_category_id),
-                FOREIGN KEY (sinch_bundle_id) REFERENCES {$this->bundleTable} (sinch_id) ON UPDATE CASCADE ON DELETE CASCADE,
-                FOREIGN KEY (sinch_category_id) REFERENCES {$sinch_categories} (store_category_id) ON UPDATE CASCADE ON DELETE CASCADE
+                FOREIGN KEY (sinch_bundle_id) REFERENCES {$this->bundleTable} (sinch_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
+            // TODO: Previously had FOREIGN KEY (sinch_category_id) REFERENCES {$sinch_categories_mapping} (store_category_id) ON UPDATE CASCADE ON DELETE CASCADE
         );
 
         // Bundle Groups
@@ -475,23 +540,24 @@ class Bundles extends AbstractImportSection
                 title varchar(255) NOT NULL,
                 input_type varchar(50) NOT NULL,
                 required int(1) NOT NULL DEFAULT 0,
-                FOREIGN KEY (sinch_bundle_id) REFERENCES {$this->bundleTable} (sinch_id) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (sinch_bundle_id) REFERENCES {$this->bundleTable} (sinch_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
         );
 
         // Bundle Item Products
         // BundleItemID|ProductID|Quantity|Order|IsDefault
+        // TODO: Possibly this needs to be to sinch_products_mapping instead of sinch_products
         $this->getConnection()->query(
             "CREATE TABLE IF NOT EXISTS {$this->bundleItemsProductTable} (
                 sinch_item_id int(10) UNSIGNED NOT NULL,
-                sinch_product_id int(10) UNSIGNED NOT NULL,
+                sinch_product_id int(10) NOT NULL,
                 qty int(10) NOT NULL,
                 position int(10) NOT NULL,
                 is_default int(1) NOT NULL DEFAULT 0,
                 PRIMARY KEY (sinch_item_id, sinch_product_id),
-                FOREIGN KEY (sinch_item_id) REFERENCES {$this->bundleItemsTable} (sinch_item_id) ON UPDATE CASCADE ON DELETE CASCADE,
-                FOREIGN KEY (sinch_product_id) REFERENCES {$sinch_products} (sinch_product_id) ON UPDATE CASCADE ON DELETE CASCADE
+                FOREIGN KEY (sinch_item_id) REFERENCES {$this->bundleItemsTable} (sinch_item_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
+            //TODO: Previously had FOREIGN KEY (sinch_product_id) REFERENCES {$sinch_products_mapping} (sinch_product_id) ON UPDATE CASCADE ON DELETE CASCADE
         );
 
 
@@ -501,7 +567,7 @@ class Bundles extends AbstractImportSection
             "CREATE TABLE IF NOT EXISTS {$this->bundleMappingTable} (
                 sinch_id int(10) UNSIGNED NOT NULL PRIMARY KEY,
                 magento_id int(10) UNSIGNED NOT NULL UNIQUE,
-                FOREIGN KEY (magento_id) REFERENCES {$catalog_product_entity} (entity_id) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (magento_id) REFERENCES {$catalog_product_entity} (entity_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
         );
 
@@ -511,7 +577,7 @@ class Bundles extends AbstractImportSection
             "CREATE TABLE IF NOT EXISTS {$this->bundleItemsMappingTable} (
                 sinch_id int(10) UNSIGNED NOT NULL PRIMARY KEY,
                 magento_option int(10) UNSIGNED NOT NULL UNIQUE,
-                FOREIGN KEY (magento_option) REFERENCES {$catalog_product_bundle_option} (option_id) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (magento_option) REFERENCES {$catalog_product_bundle_option} (option_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
         );
 
@@ -523,7 +589,7 @@ class Bundles extends AbstractImportSection
                 sinch_product_id int(10) UNSIGNED NOT NULL,
                 magento_selection int(10) UNSIGNED NOT NULL UNIQUE,
                 PRIMARY KEY (sinch_item_id, sinch_product_id),
-                FOREIGN KEY (magento_selection) REFERENCES {$catalog_product_bundle_selection} (selection_id) ON UPDATE CASCADE ON DELETE CASCADE,
+                FOREIGN KEY (magento_selection) REFERENCES {$catalog_product_bundle_selection} (selection_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
         );
     }
@@ -593,12 +659,13 @@ class Bundles extends AbstractImportSection
         $sinch_products_mapping = $this->getTableName('sinch_products_mapping');
 
         $missingIds = $this->getConnection()->fetchAll(
-            "SELECT sinch_item_id, sinch_product_id
+            "SELECT bip.sinch_item_id, bip.sinch_product_id
             FROM {$this->bundleItemsProductTable} bip
             LEFT JOIN {$this->bundleItemsProductMappingTable} bipm
                 ON bip.sinch_item_id = bipm.sinch_item_id
                 AND bip.sinch_product_id = bipm.sinch_product_id
-            WHERE bipm.sinch_product_id IS NULL"
+            WHERE bipm.sinch_product_id IS NULL
+            AND bipm.sinch_item_id IS NULL"
         );
 
         foreach ($missingIds as $missingId) {

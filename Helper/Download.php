@@ -87,6 +87,8 @@ class Download extends AbstractHelper
     private string $pendingLog = "";
     /** @var string $saveDir The directory within var to save files to */
     private string $saveDir;
+    private bool $enableLocalOverrides;
+    private string $localOverrideDir;
 
     public function __construct(
         Context $context,
@@ -107,6 +109,8 @@ class Download extends AbstractHelper
         $this->password = $ftp_data['password'] ?? "";
         $this->server = $ftp_data['ftp_server'] ?? "";
         $this->useFTPES = ($ftp_data['use_ftpes'] ?? 0) == 1;
+        $this->enableLocalOverrides = $this->scopeConfig->getValue('sinchimport/developer/enable_local_overrides', ScopeInterface::SCOPE_STORE) ?? false;
+        $this->localOverrideDir = $dir->getPath(DirectoryList::VAR_DIR) . '/SITC/Sinchimport_Local/';
     }
 
     /**
@@ -118,6 +122,14 @@ class Download extends AbstractHelper
         if (!is_dir($this->saveDir)) {
             if (!mkdir($this->saveDir, 0777, true)) {
                 throw new LocalizedException(__("Failed to create import directory. Check filesystem permissions"));
+            }
+        }
+
+        if ($this->enableLocalOverrides) {
+            if (!is_dir($this->localOverrideDir)) {
+                if (!mkdir($this->localOverrideDir, 0777, true)) {
+                    throw new LocalizedException(__("Failed to create import local override directory. Check filesystem permissions"));
+                }
             }
         }
     }
@@ -170,6 +182,28 @@ class Download extends AbstractHelper
 
         $fileExists = false;
         $fileGzipped = false;
+
+        if ($this->enableLocalOverrides) {
+            @unlink($this->saveDir . $file);
+            @unlink($this->saveDir . $file . ".gz");
+
+            if (is_file($this->localOverrideDir . $file . '.gz')) {
+                $this->print("Using local override of {$file}.gz");
+                // Exists and is gzipped
+                copy($this->localOverrideDir . $file . '.gz', $this->saveDir . $file . '.gz');
+                $this->print("Attempting to gunzip {$file}.gz");
+                $outputLoc = \escapeshellarg($this->saveDir . $file . ".gz");
+                \exec("gunzip {$outputLoc}");
+                return true;
+            } else if (is_file($this->localOverrideDir . $file)) {
+                $this->print("Using local override of {$file}");
+                // Exists
+                copy($this->localOverrideDir . $file, $this->saveDir . $file);
+                return true;
+            }
+            // Doesn't exist, continue normal processing
+        }
+
         $dirListing = \ftp_nlist($this->ftpConn, ".");
         if($dirListing === false) {
             $this->print("Warning: Directory listing failed, attempting to reauthenticate");
@@ -299,7 +333,7 @@ class Download extends AbstractHelper
         }
         $headerLine = trim($headerLine);
         if (mb_strtolower($headerLine) != mb_strtolower(self::EXPECTED_HEADER[$filename])) {
-            $this->print("Header line for file {$filename} doesn't match expected header: {$headerLine} != " . self::EXPECTED_HEADER[$filename]);
+            $this->print("Header line for file {$filename} doesn't match expected header: '{$headerLine}' != '" . self::EXPECTED_HEADER[$filename] . "'");
             return false;
         }
         return true;
