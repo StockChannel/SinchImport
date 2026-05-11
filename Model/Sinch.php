@@ -25,6 +25,7 @@ use SITC\Sinchimport\Model\Import\AccountGroupPrice;
 use SITC\Sinchimport\Model\Import\Attributes;
 use SITC\Sinchimport\Model\Import\Brands;
 use SITC\Sinchimport\Model\Import\BulletPoints;
+use SITC\Sinchimport\Model\Import\Bundles;
 use SITC\Sinchimport\Model\Import\CustomCatalogVisibility;
 use SITC\Sinchimport\Model\Import\EANCodes;
 use SITC\Sinchimport\Model\Import\Families;
@@ -94,6 +95,7 @@ class Sinch {
     private VirtualCategory $virtualCategoryImport;
     private Reviews $reviewImport;
     private RelatedProducts $relatedProductsImport;
+    private Bundles $bundleImport;
 
     private Download $dlHelper;
     private Data $dataHelper;
@@ -127,7 +129,8 @@ class Sinch {
         RelatedProducts $relatedProductsImport,
         Download $dlHelper,
         Data $dataHelper,
-        Url $helperUrl
+        Url $helperUrl,
+        Bundles $bundleImport
     )
     {
         $this->sitcIndexMgmt = $sitcIndexMgmt;
@@ -148,6 +151,7 @@ class Sinch {
         $this->virtualCategoryImport = $virtualCategoryImport;
         $this->reviewImport = $reviewImport;
         $this->relatedProductsImport = $relatedProductsImport;
+        $this->bundleImport = $bundleImport;
 
         $this->dlHelper = $dlHelper;
         $this->dataHelper = $dataHelper;
@@ -329,7 +333,12 @@ class Sinch {
                     Download::FILE_FAMILIES,
                     Download::FILE_FAMILY_SERIES,
                     Download::FILE_REASONS_TO_BUY,
-                    Download::FILE_REVIEWS
+                    Download::FILE_REVIEWS,
+                    Download::FILE_BUNDLES,
+                    Download::FILE_BUNDLE_CATEGORIES,
+                    Download::FILE_BUNDLE_ITEMS,
+                    Download::FILE_BUNDLE_ITEMS_PRODUCTS,
+                    Download::FILE_BUNDLE_GROUPS,
                 ];
 
                 $this->addImportStatus('Download Files');
@@ -448,6 +457,12 @@ class Sinch {
                     $this->addImportStatus('Parse Reviews');
                     $this->reviewImport->parse();
                     $this->addImportStatus('Parse Reviews', true);
+                }
+
+                if ($this->bundleImport->haveRequiredFiles()) {
+                    $this->addImportStatus('Parsing Bundles');
+                    $this->bundleImport->parse();
+                    $this->addImportStatus('Parsing Bundles', true);
                 }
 
                 $this->addImportStatus('Parse Stock And Prices');
@@ -2136,15 +2151,7 @@ class Sinch {
     private function _getProductDefaulAttributeSetId()
     {
         if (!$this->defaultAttributeSetId) {
-            $sql
-                = "
-                SELECT entity_type_id, default_attribute_set_id
-                FROM " . $this->getTableName('eav_entity_type') . "
-                WHERE entity_type_code = 'catalog_product'
-                LIMIT 1
-                ";
-            $result = $this->_doQuery($sql)->fetch();
-            $this->defaultAttributeSetId = $result['default_attribute_set_id'];
+            $this->defaultAttributeSetId = $this->dataHelper->getDefaultProductAttributeSet();
         }
 
         return $this->defaultAttributeSetId;

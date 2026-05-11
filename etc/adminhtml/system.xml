@@ -55,6 +55,17 @@
                 </field>
             </group>
 
+            <group id="developer" translate="label" type="text" sortOrder="5" showInDefault="0" showInWebsite="0" showInStore="0">
+                <field id="enable_local_overrides" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Enable Local Overrides</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>
+                        Whether the Download helper allows the use of local override files.
+                        Files sourced from var/SITC/Sinchimport_Local which substitute the otherwise downloaded CSV files
+                    </comment>
+                </field>
+            </group>
+
             <group id="sinch_ftp" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
                 <label>FTP Login Details</label>
                 <comment>Get these details from Stock in the Channel for the pricelist you want this store to use. This

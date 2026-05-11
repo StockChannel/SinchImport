@@ -13,6 +13,9 @@
                 <debug>0</debug>
                 <cc_triggers_indexers_in_stockprice>0</cc_triggers_indexers_in_stockprice>
             </general>
+            <developer>
+                <enable_local_overrides>0</enable_local_overrides>
+            </developer>
             <sinch_ftp>
                 <use_ftpes>0</use_ftpes>
                 <replace_category>REWRITE</replace_category>

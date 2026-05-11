@@ -585,4 +585,21 @@ class Data extends AbstractHelper
             [":sku" => $sku]
         );
     }
+
+    public function getDefaultProductAttributeSet(): int
+    {
+        $conn = $this->resourceConn->getConnection();
+        $eav_entity_type = $conn->getTableName('eav_entity_type');
+        return $conn->fetchOne(
+            "SELECT default_attribute_set_id
+                FROM {$eav_entity_type}
+                WHERE entity_type_code = 'catalog_product'
+                LIMIT 1"
+        );
+    }
+
+    public function productMergeMode(): bool
+    {
+        return $this->getStoreConfig('sinchimport/sinch_ftp/replace_product') == "MERGE";
+    }
 }
