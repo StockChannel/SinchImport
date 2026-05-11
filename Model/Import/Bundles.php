@@ -27,7 +27,6 @@ class Bundles extends AbstractImportSection
         ConsoleOutput         $output,
         Download              $downloadHelper,
         private readonly Data $dataHelper,
-        private readonly IndexManagement $indexManagement,
     )
     {
         parent::__construct($resourceConn, $output, $downloadHelper);
@@ -467,9 +466,6 @@ class Bundles extends AbstractImportSection
             [":attrId" => $sinchRestrictAttr]
         );
         $this->endTimingStep();
-
-        // TODO: This is only really necessary if we're going to run this section in StockPrice imports as well as full ones
-        // $this->indexManagement->runIndex('catalog_product_attribute');
     }
 
     /**
@@ -507,8 +503,6 @@ class Bundles extends AbstractImportSection
         // Bundle Categories
         // BundleID|CategoryID
         // sinch_category_id can't be unsigned as store_category_id is not unsigned on the sinch_categories table
-        // TODO: Can't reference sinch_categories as it precludes the rest of the import dropping and recreating it
-        // TODO: Need to rethink the links as the import drops and recreates the mapping tables too
         $this->getConnection()->query(
             "CREATE TABLE IF NOT EXISTS {$this->bundleCategoryTable} (
                 sinch_bundle_id int(10) UNSIGNED NOT NULL,
@@ -516,7 +510,6 @@ class Bundles extends AbstractImportSection
                 PRIMARY KEY (sinch_bundle_id, sinch_category_id),
                 FOREIGN KEY (sinch_bundle_id) REFERENCES {$this->bundleTable} (sinch_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
-            // TODO: Previously had FOREIGN KEY (sinch_category_id) REFERENCES {$sinch_categories_mapping} (store_category_id) ON UPDATE CASCADE ON DELETE CASCADE
         );
 
         // Bundle Groups
@@ -546,7 +539,6 @@ class Bundles extends AbstractImportSection
 
         // Bundle Item Products
         // BundleItemID|ProductID|Quantity|Order|IsDefault
-        // TODO: Possibly this needs to be to sinch_products_mapping instead of sinch_products
         $this->getConnection()->query(
             "CREATE TABLE IF NOT EXISTS {$this->bundleItemsProductTable} (
                 sinch_item_id int(10) UNSIGNED NOT NULL,
@@ -557,7 +549,6 @@ class Bundles extends AbstractImportSection
                 PRIMARY KEY (sinch_item_id, sinch_product_id),
                 FOREIGN KEY (sinch_item_id) REFERENCES {$this->bundleItemsTable} (sinch_item_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
-            //TODO: Previously had FOREIGN KEY (sinch_product_id) REFERENCES {$sinch_products_mapping} (sinch_product_id) ON UPDATE CASCADE ON DELETE CASCADE
         );
 
 
