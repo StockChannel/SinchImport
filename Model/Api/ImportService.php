@@ -1,6 +1,7 @@
 <?php
 
 namespace SITC\Sinchimport\Model\Api;
+use Magento\Framework\Exception\NotFoundException;
 
 class ImportService implements \SITC\Sinchimport\Api\ImportInterface {
     /** @var \SITC\Sinchimport\Helper\Data $helper */
@@ -13,18 +14,44 @@ class ImportService implements \SITC\Sinchimport\Api\ImportInterface {
     /** @var string $importStatusTable The prepared name of the import status table */
     private $importStatusTable;
 
+    private $request;
+    
+    private $config;
+    
     public function __construct(
         \SITC\Sinchimport\Helper\Data $helper,
         \Magento\Framework\App\ResourceConnection $resourceConn,
-        \SITC\Sinchimport\Model\Api\Data\ImportStatusFactory $importStatusFactory
+        \SITC\Sinchimport\Model\Api\Data\ImportStatusFactory $importStatusFactory,
+        \Magento\Framework\Webapi\Rest\Request $request,
+        \Magento\Framework\App\DeploymentConfig $config
     ){
         $this->helper = $helper;
         $this->resourceConn = $resourceConn;
         $this->importStatusFactory = $importStatusFactory;
-
+        $this->request = $request;
+        $this->config = $config;
         $this->importStatusTable = $this->resourceConn->getTableName('sinch_import_status_statistic');
     }
-
+    
+    /**
+     * {@inheritdoc}
+     */
+    public function zabbixChecksStatus()
+    {
+        
+        // Fetch key from the request
+        $requestKey = $this->request->getParam('zabyek');
+        // Fetch secure key from config
+        $secureKey = $this->config->get('zabbix/keypass');
+        // Compare keys
+        if ($requestKey !== $secureKey) {
+            throw new NotFoundException(__('Page not found.'));
+        }
+        $latestStatus = $this->getLatestStatus();
+        //LOGIC TO ADD TO SEND A LIGHT AND CLEAR RESPONSE TO ZABBIX
+        return $latestStatus;
+    }
+    
     /**
      * {@inheritdoc}
      */
