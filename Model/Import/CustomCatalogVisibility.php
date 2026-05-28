@@ -85,7 +85,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->getConnection()->query(
             "CREATE TABLE {$this->finalRulesTable} (
                 product_id int(11) unsigned NOT NULL PRIMARY KEY COMMENT 'Product Entity ID',
-                rule varchar(255) NOT NULL
+                rule mediumtext NOT NULL
             )ENGINE=InnoDB"
         );
     }
@@ -183,7 +183,7 @@ class CustomCatalogVisibility extends AbstractImportSection {
         $this->startTimingStep("Building final ruleset");
         //Prepare the final rules ready for attributes
         $this->getConnection()->query(
-        "INSERT INTO {$this->finalRulesTable} (product_id, rule)
+            "INSERT INTO {$this->finalRulesTable} (product_id, rule)
             SELECT spm.entity_id, CONCAT(IF(sft.whitelist, '', '!'), GROUP_CONCAT(group_id ORDER BY group_id ASC)) FROM {$this->tmpTable} cct
                 INNER JOIN {$this->productMappingTable} spm
                     ON cct.product_id = spm.sinch_product_id
