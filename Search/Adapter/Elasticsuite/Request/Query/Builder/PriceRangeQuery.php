@@ -70,8 +70,8 @@ class PriceRangeQuery extends AbstractComplexBuilder implements BuilderInterface
 
 
 	    $customerGroupQuery = $this->queryFactory->create(
-		    QueryInterface::TYPE_TERM,
-		    ['field' => 'price.customer_group_id', 'value' => $groupId]
+		    QueryInterface::TYPE_TERMS,
+		    ['field' => 'price.customer_group_id', 'values' => array_values(array_unique([$groupId, 3]))]
 	    );
 
 	    return $this->parentBuilder->buildQuery(
