@@ -161,14 +161,13 @@
     </type>
 
 
+	<!-- Price index optimisations -->
 	<type name="Magento\Catalog\Model\ResourceModel\Product\Indexer\Price\Query\BaseFinalPrice">
 		<plugin name="pricing_index_no_customer_group" type="SITC\Sinchimport\Plugin\PricingIndex" sortOrder="0" />
 	</type>
-
 	<type name="Smile\ElasticsuiteCatalog\Model\ResourceModel\Product\Indexer\Fulltext\Datasource\PriceData">
 		<plugin name="sinchimport_elasticsuite_price_data_expand" type="SITC\Sinchimport\Plugin\Elasticsuite\PriceDataResource" sortOrder="0" />
 	</type>
-
 	<type name="Magento\Catalog\Model\ResourceModel\Product\Collection">
 		<plugin name="sinchimport_price_index_collection" type="SITC\Sinchimport\Plugin\Catalog\ResourceModel\Product\PriceIndexCollection" sortOrder="0" />
 	</type>
