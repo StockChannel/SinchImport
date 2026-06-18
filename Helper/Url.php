@@ -4,10 +4,13 @@ namespace SITC\Sinchimport\Helper;
 use Magento\Catalog\Model\ResourceModel\Category\Collection;
 use Magento\Catalog\Model\ResourceModel\Category\CollectionFactory;
 use Magento\CatalogUrlRewrite\Model\CategoryUrlRewriteGenerator;
+use Magento\Framework\App\Area;
 use Magento\Framework\App\Helper\AbstractHelper;
 use Magento\Framework\App\Helper\Context;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
+use Magento\Store\Model\App\Emulation;
+use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreManagerInterface;
 use Magento\UrlRewrite\Model\UrlPersistInterface;
 use \Magento\Framework\App\ResourceConnection;
@@ -32,6 +35,7 @@ class Url extends AbstractHelper
 
 
     public function __construct(
+        private readonly Emulation $emulation,
         ConsoleOutput $output,
         StoreManagerInterface $storeManager,
         CategoryUrlPathGenerator $categoryUrlPathGenerator,
@@ -54,8 +58,15 @@ class Url extends AbstractHelper
 
     public function generateCategoryUrl(): void
     {
-
         try {
+            /*
+             * Required for URLs to be generated for all stores, not just the default.
+             * Without this CategoryUrlRewriteGenerator::generate will run generateForSpecificStoreView, since
+             * the getStoreId() call on the category returns the default store (ID 1) for the default website,
+             * as 'store_id' does not exist on the model, so StoreManager::getStore() is called.
+             * ID 1 is not considered the global scope, as per CategoryUrlRewriteGenerator::isGlobalScope()
+             */
+            $this->emulation->startEnvironmentEmulation(Store::DEFAULT_STORE_ID, Area::AREA_GLOBAL);
             $this->output->writeln("Begin generate category url");
             $this->connection->getConnection()->beginTransaction();
             $this->connection->getConnection()->delete('url_rewrite',
@@ -73,6 +84,8 @@ class Url extends AbstractHelper
             $this->connection->getConnection()->rollBack();
             $this->output->writeln("Error when generate category url,please check the log");
             return;
+        } finally {
+            $this->emulation->stopEnvironmentEmulation();
         }
     }
 

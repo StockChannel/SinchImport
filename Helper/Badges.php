@@ -151,6 +151,10 @@ class Badges extends AbstractHelper
         $badgeProducts = [];
         $productArr = array_column($products->getData(), 'entity_id');
 
+        if (empty($productArr)) {
+            return;
+        }
+
         foreach (self::BADGE_TYPES as $badgeType => $attrCode) {
             $inClause = implode(",", array_fill(0, count($productArr), '?'));
             $tableName = $this->resourceConn->getTableName(

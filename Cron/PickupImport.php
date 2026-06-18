@@ -71,6 +71,7 @@ class PickupImport
         }
         if(!empty($importType)) {
             try {
+                //TODO: Move this env emulation to the observer in RequisitionLists that actually needs it
                 $this->emulation->startEnvironmentEmulation($this->storeManager->getDefaultStoreView()->getId(), Area::AREA_ADMINHTML);
 
                 switch (strtoupper($importType)) {

@@ -34,6 +34,7 @@ class Importfull
      */
     public function execute(): void
     {
+        //TODO: Move this env emulation to the observer in RequisitionLists that actually needs it
         $this->emulation->startEnvironmentEmulation($this->storeManager->getDefaultStoreView()->getId(), Area::AREA_ADMINHTML);
 
         $this->sinch->startCronFullImport();

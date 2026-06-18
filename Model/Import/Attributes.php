@@ -203,7 +203,7 @@ class Attributes extends AbstractImportSection {
         //RV -> [Product]
         foreach($product_features as $pf_row){
             if(count($pf_row) != 3) {
-                $this->logger->warning("Product features row not 4 columns");
+                $this->logger->warning("Product features row not 3 columns");
                 $this->logger->debug(print_r($pf_row, true));
                 continue;
             }
