@@ -16,13 +16,9 @@ class Importfull
 
     /**
      * @param Sinch $sinch
-     * @param Emulation $emulation
-     * @param StoreManagerInterface $storeManager
      */
     public function __construct(
-        Sinch $sinch,
-        private readonly Emulation $emulation,
-        private readonly StoreManagerInterface $storeManager
+        Sinch $sinch
     ) {
         $this->sinch = $sinch;
     }
@@ -34,11 +30,6 @@ class Importfull
      */
     public function execute(): void
     {
-        //TODO: Move this env emulation to the observer in RequisitionLists that actually needs it
-        $this->emulation->startEnvironmentEmulation($this->storeManager->getDefaultStoreView()->getId(), Area::AREA_ADMINHTML);
-
         $this->sinch->startCronFullImport();
-
-        $this->emulation->stopEnvironmentEmulation();
     }
 }

@@ -35,7 +35,6 @@ class Url extends AbstractHelper
 
 
     public function __construct(
-        private readonly Emulation $emulation,
         protected Logger $logger,
         ConsoleOutput $output,
         StoreManagerInterface $storeManager,
@@ -62,14 +61,6 @@ class Url extends AbstractHelper
     public function generateCategoryUrl(): void
     {
         try {
-            /*
-             * Required for URLs to be generated for all stores, not just the default.
-             * Without this CategoryUrlRewriteGenerator::generate will run generateForSpecificStoreView, since
-             * the getStoreId() call on the category returns the default store (ID 1) for the default website,
-             * as 'store_id' does not exist on the model, so StoreManager::getStore() is called.
-             * ID 1 is not considered the global scope, as per CategoryUrlRewriteGenerator::isGlobalScope()
-             */
-            $this->emulation->startEnvironmentEmulation(Store::DEFAULT_STORE_ID, Area::AREA_ADMINHTML);
             $this->output->writeln("Begin generate category url");
             $this->connection->getConnection()->beginTransaction();
             $this->connection->getConnection()->delete('url_rewrite',
@@ -88,8 +79,6 @@ class Url extends AbstractHelper
             $this->connection->getConnection()->rollBack();
             $this->output->writeln("Error when generate category url,please check the log");
             return;
-        } finally {
-            $this->emulation->stopEnvironmentEmulation();
         }
     }
 

@@ -5,6 +5,7 @@ namespace SITC\Sinchimport\Model;
 use DateTime;
 use Exception;
 use Magento\Eav\Model\ResourceModel\Entity\Attribute;
+use Magento\Framework\App\Area;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\DeploymentConfig;
 use Magento\Framework\App\ResourceConnection;
@@ -14,7 +15,9 @@ use Magento\Framework\Event\ManagerInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Model\Context;
 use Magento\Indexer\Model\Indexer\CollectionFactory;
+use Magento\Store\Model\App\Emulation;
 use Magento\Store\Model\ScopeInterface;
+use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreManagerInterface;
 use SITC\Sinchimport\Helper\Data;
 use SITC\Sinchimport\Helper\Download;
@@ -130,7 +133,8 @@ class Sinch {
         Download $dlHelper,
         Data $dataHelper,
         Url $helperUrl,
-        Bundles $bundleImport
+        Bundles $bundleImport,
+        private readonly Emulation $emulation
     )
     {
         $this->sitcIndexMgmt = $sitcIndexMgmt;
@@ -539,8 +543,7 @@ class Sinch {
                 }
 
                 $this->addImportStatus('Index catalog url rewrites');
-                $this->sitcIndexMgmt->reindexProductUrls();
-                $this->helperUrl->generateCategoryUrl();
+                $this->reindexCatalogUrls();
                 $this->addImportStatus('Index catalog url rewrites', true);
 
                 $this->addImportStatus('Clean cache');
@@ -3307,13 +3310,7 @@ class Sinch {
         try {
             $this->print("========REINDEX CATALOG URL REWRITE========");
 
-            $this->print("Start indexing product URL rewrites...");
-            $this->sitcIndexMgmt->reindexProductUrls();
-            $this->print("Finish indexing product URL rewrites...");
-
-            $this->print("Start indexing category URL rewrites...");
-            $this->helperUrl->generateCategoryUrl();
-            $this->print("Finish indexing category URL rewrites...");
+            $this->reindexCatalogUrls();
 
             $this->print("========>FINISH REINDEX CATALOG URL REWRITE...");
             $this->_doQuery(
@@ -3322,6 +3319,35 @@ class Sinch {
             );
         } catch (Exception $e) {
             $this->_setErrorMessage($e);
+        }
+    }
+
+    public function reindexCatalogUrls(): void
+    {
+        try {
+            /*
+             * Required for URLs to be generated for all stores, not just the default.
+             * Without this CategoryUrlRewriteGenerator::generate will run generateForSpecificStoreView, since
+             * the getStoreId() call on the category returns the default store (ID 1) for the default website,
+             * as 'store_id' does not exist on the model, so StoreManager::getStore() is called.
+             * ID 1 is not considered the global scope, as per CategoryUrlRewriteGenerator::isGlobalScope().
+             *
+             * This is also required by reindexProductUrls() which ends up calling CategoryProcessor::initCategories(),
+             * this generates & saves the url_key and url_path for categories, but needs to do so in the global store
+             * scope (ID 0). Without this multi-store instances will only generate url_key & url_path for default store ID
+             * (which is generally ID 1)
+             */
+            $this->emulation->stopEnvironmentEmulation(); //Stop any existing emulation (there shouldn't be any, but do it anyway)
+            $this->emulation->startEnvironmentEmulation(Store::DEFAULT_STORE_ID, Area::AREA_ADMINHTML);
+            $this->print("Start indexing product URL rewrites...");
+            $this->sitcIndexMgmt->reindexProductUrls();
+            $this->print("Finish indexing product URL rewrites...");
+
+            $this->print("Start indexing category URL rewrites...");
+            $this->helperUrl->generateCategoryUrl();
+            $this->print("Finish indexing category URL rewrites...");
+        } finally {
+            $this->emulation->stopEnvironmentEmulation();
         }
     }
 

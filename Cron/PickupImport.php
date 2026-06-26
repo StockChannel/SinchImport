@@ -30,9 +30,7 @@ class PickupImport
     public function __construct(
         ResourceConnection $resourceConn,
         Sinch $sinch,
-        Logger $logger,
-        private readonly Emulation $emulation,
-        private readonly StoreManagerInterface $storeManager
+        Logger $logger
     ) {
         $this->resourceConn = $resourceConn;
         $this->sinch = $sinch;
@@ -71,9 +69,6 @@ class PickupImport
         }
         if(!empty($importType)) {
             try {
-                //TODO: Move this env emulation to the observer in RequisitionLists that actually needs it
-                $this->emulation->startEnvironmentEmulation($this->storeManager->getDefaultStoreView()->getId(), Area::AREA_ADMINHTML);
-
                 switch (strtoupper($importType)) {
                     case 'FULL':
                         $this->logger->info("Starting scheduled full import");
@@ -87,8 +82,6 @@ class PickupImport
                         $this->logger->info("Unknown import type: " . $importType);
                         break;
                 }
-
-                $this->emulation->stopEnvironmentEmulation();
             } catch (Exception $e) {
                 $this->logger->warning("Caught exception while running import: " . $e->getMessage());
             }

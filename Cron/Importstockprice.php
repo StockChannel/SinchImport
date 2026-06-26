@@ -16,13 +16,9 @@ class Importstockprice
 
     /**
      * @param Sinch $sinch
-     * @param Emulation $emulation
-     * @param StoreManagerInterface $storeManager
      */
     public function __construct(
         Sinch $sinch,
-        private readonly Emulation $emulation,
-        private readonly StoreManagerInterface $storeManager
     ) {
         $this->sinch = $sinch;
     }
@@ -34,11 +30,6 @@ class Importstockprice
      */
     public function execute()
     {
-        //TODO: Move this env emulation to the observer in RequisitionLists that actually needs it
-        $this->emulation->startEnvironmentEmulation($this->storeManager->getDefaultStoreView()->getId(), Area::AREA_ADMINHTML);
-
         $this->sinch->startCronStockPriceImport();
-
-        $this->emulation->stopEnvironmentEmulation();
     }
 }
