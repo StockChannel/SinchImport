@@ -59,7 +59,8 @@ class CategoryCollectionLoadAfter implements ObserverInterface
 
             //If the category is explicitly visible to this account, add it back to the collection
             //Also allow seeing all categories if no restrictions exist for this account
-            if (in_array($sinch_cat_id, $visible_cats) || $noRestrict) {
+            //or if the category does not have a Sinch ID (i.e. it's manually created)
+            if (empty($sinch_cat_id) || $noRestrict || in_array($sinch_cat_id, $visible_cats)) {
                 $filteredCategoryCollection->addItem($category);
             }
         }
