@@ -52,6 +52,11 @@ class CategoryVisibility {
         }
 
         $catId = $category->getStoreCategoryId();
+        if (empty($catId)) {
+            // Non-sinch category, i.e. manually created in Magento
+            return true;
+        }
+
         $account_group_id = $this->helper->getCurrentAccountGroupId();
 
         if($account_group_id === false){
