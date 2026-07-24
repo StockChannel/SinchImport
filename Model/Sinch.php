@@ -35,6 +35,7 @@ use SITC\Sinchimport\Model\Import\Popularity;
 use SITC\Sinchimport\Model\Import\ProductDates;
 use SITC\Sinchimport\Model\Import\ReasonsToBuy;
 use SITC\Sinchimport\Model\Import\RelatedProducts;
+use SITC\Sinchimport\Model\Import\RequisitionList;
 use SITC\Sinchimport\Model\Import\Reviews;
 use SITC\Sinchimport\Model\Import\StockPrice;
 use SITC\Sinchimport\Model\Import\UNSPSC;
@@ -96,6 +97,7 @@ class Sinch {
     private Reviews $reviewImport;
     private RelatedProducts $relatedProductsImport;
     private Bundles $bundleImport;
+    private RequisitionList $requisitionListImport;
 
     private Download $dlHelper;
     private Data $dataHelper;
@@ -130,7 +132,8 @@ class Sinch {
         Download $dlHelper,
         Data $dataHelper,
         Url $helperUrl,
-        Bundles $bundleImport
+        Bundles $bundleImport,
+        RequisitionList $requisitionListImport,
     )
     {
         $this->sitcIndexMgmt = $sitcIndexMgmt;
@@ -152,6 +155,7 @@ class Sinch {
         $this->reviewImport = $reviewImport;
         $this->relatedProductsImport = $relatedProductsImport;
         $this->bundleImport = $bundleImport;
+        $this->requisitionListImport = $requisitionListImport;
 
         $this->dlHelper = $dlHelper;
         $this->dataHelper = $dataHelper;
@@ -221,7 +225,7 @@ class Sinch {
         $sinch_product_backup = $this->conn->getTableName('sinch_product_backup');
         $sinch_category_backup = $this->conn->getTableName('sinch_category_backup');
 
-        $conn = $this->conn->getConnection();
+        $conn = $this->conn;
         // Clear any data currently in the backup tables
         /** @noinspection SqlWithoutWhere */
         $conn->query(
@@ -339,6 +343,10 @@ class Sinch {
                     Download::FILE_BUNDLE_ITEMS,
                     Download::FILE_BUNDLE_ITEMS_PRODUCTS,
                     Download::FILE_BUNDLE_GROUPS,
+                    Download::FILE_REQUISITION_LIST,
+                    Download::FILE_REQUISITION_LIST_PRODUCTS,
+                    Download::FILE_REQUISITION_LIST_BUNDLES,
+                    Download::FILE_REQUISITION_LIST_BUNDLE_ITEMS_PRODUCTS,
                 ];
 
                 $this->addImportStatus('Download Files');
@@ -463,6 +471,12 @@ class Sinch {
                     $this->addImportStatus('Parsing Bundles');
                     $this->bundleImport->parse();
                     $this->addImportStatus('Parsing Bundles', true);
+                }
+
+                if ($this->requisitionListImport->haveRequiredFiles()) {
+                    $this->addImportStatus('Parsing Requisition Lists');
+                    $this->requisitionListImport->parse();
+                    $this->addImportStatus('Parsing Requisition Lists', true);
                 }
 
                 $this->addImportStatus('Parse Stock And Prices');

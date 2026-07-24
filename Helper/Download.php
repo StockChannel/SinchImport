@@ -38,6 +38,10 @@ class Download extends AbstractHelper
     public const FILE_BUNDLE_ITEMS = 'BundlesItems.csv';
     public const FILE_BUNDLE_ITEMS_PRODUCTS = 'BundlesItemsProducts.csv';
     public const FILE_BUNDLE_GROUPS = 'BundlesAccountGroups.csv';
+    public const FILE_REQUISITION_LIST = 'CoreLists.csv';
+    public const FILE_REQUISITION_LIST_PRODUCTS = 'CoreListsProducts.csv';
+    public const FILE_REQUISITION_LIST_BUNDLES = 'CoreListsBundles.csv';
+    public const FILE_REQUISITION_LIST_BUNDLE_ITEMS_PRODUCTS = 'CoreListsBundlesItemsProducts.csv';
 
     private const EXPECTED_HEADER = [
         self::FILE_ACCOUNT_GROUP_CATEGORIES => 'AccountGroupID|CategoryID',
@@ -66,7 +70,11 @@ class Download extends AbstractHelper
         self::FILE_BUNDLE_CATEGORIES => 'BundleID|CategoryID',
         self::FILE_BUNDLE_ITEMS => 'ID|BundleID|Title|InputType|Required',
         self::FILE_BUNDLE_ITEMS_PRODUCTS => 'BundleItemID|ProductID|Quantity|Order|IsDefault',
-        self::FILE_BUNDLE_GROUPS => 'BundleID|AccountGroupID'
+        self::FILE_BUNDLE_GROUPS => 'BundleID|AccountGroupID',
+        self::FILE_REQUISITION_LIST => 'ID|Name|Description',
+        self::FILE_REQUISITION_LIST_PRODUCTS => 'ID|CoreListID|ProductID|Quantity|DaysInRequisition',
+        self::FILE_REQUISITION_LIST_BUNDLES => 'ID|CoreListID|BundleID|Quantity|DaysInRequisition',
+        self::FILE_REQUISITION_LIST_BUNDLE_ITEMS_PRODUCTS => 'CoreListBundleID|BundleItemID|ProductID',
     ];
 
     private ConsoleOutput $output;
