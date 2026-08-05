@@ -23,13 +23,11 @@ class RequisitionList extends AbstractImportSection
     private string $requisitionListMappingTable;
     private string $requisitionProductMappingTable;
     private string $requisitionBundleMappingTable;
-    private string $requisitionBundleItemsMappingTable;
 
     public function __construct(
         ResourceConnection    $resourceConn,
         ConsoleOutput         $output,
         Download              $downloadHelper,
-        private readonly Data $dataHelper,
         private readonly ProductRepositoryInterface $productRepo,
         private readonly Json $jsonSerializer,
     )
@@ -43,7 +41,6 @@ class RequisitionList extends AbstractImportSection
         $this->requisitionListMappingTable = $this->getTableName('sinch_import_requisition_list_mapping');
         $this->requisitionProductMappingTable = $this->getTableName('sinch_import_requisition_product_mapping');
         $this->requisitionBundleMappingTable = $this->getTableName('sinch_import_requisition_bundle_mapping');
-        $this->requisitionBundleItemsMappingTable = $this->getTableName('sinch_import_requisition_bundle_item_mapping');
     }
 
     public function parse(): void
@@ -64,7 +61,7 @@ class RequisitionList extends AbstractImportSection
 
         $this->startTimingStep('Load Data');
         // Requisition lists themselves
-        // ID|Name|Description
+        // ID|Name|Description|AccountGroupID
         $this->getConnection()->query(
             "LOAD DATA LOCAL INFILE '{$requisitionFile}'
                 INTO TABLE {$this->requisitionListTable}
@@ -72,7 +69,7 @@ class RequisitionList extends AbstractImportSection
                 OPTIONALLY ENCLOSED BY '\"'
                 LINES TERMINATED BY \"\r\n\"
                 IGNORE 1 LINES
-                (sinch_requisition_id, name, description)"
+                (sinch_requisition_id, name, description, sinch_account_group)"
         );
 
         // Requisition Products
@@ -120,10 +117,13 @@ class RequisitionList extends AbstractImportSection
         $bundleMappingTable = $this->getTableName('sinch_bundle_mapping');
         $bundleItemsMappingTable = $this->getTableName('sinch_bundle_items_mapping');
         $bundleItemsProductMappingTable = $this->getTableName('sinch_bundle_items_product_mapping');
+        $sinchGroupMappingTable = $this->getTableName('sinch_group_mapping');
+        $customerEntityTable = $this->getTableName('customer_entity');
 
         // Start by clearing lists which don't feature in the file
         // This should also clear the related options, selections, and the values from the mapping table itself
         $this->startTimingStep('Delete removed requisition lists');
+        // First mapped lists that don't feature in the new file
         $this->getConnection()->query(
             "DELETE FROM {$requisitionTable}
                 WHERE requisition_id IN (
@@ -132,6 +132,23 @@ class RequisitionList extends AbstractImportSection
                     LEFT JOIN {$this->requisitionListTable} ri
                         ON rim.sinch_requisition_id = ri.sinch_requisition_id
                     WHERE ri.sinch_requisition_id IS NULL
+                )"
+        );
+        // Then mapped lists whose customer/group is no longer present in the mapping or doesn't map to the same group
+        $this->getConnection()->query(
+            "DELETE FROM {$requisitionTable}
+                WHERE requisition_id IN (
+                    SELECT rm.magento_requisition_id
+                        FROM {$this->requisitionListMappingTable} rm
+                        INNER JOIN {$this->requisitionListTable} r
+                            ON rm.sinch_requisition_id = r.sinch_requisition_id
+                        LEFT JOIN {$customerEntityTable} ce
+                            ON rm.customer_id = ce.customer_id
+                        LEFT JOIN {$sinchGroupMappingTable} gm
+                            ON ce.group_id = gm.magento_id
+                        WHERE ce.customer_id IS NULL
+                        OR gm.magento_id IS NULL
+                        OR gm.sinch_id != r.sinch_account_group
                 )"
         );
         $this->endTimingStep();
@@ -164,21 +181,6 @@ class RequisitionList extends AbstractImportSection
                 )"
         );
         $this->endTimingStep();
-
-        // And for bundle selections
-        // TODO: I think this one is unnecessary, verify
-//        $this->startTimingStep('Delete removed requisition bundle selections');
-//        $this->getConnection()->query(
-//            "DELETE rio FROM {$requisitionItemOptionTable} rio
-//                 INNER JOIN {$requisitionItemTable} ri ON rio.requisition_item_id = ri.requisition_item_id
-//                 INNER JOIN {$this->requisitionBundleMappingTable} rbm ON ri.magento_item_id = rbm.magento_item_id
-//                 INNER JOIN {$bundleItemsMappingTable} bim ON ri. = bim.sinch_id
-//                 LEFT JOIN {$this->requisitionBundleItemsTable} rbi
-//                     ON rbi.sinch_rq_bundle_id = rbm.sinch_rq_bundle_id
-//                     AND rbi.sinch_bundle_item_id = bim.sinch_id
-//                 WHERE rbi.sinch_bundle_item_id IS NULL"
-//        );
-//        $this->endTimingStep();
 
         // Create missing lists
         $this->startTimingStep('Create missing requisition lists');
@@ -440,7 +442,8 @@ class RequisitionList extends AbstractImportSection
             "CREATE TABLE IF NOT EXISTS {$this->requisitionListTable} (
                 sinch_requisition_id int(11) UNSIGNED NOT NULL PRIMARY KEY,
                 name varchar(255) NOT NULL,
-                description mediumtext
+                description mediumtext,
+                sinch_account_group int(11) UNSIGNED NOT NULL
             )"
         );
 
@@ -485,8 +488,10 @@ class RequisitionList extends AbstractImportSection
         // Mapping tables
         $this->getConnection()->query(
             "CREATE TABLE IF NOT EXISTS {$this->requisitionListMappingTable} (
-                sinch_requisition_id int(11) UNSIGNED NOT NULL PRIMARY KEY,
+                sinch_requisition_id int(11) UNSIGNED NOT NULL,
+                customer_id int(11) UNSIGNED NOT NULL,
                 magento_requisition_id int(11) UNSIGNED NOT NULL UNIQUE,
+                PRIMARY KEY (sinch_requisition_id, customer_id),
                 FOREIGN KEY (magento_requisition_id) REFERENCES {$requisitionListTable} (requisition_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
         );
@@ -504,16 +509,6 @@ class RequisitionList extends AbstractImportSection
                 sinch_rq_bundle_id int(11) UNSIGNED NOT NULL PRIMARY KEY,
                 magento_item_id int(11) UNSIGNED NOT NULL UNIQUE,
                 FOREIGN KEY (magento_item_id) REFERENCES {$requisitionItemTable} (requisition_item_id) ON UPDATE CASCADE ON DELETE CASCADE
-            )"
-        );
-
-        $this->getConnection()->query(
-            "CREATE TABLE IF NOT EXISTS {$this->requisitionBundleItemsMappingTable} (
-                sinch_rq_bundle_id int(11) UNSIGNED NOT NULL,
-                sinch_bundle_item_id int(11) UNSIGNED NOT NULL,
-                magento_option_id int(11) UNSIGNED NOT NULL,
-                PRIMARY KEY (sinch_rq_bundle_id, sinch_bundle_item_id),
-                FOREIGN KEY (magento_option_id) REFERENCES {$requisitionOptionTable} (option_id) ON UPDATE CASCADE ON DELETE CASCADE
             )"
         );
     }

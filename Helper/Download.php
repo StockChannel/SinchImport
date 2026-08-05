@@ -71,7 +71,7 @@ class Download extends AbstractHelper
         self::FILE_BUNDLE_ITEMS => 'ID|BundleID|Title|InputType|Required',
         self::FILE_BUNDLE_ITEMS_PRODUCTS => 'BundleItemID|ProductID|Quantity|Order|IsDefault',
         self::FILE_BUNDLE_GROUPS => 'BundleID|AccountGroupID',
-        self::FILE_REQUISITION_LIST => 'ID|Name|Description',
+        self::FILE_REQUISITION_LIST => 'ID|Name|Description|AccountGroupID',
         self::FILE_REQUISITION_LIST_PRODUCTS => 'ID|CoreListID|ProductID|Quantity|DaysInRequisition',
         self::FILE_REQUISITION_LIST_BUNDLES => 'ID|CoreListID|BundleID|Quantity|DaysInRequisition',
         self::FILE_REQUISITION_LIST_BUNDLE_ITEMS_PRODUCTS => 'CoreListBundleID|BundleItemID|ProductID',
