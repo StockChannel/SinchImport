@@ -473,6 +473,10 @@ class Sinch {
                     $this->addImportStatus('Parsing Bundles', true);
                 }
 
+                $this->_eventManager->dispatch(
+                    'sinchimport_restore_requisition_items'
+                );
+
                 if ($this->requisitionListImport->haveRequiredFiles()) {
                     $this->addImportStatus('Parsing Requisition Lists');
                     $this->requisitionListImport->parse();
