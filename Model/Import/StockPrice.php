@@ -516,6 +516,19 @@ class StockPrice extends AbstractImportSection
                 [':threshold' => $this->outOfStockThreshold]
             );
             $this->endTimingStep();
+
+            //SKUs that have changed case won't have been updated in inventory_source_item in the queries above
+            //SKUs which have changed (but still have the same Sinch ID) will have been inserted as new rows into inventory_source_item,
+            //and the old SKU removed in the Delete stock entries for non-existent products section. So we're only
+            //concerned about SKUs which have changed case here
+            $this->startTimingStep('Fix SKUs that have changed case');
+
+            $conn->query("UPDATE {$this->inventory_source_item} isi 
+                INNER JOIN {$this->catalog_product_entity} cpe on cpe.sku = isi.sku
+                SET isi.sku = cpe.sku"
+            );
+
+            $this->endTimingStep();
         } else {
             //Single source (default)
             $this->startTimingStep('Delete stock entries for non-existent products');
