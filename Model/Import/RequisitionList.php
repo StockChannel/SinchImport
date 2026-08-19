@@ -162,23 +162,23 @@ class RequisitionList extends AbstractImportSection
             $this->createMissingBundleItems($desiredLists);
             $this->endTimingStep();
 
+            // G) Bundle selections/options/buyRequest - content is per bundle, duplicated across per-account item copies
+            $this->startTimingStep('Create/update requisition bundle selections');
+            $this->populateBundleSelections(
+                $this->getTableName('requisition_item'),
+                $this->getTableName('requisition_item_option'),
+                $this->getTableName('sinch_bundle_mapping'),
+                $this->getTableName('sinch_bundle_items_mapping'),
+                $this->getTableName('sinch_bundle_items_product_mapping')
+            );
+            $this->endTimingStep();
+
             $connection->commit();
         } catch (\Exception $e) {
             $this->logger->error($e->getMessage());
             $connection->rollBack();
             throw $e;
         }
-
-        // G) Bundle selections/options/buyRequest - content is per bundle, duplicated across per-account item copies
-        $this->startTimingStep('Create/update requisition bundle selections');
-        $this->populateBundleSelections(
-            $this->getTableName('requisition_item'),
-            $this->getTableName('requisition_item_option'),
-            $this->getTableName('sinch_bundle_mapping'),
-            $this->getTableName('sinch_bundle_items_mapping'),
-            $this->getTableName('sinch_bundle_items_product_mapping')
-        );
-        $this->endTimingStep();
 
         $this->timingPrint();
     }
@@ -532,6 +532,7 @@ class RequisitionList extends AbstractImportSection
                         'magento_item_id' => $itemId,
                     ]
                 );
+                $existingKeys[$pKey] = true;
             }
         }
     }
@@ -655,6 +656,7 @@ class RequisitionList extends AbstractImportSection
                         'magento_item_id' => $itemId,
                     ]
                 );
+                $existingKeys[$bKey] = true;
             }
         }
     }
@@ -679,7 +681,7 @@ class RequisitionList extends AbstractImportSection
         string $bundleItemsProductMappingTable
     ): void {
         $itemsToPopulate = $this->getConnection()->fetchAll(
-            "SELECT rbpm.magento_item_id, bm.magento_id AS bundle_id
+            "SELECT rbpm.magento_item_id, bm.magento_id AS bundle_id, rbpm.sinch_rq_bundle_id, rbpm.account_id
                 FROM {$this->requisitionBundleMappingTable} rbpm
                 INNER JOIN {$this->requisitionBundleTable} rb
                     on rbpm.sinch_rq_bundle_id = rb.sinch_rq_bundle_id
@@ -690,6 +692,7 @@ class RequisitionList extends AbstractImportSection
         foreach ($itemsToPopulate as $row) {
             $itemId = (int)$row['magento_item_id'];
             $bundleId = (int)$row['bundle_id'];
+            $sinchRqBundleId = (int)$row['sinch_rq_bundle_id'];
 
             $this->log("Populating item {$itemId}, bundle {$bundleId}");
 
@@ -724,25 +727,27 @@ class RequisitionList extends AbstractImportSection
 
                 // Establish the options and selections
                 $sinchSelections = $this->getConnection()->fetchAll(
-                    "SELECT bim.magento_option, bipm.magento_selection
+                    "SELECT DISTINCT bim.magento_option, bipm.magento_selection
                         FROM {$this->requisitionBundleItemsTable} rbi
                         INNER JOIN {$bundleItemsMappingTable} bim
                             ON rbi.sinch_bundle_item_id = bim.sinch_id
                         INNER JOIN {$bundleItemsProductMappingTable} bipm
                             ON rbi.sinch_bundle_item_id = bipm.sinch_item_id
                             AND rbi.sinch_product_id = bipm.sinch_product_id
-                        INNER JOIN {$this->requisitionBundleTable} rb
-                            ON rbi.sinch_rq_bundle_id = rb.sinch_rq_bundle_id
-                        INNER JOIN {$bundleMappingTable} bm
-                            ON rb.sinch_bundle_id = bm.sinch_id
-                        WHERE bm.magento_id = :bundleId",
-                    [":bundleId" => $bundleId]
+                        WHERE rbi.sinch_rq_bundle_id = :sinchRqBundleId
+                        ORDER BY bim.magento_option, bipm.magento_selection",
+                    [":sinchRqBundleId" => $sinchRqBundleId]
                 );
                 $options = [];
                 $selections = [];
                 foreach ($sinchSelections as $selection) {
                     $options[] = $selection['magento_option'];
                     $selections[] = $selection['magento_selection'];
+                }
+
+                if (empty($sinchSelections)) {
+                    $this->logger->warning("No bundle selections found for item {$itemId}, bundle {$bundleId}");
+                    // Still ensure buyRequest is created with empty bundle_option
                 }
 
                 // TODO: Is this logic correct?
