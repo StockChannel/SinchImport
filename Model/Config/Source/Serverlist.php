@@ -66,6 +66,10 @@ class Serverlist implements OptionSourceInterface
                 'label' => 'South Africa - ftp.channelstock.co.za'
             ],
             [
+                'value' => 'ftp.cz.stockinthechannel.com',
+                'label' => 'Czech - ftp.cz.stockinthechannel.com'
+            ],
+            [
                 'value' => 'ftpdemo.stockinthechannel.com',
                 'label' => 'Demo - ftpdemo.stockinthechannel.com'
             ],
@@ -93,6 +97,7 @@ class Serverlist implements OptionSourceInterface
             'ftp.ca.stockinthechannel.com'  => 'Canada - ftp.ca.stockinthechannel.com',
             'ftp.pl.stockinthechannel.com'  => 'Poland - ftp.pl.stockinthechannel.com',
             'ftp.channelstock.co.za'        => 'South Africa - ftp.channelstock.co.za',
+            'ftp.cz.stockinthechannel.com'  => 'Czech - ftp.cz.stockinthechannel.com',
             'ftpdemo.stockinthechannel.com' => 'Demo - ftpdemo.stockinthechannel.com',
             'ftp.sandbox.stockinthechannel.com' => 'Sandbox - ftp.sandbox.stockinthechannel.com'
         ];
