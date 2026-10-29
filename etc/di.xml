@@ -159,4 +159,13 @@
             <argument name="cacheFrontendPool" xsi:type="object">Magento\Framework\App\Cache\Frontend\Pool\Proxy</argument>
         </arguments>
     </type>
+
+    <!-- Security: block API cart file custom-option uploads (SessionReaper staging primitive, see plugin class) -->
+    <type name="Magento\Catalog\Model\Webapi\Product\Option\Type\File\Processor">
+        <plugin name="sitc_sinchimport_disable_cart_option_file_upload" type="SITC\Sinchimport\Plugin\Security\DisableCartOptionFileUpload" sortOrder="0"/>
+    </type>
+    <!-- Security: block the same custom-option file upload in the non-API flows (checkout, reorder, admin order create) -->
+    <type name="Magento\Catalog\Model\Product\Option\Type\File">
+        <plugin name="sitc_sinchimport_disable_frontend_option_file_upload" type="SITC\Sinchimport\Plugin\Security\DisableFrontendOptionFileUpload" sortOrder="0"/>
+    </type>
 </config>
