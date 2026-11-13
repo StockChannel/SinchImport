@@ -2148,6 +2148,17 @@ class Sinch {
 
         $sinch_products_mapping = $this->getTableName('sinch_products_mapping');
         $this->conn->query("DROP TABLE IF EXISTS $sinch_products_mapping");
+
+        // Fixes an issue with a slow delete in \SITC\Sinchimport\Model\Import\RelatedProducts (generally on large catalogues of 100k+ products).
+        // In some situations following the INSERT & UPDATE above, the InnoDB table statistics in memory have been updated,
+        // but the saved ones haven't yet been updated by the InnoDB persistent statistics background job (which runs every ~10s).
+        // When the table is renamed, InnoDB loads the saved statistics into memory, so when the optimiser is choosing
+        // a plan for the DELETE in RelatedProducts, it chooses based on a row count that is much lower than the actual row
+        // count, causing the DELETE to take ages. Running ANALYZE TABLE tells InnoDB to refresh the saved statistics so
+        // that the in-memory count matches the saved count.
+        // This issue is intermittent and dependent on how long the INSERT & UPDATE queries above take.
+        $this->conn->query("ANALYZE TABLE $sinch_products_mapping_temp");
+
         $this->conn->query("RENAME TABLE $sinch_products_mapping_temp TO $sinch_products_mapping");
     }
 
