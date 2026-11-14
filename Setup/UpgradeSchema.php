@@ -489,7 +489,7 @@ class UpgradeSchema implements UpgradeSchemaInterface
 
 		//Load the synonym CSV into an array
 	    $filePath = $this->helper->getModuleDirectory(Dir::MODULE_ETC_DIR) . '/' . self::SYNONYM_FILE;
-	    $csvLines = array_map('str_getcsv', file($filePath));
+	    $csvLines = array_map(static fn($line) => str_getcsv($line, ',', '"', '\\'), file($filePath));
 
 	    $row = 1;
 	    foreach ($csvLines as $line) {
