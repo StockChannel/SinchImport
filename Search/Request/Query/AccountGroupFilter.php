@@ -18,7 +18,7 @@ class AccountGroupFilter implements QueryInterface
 
     public function __construct(
         ?int   $account_group = 0,
-        string $name = null,
+        ?string $name = null,
         bool $cached = false
     ) {
         if(is_numeric($account_group)) {

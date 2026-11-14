@@ -20,8 +20,8 @@ class IndexerReindexCommand extends \Magento\Indexer\Console\Command\IndexerRein
 
     public function __construct(
         ObjectManagerFactory $objectManagerFactory,
-        IndexerRegistry $indexerRegistry = null,
-        DependencyInfoProvider $dependencyInfoProvider = null,
+        ?IndexerRegistry $indexerRegistry,
+        ?DependencyInfoProvider $dependencyInfoProvider,
         Data $helper
     ){
         parent::__construct($objectManagerFactory, $indexerRegistry, $dependencyInfoProvider);
